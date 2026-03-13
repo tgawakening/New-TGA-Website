@@ -3,15 +3,33 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run build",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "prisma:seed": "node prisma/seed.mjs"
+  },
+  "engines": {
+    "node": "20.x || 22.x"
   },
   "dependencies": {
+    "@prisma/client": "^6.6.0",
+    "bcryptjs": "^3.0.2",
+    "countries-list": "^3.3.0",
+    "framer-motion": "^12.35.0",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "stripe": "^20.4.1",
+    "swiper": "^12.1.2",
+    "zod": "^4.1.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -20,6 +38,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "prisma": "^6.6.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

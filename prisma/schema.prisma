@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum RegionGroup {
+  SOUTH_ASIA
+  GLOBAL
+}
+
+enum PaymentMethod {
+  STRIPE
+  PAYPAL
+  BANK_TRANSFER
+  EASYPAISA
+  JAZZCASH
+  NAYAPAY
+}
+
+enum RegistrationStatus {
+  PENDING_PAYMENT
+  PAID
+  MANUAL_REVIEW
+  ACTIVE
+  REJECTED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  SUCCEEDED
+  FAILED
+  UNDER_REVIEW
+  CONFIRMED
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SubscriptionProvider {
+  STRIPE
+  PAYPAL
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  PAUSED
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+model User {
+  id              String    @id @default(cuid())
+  fullName        String
+  email           String    @unique
+  phoneCountryCode String
+  phoneNumber     String
+  passwordHash    String
+  role            UserRole  @default(STUDENT)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  studentProfile  StudentProfile?
+  registrations   Registration[]
+  enrollments     Enrollment[]
+  sessions        Session[]
+  subscriptions   Subscription[]
+  emailLogs       EmailLog[]
+}
+
+model StudentProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  countryCode String
+  countryName String
+  timezone   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Course {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  description String?
+  basePrice   Int
+  currency    String
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  pricingRules  PricingRule[]
+  coupons       Coupon[]
+  registrations Registration[]
+  enrollments   Enrollment[]
+}
+
+model PricingRule {
+  id            String      @id @default(cuid())
+  courseId      String
+  countryCode   String
+  regionGroup   RegionGroup
+  currency      String
+  amount        Int
+  isDiscounted  Boolean     @default(false)
+  activeFrom    DateTime?
+  activeTo      DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, countryCode])
+}
+
+model Coupon {
+  id                String      @id @default(cuid())
+  code              String      @unique
+  type              CouponType
+  value             Int
+  applicableRegion  RegionGroup?
+  applicableCourseId String?
+  maxRedemptions    Int?
+  usedCount         Int         @default(0)
+  startsAt          DateTime?
+  expiresAt         DateTime?
+  isActive          Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  applicableCourse Course? @relation(fields: [applicableCourseId], references: [id], onDelete: SetNull)
+  registrations    Registration[]
+}
+
+model Registration {
+  id                    String             @id @default(cuid())
+  userId                String
+  courseId              String
+  selectedCountryCode   String
+  selectedCountryName   String
+  selectedCurrency      String
+  baseAmount            Int
+  autoDiscountAmount    Int               @default(0)
+  couponDiscountAmount  Int               @default(0)
+  finalAmount           Int
+  paymentMethod         PaymentMethod
+  paymentReference      String?            @unique
+  status                RegistrationStatus @default(PENDING_PAYMENT)
+  couponId              String?
+  couponCode            String?
+  pricingSnapshot       Json
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course     Course    @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  coupon     Coupon?   @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  payment    Payment?
+  enrollment Enrollment?
+  subscription Subscription?
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  registrationId    String        @unique
+  provider          PaymentMethod
+  providerOrderId   String?
+  providerPaymentId String?
+  amount            Int
+  currency          String
+  status            PaymentStatus @default(INITIATED)
+  manualNotes       String?
+  paidAt            DateTime?
+  rawPayloadJson    Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  manualSubmission ManualPaymentSubmission?
+}
+
+model ManualPaymentSubmission {
+  id               String   @id @default(cuid())
+  paymentId        String   @unique
+  method           PaymentMethod
+  senderName       String
+  senderNumber     String
+  referenceKey     String
+  screenshotUrl    String?
+  notes            String?
+  submittedAt      DateTime @default(now())
+  reviewedByAdminId String?
+  reviewedAt       DateTime?
+  reviewNote       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model Enrollment {
+  id              String           @id @default(cuid())
+  userId          String
+  courseId        String
+  registrationId  String           @unique
+  status          EnrollmentStatus @default(PENDING)
+  activatedAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id                    String               @id @default(cuid())
+  userId                String
+  registrationId        String               @unique
+  provider              SubscriptionProvider
+  status                SubscriptionStatus   @default(INCOMPLETE)
+  providerSubscriptionId String?             @unique
+  providerCustomerId    String?
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean              @default(false)
+  canceledAt            DateTime?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
+
+model EmailLog {
+  id         String   @id @default(cuid())
+  userId      String?
+  toEmail    String
+  emailType  String
+  subject    String
+  status     String
+  providerId String?
+  error      String?
+  payload    Json?
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, emailType])
+}

@@ -23,15 +23,25 @@
 # misc
 .DS_Store
 *.pem
+*.key
+certs/*.crt
 
 # debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.*
+!.env.example
+!.env.sample
+.envrc
+
+# local-only overrides
+*.local
 
 # vercel
 .vercel

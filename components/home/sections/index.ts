@@ -1,0 +1,10 @@
+export { Header } from "@/components/home/sections/header";
+export { HeroSection } from "@/components/home/sections/hero";
+export { MissionVisionSection } from "@/components/home/sections/mission-vision";
+export { PropheticStrategiesSlider } from "@/components/home/sections/prophetic-slider";
+export { ConnectAkhiraTimeline } from "@/components/home/sections/connect-akhira";
+export { GenMuminsTimeline } from "@/components/home/sections/gen-mumins";
+export { CoursesCarousel, UpcomingCoursesSection } from "@/components/home/sections/courses";
+export { CommunityCta } from "@/components/home/sections/community-cta";
+export { FeeWaiverSection } from "@/components/home/sections/fee-waiver";
+export { Footer } from "@/components/home/sections/footer";
