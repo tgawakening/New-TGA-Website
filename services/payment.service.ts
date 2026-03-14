@@ -472,9 +472,9 @@ export async function submitManualPayment({
 }: {
   registrationId: string;
   userId: string;
-  method: "BANK_TRANSFER" | "NAYAPAY";
+  method: "BANK_TRANSFER" | "JAZZCASH";
   senderName: string;
-  senderNumber: string;
+  senderNumber?: string;
   referenceKey: string;
   notes?: string;
   screenshotUrl?: string;
@@ -484,7 +484,7 @@ export async function submitManualPayment({
   if (registration.selectedCountryCode !== "PK") {
     throw new Error("Manual payment is currently available for Pakistan only.");
   }
-  if (!["BANK_TRANSFER", "NAYAPAY"].includes(payment.provider)) {
+  if (!["BANK_TRANSFER", "JAZZCASH"].includes(payment.provider)) {
     throw new Error("This registration is not set for manual payment.");
   }
 
@@ -494,7 +494,7 @@ export async function submitManualPayment({
       update: {
         method,
         senderName,
-        senderNumber,
+        senderNumber: senderNumber ?? "",
         referenceKey,
         notes,
         screenshotUrl,
@@ -504,7 +504,7 @@ export async function submitManualPayment({
         paymentId: payment.id,
         method,
         senderName,
-        senderNumber,
+        senderNumber: senderNumber ?? "",
         referenceKey,
         notes,
         screenshotUrl,
@@ -518,7 +518,7 @@ export async function submitManualPayment({
         manualNotes: notes,
         rawPayloadJson: toJsonValue({
           senderName,
-          senderNumber,
+          senderNumber: senderNumber ?? "",
           referenceKey,
           screenshotUrl,
         }),
@@ -567,7 +567,7 @@ export async function submitManualPayment({
           <p>Name: <strong>${registrationDetails.user.fullName}</strong></p>
           <p>Email: ${registrationDetails.user.email}</p>
           <p>Reference: ${registrationDetails.paymentReference ?? "N/A"}</p>
-          <p>Sender: ${senderName} (${senderNumber})</p>
+          <p>Sender: ${senderName}${senderNumber ? ` (${senderNumber})` : ""}</p>
           <p>Transfer Ref: ${referenceKey}</p>
         `,
         text: [
@@ -575,7 +575,7 @@ export async function submitManualPayment({
           `Name: ${registrationDetails.user.fullName}`,
           `Email: ${registrationDetails.user.email}`,
           `Reference: ${registrationDetails.paymentReference ?? "N/A"}`,
-          `Sender: ${senderName} (${senderNumber})`,
+          `Sender: ${senderName}${senderNumber ? ` (${senderNumber})` : ""}`,
           `Transfer Ref: ${referenceKey}`,
         ].join("\n"),
       }),

@@ -48,9 +48,11 @@ function resolveRegionGroup(countryCode: string): RegionGroup {
 }
 
 function getAllowedPaymentMethods(countryCode: string): PaymentMethod[] {
-  const baseMethods: PaymentMethod[] = [PaymentMethod.STRIPE, PaymentMethod.PAYPAL];
-  if (!MANUAL_PAYMENT_COUNTRIES.has(countryCode)) return baseMethods;
-  return [...baseMethods, PaymentMethod.BANK_TRANSFER, PaymentMethod.NAYAPAY];
+  if (!MANUAL_PAYMENT_COUNTRIES.has(countryCode)) {
+    return [PaymentMethod.STRIPE, PaymentMethod.PAYPAL];
+  }
+
+  return [PaymentMethod.STRIPE, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH];
 }
 
 function applyCoupon(amount: number, coupon: Coupon): number {

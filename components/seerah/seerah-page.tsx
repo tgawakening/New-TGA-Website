@@ -84,9 +84,9 @@ function SeerahHeroHeader() {
       >
         Free Orientation
       </Link>
-      <button type="button" className="seerah-mini-btn seerah-mini-btn-enroll">
+      <Link href="/seerah/register" className="seerah-mini-btn seerah-mini-btn-enroll">
         Enroll Now - £20/mo
-      </button>
+      </Link>
     </div>
   );
 }
@@ -218,9 +218,9 @@ export default function SeerahPage() {
             </article>
 
             <div className="seerah-journey-actions">
-              <button type="button" className="seerah-enroll-btn">
+              <Link href="/seerah/register" className="seerah-enroll-btn">
                 Enroll Now
-              </button>
+              </Link>
               <Link href={whatsappLink} target="_blank" rel="noreferrer" className="seerah-whatsapp-btn">
                 Join Free Orientation Session
               </Link>

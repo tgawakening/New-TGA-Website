@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation, Pagination } from "swiper/modules";
 import { propheticSlides } from "@/components/home/data";
@@ -92,9 +93,9 @@ export function PropheticStrategiesSlider() {
                     </div>
 
                     <div className="ga-seerah-cta-row">
-                      <button type="button" className="ga-seerah-btn">
+                      <Link href="/seerah/register" className="ga-seerah-btn">
                         Enroll Now
-                      </button>
+                      </Link>
                       <p className="ga-seerah-price">
                         {slide.fee.replace("Â£", "£").replace("/month", "")}
                         <span>/month</span>

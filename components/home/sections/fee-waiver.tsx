@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { fadeInUp } from "@/components/home/sections/shared";
 import { CtaArrow } from "@/components/home/sections/courses";
 
@@ -24,9 +25,9 @@ export function FeeWaiverSection() {
             We believe Islamic education is a right, not a privilege. If financial circumstances are holding you back,
             do not let that stop you. We offer full fee waivers for those in genuine need.
           </p>
-          <button type="button" className="ga-fee-btn mt-7">
-            Apply for Fee Waiver <CtaArrow />
-          </button>
+          <Link href="/seerah/free-warrior" className="ga-fee-btn mt-7">
+            Apply for Free Warrior <CtaArrow />
+          </Link>
           <p className="ga-fee-note mt-5">Your request is completely confidential. We&apos;re here to help.</p>
         </motion.article>
       </div>

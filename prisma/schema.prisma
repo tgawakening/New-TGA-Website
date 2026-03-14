@@ -56,6 +56,12 @@ enum EnrollmentStatus {
   CANCELLED
 }
 
+enum FreeWarriorApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum SubscriptionProvider {
   STRIPE
   PAYPAL
@@ -93,6 +99,7 @@ model User {
   sessions        Session[]
   subscriptions   Subscription[]
   emailLogs       EmailLog[]
+  freeWarriorApplications FreeWarriorApplication[]
 }
 
 model StudentProfile {
@@ -291,4 +298,41 @@ model EmailLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId, emailType])
+}
+
+model FreeWarriorApplication {
+  id                     String                       @id @default(cuid())
+  fullName               String
+  email                  String
+  whatsapp               String
+  age                    Int?
+  cityCountry            String
+  occupation             String
+  knowledgeLevel         String
+  previousSeerahStudy    String?
+  currentInvolvement     String?
+  whatDrawsYou           String
+  howItBenefits          String
+  mostInterestingTopic   String
+  whyThisTopic           String
+  canAttendRegularly     String
+  attendedOrientation    Boolean
+  reasonForWaiver        String
+  howHeard               String?
+  adabCommitment         Boolean
+  genuineFinancialNeed   Boolean
+  courseSlug             String
+  courseTitle            String
+  listedPrice            String
+  status                 FreeWarriorApplicationStatus @default(PENDING)
+  reviewNote             String?
+  reviewedAt             DateTime?
+  approvedUserId         String?
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+
+  approvedUser User? @relation(fields: [approvedUserId], references: [id], onDelete: SetNull)
+
+  @@index([email, status])
+  @@index([approvedUserId])
 }

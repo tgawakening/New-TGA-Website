@@ -5,6 +5,7 @@ import { countries } from "countries-list";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Header } from "@/components/home/sections/header";
 
 type PricingResponse = {
   pricing: {
@@ -43,7 +44,6 @@ type RegistrationFormState = {
   couponCode: string;
   paymentMethod: PaymentMethod;
   manualSenderName: string;
-  manualSenderNumber: string;
   manualReferenceKey: string;
   manualNotes: string;
 };
@@ -67,13 +67,16 @@ const southAsiaLocalCurrencyApprox: Record<string, { currency: string; multiplie
 };
 
 const paymentLabels: Record<PaymentMethod, string> = {
-  STRIPE: "Card",
+  STRIPE: "Stripe/Card",
   PAYPAL: "PayPal",
   BANK_TRANSFER: "Bank Transfer",
   EASYPAISA: "Easypaisa",
   JAZZCASH: "JazzCash",
   NAYAPAY: "Nayapay",
 };
+
+const supportWhatsappNumber = "03181602388";
+const supportWhatsappHref = "https://wa.me/923181602388";
 
 function formatMoney(amount: number, currency: string, isMinor = false) {
   const value = isMinor ? amount / 100 : amount;
@@ -105,7 +108,6 @@ function getDynamicPhoneCountries(): PhoneCountry[] {
 export default function SeerahRegisterPage() {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(true);
-  const [loadingPricing, setLoadingPricing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
@@ -141,7 +143,6 @@ export default function SeerahRegisterPage() {
     couponCode: "",
     paymentMethod: PaymentMethod.STRIPE,
     manualSenderName: "",
-    manualSenderNumber: "",
     manualReferenceKey: "",
     manualNotes: "",
   });
@@ -188,7 +189,6 @@ export default function SeerahRegisterPage() {
       return;
     }
 
-    setLoadingPricing(true);
     setError(null);
     setInfo(null);
     try {
@@ -216,14 +216,22 @@ export default function SeerahRegisterPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pricing error.");
-    } finally {
-      setLoadingPricing(false);
     }
   }, [form.countryCode, form.couponCode, form.paymentMethod]);
 
   useEffect(() => {
     void fetchPricing();
   }, [fetchPricing]);
+
+  async function copyToClipboard(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setInfo(`${label} copied.`);
+      setError(null);
+    } catch {
+      setError(`Could not copy ${label.toLowerCase()}.`);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -286,8 +294,8 @@ export default function SeerahRegisterPage() {
       if (!form.manualReferenceKey.trim()) {
         throw new Error("Please provide transfer reference key before submitting manual payment.");
       }
-      if (!form.manualSenderName.trim() || !form.manualSenderNumber.trim()) {
-        throw new Error("Please provide sender name and sender number for manual payment verification.");
+      if (!form.manualSenderName.trim()) {
+        throw new Error("Please provide sender name for manual payment verification.");
       }
 
       const manualResponse = await fetch("/api/payments/manual/submit", {
@@ -297,7 +305,6 @@ export default function SeerahRegisterPage() {
           registrationId,
           method: form.paymentMethod,
           senderName: form.manualSenderName || form.fullName,
-          senderNumber: form.manualSenderNumber || form.phoneNumber,
           referenceKey: form.manualReferenceKey,
           notes: form.manualNotes
             ? `${form.manualNotes}\nPlatformRef:${paymentReference}`
@@ -348,17 +355,21 @@ export default function SeerahRegisterPage() {
       : "GBP 20.00/mo";
 
   return (
-    <main className="ga-page" style={{ minHeight: "100vh" }}>
+    <>
+      <Header />
+      <main className="ga-page" style={{ minHeight: "100vh" }}>
       {isModalOpen ? (
         <div
           style={{
             position: "fixed",
             inset: 0,
             background: "rgba(3, 16, 36, 0.72)",
-            zIndex: 80,
-            display: "grid",
-            placeItems: "center",
-            padding: "1rem",
+            zIndex: 120,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            padding: "6.5rem 1rem 1rem",
+            overflowY: "auto",
           }}
         >
           <div
@@ -652,36 +663,6 @@ export default function SeerahRegisterPage() {
                 </div>
               ) : null}
 
-              {!isSouthAsia ? (
-                <div style={{ background: "#dfeeff", border: "1px solid #b9d5ee", borderRadius: 8, padding: "0.6rem" }}>
-                  <p style={{ margin: "0 0 0.35rem", fontSize: "0.66rem", fontWeight: 700 }}>BATCH 2 DISCOUNT CODE</p>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "0.45rem" }}>
-                    <input
-                      value={form.couponCode}
-                      onChange={(event) => setForm((prev) => ({ ...prev, couponCode: event.target.value.toUpperCase() }))}
-                      disabled={pricing ? !pricing.canUseCoupon : false}
-                      placeholder="ENTER YOUR DISCOUNT CODE"
-                      style={{ padding: "0.54rem", borderRadius: 6, border: "1px solid #b8cadb", background: "#fff" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void fetchPricing()}
-                      style={{
-                        border: "1px solid #7aa7cd",
-                        background: "#8eb5d7",
-                        color: "#fff",
-                        padding: "0 0.95rem",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {loadingPricing ? "..." : "Apply"}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
               <div style={{ background: "#fff", border: "1px solid #d5e2ee", borderRadius: 8, padding: "0.64rem", fontSize: "0.85rem" }}>
                 <p style={{ margin: "0 0 0.45rem", color: "#5b7e9e", fontWeight: 700, fontSize: "0.66rem" }}>ORDER SUMMARY</p>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -717,7 +698,7 @@ export default function SeerahRegisterPage() {
                   ))}
                 </div>
                 {form.countryCode === "PK" &&
-                (form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.NAYAPAY) ? (
+                (form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.JAZZCASH) ? (
                   <div style={{ display: "grid", gap: "0.55rem" }}>
                     <div
                       style={{
@@ -729,21 +710,46 @@ export default function SeerahRegisterPage() {
                         padding: "0.55rem",
                       }}
                     >
-                      Use your platform reference in transfer note and submit exact sender details so admin can verify payment quickly.
+                      Use your platform reference in the payment note. After payment, send your screenshot to WhatsApp support on{" "}
+                      <a href={supportWhatsappHref} target="_blank" rel="noreferrer" style={{ color: "#1f6d9f", fontWeight: 700 }}>
+                        {supportWhatsappNumber}
+                      </a>{" "}
+                      so your payment can be confirmed from the backend.
                     </div>
-                    <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "1fr 1fr" }}>
-                      <div style={{ background: "#fff", border: "1px solid #cfe0ee", borderRadius: 7, padding: "0.55rem" }}>
-                        <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#1f4f73" }}>Easypaisa</p>
-                        <p style={{ margin: "0.25rem 0 0", fontSize: "0.74rem", color: "#2d4a67" }}>
-                          Irshad Ahmad: 03326725419
-                        </p>
+                    {form.paymentMethod === PaymentMethod.BANK_TRANSFER ? (
+                      <div style={{ background: "#fff", border: "1px solid #cfe0ee", borderRadius: 7, padding: "0.7rem", display: "grid", gap: "0.45rem" }}>
+                        <p style={{ margin: 0, fontSize: "0.74rem", fontWeight: 800, color: "#1f4f73" }}>[BANK] Meezan Bank</p>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.74rem", color: "#2d4a67" }}>Account Title: AREEJ FATIMA</span>
+                          <button type="button" onClick={() => void copyToClipboard("AREEJ FATIMA", "Account title")} style={{ border: "1px solid #bfd4e6", background: "#eff7fd", borderRadius: 6, padding: "0.25rem 0.6rem", cursor: "pointer", fontSize: "0.72rem", fontWeight: 700 }}>Copy</button>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.74rem", color: "#2d4a67" }}>Account Number: 98900114432111</span>
+                          <button type="button" onClick={() => void copyToClipboard("98900114432111", "Account number")} style={{ border: "1px solid #bfd4e6", background: "#eff7fd", borderRadius: 6, padding: "0.25rem 0.6rem", cursor: "pointer", fontSize: "0.72rem", fontWeight: 700 }}>Copy</button>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.74rem", color: "#2d4a67" }}>IBAN: PK96MEZN0098900114432111</span>
+                          <button type="button" onClick={() => void copyToClipboard("PK96MEZN0098900114432111", "IBAN")} style={{ border: "1px solid #bfd4e6", background: "#eff7fd", borderRadius: 6, padding: "0.25rem 0.6rem", cursor: "pointer", fontSize: "0.72rem", fontWeight: 700 }}>Copy</button>
+                        </div>
                       </div>
-                      <div style={{ background: "#fff", border: "1px solid #cfe0ee", borderRadius: 7, padding: "0.55rem" }}>
-                        <p style={{ margin: 0, fontSize: "0.72rem", fontWeight: 700, color: "#1f4f73" }}>JazzCash</p>
-                        <p style={{ margin: "0.25rem 0 0", fontSize: "0.74rem", color: "#2d4a67" }}>
-                          Areej Fatima: 03244517741
-                        </p>
+                    ) : (
+                      <div style={{ background: "#fff", border: "1px solid #cfe0ee", borderRadius: 7, padding: "0.7rem", display: "grid", gap: "0.45rem" }}>
+                        <p style={{ margin: 0, fontSize: "0.74rem", fontWeight: 800, color: "#1f4f73" }}>[JAZZ] JazzCash</p>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.74rem", color: "#2d4a67" }}>Areej Fatima</span>
+                          <button type="button" onClick={() => void copyToClipboard("Areej Fatima", "JazzCash account name")} style={{ border: "1px solid #bfd4e6", background: "#eff7fd", borderRadius: 6, padding: "0.25rem 0.6rem", cursor: "pointer", fontSize: "0.72rem", fontWeight: 700 }}>Copy</button>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.74rem", color: "#2d4a67" }}>03244517741</span>
+                          <button type="button" onClick={() => void copyToClipboard("03244517741", "JazzCash number")} style={{ border: "1px solid #bfd4e6", background: "#eff7fd", borderRadius: 6, padding: "0.25rem 0.6rem", cursor: "pointer", fontSize: "0.72rem", fontWeight: 700 }}>Copy</button>
+                        </div>
                       </div>
+                    )}
+                    <div style={{ fontSize: "0.73rem", color: "#2f5576", background: "#fff7ea", border: "1px solid #edd4a4", borderRadius: 7, padding: "0.55rem" }}>
+                      Got stuck in payment? Contact our support team on{" "}
+                      <a href={supportWhatsappHref} target="_blank" rel="noreferrer" style={{ color: "#1f6d9f", fontWeight: 700 }}>
+                        {supportWhatsappNumber}
+                      </a>.
                     </div>
 
                     <label style={{ fontSize: "0.72rem", fontWeight: 700 }}>
@@ -752,17 +758,6 @@ export default function SeerahRegisterPage() {
                         value={form.manualSenderName}
                         onChange={(event) => setForm((prev) => ({ ...prev, manualSenderName: event.target.value }))}
                         placeholder="Name used for transfer"
-                        style={{ width: "100%", marginTop: 4, padding: "0.56rem", borderRadius: 6, border: "1px solid #b8cadb" }}
-                      />
-                    </label>
-                    <label style={{ fontSize: "0.72rem", fontWeight: 700 }}>
-                      Sender Number*
-                      <input
-                        value={form.manualSenderNumber}
-                        onChange={(event) =>
-                          setForm((prev) => ({ ...prev, manualSenderNumber: event.target.value.replace(/[^0-9]/g, "") }))
-                        }
-                        placeholder="Number used for transfer"
                         style={{ width: "100%", marginTop: 4, padding: "0.56rem", borderRadius: 6, border: "1px solid #b8cadb" }}
                       />
                     </label>
@@ -808,7 +803,7 @@ export default function SeerahRegisterPage() {
               >
                 {submitting
                   ? "Processing..."
-                  : form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.NAYAPAY
+                  : form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.JAZZCASH
                     ? "Submit Manual Payment"
                     : "Continue to Payment"}
               </button>
@@ -830,6 +825,7 @@ export default function SeerahRegisterPage() {
           </div>
         </section>
       )}
-    </main>
+      </main>
+    </>
   );
 }
