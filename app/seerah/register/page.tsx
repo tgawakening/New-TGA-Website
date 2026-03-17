@@ -434,6 +434,8 @@ export default function SeerahRegisterPage() {
               <label style={{ fontSize: "0.72rem", fontWeight: 700 }}>
                 Full Name*
                 <input
+                  name="fullName"
+                  autoComplete="name"
                   value={form.fullName}
                   onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
                   required
@@ -445,6 +447,8 @@ export default function SeerahRegisterPage() {
               <label style={{ fontSize: "0.72rem", fontWeight: 700 }}>
                 Email Address*
                 <input
+                  name="email"
+                  autoComplete="email"
                   type="email"
                   value={form.email}
                   onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
@@ -458,6 +462,8 @@ export default function SeerahRegisterPage() {
                 Create Password*
                 <div style={{ position: "relative", marginTop: 4 }}>
                   <input
+                    name="password"
+                    autoComplete="new-password"
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
@@ -491,6 +497,8 @@ export default function SeerahRegisterPage() {
                 Confirm Password*
                 <div style={{ position: "relative", marginTop: 4 }}>
                   <input
+                    name="confirmPassword"
+                    autoComplete="new-password"
                     type={showConfirmPassword ? "text" : "password"}
                     value={form.confirmPassword}
                     onChange={(event) => setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
@@ -646,6 +654,8 @@ export default function SeerahRegisterPage() {
                     ) : null}
                   </div>
                   <input
+                    name="phoneNumber"
+                    autoComplete="tel-national"
                     value={form.phoneNumber}
                     onChange={(event) => setForm((prev) => ({ ...prev, phoneNumber: event.target.value.replace(/[^0-9]/g, "") }))}
                     required

@@ -171,27 +171,27 @@ export default function FreeWarriorPage() {
               <div style={fieldGridStyle}>
                 <label style={labelStyle}>
                   Name*
-                  <input value={form.fullName} onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))} style={inputStyle} required />
+                  <input name="fullName" autoComplete="name" value={form.fullName} onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))} style={inputStyle} required />
                 </label>
                 <label style={labelStyle}>
                   Email*
-                  <input type="email" value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} style={inputStyle} required />
+                  <input name="email" autoComplete="email" type="email" value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} style={inputStyle} required />
                 </label>
                 <label style={labelStyle}>
                   WhatsApp*
-                  <input value={form.whatsapp} onChange={(event) => setForm((prev) => ({ ...prev, whatsapp: event.target.value }))} placeholder="+923001234567" style={inputStyle} required />
+                  <input name="whatsapp" autoComplete="tel" value={form.whatsapp} onChange={(event) => setForm((prev) => ({ ...prev, whatsapp: event.target.value }))} placeholder="+923001234567" style={inputStyle} required />
                 </label>
                 <label style={labelStyle}>
                   Age*
-                  <input type="number" min={10} max={120} value={form.age} onChange={(event) => setForm((prev) => ({ ...prev, age: event.target.value }))} style={inputStyle} required />
+                  <input name="age" type="number" min={10} max={120} value={form.age} onChange={(event) => setForm((prev) => ({ ...prev, age: event.target.value }))} style={inputStyle} required />
                 </label>
                 <label style={labelStyle}>
                   City & Country*
-                  <input value={form.cityCountry} onChange={(event) => setForm((prev) => ({ ...prev, cityCountry: event.target.value }))} placeholder="Gujranwala, Pakistan" style={inputStyle} required />
+                  <input name="cityCountry" autoComplete="address-level2" value={form.cityCountry} onChange={(event) => setForm((prev) => ({ ...prev, cityCountry: event.target.value }))} placeholder="Gujranwala, Pakistan" style={inputStyle} required />
                 </label>
                 <label style={labelStyle}>
                   Occupation*
-                  <input value={form.occupation} onChange={(event) => setForm((prev) => ({ ...prev, occupation: event.target.value }))} style={inputStyle} required />
+                  <input name="occupation" autoComplete="organization-title" value={form.occupation} onChange={(event) => setForm((prev) => ({ ...prev, occupation: event.target.value }))} style={inputStyle} required />
                 </label>
               </div>
 
