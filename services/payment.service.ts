@@ -102,7 +102,7 @@ async function markSuccessfulPayment({
 
     await tx.registration.update({
       where: { id: payment.registrationId },
-      data: { status: RegistrationStatus.PAID },
+      data: { status: RegistrationStatus.ACTIVE },
     });
 
     await tx.enrollment.update({
