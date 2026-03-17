@@ -60,7 +60,7 @@ const seerahLessons = [
 const supportLinks = [
   { label: "WhatsApp Community", href: "https://chat.whatsapp.com/EXcZmIOG9c8LOSdjK7KMko" },
   { label: "Course Registration", href: "/seerah/register" },
-  { label: "Admin Manual Reviews", href: "/admin/payments" },
+  { label: "Admin Panel", href: "/admin" },
 ];
 
 function formatMoney(amount: number, currency: string) {

@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
+import { hasValidAdminSession } from "@/lib/auth/admin-session";
 
-export function requireAdminToken(request: Request) {
+export function requireAdminAccess(request: Request) {
+  if (hasValidAdminSession(request)) {
+    return null;
+  }
+
   const expected = process.env.ADMIN_API_TOKEN;
   if (!expected) {
-    return NextResponse.json({ error: "ADMIN_API_TOKEN is not configured." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Admin access is not configured. Add admin dashboard credentials or ADMIN_API_TOKEN." },
+      { status: 500 },
+    );
   }
 
   const incoming = request.headers.get("x-admin-token");
@@ -13,3 +21,5 @@ export function requireAdminToken(request: Request) {
 
   return null;
 }
+
+export const requireAdminToken = requireAdminAccess;

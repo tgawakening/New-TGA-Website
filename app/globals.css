@@ -496,6 +496,123 @@ body {
   color: #f6a5a5;
 }
 
+.ga-admin-login-shell {
+  display: grid;
+  place-items: center;
+  min-height: 70vh;
+}
+
+.ga-admin-login-card {
+  width: min(680px, 100%);
+}
+
+.ga-admin-metric-grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.ga-admin-metric-card {
+  border: 1px solid rgba(168, 204, 237, 0.18);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(6, 20, 37, 0.9), rgba(7, 16, 29, 0.82));
+  box-shadow: 0 18px 40px rgba(0, 5, 14, 0.22);
+  padding: 1rem 1.1rem;
+}
+
+.ga-admin-metric-card span {
+  display: block;
+  color: rgba(205, 225, 246, 0.74);
+  font-size: 0.9rem;
+}
+
+.ga-admin-metric-card strong {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 1.7rem;
+  color: #f8fbff;
+  font-family: var(--font-marko-one), Georgia, serif;
+}
+
+.ga-admin-toolbar,
+.ga-admin-filter-row {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.ga-admin-search,
+.ga-admin-filter-row select,
+.ga-admin-note {
+  min-height: 2.9rem;
+  border-radius: 0.78rem;
+  border: 1px solid rgba(164, 196, 226, 0.24);
+  background: rgba(6, 17, 32, 0.84);
+  color: #f7fbff;
+  padding: 0.75rem 0.9rem;
+}
+
+.ga-admin-table-shell {
+  display: grid;
+  gap: 0.95rem;
+  margin-top: 1rem;
+}
+
+.ga-admin-row,
+.ga-admin-scholarship-card {
+  border: 1px solid rgba(165, 201, 236, 0.16);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1rem;
+}
+
+.ga-admin-row {
+  display: grid;
+  gap: 1rem;
+}
+
+.ga-admin-row strong,
+.ga-admin-scholarship-card strong {
+  color: #f8fbff;
+}
+
+.ga-admin-label {
+  margin: 0 0 0.25rem;
+  color: rgba(153, 209, 255, 0.82);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+}
+
+.ga-admin-tag {
+  display: inline-flex;
+  margin-top: 0.45rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(92, 139, 238, 0.16);
+  color: #b7d4ff;
+  font-size: 0.78rem;
+}
+
+.ga-admin-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ga-admin-scholarship-head,
+.ga-admin-scholarship-grid,
+.ga-admin-scholarship-copy {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.ga-admin-scholarship-grid p,
+.ga-admin-scholarship-copy p {
+  margin: 0;
+  color: rgba(233, 243, 255, 0.86);
+}
+
 @media (min-width: 900px) {
   .ga-dashboard-grid,
   .ga-dashboard-split,
@@ -506,6 +623,33 @@ body {
   .ga-dashboard-hero {
     grid-template-columns: minmax(0, 1.5fr) auto;
     align-items: center;
+  }
+
+  .ga-admin-toolbar {
+    grid-template-columns: auto minmax(280px, 1fr);
+    align-items: center;
+  }
+
+  .ga-admin-filter-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ga-admin-row {
+    grid-template-columns: 1.2fr 1.2fr 0.8fr 0.9fr 0.9fr 0.8fr 1.1fr;
+    align-items: start;
+  }
+
+  .ga-admin-row-students {
+    grid-template-columns: 1.2fr 1fr 0.7fr 0.7fr 0.8fr;
+  }
+
+  .ga-admin-scholarship-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .ga-admin-scholarship-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
