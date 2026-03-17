@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ application: result });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Free Warrior review failed." },
+      { error: error instanceof Error ? error.message : "Fee Waiver review failed." },
       { status: 500 },
     );
   }

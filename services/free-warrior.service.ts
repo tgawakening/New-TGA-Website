@@ -65,7 +65,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   });
 
   if (existingPending) {
-    throw new Error("A Free Warrior application is already pending for this email.");
+    throw new Error("A Fee Waiver application is already pending for this email.");
   }
 
   const application = await prisma.freeWarriorApplication.create({
@@ -80,24 +80,24 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   await Promise.allSettled([
     sendTransactionalEmail({
       to: input.email,
-      subject: "Free Warrior application received",
+      subject: "Fee Waiver application received",
       emailType: "FREE_WARRIOR_RECEIVED",
       html: `
         <p>Assalam-u-Alaikum ${input.fullName},</p>
-        <p>We have received your Free Warrior application for ${input.courseTitle}.</p>
+        <p>We have received your Fee Waiver application for ${input.courseTitle}.</p>
         <p>Your application is now under review. We will email you once the review is complete.</p>
       `,
       text: [
         `Assalam-u-Alaikum ${input.fullName},`,
-        `We have received your Free Warrior application for ${input.courseTitle}.`,
+        `We have received your Fee Waiver application for ${input.courseTitle}.`,
         "Your application is now under review. We will email you once the review is complete.",
       ].join("\n"),
     }),
     notifyAdmins({
-      subject: `New Free Warrior application: ${input.fullName}`,
+      subject: `New Fee Waiver application: ${input.fullName}`,
       emailType: "ADMIN_FREE_WARRIOR_APPLICATION",
       html: `
-        <p>New Free Warrior application received.</p>
+        <p>New Fee Waiver application received.</p>
         <p>Name: <strong>${input.fullName}</strong></p>
         <p>Email: ${input.email}</p>
         <p>WhatsApp: ${input.whatsapp}</p>
@@ -107,7 +107,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
         <p>Reason for waiver: ${input.reasonForWaiver}</p>
       `,
       text: [
-        "New Free Warrior application received.",
+        "New Fee Waiver application received.",
         `Name: ${input.fullName}`,
         `Email: ${input.email}`,
         `WhatsApp: ${input.whatsapp}`,
@@ -134,7 +134,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
   });
 
   if (!application) {
-    throw new Error("Free Warrior application not found.");
+    throw new Error("Fee Waiver application not found.");
   }
 
   if (application.status !== FreeWarriorApplicationStatus.PENDING) {
@@ -154,32 +154,32 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
     await Promise.allSettled([
       sendTransactionalEmail({
         to: application.email,
-        subject: "Free Warrior application update",
+        subject: "Fee Waiver application update",
         emailType: "FREE_WARRIOR_REJECTED",
         html: `
           <p>Assalam-u-Alaikum ${application.fullName},</p>
-          <p>Your Free Warrior application has been reviewed.</p>
+          <p>Your Fee Waiver application has been reviewed.</p>
           <p>At this time, we could not approve the waiver request.</p>
           ${input.note ? `<p>Admin note: ${input.note}</p>` : ""}
         `,
         text: [
           `Assalam-u-Alaikum ${application.fullName},`,
-          "Your Free Warrior application has been reviewed.",
+          "Your Fee Waiver application has been reviewed.",
           "At this time, we could not approve the waiver request.",
           input.note ? `Admin note: ${input.note}` : "",
         ].filter(Boolean).join("\n"),
       }),
       notifyAdmins({
-        subject: `Free Warrior application rejected: ${application.fullName}`,
+        subject: `Fee Waiver application rejected: ${application.fullName}`,
         emailType: "ADMIN_FREE_WARRIOR_REJECTED",
         html: `
-          <p>Free Warrior application rejected.</p>
+          <p>Fee Waiver application rejected.</p>
           <p>Name: <strong>${application.fullName}</strong></p>
           <p>Email: ${application.email}</p>
           ${input.note ? `<p>Admin note: ${input.note}</p>` : ""}
         `,
         text: [
-          "Free Warrior application rejected.",
+          "Fee Waiver application rejected.",
           `Name: ${application.fullName}`,
           `Email: ${application.email}`,
           input.note ? `Admin note: ${input.note}` : "",
@@ -287,7 +287,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
           amount: 0,
           currency: "GBP",
           status: PaymentStatus.CONFIRMED,
-          manualNotes: "Approved Free Warrior scholarship with full waiver.",
+          manualNotes: "Approved fee waiver scholarship with full waiver.",
           paidAt: new Date(),
           rawPayloadJson: {
             source: "FREE_WARRIOR_APPLICATION",
@@ -332,7 +332,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
             status: PaymentStatus.CONFIRMED,
             amount: 0,
             currency: "GBP",
-            manualNotes: "Approved Free Warrior scholarship with full waiver.",
+            manualNotes: "Approved fee waiver scholarship with full waiver.",
             paidAt: new Date(),
           },
         });
@@ -361,11 +361,11 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
     sendTransactionalEmail({
       userId: result.user.id,
       to: application.email,
-      subject: "Free Warrior application approved",
+      subject: "Fee Waiver application approved",
       emailType: "FREE_WARRIOR_APPROVED",
       html: `
         <p>Assalam-u-Alaikum ${application.fullName},</p>
-        <p>Your Free Warrior application for ${application.courseTitle} has been approved.</p>
+        <p>Your Fee Waiver application for ${application.courseTitle} has been approved.</p>
         <p>Your scholarship has been fully waived and your student access is now active.</p>
         ${
           result.temporaryPassword
@@ -376,23 +376,23 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
       `,
       text: [
         `Assalam-u-Alaikum ${application.fullName},`,
-        `Your Free Warrior application for ${application.courseTitle} has been approved.`,
+        `Your Fee Waiver application for ${application.courseTitle} has been approved.`,
         "Your scholarship has been fully waived and your student access is now active.",
         result.temporaryPassword ? `Temporary password: ${result.temporaryPassword}` : "Your existing account has been activated for this course.",
         "You can log in and access your dashboard now.",
       ].join("\n"),
     }),
     notifyAdmins({
-      subject: `Free Warrior approved: ${application.fullName}`,
+      subject: `Fee Waiver approved: ${application.fullName}`,
       emailType: "ADMIN_FREE_WARRIOR_APPROVED",
       html: `
-        <p>Free Warrior application approved.</p>
+        <p>Fee Waiver application approved.</p>
         <p>Name: <strong>${application.fullName}</strong></p>
         <p>Email: ${application.email}</p>
         <p>Scholarship reference: ${scholarshipReference}</p>
       `,
       text: [
-        "Free Warrior application approved.",
+        "Fee Waiver application approved.",
         `Name: ${application.fullName}`,
         `Email: ${application.email}`,
         `Scholarship reference: ${scholarshipReference}`,

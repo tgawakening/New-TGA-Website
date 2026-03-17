@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ rows });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not load Free Warrior applications." },
+      { error: error instanceof Error ? error.message : "Could not load Fee Waiver applications." },
       { status: 500 },
     );
   }

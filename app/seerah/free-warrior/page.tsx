@@ -118,7 +118,7 @@ export default function FreeWarriorPage() {
         throw new Error(detailMessage || data.error || "Application could not be submitted.");
       }
 
-      setSuccess("Your Free Warrior application has been submitted. We will email you after review.");
+      setSuccess("Your Fee Waiver application has been submitted. We will email you after review.");
       setForm(initialForm);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Application error.");
@@ -134,8 +134,8 @@ export default function FreeWarriorPage() {
         <section className="ga-section">
           <div className="ga-container" style={{ maxWidth: 820 }}>
             <div style={{ textAlign: "center", marginBottom: "1.15rem" }}>
-              <p className="ga-kicker">Free Warrior Application</p>
-              <h1 className="ga-heading">Apply for the Free Warrior Scholarship</h1>
+              <p className="ga-kicker">Fee Waiver Application</p>
+              <h1 className="ga-heading">Apply for the Fee Waiver Scholarship</h1>
               <p className="ga-copy" style={{ marginTop: "0.8rem" }}>
                 One complete application. No separate steps. Fill it once and we will send it directly to admin review.
               </p>
@@ -283,7 +283,7 @@ export default function FreeWarriorPage() {
                   Your submission remains confidential and goes straight to manual admin review.
                 </p>
                 <button type="submit" className="ga-btn ga-btn-primary" disabled={submitting}>
-                  {submitting ? "Submitting..." : "Submit Free Warrior Application"}
+                  {submitting ? "Submitting..." : "Submit Fee Waiver Application"}
                 </button>
               </div>
             </form>

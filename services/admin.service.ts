@@ -157,7 +157,7 @@ function getDiscountLabel(row: {
   if (labels.length === 0 && typeof row.pricingSnapshot === "object" && row.pricingSnapshot) {
     const snapshot = row.pricingSnapshot as Record<string, unknown>;
     if (snapshot.mode === "FREE_WARRIOR_SCHOLARSHIP") {
-      labels.push("Free Warrior scholarship");
+      labels.push("Fee Waiver scholarship");
     }
   }
 

@@ -26,7 +26,7 @@ export function FeeWaiverSection() {
             do not let that stop you. We offer full fee waivers for those in genuine need.
           </p>
           <Link href="/seerah/free-warrior" className="ga-fee-btn mt-7">
-            Apply for Free Warrior <CtaArrow />
+            Apply for Fee Waiver <CtaArrow />
           </Link>
           <p className="ga-fee-note mt-5">Your request is completely confidential. We&apos;re here to help.</p>
         </motion.article>

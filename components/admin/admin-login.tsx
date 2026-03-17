@@ -43,7 +43,7 @@ export default function AdminLogin() {
           Sign in to the Global Awakening admin panel
         </h1>
         <p className="ga-copy" style={{ marginTop: "0.85rem" }}>
-          Review live registrations, free-warrior applications, payment states, and enrollments from one place.
+          Review live registrations, fee waiver applications, payment states, and enrollments from one place.
         </p>
 
         <form onSubmit={handleSubmit} className="ga-dashboard-form" style={{ marginTop: "1.4rem" }}>

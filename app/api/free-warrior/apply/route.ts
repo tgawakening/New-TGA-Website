@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         {
-          error: "Invalid Free Warrior application data.",
+          error: "Invalid Fee Waiver application data.",
           details: parsed.error.flatten(),
         },
         { status: 400 },
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Free Warrior application failed." },
+      { error: error instanceof Error ? error.message : "Fee Waiver application failed." },
       { status: 500 },
     );
   }

@@ -140,7 +140,7 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
         throw new Error(payload.error || "Could not review application.");
       }
 
-      setMessage(approve ? "Free Warrior application approved." : "Free Warrior application rejected.");
+      setMessage(approve ? "Fee Waiver application approved." : "Fee Waiver application rejected.");
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Could not review application.");
@@ -228,7 +228,7 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
               className={`ga-btn ${activeTab === "scholarships" ? "ga-btn-primary" : "ga-btn-outline"}`}
               onClick={() => setActiveTab("scholarships")}
             >
-              Free Warriors
+              Fee Waivers
             </button>
           </div>
 
