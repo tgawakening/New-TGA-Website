@@ -45,6 +45,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+hostinger-deploy/*.zip
 
 # typescript
 *.tsbuildinfo

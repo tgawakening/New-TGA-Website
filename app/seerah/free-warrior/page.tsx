@@ -79,6 +79,14 @@ export default function FreeWarriorPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!form.adabCommitment) {
+      setError("You must commit to adab and etiquette before submitting.");
+      return;
+    }
+    if (!form.genuineFinancialNeed) {
+      setError("Please confirm genuine financial need before submitting.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -96,9 +104,18 @@ export default function FreeWarriorPage() {
         }),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        error?: string;
+        details?: {
+          formErrors?: string[];
+          fieldErrors?: Record<string, string[] | undefined>;
+        };
+      };
       if (!response.ok) {
-        throw new Error(data.error || "Application could not be submitted.");
+        const detailMessage =
+          data.details?.formErrors?.[0] ??
+          Object.values(data.details?.fieldErrors ?? {}).flat().find(Boolean);
+        throw new Error(detailMessage || data.error || "Application could not be submitted.");
       }
 
       setSuccess("Your Free Warrior application has been submitted. We will email you after review.");

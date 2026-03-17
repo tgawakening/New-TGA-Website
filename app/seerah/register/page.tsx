@@ -30,6 +30,10 @@ type RegisterResponse = {
   registrationId: string;
   paymentReference: string;
   error?: string;
+  details?: {
+    formErrors?: string[];
+    fieldErrors?: Record<string, string[] | undefined>;
+  };
 };
 
 type RegistrationFormState = {
@@ -239,6 +243,10 @@ export default function SeerahRegisterPage() {
       setError("Pricing is still loading. Please wait.");
       return;
     }
+    if (form.password !== form.confirmPassword) {
+      setError("Confirm password does not match.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -257,7 +265,10 @@ export default function SeerahRegisterPage() {
 
       const registerData = (await registerResponse.json()) as RegisterResponse;
       if (!registerResponse.ok) {
-        throw new Error(registerData.error || "Registration failed.");
+        const detailMessage =
+          registerData.details?.formErrors?.[0] ??
+          Object.values(registerData.details?.fieldErrors ?? {}).flat().find(Boolean);
+        throw new Error(detailMessage || registerData.error || "Registration failed.");
       }
 
       const registrationId = registerData.registrationId;
