@@ -8,9 +8,9 @@ export default async function AdminPage() {
 
   if (!admin) {
     return (
-      <main className="ga-page">
-        <section className="ga-section">
-          <div className="ga-container">
+      <main className="ga-admin-page">
+        <section className="ga-admin-page-section">
+          <div className="ga-admin-container">
             <AdminLogin />
           </div>
         </section>
@@ -21,9 +21,9 @@ export default async function AdminPage() {
   const data = await getAdminDashboardSnapshot();
 
   return (
-    <main className="ga-page">
-      <section className="ga-section">
-        <div className="ga-container">
+    <main className="ga-admin-page">
+      <section className="ga-admin-page-section">
+        <div className="ga-admin-container">
           <AdminDashboard data={data} adminEmail={admin.email} />
         </div>
       </section>

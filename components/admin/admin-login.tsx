@@ -37,16 +37,16 @@ export default function AdminLogin() {
 
   return (
     <div className="ga-admin-login-shell">
-      <article className="ga-dashboard-card ga-admin-login-card">
-        <p className="ga-dashboard-kicker">Admin access</p>
-        <h1 className="ga-heading" style={{ marginTop: "0.55rem" }}>
+      <article className="ga-admin-login-card">
+        <div className="ga-admin-login-badge">Admin access</div>
+        <h1 className="ga-admin-title" style={{ marginTop: "1rem" }}>
           Sign in to the Global Awakening admin panel
         </h1>
-        <p className="ga-copy" style={{ marginTop: "0.85rem" }}>
+        <p className="ga-admin-subtitle" style={{ marginTop: "0.85rem" }}>
           Review live registrations, fee waiver applications, payment states, and enrollments from one place.
         </p>
 
-        <form onSubmit={handleSubmit} className="ga-dashboard-form" style={{ marginTop: "1.4rem" }}>
+        <form onSubmit={handleSubmit} className="ga-admin-login-form" style={{ marginTop: "1.6rem" }}>
           <label htmlFor="admin-email">
             Admin email
             <input
@@ -71,10 +71,10 @@ export default function AdminLogin() {
             />
           </label>
 
-          {error ? <p className="ga-dashboard-error">{error}</p> : null}
+          {error ? <p className="ga-admin-error-banner" style={{ marginTop: 0 }}>{error}</p> : null}
 
-          <div className="ga-dashboard-actions">
-            <button type="submit" className="ga-btn ga-btn-primary" disabled={loading}>
+          <div className="ga-admin-actions">
+            <button type="submit" className="ga-admin-primary-btn" disabled={loading}>
               {loading ? "Signing in..." : "Open Admin Dashboard"}
             </button>
           </div>

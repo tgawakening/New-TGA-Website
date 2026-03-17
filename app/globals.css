@@ -4439,3 +4439,787 @@ body {
   background:
     linear-gradient(180deg, #101820 0%, #0b131b 100%) !important;
 }
+
+.ga-admin-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(197, 225, 247, 0.42), transparent 40%),
+    linear-gradient(180deg, #f6f8fc 0%, #edf2f8 100%);
+  color: #17324d;
+}
+
+.ga-admin-page-section {
+  padding: 1.5rem 0 2.5rem;
+}
+
+.ga-admin-container {
+  width: min(1380px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.ga-admin-shell {
+  display: grid;
+  gap: 1.4rem;
+}
+
+.ga-admin-topbar {
+  display: grid;
+  gap: 1rem;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid #dbe4ef;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 1.2rem;
+  box-shadow: 0 18px 40px rgba(18, 48, 88, 0.08);
+}
+
+.ga-admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.ga-admin-brand-mark {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.95rem;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1f5f93, #2c7bbb);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 14px 28px rgba(36, 96, 148, 0.26);
+}
+
+.ga-admin-brand-title {
+  margin: 0;
+  color: #113252;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.ga-admin-brand-subtitle {
+  margin: 0.15rem 0 0;
+  color: #6d8096;
+  font-size: 0.9rem;
+}
+
+.ga-admin-nav {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.ga-admin-nav-pill {
+  min-height: 2.5rem;
+  border-radius: 0.9rem;
+  border: 1px solid #d7e1ec;
+  background: #fff;
+  color: #36526f;
+  padding: 0.65rem 0.95rem;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.ga-admin-nav-pill:hover,
+.ga-admin-nav-pill.is-active {
+  background: linear-gradient(180deg, #255f91, #1d4f7d);
+  border-color: #255f91;
+  color: #fff;
+  box-shadow: 0 14px 24px rgba(26, 76, 119, 0.16);
+}
+
+.ga-admin-topbar-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ga-admin-ghost-btn,
+.ga-admin-outline-btn,
+.ga-admin-primary-btn {
+  min-height: 2.7rem;
+  border-radius: 0.9rem;
+  padding: 0.72rem 1rem;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+.ga-admin-ghost-btn,
+.ga-admin-outline-btn {
+  border: 1px solid #d6e0ea;
+  background: #fff;
+  color: #35526f;
+}
+
+.ga-admin-ghost-btn:hover,
+.ga-admin-outline-btn:hover {
+  border-color: #b5c7d9;
+  background: #f7fafc;
+}
+
+.ga-admin-primary-btn {
+  border: 1px solid #235d8f;
+  background: linear-gradient(180deg, #255f91, #1d4f7d);
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(31, 88, 138, 0.16);
+}
+
+.ga-admin-primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 32px rgba(31, 88, 138, 0.22);
+}
+
+.ga-admin-outline-btn.is-danger {
+  color: #b24a4a;
+  border-color: #efc9c9;
+  background: #fffafa;
+}
+
+.ga-admin-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #dbe4ef;
+  background: #fff;
+  border-radius: 999px;
+}
+
+.ga-admin-user-avatar {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1f5f93, #2c7bbb);
+  color: #fff;
+  font-weight: 700;
+}
+
+.ga-admin-user-chip strong,
+.ga-admin-user-chip span {
+  display: block;
+}
+
+.ga-admin-user-chip strong {
+  color: #113252;
+  font-size: 0.92rem;
+}
+
+.ga-admin-user-chip span {
+  color: #6c8095;
+  font-size: 0.8rem;
+}
+
+.ga-admin-hero-card,
+.ga-admin-card,
+.ga-admin-workspace-card,
+.ga-admin-login-card {
+  border: 1px solid #dbe4ef;
+  border-radius: 1.45rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 40px rgba(18, 48, 88, 0.08);
+}
+
+.ga-admin-hero-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1.6rem;
+  background:
+    radial-gradient(100% 100% at 100% 0%, rgba(218, 228, 255, 0.8), transparent 44%),
+    radial-gradient(80% 80% at 0% 100%, rgba(227, 244, 235, 0.7), transparent 34%),
+    rgba(255, 255, 255, 0.94);
+}
+
+.ga-admin-kicker {
+  margin: 0;
+  color: #3d668f;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ga-admin-title {
+  margin: 0;
+  font-family: var(--font-marko-one), Georgia, serif;
+  color: #102844;
+  font-size: clamp(1.9rem, 3vw, 3rem);
+  line-height: 1.08;
+}
+
+.ga-admin-subtitle {
+  margin: 0.55rem 0 0;
+  color: #5f758e;
+  line-height: 1.65;
+  font-size: 1rem;
+}
+
+.ga-admin-date-chip,
+.ga-admin-login-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 2.5rem;
+  padding: 0.6rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid #dce5ef;
+  background: #fff;
+  color: #31506f;
+  font-weight: 600;
+}
+
+.ga-admin-metric-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.ga-admin-metric-card {
+  border-radius: 1.2rem;
+  padding: 1.25rem;
+  border: 1px solid #dde6f0;
+  background: #fff;
+}
+
+.ga-admin-metric-card.is-mint {
+  background: linear-gradient(180deg, #ebfbf1, #e2f7eb);
+}
+
+.ga-admin-metric-card.is-blue {
+  background: linear-gradient(180deg, #edf4ff, #e5effd);
+}
+
+.ga-admin-metric-card.is-lilac {
+  background: linear-gradient(180deg, #f5f0ff, #efe6ff);
+}
+
+.ga-admin-metric-card.is-gold {
+  background: linear-gradient(180deg, #fff8ea, #fff1cf);
+}
+
+.ga-admin-metric-card span,
+.ga-admin-metric-card small {
+  display: block;
+}
+
+.ga-admin-metric-card span {
+  color: #4a6784;
+  font-weight: 600;
+}
+
+.ga-admin-metric-card strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 2rem;
+  color: #0f2a46;
+  font-family: var(--font-marko-one), Georgia, serif;
+}
+
+.ga-admin-metric-card small {
+  margin-top: 0.45rem;
+  color: #6b8196;
+}
+
+.ga-admin-analytics-grid,
+.ga-admin-bottom-grid,
+.ga-admin-panels-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.ga-admin-card {
+  padding: 1.35rem;
+}
+
+.ga-admin-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.ga-admin-card h2 {
+  margin: 0;
+  color: #0f2a46;
+  font-family: var(--font-marko-one), Georgia, serif;
+  font-size: 1.45rem;
+}
+
+.ga-admin-card p {
+  color: #667c92;
+}
+
+.ga-admin-donut-wrap {
+  display: grid;
+  gap: 1.3rem;
+  margin-top: 1.2rem;
+  align-items: center;
+}
+
+.ga-admin-donut {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+}
+
+.ga-admin-donut-hole {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #e8eef4;
+}
+
+.ga-admin-donut-hole strong {
+  color: #102844;
+  font-size: 1.6rem;
+  font-family: var(--font-marko-one), Georgia, serif;
+}
+
+.ga-admin-donut-hole span {
+  color: #6a7f95;
+  font-size: 0.85rem;
+}
+
+.ga-admin-legend {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ga-admin-legend div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #314f6e;
+}
+
+.ga-admin-legend strong {
+  color: #102844;
+}
+
+.ga-admin-legend .dot {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+  display: inline-block;
+  margin-right: 0.55rem;
+}
+
+.dot.is-blue,
+.ga-admin-bar-fill.is-blue,
+.ga-admin-progress-fill.is-blue {
+  background: #235f92;
+}
+
+.dot.is-gold,
+.ga-admin-bar-fill.is-gold,
+.ga-admin-progress-fill.is-gold {
+  background: #f1b955;
+}
+
+.dot.is-rose,
+.ga-admin-bar-fill.is-rose,
+.ga-admin-progress-fill.is-rose {
+  background: #e88d84;
+}
+
+.ga-admin-bar-fill.is-lilac {
+  background: #8b73ed;
+}
+
+.ga-admin-bar-fill.is-mint,
+.ga-admin-progress-fill.is-mint {
+  background: #2eae85;
+}
+
+.ga-admin-bars,
+.ga-admin-progress-stack,
+.ga-admin-quick-actions,
+.ga-admin-highlight-metrics,
+.ga-admin-simple-list,
+.ga-admin-card-grid,
+.ga-admin-fee-grid,
+.ga-admin-fee-copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.ga-admin-bar-meta,
+.ga-admin-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #34516f;
+  margin-bottom: 0.4rem;
+}
+
+.ga-admin-bar-track,
+.ga-admin-progress-track {
+  width: 100%;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: #edf2f7;
+  overflow: hidden;
+}
+
+.ga-admin-bar-fill,
+.ga-admin-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.ga-admin-highlight-card {
+  background: linear-gradient(135deg, #245f91, #1a456f);
+  color: #fff;
+}
+
+.ga-admin-highlight-card h2,
+.ga-admin-highlight-card strong,
+.ga-admin-highlight-card span {
+  color: #fff;
+}
+
+.ga-admin-highlight-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.ga-admin-highlight-metrics strong {
+  display: block;
+  font-size: 2rem;
+  font-family: var(--font-marko-one), Georgia, serif;
+}
+
+.ga-admin-highlight-metrics span {
+  opacity: 0.85;
+}
+
+.ga-admin-quick-actions button {
+  min-height: 3.2rem;
+  text-align: left;
+  border-radius: 1rem;
+  border: 1px solid #dbe4ef;
+  background: #fff;
+  color: #21425f;
+  padding: 0.9rem 1rem;
+  font-weight: 600;
+}
+
+.ga-admin-workspace-card {
+  padding: 1.35rem;
+}
+
+.ga-admin-workspace-head {
+  display: grid;
+  gap: 1rem;
+}
+
+.ga-admin-workspace-head h2 {
+  margin: 0.2rem 0 0;
+  font-family: var(--font-marko-one), Georgia, serif;
+  color: #0f2a46;
+  font-size: 1.8rem;
+}
+
+.ga-admin-workspace-head p {
+  margin: 0.4rem 0 0;
+  color: #667c92;
+}
+
+.ga-admin-search,
+.ga-admin-filter-row select,
+.ga-admin-note,
+.ga-admin-login-form input {
+  width: 100%;
+  min-height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid #d8e1eb;
+  background: #fff;
+  color: #163450;
+  padding: 0.82rem 1rem;
+  outline: none;
+}
+
+.ga-admin-note {
+  min-height: 6.4rem;
+  resize: vertical;
+}
+
+.ga-admin-login-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.ga-admin-login-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: #35516f;
+  font-weight: 600;
+}
+
+.ga-admin-filter-row {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.2rem;
+}
+
+.ga-admin-filter-row-single {
+  max-width: 320px;
+}
+
+.ga-admin-data-table {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.2rem;
+}
+
+.ga-admin-table-head,
+.ga-admin-table-row {
+  display: grid;
+  gap: 1rem;
+}
+
+.ga-admin-table-head {
+  display: none;
+}
+
+.ga-admin-table-row,
+.ga-admin-mini-card,
+.ga-admin-fee-card {
+  border: 1px solid #dbe4ef;
+  border-radius: 1.15rem;
+  background: #fff;
+  padding: 1rem;
+}
+
+.ga-admin-table-row strong,
+.ga-admin-mini-card strong,
+.ga-admin-fee-card strong {
+  display: block;
+  color: #12314f;
+}
+
+.ga-admin-table-row p,
+.ga-admin-mini-card p,
+.ga-admin-fee-card p {
+  margin: 0.2rem 0 0;
+  color: #6a7f95;
+}
+
+.ga-admin-pill,
+.ga-admin-subpill,
+.ga-admin-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.ga-admin-pill {
+  margin-bottom: 0.55rem;
+  padding: 0.24rem 0.58rem;
+  background: #dff3ec;
+  color: #228765;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ga-admin-subpill {
+  margin-top: 0.45rem;
+  padding: 0.24rem 0.55rem;
+  background: #f1f5f9;
+  color: #47637d;
+  font-size: 0.75rem;
+}
+
+.ga-admin-status {
+  padding: 0.32rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+.ga-admin-status.is-completed,
+.ga-admin-status.is-approved {
+  background: #dff5e8;
+  color: #228765;
+}
+
+.ga-admin-status.is-pending {
+  background: #fff2d7;
+  color: #c08a16;
+}
+
+.ga-admin-status.is-cancelled,
+.ga-admin-status.is-rejected {
+  background: #fde8e8;
+  color: #b24a4a;
+}
+
+.ga-admin-mini-head {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.ga-admin-mini-avatar {
+  width: 2.7rem;
+  height: 2.7rem;
+  border-radius: 0.95rem;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #7e67ea, #9f8eff);
+  color: #fff;
+  font-weight: 700;
+}
+
+.ga-admin-mini-stats {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.ga-admin-mini-stats span {
+  display: block;
+  color: #6a7f95;
+  font-size: 0.8rem;
+}
+
+.ga-admin-mini-stats strong {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.ga-admin-mini-card.is-more {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  min-height: 220px;
+  background: linear-gradient(180deg, #f6f9fc, #eef4f9);
+}
+
+.ga-admin-fee-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.ga-admin-success-banner,
+.ga-admin-error-banner {
+  margin: 1rem 0 0;
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  font-weight: 600;
+}
+
+.ga-admin-success-banner {
+  background: #e7f8ef;
+  color: #20815f;
+  border: 1px solid #ccefdc;
+}
+
+.ga-admin-error-banner {
+  background: #fdeeee;
+  color: #a43d3d;
+  border: 1px solid #f4d1d1;
+}
+
+.ga-admin-simple-list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding-bottom: 0.9rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.ga-admin-simple-list-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.ga-admin-login-shell {
+  min-height: 72vh;
+  display: grid;
+  place-items: center;
+}
+
+.ga-admin-login-card {
+  width: min(760px, 100%);
+  padding: 2rem;
+  background:
+    radial-gradient(100% 100% at 100% 0%, rgba(218, 228, 255, 0.8), transparent 42%),
+    rgba(255, 255, 255, 0.96);
+}
+
+@media (min-width: 900px) {
+  .ga-admin-topbar {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+  }
+
+  .ga-admin-hero-card {
+    grid-template-columns: 1fr auto;
+    align-items: start;
+  }
+
+  .ga-admin-analytics-grid,
+  .ga-admin-bottom-grid,
+  .ga-admin-panels-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .ga-admin-panels-grid {
+    grid-template-columns: 1.2fr 1fr 1fr;
+  }
+
+  .ga-admin-workspace-head {
+    grid-template-columns: 1fr minmax(320px, 420px);
+    align-items: end;
+  }
+
+  .ga-admin-filter-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ga-admin-table-head {
+    display: grid;
+    grid-template-columns: 1.2fr 1.2fr 0.8fr 0.85fr 0.8fr 0.78fr 1.2fr;
+    padding: 0 0.5rem;
+    color: #64809b;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .ga-admin-table-row {
+    grid-template-columns: 1.2fr 1.2fr 0.8fr 0.85fr 0.8fr 0.78fr 1.2fr;
+    align-items: start;
+  }
+
+  .ga-admin-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ga-admin-donut-wrap {
+    grid-template-columns: auto 1fr;
+  }
+
+  .ga-admin-fee-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

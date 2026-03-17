@@ -19,7 +19,7 @@ export default function AdminLogoutButton() {
   }
 
   return (
-    <button type="button" className="ga-btn ga-btn-outline" onClick={handleLogout} disabled={loading}>
+    <button type="button" className="ga-admin-outline-btn" onClick={handleLogout} disabled={loading}>
       {loading ? "Signing out..." : "Logout"}
     </button>
   );
