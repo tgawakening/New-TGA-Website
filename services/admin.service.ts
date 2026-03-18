@@ -21,6 +21,8 @@ export type AdminDashboardSnapshot = {
     feeWaivers: number;
     discountedOrders: number;
     studentCount: number;
+    missionSupportCount: number;
+    missionSupportRevenuePence: number;
   };
   registrations: Array<{
     id: string;
@@ -82,6 +84,22 @@ export type AdminDashboardSnapshot = {
     attendedOrientation: boolean;
     adabCommitment: boolean;
     genuineFinancialNeed: boolean;
+  }>;
+  missionSupportDonations: Array<{
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    amountLabel: string;
+    rawAmount: number;
+    paymentMethod: string;
+    status: string;
+    paymentReference: string | null;
+    countryName: string | null;
+    donorMessage: string | null;
+    adminNote: string | null;
+    createdAt: string;
+    hasManualSubmission: boolean;
   }>;
 };
 
@@ -165,7 +183,7 @@ function getDiscountLabel(row: {
 }
 
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
-  const [registrations, users, applications] = await Promise.all([
+  const [registrations, users, applications, missionSupport] = await Promise.all([
     prisma.registration.findMany({
       include: {
         user: true,
@@ -193,6 +211,10 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       orderBy: { createdAt: "desc" },
     }),
     prisma.freeWarriorApplication.findMany({
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.missionSupportDonation.findMany({
+      include: { manualSubmission: true },
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -248,6 +270,10 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
     feeWaivers: mappedRegistrations.filter((item) => item.isFeeWaived).length,
     discountedOrders: mappedRegistrations.filter((item) => item.hasDiscount).length,
     studentCount: users.length,
+    missionSupportCount: missionSupport.length,
+    missionSupportRevenuePence: missionSupport
+      .filter((item) => item.status === PaymentStatus.SUCCEEDED || item.status === PaymentStatus.CONFIRMED)
+      .reduce((sum, item) => sum + item.amount, 0),
   };
 
   return {
@@ -289,6 +315,22 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       attendedOrientation: item.attendedOrientation,
       adabCommitment: item.adabCommitment,
       genuineFinancialNeed: item.genuineFinancialNeed,
+    })),
+    missionSupportDonations: missionSupport.map((item) => ({
+      id: item.id,
+      fullName: item.fullName,
+      email: item.email,
+      phone: [item.phoneCountryCode, item.phoneNumber].filter(Boolean).join(" ").trim() || "N/A",
+      amountLabel: formatAmount(item.amount, item.currency),
+      rawAmount: item.amount,
+      paymentMethod: item.paymentMethod,
+      status: item.status,
+      paymentReference: item.paymentReference,
+      countryName: item.countryName,
+      donorMessage: item.donorMessage,
+      adminNote: item.manualNotes ?? item.manualSubmission?.reviewNote ?? null,
+      createdAt: item.createdAt.toISOString(),
+      hasManualSubmission: Boolean(item.manualSubmission),
     })),
   };
 }

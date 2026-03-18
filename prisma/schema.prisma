@@ -300,6 +300,51 @@ model EmailLog {
   @@index([userId, emailType])
 }
 
+model MissionSupportDonation {
+  id               String        @id @default(cuid())
+  fullName         String
+  email            String
+  phoneCountryCode String?
+  phoneNumber      String?
+  countryName      String?
+  amount           Int
+  currency         String        @default("GBP")
+  paymentMethod    PaymentMethod
+  paymentReference String?       @unique
+  status           PaymentStatus @default(INITIATED)
+  donorMessage     String?
+  providerOrderId  String?
+  providerPaymentId String?
+  manualNotes      String?
+  paidAt           DateTime?
+  rawPayloadJson   Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  manualSubmission MissionSupportManualSubmission?
+
+  @@index([email, createdAt])
+  @@index([status, paymentMethod])
+}
+
+model MissionSupportManualSubmission {
+  id            String        @id @default(cuid())
+  donationId    String        @unique
+  method        PaymentMethod
+  senderName    String
+  senderNumber  String
+  referenceKey  String
+  screenshotUrl String?
+  notes         String?
+  submittedAt   DateTime      @default(now())
+  reviewedAt    DateTime?
+  reviewNote    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  donation MissionSupportDonation @relation(fields: [donationId], references: [id], onDelete: Cascade)
+}
+
 model FreeWarriorApplication {
   id                     String                       @id @default(cuid())
   fullName               String

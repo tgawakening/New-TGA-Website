@@ -77,6 +77,9 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          <Link href="/support-our-mission" className="ga-btn ga-header-cta ga-cta-signin">
+            Support Our Mission
+          </Link>
           <Link href="/seerah/register" className="ga-btn ga-header-cta ga-cta-register">
             Enroll Now
           </Link>

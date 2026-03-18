@@ -5060,8 +5060,24 @@ body {
   color: #c08a16;
 }
 
+.ga-admin-status.is-succeeded,
+.ga-admin-status.is-confirmed {
+  background: #dff5e8;
+  color: #228765;
+}
+
+.ga-admin-status.is-under_review {
+  background: #eef1ff;
+  color: #5a63be;
+}
+
 .ga-admin-status.is-cancelled,
 .ga-admin-status.is-rejected {
+  background: #fde8e8;
+  color: #b24a4a;
+}
+
+.ga-admin-status.is-failed {
   background: #fde8e8;
   color: #b24a4a;
 }

@@ -65,9 +65,6 @@ export function Footer() {
           <p>globalawakening.co.uk</p>
           <p>+44 7886 398150</p>
           <p>admin@tgaawakening.com</p>
-          <button type="button" className="ga-btn ga-btn-primary h-10">
-            Support Our Mission
-          </button>
         </div>
       </div>
     </footer>

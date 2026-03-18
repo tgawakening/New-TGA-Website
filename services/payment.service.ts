@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
+import { handleMissionSupportStripeSessionCompleted } from "@/services/mission-support.service";
 
 type RegistrationWithPayment = Registration & {
   payment: Payment;
@@ -235,6 +236,11 @@ export async function handleStripeWebhook({
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
+    if (session.metadata?.paymentKind === "MISSION_SUPPORT") {
+      await handleMissionSupportStripeSessionCompleted(session);
+      return { received: true };
+    }
+
     const paymentId = session.metadata?.paymentId;
     if (!paymentId) throw new Error("Missing paymentId in Stripe session metadata.");
     await markSuccessfulPayment({

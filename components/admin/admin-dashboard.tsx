@@ -10,7 +10,7 @@ type Props = {
   adminEmail: string;
 };
 
-type TabKey = "orders" | "students" | "scholarships";
+type TabKey = "orders" | "students" | "scholarships" | "mission";
 
 const currencyFormatter = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -48,6 +48,7 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
   const [courseFilter, setCourseFilter] = useState("ALL");
   const [pricingFilter, setPricingFilter] = useState("ALL");
   const [applicationStatusFilter, setApplicationStatusFilter] = useState("ALL");
+  const [missionStatusFilter, setMissionStatusFilter] = useState("ALL");
   const [submittingRow, setSubmittingRow] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +93,15 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
       return [row.fullName, row.email, row.whatsapp, row.cityCountry].join(" ").toLowerCase().includes(term);
     });
   }, [applicationStatusFilter, data.freeWarriorApplications, search]);
+
+  const missionRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return data.missionSupportDonations.filter((row) => {
+      if (missionStatusFilter !== "ALL" && row.status !== missionStatusFilter) return false;
+      if (!term) return true;
+      return [row.fullName, row.email, row.paymentReference ?? "", row.countryName ?? ""].join(" ").toLowerCase().includes(term);
+    });
+  }, [data.missionSupportDonations, missionStatusFilter, search]);
 
   const paymentOptions = Array.from(new Set(data.registrations.map((row) => row.paymentMethod)));
   const courseOptions = Array.from(new Set(data.registrations.map((row) => row.courseSlug)));
@@ -160,6 +170,29 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
     }
   }
 
+  async function updateMissionDonation(donationId: string, action: "CONFIRM" | "PENDING" | "CANCEL") {
+    setSubmittingRow(donationId);
+    setMessage(null);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/mission-support/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ donationId, action }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "Could not update support donation.");
+      }
+      setMessage(`Mission support donation updated to ${payload.status ?? action}.`);
+      router.refresh();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Could not update support donation.");
+    } finally {
+      setSubmittingRow(null);
+    }
+  }
+
   const recentOrders = orderRows.slice(0, 5);
   const recentStudents = studentRows.slice(0, 5);
 
@@ -183,6 +216,9 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
           </button>
           <button type="button" className={`ga-admin-nav-pill ${activeTab === "scholarships" ? "is-active" : ""}`} onClick={() => setActiveTab("scholarships")}>
             Fee Waivers
+          </button>
+          <button type="button" className={`ga-admin-nav-pill ${activeTab === "mission" ? "is-active" : ""}`} onClick={() => setActiveTab("mission")}>
+            Mission Support
           </button>
         </nav>
 
@@ -233,6 +269,11 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
           <span>Pending Value</span>
           <strong>{currencyFormatter.format(data.summary.pendingPence / 100)}</strong>
           <small>Still awaiting completion</small>
+        </article>
+        <article className="ga-admin-metric-card is-blue">
+          <span>Mission Support</span>
+          <strong>{currencyFormatter.format(data.summary.missionSupportRevenuePence / 100)}</strong>
+          <small>{data.summary.missionSupportCount} support submissions</small>
         </article>
       </section>
 
@@ -336,6 +377,7 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
             <button type="button" onClick={() => setActiveTab("orders")}>Review Orders</button>
             <button type="button" onClick={() => setActiveTab("students")}>View Students</button>
             <button type="button" onClick={() => setActiveTab("scholarships")}>Check Fee Waivers</button>
+            <button type="button" onClick={() => setActiveTab("mission")}>Review Mission Support</button>
           </div>
         </article>
       </section>
@@ -344,13 +386,15 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
         <div className="ga-admin-workspace-head">
           <div>
             <p className="ga-admin-kicker">Operations</p>
-            <h2>{activeTab === "orders" ? "Orders" : activeTab === "students" ? "Students" : "Fee Waiver Applications"}</h2>
+            <h2>{activeTab === "orders" ? "Orders" : activeTab === "students" ? "Students" : activeTab === "scholarships" ? "Fee Waiver Applications" : "Mission Support Donations"}</h2>
             <p>
               {activeTab === "orders"
                 ? "Filter and update registration, payment, and enrollment states."
                 : activeTab === "students"
                   ? "Scan the current student base and track access history."
-                  : "Review scholarship requests and approve or reject them."}
+                  : activeTab === "scholarships"
+                    ? "Review scholarship requests and approve or reject them."
+                    : "Review donor submissions, confirm manual support payments, and track contribution details."}
             </p>
           </div>
 
@@ -558,6 +602,88 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
                       </button>
                     </div>
                   ) : null}
+                </article>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {activeTab === "mission" ? (
+          <>
+            <div className="ga-admin-filter-row ga-admin-filter-row-single">
+              <select value={missionStatusFilter} onChange={(event) => setMissionStatusFilter(event.target.value)}>
+                <option value="ALL">All support statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="UNDER_REVIEW">Under review</option>
+                <option value="SUCCEEDED">Succeeded</option>
+                <option value="CONFIRMED">Confirmed</option>
+                <option value="FAILED">Failed</option>
+              </select>
+            </div>
+
+            <div className="ga-admin-data-table">
+              <div className="ga-admin-table-head">
+                <span>Reference</span>
+                <span>Donor</span>
+                <span>Amount</span>
+                <span>Payment</span>
+                <span>Status</span>
+                <span>Date</span>
+                <span>Actions</span>
+              </div>
+              {missionRows.map((row) => (
+                <article key={row.id} className="ga-admin-table-row">
+                  <div>
+                    <span className="ga-admin-pill">Support</span>
+                    <strong>{row.paymentReference ?? row.id}</strong>
+                    {row.countryName ? <p>{row.countryName}</p> : null}
+                  </div>
+                  <div>
+                    <strong>{row.fullName}</strong>
+                    <p>{row.email}</p>
+                    <p>{row.phone}</p>
+                  </div>
+                  <div>
+                    <strong>{row.amountLabel}</strong>
+                    {row.donorMessage ? <p>{row.donorMessage}</p> : null}
+                  </div>
+                  <div>
+                    <strong>{prettify(row.paymentMethod)}</strong>
+                    {row.hasManualSubmission ? <p>Manual submission attached</p> : <p>Auto confirmation flow</p>}
+                  </div>
+                  <div>
+                    <span className={`ga-admin-status is-${row.status.toLowerCase()}`}>{prettify(row.status)}</span>
+                    {row.adminNote ? <p>{row.adminNote}</p> : null}
+                  </div>
+                  <div>
+                    <strong>{formatDate(row.createdAt)}</strong>
+                  </div>
+                  <div className="ga-admin-actions">
+                    <button
+                      type="button"
+                      className="ga-admin-primary-btn"
+                      disabled={submittingRow === row.id}
+                      onClick={() => void updateMissionDonation(row.id, "CONFIRM")}
+                    >
+                      {submittingRow === row.id ? "Saving..." : "Confirm"}
+                    </button>
+                    <button
+                      type="button"
+                      className="ga-admin-outline-btn"
+                      disabled={submittingRow === row.id}
+                      onClick={() => void updateMissionDonation(row.id, "PENDING")}
+                    >
+                      Pending
+                    </button>
+                    <button
+                      type="button"
+                      className="ga-admin-outline-btn is-danger"
+                      disabled={submittingRow === row.id}
+                      onClick={() => void updateMissionDonation(row.id, "CANCEL")}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
