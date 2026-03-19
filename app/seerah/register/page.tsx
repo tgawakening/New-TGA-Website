@@ -2,8 +2,8 @@
 
 import { PaymentMethod } from "@prisma/client";
 import { countries } from "countries-list";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Header } from "@/components/home/sections/header";
 
@@ -34,6 +34,23 @@ type RegisterResponse = {
     formErrors?: string[];
     fieldErrors?: Record<string, string[] | undefined>;
   };
+};
+
+type ResumeResponse = {
+  registration?: {
+    registrationId: string;
+    paymentReference: string | null;
+    paymentMethod: PaymentMethod;
+    fullName: string;
+    email: string;
+    phoneCountryCode: string;
+    phoneNumber: string;
+    countryCode: string;
+    countryName: string;
+    paymentStatus: string;
+    registrationStatus: string;
+  };
+  error?: string;
 };
 
 type RegistrationFormState = {
@@ -81,6 +98,8 @@ const paymentLabels: Record<PaymentMethod, string> = {
 
 const supportWhatsappNumber = "03181602388";
 const supportWhatsappHref = "https://wa.me/923181602388";
+const registrationFormStorageKey = "ga-seerah-registration-form";
+const registrationResumeStorageKey = "ga-seerah-registration-resume";
 
 function formatMoney(amount: number, currency: string, isMinor = false) {
   const value = isMinor ? amount / 100 : amount;
@@ -109,8 +128,9 @@ function getDynamicPhoneCountries(): PhoneCountry[] {
     .sort((a, b) => a.countryName.localeCompare(b.countryName));
 }
 
-export default function SeerahRegisterPage() {
+function SeerahRegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
@@ -120,6 +140,9 @@ export default function SeerahRegisterPage() {
   const [pricing, setPricing] = useState<PricingResponse["pricing"] | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resumeRegistrationId, setResumeRegistrationId] = useState<string | null>(null);
+  const [resumePaymentReference, setResumePaymentReference] = useState<string | null>(null);
+  const [restoringResume, setRestoringResume] = useState(false);
   const countryDropdownRef = useRef<HTMLDivElement | null>(null);
   const countrySearchRef = useRef<HTMLInputElement | null>(null);
 
@@ -153,14 +176,138 @@ export default function SeerahRegisterPage() {
 
   useEffect(() => {
     if (!defaultCountry) return;
-    setSelectedPhoneCountryId(defaultCountry.id);
-    setForm((prev) => ({
-      ...prev,
-      phoneCountryCode: defaultCountry.dialCode,
-      countryCode: defaultCountry.countryCode,
-      countryName: defaultCountry.countryName,
-    }));
+    setForm((prev) => {
+      if (prev.countryCode || prev.phoneCountryCode) {
+        return prev;
+      }
+
+      setSelectedPhoneCountryId(defaultCountry.id);
+      return {
+        ...prev,
+        phoneCountryCode: defaultCountry.dialCode,
+        countryCode: defaultCountry.countryCode,
+        countryName: defaultCountry.countryName,
+      };
+    });
   }, [defaultCountry]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedForm = window.localStorage.getItem(registrationFormStorageKey);
+    if (savedForm) {
+      try {
+        const parsed = JSON.parse(savedForm) as Partial<RegistrationFormState>;
+        setForm((prev) => ({
+          ...prev,
+          ...parsed,
+        }));
+
+        if (parsed.countryCode) {
+          const matchingCountry = phoneCountries.find((item) => item.countryCode === parsed.countryCode);
+          if (matchingCountry) {
+            setSelectedPhoneCountryId(matchingCountry.id);
+          }
+        }
+      } catch {
+        window.localStorage.removeItem(registrationFormStorageKey);
+      }
+    }
+
+    const savedResume = window.localStorage.getItem(registrationResumeStorageKey);
+    if (savedResume) {
+      try {
+        const parsed = JSON.parse(savedResume) as { registrationId?: string; paymentReference?: string | null };
+        setResumeRegistrationId(parsed.registrationId ?? null);
+        setResumePaymentReference(parsed.paymentReference ?? null);
+      } catch {
+        window.localStorage.removeItem(registrationResumeStorageKey);
+      }
+    }
+  }, [phoneCountries]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(registrationFormStorageKey, JSON.stringify(form));
+  }, [form]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (resumeRegistrationId) {
+      window.localStorage.setItem(
+        registrationResumeStorageKey,
+        JSON.stringify({
+          registrationId: resumeRegistrationId,
+          paymentReference: resumePaymentReference,
+        }),
+      );
+      return;
+    }
+
+    window.localStorage.removeItem(registrationResumeStorageKey);
+  }, [resumePaymentReference, resumeRegistrationId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (searchParams.get("payment") === "success") {
+      window.localStorage.removeItem(registrationFormStorageKey);
+      window.localStorage.removeItem(registrationResumeStorageKey);
+      setResumeRegistrationId(null);
+      setResumePaymentReference(null);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const resumeId = searchParams.get("resume");
+    if (!resumeId) return;
+
+    setRestoringResume(true);
+    setError(null);
+    setInfo("Loading your saved order so you can continue payment.");
+
+    void fetch(`/api/payments/resume?registrationId=${encodeURIComponent(resumeId)}`)
+      .then(async (response) => {
+        const payload = (await response.json()) as ResumeResponse;
+        if (response.status === 401) {
+          throw new Error("Please log in with your registration email and password to continue payment.");
+        }
+        if (!response.ok || !payload.registration) {
+          throw new Error(payload.error || "Could not restore your pending registration.");
+        }
+
+        const registration = payload.registration;
+        setForm((prev) => ({
+          ...prev,
+          fullName: registration.fullName,
+          email: registration.email,
+          phoneCountryCode: registration.phoneCountryCode,
+          phoneNumber: registration.phoneNumber,
+          countryCode: registration.countryCode,
+          countryName: registration.countryName,
+          paymentMethod: registration.paymentMethod,
+        }));
+
+        const matchingCountry = phoneCountries.find((item) => item.countryCode === registration.countryCode);
+        if (matchingCountry) {
+          setSelectedPhoneCountryId(matchingCountry.id);
+        }
+
+        setResumeRegistrationId(registration.registrationId);
+        setResumePaymentReference(registration.paymentReference);
+        setInfo(
+          `Your pending order${registration.paymentReference ? ` (${registration.paymentReference})` : ""} has been restored. Continue from the payment step below.`,
+        );
+      })
+      .catch((resumeError) => {
+        const message =
+          resumeError instanceof Error ? resumeError.message : "Could not restore your pending registration.";
+        setError(message);
+        setInfo(null);
+      })
+      .finally(() => {
+        setRestoringResume(false);
+      });
+  }, [phoneCountries, searchParams]);
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent) {
@@ -253,26 +400,33 @@ export default function SeerahRegisterPage() {
     setInfo(null);
 
     try {
-      const registerResponse = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          countryCode: form.countryCode.trim().toUpperCase(),
-          courseSlug: "seerah-course",
-        }),
-      });
+      let registrationId = resumeRegistrationId;
+      let paymentReference = resumePaymentReference;
 
-      const registerData = (await registerResponse.json()) as RegisterResponse;
-      if (!registerResponse.ok) {
-        const detailMessage =
-          registerData.details?.formErrors?.[0] ??
-          Object.values(registerData.details?.fieldErrors ?? {}).flat().find(Boolean);
-        throw new Error(detailMessage || registerData.error || "Registration failed.");
+      if (!registrationId) {
+        const registerResponse = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...form,
+            countryCode: form.countryCode.trim().toUpperCase(),
+            courseSlug: "seerah-course",
+          }),
+        });
+
+        const registerData = (await registerResponse.json()) as RegisterResponse;
+        if (!registerResponse.ok) {
+          const detailMessage =
+            registerData.details?.formErrors?.[0] ??
+            Object.values(registerData.details?.fieldErrors ?? {}).flat().find(Boolean);
+          throw new Error(detailMessage || registerData.error || "Registration failed.");
+        }
+
+        registrationId = registerData.registrationId;
+        paymentReference = registerData.paymentReference;
+        setResumeRegistrationId(registerData.registrationId);
+        setResumePaymentReference(registerData.paymentReference);
       }
-
-      const registrationId = registerData.registrationId;
-      const paymentReference = registerData.paymentReference;
 
       if (form.paymentMethod === PaymentMethod.STRIPE) {
         const stripeResponse = await fetch("/api/payments/stripe/create-checkout", {
@@ -330,6 +484,12 @@ export default function SeerahRegisterPage() {
       setInfo(
         `Manual payment submitted. Status is pending admin verification. Your platform reference is ${paymentReference}.`,
       );
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(registrationFormStorageKey);
+        window.localStorage.removeItem(registrationResumeStorageKey);
+      }
+      setResumeRegistrationId(null);
+      setResumePaymentReference(null);
       router.push("/dashboard?payment=manual-under-review");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration error.");
@@ -698,12 +858,30 @@ export default function SeerahRegisterPage() {
 
               <div style={{ display: "grid", gap: "0.4rem" }}>
                 <p style={{ margin: 0, fontSize: "0.66rem", fontWeight: 700, color: "#5b7e9e" }}>PAYMENT METHOD</p>
+                {resumeRegistrationId ? (
+                  <div
+                    style={{
+                      fontSize: "0.73rem",
+                      color: "#2f5576",
+                      background: "#eef7ff",
+                      border: "1px solid #c3daef",
+                      borderRadius: 7,
+                      padding: "0.55rem",
+                    }}
+                  >
+                    Resuming saved order{resumePaymentReference ? ` (${resumePaymentReference})` : ""}. Your details are preserved below.
+                  </div>
+                ) : null}
                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                   {(pricing?.allowedPaymentMethods ?? [PaymentMethod.STRIPE, PaymentMethod.PAYPAL]).map((method) => (
                     <button
                       key={method}
                       type="button"
-                      onClick={() => setForm((prev) => ({ ...prev, paymentMethod: method }))}
+                      onClick={() => {
+                        if (resumeRegistrationId) return;
+                        setForm((prev) => ({ ...prev, paymentMethod: method }));
+                      }}
+                      disabled={Boolean(resumeRegistrationId)}
                       style={{
                         border: `1px solid ${form.paymentMethod === method ? "#1e6fa3" : "#9db7ce"}`,
                         background: form.paymentMethod === method ? "#e7f2fc" : "#fff",
@@ -711,7 +889,8 @@ export default function SeerahRegisterPage() {
                         borderRadius: 7,
                         padding: "0.44rem 0.8rem",
                         fontWeight: 700,
-                        cursor: "pointer",
+                        cursor: resumeRegistrationId ? "not-allowed" : "pointer",
+                        opacity: resumeRegistrationId && form.paymentMethod !== method ? 0.55 : 1,
                       }}
                     >
                       {paymentLabels[method]}
@@ -810,7 +989,7 @@ export default function SeerahRegisterPage() {
 
               <button
                 type="submit"
-                disabled={submitting || !pricing}
+                disabled={submitting || !pricing || restoringResume}
                 style={{
                   border: "1px solid #7fa7c8",
                   background: "#83a8c6",
@@ -826,7 +1005,9 @@ export default function SeerahRegisterPage() {
                   ? "Processing..."
                   : form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.JAZZCASH
                     ? "Submit Manual Payment"
-                    : "Continue to Payment"}
+                    : resumeRegistrationId
+                      ? "Continue Pending Payment"
+                      : "Continue to Payment"}
               </button>
             </form>
           </div>
@@ -848,5 +1029,13 @@ export default function SeerahRegisterPage() {
       )}
       </main>
     </>
+  );
+}
+
+export default function SeerahRegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <SeerahRegisterContent />
+    </Suspense>
   );
 }

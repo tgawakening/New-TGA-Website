@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       registrationId: parsed.data.registrationId,
       userId: user.id,
       returnUrl: `${appUrl}/dashboard?payment=success&provider=paypal`,
-      cancelUrl: `${appUrl}/seerah/register?payment=cancelled`,
+      cancelUrl: `${appUrl}/seerah/register?payment=cancelled&resume=${encodeURIComponent(parsed.data.registrationId)}`,
     });
 
     return NextResponse.json(result);

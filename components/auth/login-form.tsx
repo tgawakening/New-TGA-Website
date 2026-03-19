@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +28,8 @@ export default function LoginForm() {
         throw new Error(data.error || "Login failed.");
       }
 
-      router.push("/dashboard");
+      const nextPath = searchParams.get("next");
+      router.push(nextPath || "/dashboard");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login error.");
@@ -63,7 +65,7 @@ export default function LoginForm() {
         <button type="submit" className="ga-btn ga-btn-primary" disabled={loading}>
           {loading ? "Signing in..." : "Login"}
         </button>
-        <button type="button" className="ga-btn ga-btn-outline" onClick={() => router.push("/seerah/register")}>
+        <button type="button" className="ga-btn ga-btn-outline" onClick={() => router.push(searchParams.get("next") || "/seerah/register")}>
           Create Account
         </button>
       </div>

@@ -110,48 +110,53 @@ export async function registerStudent(input: RegistrationInput) {
     };
   });
 
-  await Promise.allSettled([
-    sendTransactionalEmail({
-      userId: result.userId,
-      to: input.email,
-      subject: "Registration received for Prophetic Seerah and Planning",
-      emailType: "REGISTRATION_RECEIVED",
-      html: `
-        <p>Assalam-u-Alaikum ${input.fullName},</p>
-        <p>Your registration has been created for Prophetic Seerah and Planning.</p>
-        <p>Reference: <strong>${result.paymentReference}</strong></p>
-        <p>Current status: pending payment.</p>
-        <p>Once payment is completed and confirmed, your dashboard access will be activated.</p>
-      `,
-      text: [
-        `Assalam-u-Alaikum ${input.fullName},`,
-        "Your registration has been created for Prophetic Seerah and Planning.",
-        `Reference: ${result.paymentReference}`,
-        "Current status: pending payment.",
-        "Once payment is completed and confirmed, your dashboard access will be activated.",
-      ].join("\n"),
-    }),
-    notifyAdmins({
-      subject: `New registration: ${input.fullName}`,
-      emailType: "ADMIN_NEW_REGISTRATION",
-      html: `
-        <p>New registration received.</p>
-        <p>Name: <strong>${input.fullName}</strong></p>
-        <p>Email: ${input.email}</p>
-        <p>Country: ${input.countryName}</p>
-        <p>Payment method: ${input.paymentMethod}</p>
-        <p>Reference: ${result.paymentReference}</p>
-      `,
-      text: [
-        "New registration received.",
-        `Name: ${input.fullName}`,
-        `Email: ${input.email}`,
-        `Country: ${input.countryName}`,
-        `Payment method: ${input.paymentMethod}`,
-        `Reference: ${result.paymentReference}`,
-      ].join("\n"),
-    }),
-  ]);
+  const isManualPayment =
+    input.paymentMethod === "BANK_TRANSFER" || input.paymentMethod === "JAZZCASH";
+
+  if (isManualPayment) {
+    await Promise.allSettled([
+      sendTransactionalEmail({
+        userId: result.userId,
+        to: input.email,
+        subject: "Registration received for Prophetic Seerah and Planning",
+        emailType: "REGISTRATION_RECEIVED",
+        html: `
+          <p>Assalam-u-Alaikum ${input.fullName},</p>
+          <p>Your registration has been created for Prophetic Seerah and Planning.</p>
+          <p>Reference: <strong>${result.paymentReference}</strong></p>
+          <p>Current status: pending payment.</p>
+          <p>Once payment is completed and confirmed, your dashboard access will be activated.</p>
+        `,
+        text: [
+          `Assalam-u-Alaikum ${input.fullName},`,
+          "Your registration has been created for Prophetic Seerah and Planning.",
+          `Reference: ${result.paymentReference}`,
+          "Current status: pending payment.",
+          "Once payment is completed and confirmed, your dashboard access will be activated.",
+        ].join("\n"),
+      }),
+      notifyAdmins({
+        subject: `New registration: ${input.fullName}`,
+        emailType: "ADMIN_NEW_REGISTRATION",
+        html: `
+          <p>New registration received.</p>
+          <p>Name: <strong>${input.fullName}</strong></p>
+          <p>Email: ${input.email}</p>
+          <p>Country: ${input.countryName}</p>
+          <p>Payment method: ${input.paymentMethod}</p>
+          <p>Reference: ${result.paymentReference}</p>
+        `,
+        text: [
+          "New registration received.",
+          `Name: ${input.fullName}`,
+          `Email: ${input.email}`,
+          `Country: ${input.countryName}`,
+          `Payment method: ${input.paymentMethod}`,
+          `Reference: ${result.paymentReference}`,
+        ].join("\n"),
+      }),
+    ]);
+  }
 
   return result;
 }

@@ -7,6 +7,7 @@ import {
   SubscriptionStatus,
   type Payment,
   type Registration,
+  type User,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
@@ -14,6 +15,7 @@ import { handleMissionSupportStripeSessionCompleted } from "@/services/mission-s
 
 type RegistrationWithPayment = Registration & {
   payment: Payment;
+  user: User;
 };
 
 type PaypalOrder = {
@@ -38,7 +40,7 @@ function getPaypalApiBase() {
 async function loadRegistrationForUser(registrationId: string, userId: string): Promise<RegistrationWithPayment> {
   const registration = await prisma.registration.findFirst({
     where: { id: registrationId, userId },
-    include: { payment: true },
+    include: { payment: true, user: true },
   });
   if (!registration || !registration.payment) {
     throw new Error("Registration payment record not found.");
@@ -54,6 +56,87 @@ function getStripeMonthlyAmountPence(registration: Registration) {
   if (registration.selectedCurrency === "GBP") return registration.finalAmount;
   // South Asia discounted path is represented as approximately GBP 5/month recurring billing.
   return 500;
+}
+
+function getAppUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
+
+function buildResumePaymentLink(registrationId: string) {
+  const appUrl = getAppUrl();
+  return `${appUrl}/seerah/register?resume=${encodeURIComponent(registrationId)}`;
+}
+
+async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPayment) {
+  const course = await prisma.course.findUnique({
+    where: { id: registration.courseId },
+    select: { title: true },
+  });
+
+  const resumeLink = buildResumePaymentLink(registration.id);
+  const orderAmount = new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: registration.selectedCurrency,
+    minimumFractionDigits: 2,
+  }).format(registration.finalAmount / 100);
+
+  await Promise.allSettled([
+    sendTransactionalEmail({
+      userId: registration.userId,
+      to: registration.user.email,
+      subject: "Your payment is pending. Complete payment to finish your enrollment.",
+      emailType: "ONLINE_PAYMENT_PENDING",
+      html: `
+        <p>Assalam-u-Alaikum ${registration.user.fullName},</p>
+        <p>Your order for <strong>${course?.title ?? "Prophetic Seerah and Planning"}</strong> has been created, but payment is still pending.</p>
+        <p><strong>Reference:</strong> ${registration.paymentReference ?? "N/A"}</p>
+        <p><strong>Email:</strong> ${registration.user.email}</p>
+        <p><strong>Phone:</strong> ${registration.user.phoneCountryCode} ${registration.user.phoneNumber}</p>
+        <p><strong>Payment method:</strong> ${registration.payment.provider}</p>
+        <p><strong>Payment status:</strong> Pending</p>
+        <p><strong>Amount:</strong> ${orderAmount}</p>
+        <p style="margin: 24px 0;">
+          <a href="${resumeLink}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0f5e91;color:#ffffff;text-decoration:none;font-weight:700;">Complete Payment</a>
+        </p>
+        <p>If you left the payment page, use the button above and we will bring you back to the payment step with your saved details.</p>
+      `,
+      text: [
+        `Assalam-u-Alaikum ${registration.user.fullName},`,
+        `Your order for ${course?.title ?? "Prophetic Seerah and Planning"} has been created, but payment is still pending.`,
+        `Reference: ${registration.paymentReference ?? "N/A"}`,
+        `Email: ${registration.user.email}`,
+        `Phone: ${registration.user.phoneCountryCode} ${registration.user.phoneNumber}`,
+        `Payment method: ${registration.payment.provider}`,
+        "Payment status: Pending",
+        `Amount: ${orderAmount}`,
+        `Complete payment: ${resumeLink}`,
+      ].join("\n"),
+    }),
+    notifyAdmins({
+      subject: `New order placed: ${registration.user.fullName}`,
+      emailType: "ADMIN_ORDER_PLACED_PENDING_PAYMENT",
+      html: `
+        <p>A new order has been placed on your platform.</p>
+        <p><strong>Name:</strong> ${registration.user.fullName}</p>
+        <p><strong>Email:</strong> ${registration.user.email}</p>
+        <p><strong>Phone:</strong> ${registration.user.phoneCountryCode} ${registration.user.phoneNumber}</p>
+        <p><strong>Payment method:</strong> ${registration.payment.provider}</p>
+        <p><strong>Payment mode:</strong> Pending</p>
+        <p><strong>Amount:</strong> ${orderAmount}</p>
+        <p><strong>Reference:</strong> ${registration.paymentReference ?? "N/A"}</p>
+      `,
+      text: [
+        "A new order has been placed on your platform.",
+        `Name: ${registration.user.fullName}`,
+        `Email: ${registration.user.email}`,
+        `Phone: ${registration.user.phoneCountryCode} ${registration.user.phoneNumber}`,
+        `Payment method: ${registration.payment.provider}`,
+        "Payment mode: Pending",
+        `Amount: ${orderAmount}`,
+        `Reference: ${registration.paymentReference ?? "N/A"}`,
+      ].join("\n"),
+    }),
+  ]);
 }
 
 async function markSuccessfulPayment({
@@ -203,6 +286,8 @@ export async function createStripeCheckout({
     ],
   });
 
+  const shouldSendPendingEmails = payment.status === PaymentStatus.INITIATED;
+
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
@@ -211,6 +296,10 @@ export async function createStripeCheckout({
       rawPayloadJson: toJsonValue(session),
     },
   });
+
+  if (shouldSendPendingEmails) {
+    await sendPendingOnlinePaymentEmails(registration);
+  }
 
   return {
     checkoutUrl: session.url,
@@ -408,6 +497,8 @@ export async function createPaypalOrder({
   }
 
   const order = (await orderResponse.json()) as PaypalOrder;
+  const shouldSendPendingEmails = payment.status === PaymentStatus.INITIATED;
+
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
@@ -417,9 +508,58 @@ export async function createPaypalOrder({
     },
   });
 
+  if (shouldSendPendingEmails) {
+    await sendPendingOnlinePaymentEmails(registration);
+  }
+
   return {
     orderId: order.id,
     approveUrl: order.links?.find((item) => item.rel === "approve")?.href ?? null,
+  };
+}
+
+export async function getPendingRegistrationForResume({
+  registrationId,
+  userId,
+}: {
+  registrationId: string;
+  userId: string;
+}) {
+  const registration = await prisma.registration.findFirst({
+    where: {
+      id: registrationId,
+      userId,
+    },
+    include: {
+      user: true,
+      payment: true,
+    },
+  });
+
+  if (!registration || !registration.payment) {
+    throw new Error("Pending registration not found.");
+  }
+
+  if (
+    registration.payment.status === PaymentStatus.SUCCEEDED ||
+    registration.payment.status === PaymentStatus.CONFIRMED ||
+    registration.status === RegistrationStatus.ACTIVE
+  ) {
+    throw new Error("This registration is already completed.");
+  }
+
+  return {
+    registrationId: registration.id,
+    paymentReference: registration.paymentReference,
+    paymentMethod: registration.paymentMethod,
+    fullName: registration.user.fullName,
+    email: registration.user.email,
+    phoneCountryCode: registration.user.phoneCountryCode,
+    phoneNumber: registration.user.phoneNumber,
+    countryCode: registration.selectedCountryCode,
+    countryName: registration.selectedCountryName,
+    paymentStatus: registration.payment.status,
+    registrationStatus: registration.status,
   };
 }
 
