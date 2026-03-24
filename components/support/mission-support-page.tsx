@@ -5,11 +5,38 @@ import { useSearchParams } from "next/navigation";
 
 const amountOptions = [5, 10, 20, 50];
 const methodOptions = [
-  { id: "STRIPE", label: "Stripe / Card", description: "Fast card payment with instant confirmation." },
-  { id: "PAYPAL", label: "PayPal", description: "Pay with PayPal balance or linked card." },
-  { id: "BANK_TRANSFER", label: "Bank Transfer", description: "Manual transfer with admin verification." },
-  { id: "JAZZCASH", label: "JazzCash", description: "Manual wallet payment for Pakistan donors." },
+  { id: "STRIPE", label: "Stripe / Card", description: "Pay securely with card and get instant confirmation." },
+  { id: "PAYPAL", label: "PayPal", description: "Use your PayPal account or linked card in a familiar checkout." },
+  { id: "BANK_TRANSFER", label: "Bank Transfer", description: "Send support manually and we will verify it for you." },
+  { id: "JAZZCASH", label: "JazzCash", description: "A simple wallet option for supporters in Pakistan." },
 ] as const;
+
+const impactPoints = [
+  "Sponsor access to structured Islamic and academic learning",
+  "Help children grow with mentorship, discipline, and confidence",
+  "Strengthen families and communities through knowledge",
+];
+
+const sponsorshipSteps = [
+  {
+    title: "Choose how you want to help",
+    description: "Select an amount that fits your capacity, whether monthly-style support or a custom contribution.",
+  },
+  {
+    title: "Complete the support form",
+    description: "Share your details so we can confirm your contribution and keep the process transparent.",
+  },
+  {
+    title: "Support a child's journey",
+    description: "Your contribution helps provide learning, mentorship, and a stronger path forward for a child.",
+  },
+];
+
+const givingHighlights = [
+  { value: "Clear purpose", label: "This page exists to let donors sponsor children's learning journeys." },
+  { value: "Flexible giving", label: "Support instantly with card or PayPal, or submit manual support details." },
+  { value: "Mission first", label: "Every contribution is aimed at education, tarbiyah, and future leadership." },
+];
 
 type MethodId = (typeof methodOptions)[number]["id"];
 
@@ -22,6 +49,7 @@ const bankDetails = [
 export default function MissionSupportPage() {
   const searchParams = useSearchParams();
   const paypalCaptureRan = useRef(false);
+  const formCardRef = useRef<HTMLElement | null>(null);
 
   const [selectedAmount, setSelectedAmount] = useState<number | "custom">(20);
   const [customAmount, setCustomAmount] = useState("25");
@@ -99,6 +127,10 @@ export default function MissionSupportPage() {
     void navigator.clipboard.writeText(value);
   }
 
+  function scrollToForm() {
+    formCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -141,78 +173,130 @@ export default function MissionSupportPage() {
     }
   }
 
+  const summaryLabel =
+    method === "STRIPE"
+      ? "Proceed with Stripe"
+      : method === "PAYPAL"
+        ? "Proceed with PayPal"
+        : "Submit Manual Support";
+
   return (
-    <main className="ga-page">
+    <main className="ga-page ga-support-page">
       <section className="ga-section">
-        <div className="ga-container" style={{ display: "grid", gap: "1.5rem" }}>
-          <div className="ga-dashboard-hero" style={{ alignItems: "start" }}>
-            <div>
+        <div className="ga-container ga-support-shell">
+          <section className="ga-support-hero">
+            <div className="ga-support-hero-copy">
               <p className="ga-dashboard-kicker">Support Our Mission</p>
-              <h1 className="ga-heading" style={{ maxWidth: 760 }}>
-                Sponsor a child. Strengthen access to knowledge. Build the next generation of Muslim leaders.
+              <h1 className="ga-support-title">
+                Help a child learn, grow, and lead with confidence.
               </h1>
-              <p className="ga-copy" style={{ marginTop: "0.85rem", maxWidth: 820 }}>
-                Through TGA&apos;s Sponsor a Child initiative, your support helps children access structured online
-                education, mentorship, and the guidance they need to grow into confident and capable leaders.
+              <p className="ga-copy ga-support-lead">
+                This page is for supporters who want to sponsor a child&apos;s educational journey through TGA. Your
+                support helps provide learning, mentorship, and guidance that can shape a stronger future.
               </p>
-            </div>
-            <div className="ga-dashboard-card" style={{ minWidth: 260 }}>
-              <p className="ga-dashboard-card-title">Impact snapshot</p>
-              <div className="ga-dashboard-stack">
-                <p>Structured online educational programs</p>
-                <p>Mentorship and life skills support</p>
-                <p>Long-term community empowerment through knowledge</p>
-              </div>
-            </div>
-          </div>
 
-          <section className="ga-dashboard-split">
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Why Sponsorship Matters</p>
-              <div className="ga-dashboard-stack">
-                <p>Education can transform lives, families, and communities.</p>
-                <p>Your sponsorship helps break barriers to learning and supports confident, capable leadership.</p>
-                <p>Every child supported today helps build a stronger future for tomorrow.</p>
+              <div className="ga-support-action-row">
+                <button type="button" className="ga-btn ga-btn-primary" onClick={scrollToForm}>
+                  Fill Support Form
+                </button>
+                <button type="button" className="ga-btn ga-btn-ghost" onClick={scrollToForm}>
+                  Support Our Vision
+                </button>
               </div>
 
-              <p className="ga-dashboard-card-title" style={{ marginTop: "1.35rem" }}>How Sponsorship Works</p>
-              <div className="ga-dashboard-list" style={{ marginTop: "0.9rem" }}>
-                <div className="ga-dashboard-list-item">
-                  <div>
-                    <strong>1. Choose to Sponsor</strong>
-                    <p>Select a monthly or custom amount that matches your capacity.</p>
+              <div className="ga-support-hero-grid">
+                {givingHighlights.map((item) => (
+                  <div key={item.value} className="ga-support-stat">
+                    <strong>{item.value}</strong>
+                    <p>{item.label}</p>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            <aside className="ga-support-hero-panel">
+              <p className="ga-support-panel-kicker">What your support makes possible</p>
+              <div className="ga-support-checklist">
+                {impactPoints.map((point) => (
+                  <div key={point} className="ga-support-check-item">
+                    <span className="ga-support-check-icon">+</span>
+                    <p>{point}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="ga-support-panel-quote">
+                <strong>Support our vision and mission</strong>
+                <p>
+                  Sponsor a child today and help create a generation grounded in knowledge, character, and service.
+                </p>
+              </div>
+            </aside>
+          </section>
+
+          <section className="ga-support-story-grid">
+            <article className="ga-dashboard-card ga-support-card">
+              <p className="ga-dashboard-card-title">Why this page matters</p>
+              <p className="ga-support-card-copy">
+                Many visitors land here ready to help, but they first need clarity. This page now explains the purpose
+                clearly: it is a direct way to support a child&apos;s access to meaningful education and development.
+              </p>
+              <div className="ga-support-purpose-list">
+                <div className="ga-support-purpose-item">
+                  <strong>Education with direction</strong>
+                  <p>Support children with structured learning, not one-time scattered help.</p>
                 </div>
-                <div className="ga-dashboard-list-item">
-                  <div>
-                    <strong>2. Support Their Learning</strong>
-                    <p>Your contribution supports educational access, online learning, and development opportunities.</p>
-                  </div>
+                <div className="ga-support-purpose-item">
+                  <strong>Mentorship with impact</strong>
+                  <p>Contributions help children grow in confidence, discipline, and leadership.</p>
                 </div>
-                <div className="ga-dashboard-list-item">
-                  <div>
-                    <strong>3. Change a Life</strong>
-                    <p>With the right knowledge and guidance, children can grow into future leaders.</p>
-                  </div>
+                <div className="ga-support-purpose-item">
+                  <strong>Giving made simple</strong>
+                  <p>The page guides donors from understanding the mission to completing support in one place.</p>
                 </div>
               </div>
             </article>
 
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Sponsor a Child Today</p>
-              <p className="ga-dashboard-muted" style={{ marginTop: "0.55rem" }}>
-                Choose an amount, add donor details, then proceed with your preferred payment method.
-              </p>
+            <article className="ga-dashboard-card ga-support-card">
+              <p className="ga-dashboard-card-title">How sponsorship works</p>
+              <div className="ga-support-steps">
+                {sponsorshipSteps.map((step, index) => (
+                  <div key={step.title} className="ga-support-step">
+                    <div className="ga-support-step-number">0{index + 1}</div>
+                    <div>
+                      <strong>{step.title}</strong>
+                      <p>{step.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </section>
 
-              <form onSubmit={handleSubmit} className="ga-dashboard-form">
+          <section className="ga-dashboard-split ga-support-main">
+            <article ref={formCardRef} className="ga-dashboard-card ga-support-form-card">
+              <div className="ga-support-form-head">
                 <div>
-                  <label style={{ marginBottom: "0.5rem", display: "block" }}>Choose your amount</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "0.7rem" }}>
+                  <p className="ga-dashboard-card-title">Sponsor a Child Today</p>
+                  <p className="ga-dashboard-muted ga-support-form-copy">
+                    Choose an amount, add your details, and continue with the payment option that suits you best.
+                  </p>
+                </div>
+                <div className="ga-support-summary-chip">
+                  <span>Selected support</span>
+                  <strong>£{Number.isFinite(activeAmount) ? activeAmount.toFixed(2) : "0.00"}</strong>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="ga-dashboard-form ga-support-form">
+                <div>
+                  <label className="ga-support-label-title">Choose your amount</label>
+                  <div className="ga-support-amount-grid">
                     {amountOptions.map((amount) => (
                       <button
                         key={amount}
                         type="button"
-                        className={`ga-btn ${selectedAmount === amount ? "ga-btn-primary" : "ga-btn-outline"}`}
+                        className={`ga-support-amount-button ${selectedAmount === amount ? "is-active" : ""}`}
                         onClick={() => setSelectedAmount(amount)}
                       >
                         £{amount}
@@ -220,7 +304,7 @@ export default function MissionSupportPage() {
                     ))}
                     <button
                       type="button"
-                      className={`ga-btn ${selectedAmount === "custom" ? "ga-btn-primary" : "ga-btn-outline"}`}
+                      className={`ga-support-amount-button ${selectedAmount === "custom" ? "is-active" : ""}`}
                       onClick={() => setSelectedAmount("custom")}
                     >
                       Custom
@@ -242,28 +326,30 @@ export default function MissionSupportPage() {
                   </label>
                 ) : null}
 
-                <label>
-                  Full name
-                  <input
-                    autoComplete="name"
-                    value={form.fullName}
-                    onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
-                    required
-                  />
-                </label>
+                <div className="ga-support-form-grid">
+                  <label>
+                    Full name
+                    <input
+                      autoComplete="name"
+                      value={form.fullName}
+                      onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                      required
+                    />
+                  </label>
 
-                <label>
-                  Email
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    value={form.email}
-                    onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                    required
-                  />
-                </label>
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      value={form.email}
+                      onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                      required
+                    />
+                  </label>
+                </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: "0.7rem" }}>
+                <div className="ga-support-form-grid ga-support-form-grid-phone">
                   <label>
                     Code
                     <input
@@ -296,17 +382,20 @@ export default function MissionSupportPage() {
                     value={form.donorMessage}
                     onChange={(event) => setForm((prev) => ({ ...prev, donorMessage: event.target.value }))}
                     rows={4}
-                    style={{ borderRadius: "0.78rem", border: "1px solid rgba(164, 196, 226, 0.24)", background: "rgba(6, 17, 32, 0.84)", color: "#f7fbff", padding: "0.75rem 0.9rem", resize: "vertical" }}
+                    className="ga-support-textarea"
                     placeholder="Optional message of support"
                   />
                 </label>
 
                 <div>
-                  <label style={{ marginBottom: "0.6rem", display: "block" }}>Payment method</label>
-                  <div style={{ display: "grid", gap: "0.7rem" }}>
+                  <label className="ga-support-label-title">Choose a payment method</label>
+                  <div className="ga-support-methods">
                     {methodOptions.map((option) => (
-                      <label key={option.id} className="ga-dashboard-list-item" style={{ cursor: "pointer" }}>
-                        <div>
+                      <label
+                        key={option.id}
+                        className={`ga-support-method ${method === option.id ? "is-active" : ""}`}
+                      >
+                        <div className="ga-support-method-copy">
                           <strong>{option.label}</strong>
                           <p>{option.description}</p>
                         </div>
@@ -321,64 +410,128 @@ export default function MissionSupportPage() {
                   </div>
                 </div>
 
-                {(method === "BANK_TRANSFER" || method === "JAZZCASH") ? (
-                  <div className="ga-dashboard-list" style={{ marginTop: "0.4rem" }}>
-                    <div className="ga-dashboard-list-item" style={{ alignItems: "start" }}>
+                {method === "BANK_TRANSFER" || method === "JAZZCASH" ? (
+                  <div className="ga-support-manual-block">
+                    <div className="ga-support-manual-card">
                       <div>
                         <strong>Meezan Bank</strong>
                         {bankDetails.map(([label, value]) => (
-                          <p key={label}>{label}: {value}</p>
+                          <p key={label}>
+                            {label}: {value}
+                          </p>
                         ))}
                       </div>
-                      <button type="button" className="ga-btn ga-btn-outline" onClick={() => copyValue(bankDetails.map(([label, value]) => `${label}: ${value}`).join("\n"))}>
+                      <button
+                        type="button"
+                        className="ga-btn ga-btn-outline"
+                        onClick={() =>
+                          copyValue(bankDetails.map(([label, value]) => `${label}: ${value}`).join("\n"))
+                        }
+                      >
                         Copy
                       </button>
                     </div>
-                    <div className="ga-dashboard-list-item" style={{ alignItems: "start" }}>
+
+                    <div className="ga-support-manual-card">
                       <div>
                         <strong>JazzCash</strong>
                         <p>Areej Fatima: 03244517741</p>
                         <p>After sending payment, share screenshot on WhatsApp: 03181602388</p>
                       </div>
-                      <button type="button" className="ga-btn ga-btn-outline" onClick={() => copyValue("Areej Fatima 03244517741")}>
+                      <button
+                        type="button"
+                        className="ga-btn ga-btn-outline"
+                        onClick={() => copyValue("Areej Fatima 03244517741")}
+                      >
                         Copy
                       </button>
                     </div>
-                    <label>
-                      Sender name
-                      <input value={form.senderName} onChange={(event) => setForm((prev) => ({ ...prev, senderName: event.target.value }))} required />
-                    </label>
-                    <label>
-                      Sender number
-                      <input value={form.senderNumber} onChange={(event) => setForm((prev) => ({ ...prev, senderNumber: event.target.value }))} />
-                    </label>
-                    <label>
-                      Reference key
-                      <input value={form.referenceKey} onChange={(event) => setForm((prev) => ({ ...prev, referenceKey: event.target.value }))} required />
-                    </label>
-                    <label>
-                      Notes for admin
-                      <input value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Optional note" />
-                    </label>
+
+                    <div className="ga-support-form-grid">
+                      <label>
+                        Sender name
+                        <input
+                          value={form.senderName}
+                          onChange={(event) => setForm((prev) => ({ ...prev, senderName: event.target.value }))}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Sender number
+                        <input
+                          value={form.senderNumber}
+                          onChange={(event) => setForm((prev) => ({ ...prev, senderNumber: event.target.value }))}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="ga-support-form-grid">
+                      <label>
+                        Reference key
+                        <input
+                          value={form.referenceKey}
+                          onChange={(event) => setForm((prev) => ({ ...prev, referenceKey: event.target.value }))}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Notes for admin
+                        <input
+                          value={form.notes}
+                          onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+                          placeholder="Optional note"
+                        />
+                      </label>
+                    </div>
                   </div>
                 ) : null}
 
-                <div className="ga-dashboard-list-item" style={{ background: "rgba(255,255,255,0.04)" }}>
+                <div className="ga-support-total-row">
                   <div>
                     <strong>Donation summary</strong>
                     <p>You will be charged exactly the amount selected below.</p>
                   </div>
-                  <span style={{ fontSize: "1.25rem", fontWeight: 700 }}>£{activeAmount.toFixed(2)}</span>
+                  <span>£{Number.isFinite(activeAmount) ? activeAmount.toFixed(2) : "0.00"}</span>
                 </div>
 
                 {success ? <p className="ga-dashboard-success">{success}</p> : null}
                 {error ? <p className="ga-dashboard-error">{error}</p> : null}
 
-                <button type="submit" className="ga-btn ga-btn-primary" disabled={loading}>
-                  {loading ? "Processing..." : method === "STRIPE" || method === "PAYPAL" ? `Proceed with ${method === "STRIPE" ? "Stripe" : "PayPal"}` : "Submit Manual Support"}
+                <button type="submit" className="ga-btn ga-btn-primary ga-support-submit" disabled={loading}>
+                  {loading ? "Processing..." : summaryLabel}
                 </button>
               </form>
             </article>
+
+            <aside className="ga-support-side-column">
+              <article className="ga-dashboard-card ga-support-side-card">
+                <p className="ga-dashboard-card-title">Your support in one glance</p>
+                <div className="ga-support-side-list">
+                  <div className="ga-support-side-item">
+                    <strong>Purpose</strong>
+                    <p>Help visitors instantly understand this page is for sponsoring a child&apos;s learning journey.</p>
+                  </div>
+                  <div className="ga-support-side-item">
+                    <strong>Action</strong>
+                    <p>Clear CTA buttons lead donors directly to the support form without confusion.</p>
+                  </div>
+                  <div className="ga-support-side-item">
+                    <strong>Trust</strong>
+                    <p>Simple steps, visible payment options, and manual transfer details improve confidence.</p>
+                  </div>
+                </div>
+              </article>
+
+              <article className="ga-dashboard-card ga-support-side-card ga-support-side-cta">
+                <p className="ga-dashboard-card-title">Ready to support our mission?</p>
+                <p className="ga-dashboard-muted">
+                  Fill the support form and help us invest in knowledge, tarbiyah, and the next generation.
+                </p>
+                <button type="button" className="ga-btn ga-btn-primary" onClick={scrollToForm}>
+                  Support a Child Now
+                </button>
+              </article>
+            </aside>
           </section>
         </div>
       </section>

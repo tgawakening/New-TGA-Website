@@ -15,6 +15,11 @@ export const metadata: Metadata = {
   title: "Global Awakening",
   description: "Global Awakening learning platform homepage",
   metadataBase: getMetadataBase(),
+  icons: {
+    icon: "/logo.webp",
+    shortcut: "/logo.webp",
+    apple: "/logo.webp",
+  },
   alternates: {
     canonical: "/",
   },
