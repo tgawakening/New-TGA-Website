@@ -68,9 +68,22 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
     throw new Error("A Fee Waiver application is already pending for this email.");
   }
 
+  const contributionSummary =
+    input.contributionPreference === "FULL_SCHOLARSHIP"
+      ? "Contribution preference: No, I need complete scholarship."
+      : `Contribution preference: I can afford some fees monthly (${input.monthlyContributionPkr} PKR monthly).`;
+
+  const applicationInput = {
+    ...input,
+    reasonForWaiver: `${contributionSummary}\n\n${input.reasonForWaiver}`,
+  };
+
+  Reflect.deleteProperty(applicationInput, "contributionPreference");
+  Reflect.deleteProperty(applicationInput, "monthlyContributionPkr");
+
   const application = await prisma.freeWarriorApplication.create({
     data: {
-      ...input,
+      ...applicationInput,
       previousSeerahStudy: input.previousSeerahStudy || null,
       currentInvolvement: input.currentInvolvement || null,
       howHeard: input.howHeard || null,
@@ -104,6 +117,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
         <p>City & Country: ${input.cityCountry}</p>
         <p>Occupation: ${input.occupation}</p>
         <p>Knowledge Level: ${input.knowledgeLevel}</p>
+        <p>${contributionSummary}</p>
         <p>Reason for waiver: ${input.reasonForWaiver}</p>
       `,
       text: [
@@ -114,6 +128,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
         `City & Country: ${input.cityCountry}`,
         `Occupation: ${input.occupation}`,
         `Knowledge Level: ${input.knowledgeLevel}`,
+        contributionSummary,
         `Reason for waiver: ${input.reasonForWaiver}`,
       ].join("\n"),
     }),

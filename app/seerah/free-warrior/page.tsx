@@ -20,6 +20,8 @@ type FormState = {
   whyThisTopic: string;
   canAttendRegularly: string;
   attendedOrientation: boolean;
+  contributionPreference: "" | "FULL_SCHOLARSHIP" | "PARTIAL_CONTRIBUTION";
+  monthlyContributionPkr: "" | "500" | "1000";
   reasonForWaiver: string;
   howHeard: string;
   adabCommitment: boolean;
@@ -42,6 +44,8 @@ const initialForm: FormState = {
   whyThisTopic: "",
   canAttendRegularly: "",
   attendedOrientation: false,
+  contributionPreference: "",
+  monthlyContributionPkr: "",
   reasonForWaiver: "",
   howHeard: "",
   adabCommitment: false,
@@ -68,6 +72,8 @@ export default function FreeWarriorPage() {
       form.mostInterestingTopic,
       form.whyThisTopic,
       form.canAttendRegularly,
+      form.contributionPreference,
+      form.contributionPreference === "PARTIAL_CONTRIBUTION" ? form.monthlyContributionPkr : "ok",
       form.reasonForWaiver,
       form.adabCommitment ? "yes" : "",
       form.genuineFinancialNeed ? "yes" : "",
@@ -79,6 +85,14 @@ export default function FreeWarriorPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!form.contributionPreference) {
+      setError("Please tell us whether you need a complete scholarship or can pay some amount monthly.");
+      return;
+    }
+    if (form.contributionPreference === "PARTIAL_CONTRIBUTION" && !form.monthlyContributionPkr) {
+      setError("Please choose how much you are willing to pay monthly.");
+      return;
+    }
     if (!form.adabCommitment) {
       setError("You must commit to adab and etiquette before submitting.");
       return;
@@ -252,6 +266,87 @@ export default function FreeWarriorPage() {
                   <input type="checkbox" checked={form.attendedOrientation} onChange={(event) => setForm((prev) => ({ ...prev, attendedOrientation: event.target.checked }))} />
                 </label>
               </div>
+              <div style={radioSectionStyle}>
+                <div style={labelStyle}>
+                  <span>How much are you willing to pay monthly?*</span>
+                  <p style={helperCopyStyle}>
+                    Choose one option so we know whether you need a complete scholarship or can contribute a small amount each month.
+                  </p>
+                </div>
+
+                <div style={choiceGridStyle}>
+                  <label style={{ ...choiceCardStyle, ...(form.contributionPreference === "FULL_SCHOLARSHIP" ? activeChoiceCardStyle : {}) }}>
+                    <input
+                      type="radio"
+                      name="contributionPreference"
+                      value="FULL_SCHOLARSHIP"
+                      checked={form.contributionPreference === "FULL_SCHOLARSHIP"}
+                      onChange={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          contributionPreference: "FULL_SCHOLARSHIP",
+                          monthlyContributionPkr: "",
+                        }))
+                      }
+                      required
+                    />
+                    <div>
+                      <strong>No, I need complete scholarship</strong>
+                      <p style={choiceDescriptionStyle}>Select this if you need the full fee waived.</p>
+                    </div>
+                  </label>
+
+                  <label style={{ ...choiceCardStyle, ...(form.contributionPreference === "PARTIAL_CONTRIBUTION" ? activeChoiceCardStyle : {}) }}>
+                    <input
+                      type="radio"
+                      name="contributionPreference"
+                      value="PARTIAL_CONTRIBUTION"
+                      checked={form.contributionPreference === "PARTIAL_CONTRIBUTION"}
+                      onChange={() =>
+                        setForm((prev) => ({
+                          ...prev,
+                          contributionPreference: "PARTIAL_CONTRIBUTION",
+                        }))
+                      }
+                      required
+                    />
+                    <div>
+                      <strong>I can afford some fees monthly</strong>
+                      <p style={choiceDescriptionStyle}>Select this if you can still contribute a smaller monthly amount.</p>
+                    </div>
+                  </label>
+                </div>
+
+                {form.contributionPreference === "PARTIAL_CONTRIBUTION" ? (
+                  <div style={amountChoiceWrapStyle}>
+                    <p style={amountChoiceHeadingStyle}>Select monthly amount*</p>
+                    <div style={amountChoiceGridStyle}>
+                      <label style={{ ...miniChoiceStyle, ...(form.monthlyContributionPkr === "1000" ? activeMiniChoiceStyle : {}) }}>
+                        <input
+                          type="radio"
+                          name="monthlyContributionPkr"
+                          value="1000"
+                          checked={form.monthlyContributionPkr === "1000"}
+                          onChange={() => setForm((prev) => ({ ...prev, monthlyContributionPkr: "1000" }))}
+                          required
+                        />
+                        <span>1000 PKR monthly</span>
+                      </label>
+                      <label style={{ ...miniChoiceStyle, ...(form.monthlyContributionPkr === "500" ? activeMiniChoiceStyle : {}) }}>
+                        <input
+                          type="radio"
+                          name="monthlyContributionPkr"
+                          value="500"
+                          checked={form.monthlyContributionPkr === "500"}
+                          onChange={() => setForm((prev) => ({ ...prev, monthlyContributionPkr: "500" }))}
+                          required
+                        />
+                        <span>500 PKR monthly</span>
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
               <label style={labelStyle}>
                 Reason for waiver*
                 <textarea value={form.reasonForWaiver} onChange={(event) => setForm((prev) => ({ ...prev, reasonForWaiver: event.target.value }))} rows={4} style={textareaStyle} required />
@@ -403,6 +498,91 @@ const toggleStyle: CSSProperties = {
   fontSize: "0.9rem",
   color: "#1f3f59",
   fontWeight: 600,
+};
+
+const radioSectionStyle: CSSProperties = {
+  display: "grid",
+  gap: "0.75rem",
+  padding: "0.9rem",
+  borderRadius: 14,
+  border: "1px solid #d2dfeb",
+  background: "#fbfdff",
+};
+
+const helperCopyStyle: CSSProperties = {
+  margin: "0.2rem 0 0",
+  fontSize: "0.84rem",
+  lineHeight: 1.5,
+  color: "#58758e",
+  fontWeight: 500,
+};
+
+const choiceGridStyle: CSSProperties = {
+  display: "grid",
+  gap: "0.7rem",
+};
+
+const choiceCardStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto 1fr",
+  gap: "0.75rem",
+  alignItems: "start",
+  padding: "0.85rem 0.9rem",
+  borderRadius: 12,
+  border: "1px solid #c9d8e6",
+  background: "#ffffff",
+  color: "#1f3f59",
+};
+
+const activeChoiceCardStyle: CSSProperties = {
+  border: "1px solid #7cb2da",
+  background: "#f2f8fd",
+  boxShadow: "0 0 0 3px rgba(31, 127, 170, 0.08)",
+};
+
+const choiceDescriptionStyle: CSSProperties = {
+  margin: "0.24rem 0 0",
+  fontSize: "0.84rem",
+  lineHeight: 1.5,
+  color: "#58758e",
+  fontWeight: 500,
+};
+
+const amountChoiceWrapStyle: CSSProperties = {
+  display: "grid",
+  gap: "0.65rem",
+  paddingTop: "0.1rem",
+};
+
+const amountChoiceHeadingStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "0.84rem",
+  fontWeight: 700,
+  color: "#1f3f59",
+};
+
+const amountChoiceGridStyle: CSSProperties = {
+  display: "grid",
+  gap: "0.65rem",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+};
+
+const miniChoiceStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.65rem",
+  padding: "0.78rem 0.85rem",
+  borderRadius: 12,
+  border: "1px solid #c9d8e6",
+  background: "#ffffff",
+  color: "#1f3f59",
+  fontSize: "0.88rem",
+  fontWeight: 600,
+};
+
+const activeMiniChoiceStyle: CSSProperties = {
+  border: "1px solid #7cb2da",
+  background: "#f2f8fd",
 };
 
 const agreementGridStyle: CSSProperties = {
