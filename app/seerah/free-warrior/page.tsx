@@ -23,10 +23,9 @@ type FormState = {
   contributionPreference: "" | "FULL_SCHOLARSHIP" | "PARTIAL_CONTRIBUTION";
   monthlyContributionPkr: "" | "500" | "1000";
   manualSenderName: string;
+  manualSenderNumber: string;
   manualReferenceKey: string;
   manualNotes: string;
-  transactionScreenshotName: string;
-  transactionScreenshotData: string;
   reasonForWaiver: string;
   howHeard: string;
   adabCommitment: boolean;
@@ -52,10 +51,9 @@ const initialForm: FormState = {
   contributionPreference: "",
   monthlyContributionPkr: "",
   manualSenderName: "",
+  manualSenderNumber: "",
   manualReferenceKey: "",
   manualNotes: "",
-  transactionScreenshotName: "",
-  transactionScreenshotData: "",
   reasonForWaiver: "",
   howHeard: "",
   adabCommitment: false,
@@ -83,16 +81,12 @@ export default function FreeWarriorPage() {
       setError("Please provide sender name for payment verification.");
       return;
     }
+    if (isPartialContribution && !form.manualSenderNumber.trim()) {
+      setError("Please provide sender number for payment verification.");
+      return;
+    }
     if (isPartialContribution && !form.manualReferenceKey.trim()) {
       setError("Please provide transfer reference ID before submitting.");
-      return;
-    }
-    if (isPartialContribution && !form.transactionScreenshotName.trim()) {
-      setError("Please select your transaction screenshot before submitting.");
-      return;
-    }
-    if (isPartialContribution && !form.transactionScreenshotData.trim()) {
-      setError("Please upload your transaction screenshot before submitting.");
       return;
     }
     if (!form.adabCommitment) {
@@ -141,27 +135,6 @@ export default function FreeWarriorPage() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  async function handleScreenshotChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
-      setForm((prev) => ({ ...prev, transactionScreenshotName: "", transactionScreenshotData: "" }));
-      return;
-    }
-
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-      reader.onerror = () => reject(new Error("Could not read screenshot file."));
-      reader.readAsDataURL(file);
-    });
-
-    setForm((prev) => ({
-      ...prev,
-      transactionScreenshotName: file.name,
-      transactionScreenshotData: dataUrl,
-    }));
   }
 
   return (
@@ -300,10 +273,9 @@ export default function FreeWarriorPage() {
                           contributionPreference: "FULL_SCHOLARSHIP",
                           monthlyContributionPkr: "",
                           manualSenderName: "",
+                          manualSenderNumber: "",
                           manualReferenceKey: "",
                           manualNotes: "",
-                          transactionScreenshotName: "",
-                          transactionScreenshotData: "",
                         }))
                       }
                       required
@@ -365,7 +337,7 @@ export default function FreeWarriorPage() {
 
                     <div style={manualInfoWrapStyle}>
                       <div style={manualInfoNoteStyle}>
-                        Use your payment reference in the transfer note. After payment, keep your transaction screenshot ready and complete the verification fields below.
+                        Use your payment reference in the transfer note and then complete the verification fields below clearly.
                       </div>
 
                       <div style={manualCardGridStyle}>
@@ -401,9 +373,9 @@ export default function FreeWarriorPage() {
                       <div style={manualInfoWarnStyle}>
                         1. Send payment to Areej via Meezan Bank or JazzCash.
                         <br />
-                        2. Save your transaction screenshot.
+                        2. Keep your sender details ready.
                         <br />
-                        3. Fill sender name and transfer reference clearly below.
+                        3. Fill sender name, sender number, and transfer reference clearly below.
                       </div>
 
                       <div style={fieldGridStyle}>
@@ -418,6 +390,19 @@ export default function FreeWarriorPage() {
                           />
                         </label>
                         <label style={labelStyle}>
+                          Sender Number*
+                          <input
+                            value={form.manualSenderNumber}
+                            onChange={(event) => setForm((prev) => ({ ...prev, manualSenderNumber: event.target.value }))}
+                            placeholder="Number used for transfer"
+                            style={inputStyle}
+                            required
+                          />
+                        </label>
+                      </div>
+
+                      <div style={fieldGridStyle}>
+                        <label style={labelStyle}>
                           Transfer Reference ID*
                           <input
                             value={form.manualReferenceKey}
@@ -428,18 +413,6 @@ export default function FreeWarriorPage() {
                           />
                         </label>
                       </div>
-
-                      <label style={labelStyle}>
-                        Upload Transaction Screenshot*
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(event) => void handleScreenshotChange(event)}
-                          style={fileInputStyle}
-                          required
-                        />
-                        {form.transactionScreenshotName ? <span style={fileNameStyle}>Selected: {form.transactionScreenshotName}</span> : null}
-                      </label>
 
                       <label style={labelStyle}>
                         Notes (optional)
@@ -740,17 +713,6 @@ const manualInfoWarnStyle: CSSProperties = {
   borderRadius: 7,
   padding: "0.6rem",
   lineHeight: 1.6,
-};
-
-const fileInputStyle: CSSProperties = {
-  ...inputStyle,
-  padding: "0.5rem",
-};
-
-const fileNameStyle: CSSProperties = {
-  fontSize: "0.76rem",
-  color: "#58758e",
-  fontWeight: 500,
 };
 
 const agreementGridStyle: CSSProperties = {

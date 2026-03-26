@@ -77,8 +77,8 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
     input.contributionPreference === "PARTIAL_CONTRIBUTION"
       ? [
           `Sender name: ${input.manualSenderName}`,
+          `Sender number: ${input.manualSenderNumber}`,
           `Transfer reference: ${input.manualReferenceKey}`,
-          `Transaction screenshot: ${input.transactionScreenshotName}`,
           input.manualNotes ? `Manual notes: ${input.manualNotes}` : "",
         ]
           .filter(Boolean)
@@ -93,6 +93,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   Reflect.deleteProperty(applicationInput, "contributionPreference");
   Reflect.deleteProperty(applicationInput, "monthlyContributionPkr");
   Reflect.deleteProperty(applicationInput, "manualSenderName");
+  Reflect.deleteProperty(applicationInput, "manualSenderNumber");
   Reflect.deleteProperty(applicationInput, "manualReferenceKey");
   Reflect.deleteProperty(applicationInput, "manualNotes");
   Reflect.deleteProperty(applicationInput, "transactionScreenshotName");

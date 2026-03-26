@@ -23,6 +23,7 @@ export const freeWarriorApplicationSchema = z
     contributionPreference: z.enum(["FULL_SCHOLARSHIP", "PARTIAL_CONTRIBUTION"]),
     monthlyContributionPkr: z.enum(["500", "1000"]).optional().or(z.literal("")),
     manualSenderName: z.string().trim().optional().or(z.literal("")),
+    manualSenderNumber: z.string().trim().optional().or(z.literal("")),
     manualReferenceKey: z.string().trim().optional().or(z.literal("")),
     manualNotes: z.string().trim().optional().or(z.literal("")),
     transactionScreenshotName: z.string().trim().max(255).optional().or(z.literal("")),
@@ -65,27 +66,19 @@ export const freeWarriorApplicationSchema = z
       });
     }
 
+    if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualSenderNumber) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["manualSenderNumber"],
+        message: "Please provide sender number for payment verification.",
+      });
+    }
+
     if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualReferenceKey) {
       ctx.addIssue({
         code: "custom",
         path: ["manualReferenceKey"],
         message: "Please provide transfer reference ID before submitting.",
-      });
-    }
-
-    if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.transactionScreenshotName) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["transactionScreenshotName"],
-        message: "Please select your transaction screenshot before submitting.",
-      });
-    }
-
-    if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.transactionScreenshotData) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["transactionScreenshotData"],
-        message: "Please upload your transaction screenshot before submitting.",
       });
     }
 
