@@ -48,10 +48,23 @@ function getExpiryDate() {
   return expiresAt;
 }
 
+function normalizeEnvValue(value: string) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
 export function getAdminConfig(): AdminConfig {
-  const email = process.env.ADMIN_DASHBOARD_EMAIL;
-  const password = process.env.ADMIN_DASHBOARD_PASSWORD;
-  const secret = process.env.ADMIN_DASHBOARD_SECRET ?? process.env.ADMIN_API_TOKEN;
+  const email = process.env.ADMIN_DASHBOARD_EMAIL ? normalizeEnvValue(process.env.ADMIN_DASHBOARD_EMAIL) : "";
+  const password = process.env.ADMIN_DASHBOARD_PASSWORD ? normalizeEnvValue(process.env.ADMIN_DASHBOARD_PASSWORD) : "";
+  const secretSource = process.env.ADMIN_DASHBOARD_SECRET ?? process.env.ADMIN_API_TOKEN;
+  const secret = secretSource ? normalizeEnvValue(secretSource) : "";
 
   if (!email || !password || !secret) {
     throw new Error(

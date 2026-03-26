@@ -7,8 +7,21 @@ type PaypalOrder = {
   links?: Array<{ rel: string; href: string }>;
 };
 
+function normalizeEnvValue(value: string) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
 function getRequiredEnv(name: string): string {
-  const value = process.env[name];
+  const rawValue = process.env[name];
+  const value = rawValue ? normalizeEnvValue(rawValue) : "";
   if (!value) {
     throw new Error(`${name} is not configured.`);
   }
