@@ -73,17 +73,36 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
       ? "Contribution preference: No, I need complete scholarship."
       : `Contribution preference: I can afford some fees monthly (${input.monthlyContributionPkr} PKR monthly).`;
 
+  const manualPaymentSummary =
+    input.contributionPreference === "PARTIAL_CONTRIBUTION"
+      ? [
+          `Sender name: ${input.manualSenderName}`,
+          `Transfer reference: ${input.manualReferenceKey}`,
+          `Transaction screenshot: ${input.transactionScreenshotName}`,
+          input.manualNotes ? `Manual notes: ${input.manualNotes}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : "";
+
   const applicationInput = {
     ...input,
-    reasonForWaiver: `${contributionSummary}\n\n${input.reasonForWaiver}`,
+    reasonForWaiver: [contributionSummary, manualPaymentSummary, input.reasonForWaiver].filter(Boolean).join("\n\n"),
   };
 
   Reflect.deleteProperty(applicationInput, "contributionPreference");
   Reflect.deleteProperty(applicationInput, "monthlyContributionPkr");
+  Reflect.deleteProperty(applicationInput, "manualSenderName");
+  Reflect.deleteProperty(applicationInput, "manualReferenceKey");
+  Reflect.deleteProperty(applicationInput, "manualNotes");
+  Reflect.deleteProperty(applicationInput, "transactionScreenshotName");
+  Reflect.deleteProperty(applicationInput, "transactionScreenshotData");
 
   const application = await prisma.freeWarriorApplication.create({
     data: {
       ...applicationInput,
+      transactionScreenshotData: input.transactionScreenshotData || null,
+      transactionScreenshotName: input.transactionScreenshotName || null,
       previousSeerahStudy: input.previousSeerahStudy || null,
       currentInvolvement: input.currentInvolvement || null,
       howHeard: input.howHeard || null,
@@ -118,6 +137,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
         <p>Occupation: ${input.occupation}</p>
         <p>Knowledge Level: ${input.knowledgeLevel}</p>
         <p>${contributionSummary}</p>
+        ${manualPaymentSummary ? `<p style="white-space: pre-line;">${manualPaymentSummary}</p>` : ""}
         <p>Reason for waiver: ${input.reasonForWaiver}</p>
       `,
       text: [
@@ -129,6 +149,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
         `Occupation: ${input.occupation}`,
         `Knowledge Level: ${input.knowledgeLevel}`,
         contributionSummary,
+        manualPaymentSummary,
         `Reason for waiver: ${input.reasonForWaiver}`,
       ].join("\n"),
     }),

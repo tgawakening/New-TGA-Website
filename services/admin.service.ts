@@ -84,6 +84,8 @@ export type AdminDashboardSnapshot = {
     attendedOrientation: boolean;
     adabCommitment: boolean;
     genuineFinancialNeed: boolean;
+    hasTransactionScreenshot: boolean;
+    transactionScreenshotName: string | null;
   }>;
   missionSupportDonations: Array<{
     id: string;
@@ -315,6 +317,8 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       attendedOrientation: item.attendedOrientation,
       adabCommitment: item.adabCommitment,
       genuineFinancialNeed: item.genuineFinancialNeed,
+      hasTransactionScreenshot: Boolean(item.transactionScreenshotData),
+      transactionScreenshotName: item.transactionScreenshotName,
     })),
     missionSupportDonations: missionSupport.map((item) => ({
       id: item.id,

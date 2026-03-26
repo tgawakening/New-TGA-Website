@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Header } from "@/components/home/sections/header";
 
 type FormState = {
@@ -22,6 +22,11 @@ type FormState = {
   attendedOrientation: boolean;
   contributionPreference: "" | "FULL_SCHOLARSHIP" | "PARTIAL_CONTRIBUTION";
   monthlyContributionPkr: "" | "500" | "1000";
+  manualSenderName: string;
+  manualReferenceKey: string;
+  manualNotes: string;
+  transactionScreenshotName: string;
+  transactionScreenshotData: string;
   reasonForWaiver: string;
   howHeard: string;
   adabCommitment: boolean;
@@ -46,6 +51,11 @@ const initialForm: FormState = {
   attendedOrientation: false,
   contributionPreference: "",
   monthlyContributionPkr: "",
+  manualSenderName: "",
+  manualReferenceKey: "",
+  manualNotes: "",
+  transactionScreenshotName: "",
+  transactionScreenshotData: "",
   reasonForWaiver: "",
   howHeard: "",
   adabCommitment: false,
@@ -57,31 +67,7 @@ export default function FreeWarriorPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  const progressPercent = useMemo(() => {
-    const checks = [
-      form.fullName,
-      form.email,
-      form.whatsapp,
-      form.age,
-      form.cityCountry,
-      form.occupation,
-      form.knowledgeLevel,
-      form.whatDrawsYou,
-      form.howItBenefits,
-      form.mostInterestingTopic,
-      form.whyThisTopic,
-      form.canAttendRegularly,
-      form.contributionPreference,
-      form.contributionPreference === "PARTIAL_CONTRIBUTION" ? form.monthlyContributionPkr : "ok",
-      form.reasonForWaiver,
-      form.adabCommitment ? "yes" : "",
-      form.genuineFinancialNeed ? "yes" : "",
-    ];
-
-    const completed = checks.filter((value) => value.trim().length > 0).length;
-    return Math.round((completed / checks.length) * 100);
-  }, [form]);
+  const isPartialContribution = form.contributionPreference === "PARTIAL_CONTRIBUTION";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -91,6 +77,22 @@ export default function FreeWarriorPage() {
     }
     if (form.contributionPreference === "PARTIAL_CONTRIBUTION" && !form.monthlyContributionPkr) {
       setError("Please choose how much you are willing to pay monthly.");
+      return;
+    }
+    if (isPartialContribution && !form.manualSenderName.trim()) {
+      setError("Please provide sender name for payment verification.");
+      return;
+    }
+    if (isPartialContribution && !form.manualReferenceKey.trim()) {
+      setError("Please provide transfer reference ID before submitting.");
+      return;
+    }
+    if (isPartialContribution && !form.transactionScreenshotName.trim()) {
+      setError("Please select your transaction screenshot before submitting.");
+      return;
+    }
+    if (isPartialContribution && !form.transactionScreenshotData.trim()) {
+      setError("Please upload your transaction screenshot before submitting.");
       return;
     }
     if (!form.adabCommitment) {
@@ -141,6 +143,27 @@ export default function FreeWarriorPage() {
     }
   }
 
+  async function handleScreenshotChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setForm((prev) => ({ ...prev, transactionScreenshotName: "", transactionScreenshotData: "" }));
+      return;
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = () => reject(new Error("Could not read screenshot file."));
+      reader.readAsDataURL(file);
+    });
+
+    setForm((prev) => ({
+      ...prev,
+      transactionScreenshotName: file.name,
+      transactionScreenshotData: dataUrl,
+    }));
+  }
+
   return (
     <>
       <Header />
@@ -168,16 +191,6 @@ export default function FreeWarriorPage() {
                 <div>
                   <p style={ribbonLabelStyle}>Review Mode</p>
                   <p style={ribbonValueStyle}>Full waiver scholarship</p>
-                </div>
-              </div>
-
-              <div style={progressBoxStyle}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "center" }}>
-                  <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#12425f" }}>Application progress</span>
-                  <span style={{ fontSize: "0.86rem", color: "#57748d" }}>{progressPercent}% complete</span>
-                </div>
-                <div style={progressTrackStyle}>
-                  <div style={{ ...progressFillStyle, width: `${progressPercent}%` }} />
                 </div>
               </div>
 
@@ -286,6 +299,11 @@ export default function FreeWarriorPage() {
                           ...prev,
                           contributionPreference: "FULL_SCHOLARSHIP",
                           monthlyContributionPkr: "",
+                          manualSenderName: "",
+                          manualReferenceKey: "",
+                          manualNotes: "",
+                          transactionScreenshotName: "",
+                          transactionScreenshotData: "",
                         }))
                       }
                       required
@@ -342,6 +360,95 @@ export default function FreeWarriorPage() {
                           required
                         />
                         <span>500 PKR monthly</span>
+                      </label>
+                    </div>
+
+                    <div style={manualInfoWrapStyle}>
+                      <div style={manualInfoNoteStyle}>
+                        Use your payment reference in the transfer note. After payment, keep your transaction screenshot ready and complete the verification fields below.
+                      </div>
+
+                      <div style={manualCardGridStyle}>
+                        <div style={manualCardStyle}>
+                          <p style={manualCardTitleStyle}>[BANK] Meezan Bank</p>
+                          <div style={manualRowStyle}>
+                            <span style={manualRowTextStyle}>Account Title: AREEJ FATIMA</span>
+                            <button type="button" onClick={() => void navigator.clipboard.writeText("AREEJ FATIMA")} style={copyButtonStyle}>Copy</button>
+                          </div>
+                          <div style={manualRowStyle}>
+                            <span style={manualRowTextStyle}>Account Number: 98900114432111</span>
+                            <button type="button" onClick={() => void navigator.clipboard.writeText("98900114432111")} style={copyButtonStyle}>Copy</button>
+                          </div>
+                          <div style={manualRowStyle}>
+                            <span style={manualRowTextStyle}>IBAN: PK96MEZN0098900114432111</span>
+                            <button type="button" onClick={() => void navigator.clipboard.writeText("PK96MEZN0098900114432111")} style={copyButtonStyle}>Copy</button>
+                          </div>
+                        </div>
+
+                        <div style={manualCardStyle}>
+                          <p style={manualCardTitleStyle}>[JAZZ] JazzCash</p>
+                          <div style={manualRowStyle}>
+                            <span style={manualRowTextStyle}>Areej Fatima</span>
+                            <button type="button" onClick={() => void navigator.clipboard.writeText("Areej Fatima")} style={copyButtonStyle}>Copy</button>
+                          </div>
+                          <div style={manualRowStyle}>
+                            <span style={manualRowTextStyle}>03244517741</span>
+                            <button type="button" onClick={() => void navigator.clipboard.writeText("03244517741")} style={copyButtonStyle}>Copy</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={manualInfoWarnStyle}>
+                        1. Send payment to Areej via Meezan Bank or JazzCash.
+                        <br />
+                        2. Save your transaction screenshot.
+                        <br />
+                        3. Fill sender name and transfer reference clearly below.
+                      </div>
+
+                      <div style={fieldGridStyle}>
+                        <label style={labelStyle}>
+                          Sender Name*
+                          <input
+                            value={form.manualSenderName}
+                            onChange={(event) => setForm((prev) => ({ ...prev, manualSenderName: event.target.value }))}
+                            placeholder="Name used for transfer"
+                            style={inputStyle}
+                            required
+                          />
+                        </label>
+                        <label style={labelStyle}>
+                          Transfer Reference ID*
+                          <input
+                            value={form.manualReferenceKey}
+                            onChange={(event) => setForm((prev) => ({ ...prev, manualReferenceKey: event.target.value }))}
+                            placeholder="Transaction / reference id"
+                            style={inputStyle}
+                            required
+                          />
+                        </label>
+                      </div>
+
+                      <label style={labelStyle}>
+                        Upload Transaction Screenshot*
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => void handleScreenshotChange(event)}
+                          style={fileInputStyle}
+                          required
+                        />
+                        {form.transactionScreenshotName ? <span style={fileNameStyle}>Selected: {form.transactionScreenshotName}</span> : null}
+                      </label>
+
+                      <label style={labelStyle}>
+                        Notes (optional)
+                        <textarea
+                          value={form.manualNotes}
+                          onChange={(event) => setForm((prev) => ({ ...prev, manualNotes: event.target.value }))}
+                          rows={2}
+                          style={textareaStyle}
+                        />
                       </label>
                     </div>
                   </div>
@@ -421,26 +528,6 @@ const ribbonValueStyle: CSSProperties = {
   margin: "0.24rem 0 0",
   fontSize: "0.94rem",
   fontWeight: 700,
-};
-
-const progressBoxStyle: CSSProperties = {
-  display: "grid",
-  gap: "0.42rem",
-};
-
-const progressTrackStyle: CSSProperties = {
-  width: "100%",
-  height: 10,
-  borderRadius: 999,
-  background: "#d9e8f4",
-  overflow: "hidden",
-};
-
-const progressFillStyle: CSSProperties = {
-  height: "100%",
-  borderRadius: 999,
-  background: "linear-gradient(90deg, #12805e 0%, #1cbc7c 100%)",
-  transition: "width 180ms ease",
 };
 
 const inlineHeadingStyle: CSSProperties = {
@@ -583,6 +670,87 @@ const miniChoiceStyle: CSSProperties = {
 const activeMiniChoiceStyle: CSSProperties = {
   border: "1px solid #7cb2da",
   background: "#f2f8fd",
+};
+
+const manualInfoWrapStyle: CSSProperties = {
+  display: "grid",
+  gap: "0.7rem",
+  paddingTop: "0.2rem",
+};
+
+const manualInfoNoteStyle: CSSProperties = {
+  fontSize: "0.73rem",
+  color: "#2f5576",
+  background: "#edf4fb",
+  border: "1px solid #c2d8ec",
+  borderRadius: 7,
+  padding: "0.6rem",
+  lineHeight: 1.5,
+};
+
+const manualCardGridStyle: CSSProperties = {
+  display: "grid",
+  gap: "0.7rem",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+};
+
+const manualCardStyle: CSSProperties = {
+  background: "#fff",
+  border: "1px solid #cfe0ee",
+  borderRadius: 10,
+  padding: "0.75rem",
+  display: "grid",
+  gap: "0.5rem",
+};
+
+const manualCardTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "0.74rem",
+  fontWeight: 800,
+  color: "#1f4f73",
+};
+
+const manualRowStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "0.6rem",
+};
+
+const manualRowTextStyle: CSSProperties = {
+  fontSize: "0.74rem",
+  color: "#2d4a67",
+};
+
+const copyButtonStyle: CSSProperties = {
+  border: "1px solid #bfd4e6",
+  background: "#eff7fd",
+  borderRadius: 6,
+  padding: "0.25rem 0.6rem",
+  cursor: "pointer",
+  fontSize: "0.72rem",
+  fontWeight: 700,
+};
+
+const manualInfoWarnStyle: CSSProperties = {
+  fontSize: "0.73rem",
+  color: "#2f5576",
+  background: "#fff7ea",
+  border: "1px solid #edd4a4",
+  borderRadius: 7,
+  padding: "0.6rem",
+  lineHeight: 1.6,
+};
+
+const fileInputStyle: CSSProperties = {
+  ...inputStyle,
+  padding: "0.5rem",
+};
+
+const fileNameStyle: CSSProperties = {
+  fontSize: "0.76rem",
+  color: "#58758e",
+  fontWeight: 500,
 };
 
 const agreementGridStyle: CSSProperties = {
