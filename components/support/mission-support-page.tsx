@@ -2,77 +2,40 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Header } from "@/components/home/sections/header";
+import { Footer } from "@/components/home/sections/footer";
 
 const amountOptions = [5, 10, 20, 50];
 const methodOptions = [
-  { id: "STRIPE", label: "Stripe / Card", description: "Instant online checkout with secure card payment." },
-  { id: "PAYPAL", label: "PayPal", description: "Pay with your PayPal account or linked card." },
-  { id: "BANK_TRANSFER", label: "Bank Transfer", description: "Send manually and submit your transfer reference for review." },
-  { id: "JAZZCASH", label: "JazzCash", description: "A familiar wallet option for supporters in Pakistan." },
+  { id: "STRIPE", label: "Stripe / Card", description: "Pay securely with card." },
+  { id: "PAYPAL", label: "PayPal", description: "Use your PayPal account or linked card." },
+  { id: "BANK_TRANSFER", label: "Bank Transfer", description: "Transfer manually and submit your payment reference." },
+  { id: "JAZZCASH", label: "JazzCash", description: "Use JazzCash and then submit your payment reference." },
 ] as const;
 
-const missionPillars = [
-  {
-    title: "Learning with structure",
-    description: "Support access to meaningful Islamic and academic learning instead of scattered one-off help.",
-  },
-  {
-    title: "Mentorship with care",
-    description: "Help children grow in confidence, discipline, and responsibility through guided support.",
-  },
-  {
-    title: "Future-focused impact",
-    description: "Invest in a generation rooted in knowledge, character, and service to the community.",
-  },
+const impactPoints = [
+  "Sponsor a child's educational journey.",
+  "Support learning, mentorship, and guidance.",
+  "Help build a stronger future through knowledge and character.",
 ];
 
-const supportFlow = [
+const sectionCards = [
   {
-    title: "Choose your support amount",
-    description: "Start with a suggested amount or enter a custom contribution in GBP.",
+    title: "Support our vision and mission",
+    points: [
+      "Help a child learn, grow, and lead with confidence.",
+      "Support meaningful education through one organized page.",
+      "Make your contribution with a clear and simple process.",
+    ],
   },
   {
-    title: "Add your details",
-    description: "We use your contact details to confirm your contribution and keep the process transparent.",
+    title: "How support works",
+    points: [
+      "Choose your support amount.",
+      "Fill in your details clearly.",
+      "Select a payment method and complete support.",
+    ],
   },
-  {
-    title: "Complete payment",
-    description: "Use Stripe, PayPal, bank transfer, or JazzCash depending on what suits you best.",
-  },
-];
-
-const whySupportPoints = [
-  "Sponsor a child's educational journey with clear purpose.",
-  "Support tarbiyah, confidence, and healthy character formation.",
-  "Make giving simple through one organized support page.",
-];
-
-const donorChecklist = [
-  "Choose a support amount that fits your capacity.",
-  "Fill in your name, email, and country details clearly.",
-  "For manual transfers, add sender details and your payment reference.",
-  "Submit the form and we will confirm your contribution by email.",
-];
-
-const trustPoints = [
-  {
-    title: "Clear purpose",
-    description: "Every section on this page is designed to explain what your support helps make possible.",
-  },
-  {
-    title: "Simple process",
-    description: "The page moves from mission, to form, to payment without extra clutter or confusion.",
-  },
-  {
-    title: "Reviewable manual support",
-    description: "Manual bank transfer and JazzCash submissions stay pending until verified by admin.",
-  },
-];
-
-const supportSignals = [
-  "Organized giving flow",
-  "Flexible payment options",
-  "Clear mission impact",
 ];
 
 type MethodId = (typeof methodOptions)[number]["id"];
@@ -220,95 +183,57 @@ export default function MissionSupportPage() {
         : "Submit Manual Support";
 
   return (
-    <main className="ga-page ga-support-page">
-      <section className="ga-section">
-        <div className="ga-container ga-support-shell">
-          <section className="ga-support-hero">
-            <div className="ga-support-hero-copy">
+    <>
+      <Header />
+      <main className="ga-page ga-support-page">
+        <section className="ga-support-band ga-support-band-hero">
+          <div className="ga-container ga-support-stack">
+            <div className="ga-support-hero-card">
               <p className="ga-dashboard-kicker">Support Our Vision and Mission</p>
               <h1 className="ga-support-title">Help a child learn, grow, and lead with confidence.</h1>
               <p className="ga-copy ga-support-lead">
-                This support page is for donors who want to sponsor a child&apos;s journey through TGA. Your
-                contribution helps create access to learning, mentorship, and guidance in one organized pathway.
+                This page is for supporters who want to sponsor a child&apos;s educational journey through TGA. Your
+                support helps provide learning, mentorship, and guidance.
               </p>
-
               <div className="ga-support-action-row">
                 <button type="button" className="ga-btn ga-btn-primary" onClick={scrollToForm}>
-                  Support a Child
+                  Support Now
                 </button>
-                <button type="button" className="ga-btn ga-btn-ghost" onClick={scrollToForm}>
-                  Open Support Form
-                </button>
-              </div>
-
-              <div className="ga-support-pill-row">
-                <span className="ga-support-pill">Education</span>
-                <span className="ga-support-pill">Tarbiyah</span>
-                <span className="ga-support-pill">Mentorship</span>
-                <span className="ga-support-pill">Leadership</span>
-              </div>
-
-              <div className="ga-support-signal-row">
-                {supportSignals.map((item) => (
-                  <div key={item} className="ga-support-signal">
-                    <span className="ga-support-signal-dot" />
-                    <span>{item}</span>
-                  </div>
-                ))}
               </div>
             </div>
+          </div>
+        </section>
 
-            <aside className="ga-support-hero-panel">
-              <p className="ga-support-panel-kicker">What your support helps build</p>
+        <section className="ga-support-band">
+          <div className="ga-container ga-support-stack">
+            <div className="ga-support-full-grid">
+              {sectionCards.map((card) => (
+                <article key={card.title} className="ga-support-section-card">
+                  <p className="ga-dashboard-card-title">{card.title}</p>
+                  <ul className="ga-support-bullet-list">
+                    {card.points.map((point) => (
+                      <li key={point}>{point}</li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+
+            <article className="ga-support-section-card">
+              <p className="ga-dashboard-card-title">What your support makes possible</p>
               <ul className="ga-support-bullet-list">
-                {whySupportPoints.map((point) => (
+                {impactPoints.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
               </ul>
-
-              <div className="ga-support-panel-quote">
-                <strong>Support our vision and mission</strong>
-                <p>Sponsor a child today and help nurture knowledge, character, and service in the next generation.</p>
-              </div>
-            </aside>
-          </section>
-
-          <section className="ga-support-story-grid">
-            <article className="ga-dashboard-card ga-support-card">
-              <p className="ga-dashboard-card-title">Where your support goes</p>
-              <div className="ga-support-impact-grid">
-                {missionPillars.map((item) => (
-                  <div key={item.title} className="ga-support-impact-card">
-                    <strong>{item.title}</strong>
-                    <p>{item.description}</p>
-                  </div>
-                ))}
-              </div>
             </article>
 
-            <article className="ga-dashboard-card ga-support-card">
-              <p className="ga-dashboard-card-title">How support works</p>
-              <div className="ga-support-steps">
-                {supportFlow.map((step, index) => (
-                  <div key={step.title} className="ga-support-step">
-                    <div className="ga-support-step-number">0{index + 1}</div>
-                    <div>
-                      <strong>{step.title}</strong>
-                      <p>{step.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </article>
-          </section>
-
-          <section className="ga-dashboard-split ga-support-main">
-            <article ref={formCardRef} className="ga-dashboard-card ga-support-form-card">
-              <div className="ga-support-form-head">
+            <article ref={formCardRef} className="ga-support-form-wrap">
+              <div className="ga-support-form-header">
                 <div>
-                  <p className="ga-dashboard-card-title">Sponsor a Child Today</p>
-                  <p className="ga-dashboard-muted ga-support-form-copy">
-                    Complete the form below to support the mission with a payment method that feels right for you.
+                  <p className="ga-dashboard-card-title">Support Form</p>
+                  <p className="ga-support-form-copy">
+                    Choose your amount, fill your details, and complete your support from this section.
                   </p>
                 </div>
                 <div className="ga-support-summary-chip">
@@ -318,10 +243,10 @@ export default function MissionSupportPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="ga-dashboard-form ga-support-form">
-                <section className="ga-support-form-section">
+                <section className="ga-support-form-card">
                   <div className="ga-support-section-head">
                     <p className="ga-support-section-kicker">Step 1</p>
-                    <h2>Choose your support amount</h2>
+                    <h2>Choose your amount</h2>
                   </div>
 
                   <div className="ga-support-amount-grid">
@@ -359,7 +284,7 @@ export default function MissionSupportPage() {
                   ) : null}
                 </section>
 
-                <section className="ga-support-form-section">
+                <section className="ga-support-form-card">
                   <div className="ga-support-section-head">
                     <p className="ga-support-section-kicker">Step 2</p>
                     <h2>Your details</h2>
@@ -372,7 +297,6 @@ export default function MissionSupportPage() {
                         autoComplete="name"
                         value={form.fullName}
                         onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
-                        placeholder="Your full name"
                         required
                       />
                     </label>
@@ -384,7 +308,6 @@ export default function MissionSupportPage() {
                         autoComplete="email"
                         value={form.email}
                         onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                        placeholder="you@example.com"
                         required
                       />
                     </label>
@@ -396,7 +319,6 @@ export default function MissionSupportPage() {
                       <input
                         value={form.phoneCountryCode}
                         onChange={(event) => setForm((prev) => ({ ...prev, phoneCountryCode: event.target.value }))}
-                        placeholder="+44"
                       />
                     </label>
                     <label>
@@ -405,7 +327,6 @@ export default function MissionSupportPage() {
                         autoComplete="tel"
                         value={form.phoneNumber}
                         onChange={(event) => setForm((prev) => ({ ...prev, phoneNumber: event.target.value }))}
-                        placeholder="Optional phone number"
                       />
                     </label>
                   </div>
@@ -415,26 +336,24 @@ export default function MissionSupportPage() {
                     <input
                       value={form.countryName}
                       onChange={(event) => setForm((prev) => ({ ...prev, countryName: event.target.value }))}
-                      placeholder="United Kingdom"
                     />
                   </label>
 
                   <label>
-                    Message or intention
+                    Message
                     <textarea
                       value={form.donorMessage}
                       onChange={(event) => setForm((prev) => ({ ...prev, donorMessage: event.target.value }))}
                       rows={4}
                       className="ga-support-textarea"
-                      placeholder="Optional message of support"
                     />
                   </label>
                 </section>
 
-                <section className="ga-support-form-section">
+                <section className="ga-support-form-card">
                   <div className="ga-support-section-head">
                     <p className="ga-support-section-kicker">Step 3</p>
-                    <h2>Choose a payment method</h2>
+                    <h2>Payment method</h2>
                   </div>
 
                   <div className="ga-support-methods">
@@ -453,16 +372,22 @@ export default function MissionSupportPage() {
                       </label>
                     ))}
                   </div>
+
+                  <ul className="ga-support-payment-notes">
+                    <li>Choose one payment method only.</li>
+                    <li>For manual payments, add sender details and reference clearly.</li>
+                    <li>Manual support stays pending until admin verification.</li>
+                  </ul>
                 </section>
 
                 {isManualMethod ? (
-                  <section className="ga-support-form-section ga-support-manual-section">
+                  <section className="ga-support-form-card">
                     <div className="ga-support-section-head">
                       <p className="ga-support-section-kicker">Manual Payment</p>
-                      <h2>Transfer details and confirmation</h2>
+                      <h2>Transfer details</h2>
                     </div>
 
-                    <div className="ga-support-manual-block">
+                    <div className="ga-support-manual-grid">
                       <div className="ga-support-manual-card">
                         <div>
                           <strong>Meezan Bank</strong>
@@ -485,7 +410,7 @@ export default function MissionSupportPage() {
                         <div>
                           <strong>JazzCash</strong>
                           <p>Areej Fatima: 03244517741</p>
-                          <p>After sending payment, share screenshot on WhatsApp: 03181602388</p>
+                          <p>WhatsApp after payment: 03181602388</p>
                         </div>
                         <button
                           type="button"
@@ -495,46 +420,42 @@ export default function MissionSupportPage() {
                           Copy
                         </button>
                       </div>
+                    </div>
 
-                      <div className="ga-support-form-grid">
-                        <label>
-                          Sender name
-                          <input
-                            value={form.senderName}
-                            onChange={(event) => setForm((prev) => ({ ...prev, senderName: event.target.value }))}
-                            placeholder="Name used for the transfer"
-                            required
-                          />
-                        </label>
-                        <label>
-                          Sender number
-                          <input
-                            value={form.senderNumber}
-                            onChange={(event) => setForm((prev) => ({ ...prev, senderNumber: event.target.value }))}
-                            placeholder="Optional sender phone or wallet number"
-                          />
-                        </label>
-                      </div>
+                    <div className="ga-support-form-grid">
+                      <label>
+                        Sender name
+                        <input
+                          value={form.senderName}
+                          onChange={(event) => setForm((prev) => ({ ...prev, senderName: event.target.value }))}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Sender number
+                        <input
+                          value={form.senderNumber}
+                          onChange={(event) => setForm((prev) => ({ ...prev, senderNumber: event.target.value }))}
+                        />
+                      </label>
+                    </div>
 
-                      <div className="ga-support-form-grid">
-                        <label>
-                          Reference key
-                          <input
-                            value={form.referenceKey}
-                            onChange={(event) => setForm((prev) => ({ ...prev, referenceKey: event.target.value }))}
-                            placeholder="Bank transaction id or wallet reference"
-                            required
-                          />
-                        </label>
-                        <label>
-                          Notes for admin
-                          <input
-                            value={form.notes}
-                            onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-                            placeholder="Optional note to help verify payment"
-                          />
-                        </label>
-                      </div>
+                    <div className="ga-support-form-grid">
+                      <label>
+                        Reference key
+                        <input
+                          value={form.referenceKey}
+                          onChange={(event) => setForm((prev) => ({ ...prev, referenceKey: event.target.value }))}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Notes
+                        <input
+                          value={form.notes}
+                          onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+                        />
+                      </label>
                     </div>
                   </section>
                 ) : null}
@@ -547,11 +468,6 @@ export default function MissionSupportPage() {
                   <span>GBP {Number.isFinite(activeAmount) ? activeAmount.toFixed(2) : "0.00"}</span>
                 </div>
 
-                <p className="ga-support-form-note">
-                  Your details are used only to process and confirm your contribution. Manual submissions remain pending
-                  until verification is completed.
-                </p>
-
                 {success ? <p className="ga-dashboard-success">{success}</p> : null}
                 {error ? <p className="ga-dashboard-error">{error}</p> : null}
 
@@ -560,42 +476,10 @@ export default function MissionSupportPage() {
                 </button>
               </form>
             </article>
-
-            <aside className="ga-support-side-column">
-              <article className="ga-dashboard-card ga-support-side-card">
-                <p className="ga-dashboard-card-title">Before you submit</p>
-                <ul className="ga-support-bullet-list ga-support-bullet-list-compact">
-                  {donorChecklist.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-              </article>
-
-              <article className="ga-dashboard-card ga-support-side-card">
-                <p className="ga-dashboard-card-title">Why this page feels clearer</p>
-                <div className="ga-support-side-list">
-                  {trustPoints.map((item) => (
-                    <div key={item.title} className="ga-support-side-item">
-                      <strong>{item.title}</strong>
-                      <p>{item.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="ga-dashboard-card ga-support-side-card ga-support-side-cta">
-                <p className="ga-dashboard-card-title">Ready to support our mission?</p>
-                <p className="ga-dashboard-muted">
-                  Your contribution helps invest in learning, tarbiyah, and a stronger future for a child.
-                </p>
-                <button type="button" className="ga-btn ga-btn-primary" onClick={scrollToForm}>
-                  Continue to Form
-                </button>
-              </article>
-            </aside>
-          </section>
-        </div>
-      </section>
-    </main>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </>
   );
 }

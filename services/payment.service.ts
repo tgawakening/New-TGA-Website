@@ -139,6 +139,14 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
   ]);
 }
 
+function prettifyPaymentMethod(method: string) {
+  return method
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 async function markSuccessfulPayment({
   paymentId,
   providerOrderId,
@@ -168,8 +176,12 @@ async function markSuccessfulPayment({
         userId: payment.registration.userId,
         fullName: payment.registration.user.fullName,
         email: payment.registration.user.email,
+        phone: `${payment.registration.user.phoneCountryCode} ${payment.registration.user.phoneNumber}`,
         courseTitle: payment.registration.course.title,
         paymentReference: payment.registration.paymentReference,
+        paymentMethod: payment.provider,
+        amount: payment.amount,
+        currency: payment.currency,
       };
     }
 
@@ -201,38 +213,86 @@ async function markSuccessfulPayment({
       userId: payment.registration.userId,
       fullName: payment.registration.user.fullName,
       email: payment.registration.user.email,
+      phone: `${payment.registration.user.phoneCountryCode} ${payment.registration.user.phoneNumber}`,
       courseTitle: payment.registration.course.title,
       paymentReference: payment.registration.paymentReference,
+      paymentMethod: payment.provider,
+      amount: payment.amount,
+      currency: payment.currency,
     };
   });
+
+  const appUrl = getAppUrl();
+  const dashboardUrl = `${appUrl}/dashboard`;
+  const adminDashboardUrl = `${appUrl}/admin`;
+  const orderAmount = new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: result.currency,
+    minimumFractionDigits: 2,
+  }).format(result.amount / 100);
 
   await Promise.allSettled([
     sendTransactionalEmail({
       userId: result.userId,
       to: result.email,
-      subject: "Payment confirmed and dashboard access activated",
+      subject: "Registration confirmed and dashboard access activated",
       emailType: "PAYMENT_CONFIRMED",
       html: `
         <p>Assalam-u-Alaikum ${result.fullName},</p>
-        <p>Your payment for ${result.courseTitle} has been confirmed.</p>
-        <p>Reference: <strong>${result.paymentReference ?? "N/A"}</strong></p>
-        <p>You can now log in and access your student dashboard.</p>
+        <p>Your payment for <strong>${result.courseTitle}</strong> has been confirmed successfully.</p>
+        <p><strong>Reference:</strong> ${result.paymentReference ?? "N/A"}</p>
+        <p><strong>Email:</strong> ${result.email}</p>
+        <p><strong>Phone:</strong> ${result.phone}</p>
+        <p><strong>Payment method:</strong> ${prettifyPaymentMethod(result.paymentMethod)}</p>
+        <p><strong>Payment mode:</strong> Completed</p>
+        <p><strong>Amount:</strong> ${orderAmount}</p>
+        <p style="margin: 24px 0;">
+          <a href="${dashboardUrl}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0f5e91;color:#ffffff;text-decoration:none;font-weight:700;">Go to Dashboard</a>
+        </p>
+        <p>Your registration is now active and your dashboard access is ready.</p>
       `,
       text: [
         `Assalam-u-Alaikum ${result.fullName},`,
-        `Your payment for ${result.courseTitle} has been confirmed.`,
+        `Your payment for ${result.courseTitle} has been confirmed successfully.`,
         `Reference: ${result.paymentReference ?? "N/A"}`,
-        "You can now log in and access your student dashboard.",
+        `Email: ${result.email}`,
+        `Phone: ${result.phone}`,
+        `Payment method: ${prettifyPaymentMethod(result.paymentMethod)}`,
+        "Payment mode: Completed",
+        `Amount: ${orderAmount}`,
+        `Go to dashboard: ${dashboardUrl}`,
+        "Your registration is now active and your dashboard access is ready.",
       ].join("\n"),
     }),
     notifyAdmins({
-      subject: `Payment confirmed: ${result.fullName}`,
+      subject: `Registration completed: ${result.fullName}`,
       emailType: "ADMIN_PAYMENT_CONFIRMED",
       html: `
-        <p>Payment confirmed for ${result.fullName}.</p>
-        <p>Reference: <strong>${result.paymentReference ?? "N/A"}</strong></p>
+        <p>An online registration payment has been completed successfully.</p>
+        <p><strong>Name:</strong> ${result.fullName}</p>
+        <p><strong>Email:</strong> ${result.email}</p>
+        <p><strong>Phone:</strong> ${result.phone}</p>
+        <p><strong>Course:</strong> ${result.courseTitle}</p>
+        <p><strong>Payment method:</strong> ${prettifyPaymentMethod(result.paymentMethod)}</p>
+        <p><strong>Payment mode:</strong> Completed</p>
+        <p><strong>Amount:</strong> ${orderAmount}</p>
+        <p><strong>Reference:</strong> ${result.paymentReference ?? "N/A"}</p>
+        <p style="margin: 24px 0;">
+          <a href="${adminDashboardUrl}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0f5e91;color:#ffffff;text-decoration:none;font-weight:700;">Go to Admin Dashboard</a>
+        </p>
       `,
-      text: `Payment confirmed for ${result.fullName}.\nReference: ${result.paymentReference ?? "N/A"}`,
+      text: [
+        "An online registration payment has been completed successfully.",
+        `Name: ${result.fullName}`,
+        `Email: ${result.email}`,
+        `Phone: ${result.phone}`,
+        `Course: ${result.courseTitle}`,
+        `Payment method: ${prettifyPaymentMethod(result.paymentMethod)}`,
+        "Payment mode: Completed",
+        `Amount: ${orderAmount}`,
+        `Reference: ${result.paymentReference ?? "N/A"}`,
+        `Go to admin dashboard: ${adminDashboardUrl}`,
+      ].join("\n"),
     }),
   ]);
 }
@@ -686,6 +746,14 @@ export async function submitManualPayment({
   });
 
   if (registrationDetails) {
+    const appUrl = getAppUrl();
+    const adminDashboardUrl = `${appUrl}/admin`;
+    const orderAmount = new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: registrationDetails.selectedCurrency,
+      minimumFractionDigits: 2,
+    }).format(registrationDetails.finalAmount / 100);
+
     await Promise.allSettled([
       sendTransactionalEmail({
         userId: registrationDetails.userId,
@@ -694,35 +762,63 @@ export async function submitManualPayment({
         emailType: "MANUAL_PAYMENT_PENDING",
         html: `
           <p>Assalam-u-Alaikum ${registrationDetails.user.fullName},</p>
-          <p>We have received your manual payment submission for ${registrationDetails.course.title}.</p>
-          <p>Reference: <strong>${registrationDetails.paymentReference ?? "N/A"}</strong></p>
+          <p>We have received your manual payment submission for <strong>${registrationDetails.course.title}</strong>.</p>
+          <p><strong>Reference:</strong> ${registrationDetails.paymentReference ?? "N/A"}</p>
+          <p><strong>Email:</strong> ${registrationDetails.user.email}</p>
+          <p><strong>Phone:</strong> ${registrationDetails.user.phoneCountryCode} ${registrationDetails.user.phoneNumber}</p>
+          <p><strong>Payment method:</strong> ${prettifyPaymentMethod(payment.provider)}</p>
+          <p><strong>Payment mode:</strong> Pending review</p>
+          <p><strong>Amount:</strong> ${orderAmount}</p>
           <p>Your payment is now pending admin review. We will confirm it from the backend and notify you once approved.</p>
         `,
         text: [
           `Assalam-u-Alaikum ${registrationDetails.user.fullName},`,
           `We have received your manual payment submission for ${registrationDetails.course.title}.`,
           `Reference: ${registrationDetails.paymentReference ?? "N/A"}`,
+          `Email: ${registrationDetails.user.email}`,
+          `Phone: ${registrationDetails.user.phoneCountryCode} ${registrationDetails.user.phoneNumber}`,
+          `Payment method: ${prettifyPaymentMethod(payment.provider)}`,
+          "Payment mode: Pending review",
+          `Amount: ${orderAmount}`,
           "Your payment is now pending admin review. We will confirm it from the backend and notify you once approved.",
         ].join("\n"),
       }),
       notifyAdmins({
-        subject: `Manual payment submitted: ${registrationDetails.user.fullName}`,
+        subject: `New registration received: ${registrationDetails.user.fullName}`,
         emailType: "ADMIN_MANUAL_PAYMENT_PENDING",
         html: `
-          <p>Manual payment submitted for review.</p>
-          <p>Name: <strong>${registrationDetails.user.fullName}</strong></p>
-          <p>Email: ${registrationDetails.user.email}</p>
-          <p>Reference: ${registrationDetails.paymentReference ?? "N/A"}</p>
-          <p>Sender: ${senderName}${senderNumber ? ` (${senderNumber})` : ""}</p>
-          <p>Transfer Ref: ${referenceKey}</p>
+          <p>A new registration with manual payment has been submitted and is pending review.</p>
+          <p><strong>Name:</strong> ${registrationDetails.user.fullName}</p>
+          <p><strong>Email:</strong> ${registrationDetails.user.email}</p>
+          <p><strong>Phone:</strong> ${registrationDetails.user.phoneCountryCode} ${registrationDetails.user.phoneNumber}</p>
+          <p><strong>Course:</strong> ${registrationDetails.course.title}</p>
+          <p><strong>Country:</strong> ${registrationDetails.selectedCountryName}</p>
+          <p><strong>Payment method:</strong> ${prettifyPaymentMethod(payment.provider)}</p>
+          <p><strong>Payment mode:</strong> Pending</p>
+          <p><strong>Amount:</strong> ${orderAmount}</p>
+          <p><strong>Reference:</strong> ${registrationDetails.paymentReference ?? "N/A"}</p>
+          <p><strong>Sender:</strong> ${senderName}${senderNumber ? ` (${senderNumber})` : ""}</p>
+          <p><strong>Transfer reference:</strong> ${referenceKey}</p>
+          ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ""}
+          <p style="margin: 24px 0;">
+            <a href="${adminDashboardUrl}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0f5e91;color:#ffffff;text-decoration:none;font-weight:700;">Review in Dashboard</a>
+          </p>
         `,
         text: [
-          "Manual payment submitted for review.",
+          "A new registration with manual payment has been submitted and is pending review.",
           `Name: ${registrationDetails.user.fullName}`,
           `Email: ${registrationDetails.user.email}`,
+          `Phone: ${registrationDetails.user.phoneCountryCode} ${registrationDetails.user.phoneNumber}`,
+          `Course: ${registrationDetails.course.title}`,
+          `Country: ${registrationDetails.selectedCountryName}`,
+          `Payment method: ${prettifyPaymentMethod(payment.provider)}`,
+          "Payment mode: Pending",
+          `Amount: ${orderAmount}`,
           `Reference: ${registrationDetails.paymentReference ?? "N/A"}`,
           `Sender: ${senderName}${senderNumber ? ` (${senderNumber})` : ""}`,
-          `Transfer Ref: ${referenceKey}`,
+          `Transfer reference: ${referenceKey}`,
+          ...(notes ? [`Notes: ${notes}`] : []),
+          `Review in dashboard: ${adminDashboardUrl}`,
         ].join("\n"),
       }),
     ]);
