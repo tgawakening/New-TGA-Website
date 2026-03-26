@@ -17,11 +17,10 @@ export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
   icons: {
     icon: [
-      { url: "/icon", type: "image/png", sizes: "512x512" },
       { url: "/logo.webp", type: "image/webp" },
     ],
-    shortcut: [{ url: "/icon", type: "image/png" }],
-    apple: [{ url: "/icon", type: "image/png", sizes: "512x512" }],
+    shortcut: [{ url: "/logo.webp", type: "image/webp" }],
+    apple: [{ url: "/logo.webp", type: "image/webp" }],
   },
   alternates: {
     canonical: "/",
@@ -33,9 +32,9 @@ export const metadata: Metadata = {
     siteName: "Global Awakening",
     images: [
       {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
+        url: "/logo.webp",
+        width: 512,
+        height: 512,
         alt: "Global Awakening",
       },
     ],
@@ -46,7 +45,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Global Awakening",
     description: "Global Awakening learning platform homepage",
-    images: ["/opengraph-image"],
+    images: ["/logo.webp"],
   },
 };
 
