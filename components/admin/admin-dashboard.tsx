@@ -10,7 +10,7 @@ type Props = {
   adminEmail: string;
 };
 
-type TabKey = "orders" | "students" | "scholarships" | "mission";
+type TabKey = "home" | "orders" | "students" | "scholarships" | "mission";
 
 const currencyFormatter = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -41,7 +41,7 @@ function percent(value: number, total: number) {
 
 export default function AdminDashboard({ data, adminEmail }: Props) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>("orders");
+  const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [paymentFilter, setPaymentFilter] = useState("ALL");
@@ -195,19 +195,39 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
 
   const recentOrders = orderRows.slice(0, 5);
   const recentStudents = studentRows.slice(0, 5);
+  const isHomeTab = activeTab === "home";
+  const workspaceTitle =
+    activeTab === "orders"
+      ? "Orders"
+      : activeTab === "students"
+        ? "Students"
+        : activeTab === "scholarships"
+          ? "Fee Waiver Applications"
+          : "Mission Support Donations";
+  const workspaceDescription =
+    activeTab === "orders"
+      ? "Filter and update registration, payment, and enrollment states."
+      : activeTab === "students"
+        ? "Scan the current student base and track access history."
+        : activeTab === "scholarships"
+          ? "Review scholarship requests and approve or reject them."
+          : "Review donor submissions, confirm manual support payments, and track contribution details.";
 
   return (
     <div className="ga-admin-shell">
       <header className="ga-admin-topbar">
-        <div className="ga-admin-brand">
+        <button type="button" className="ga-admin-brand" onClick={() => setActiveTab("home")}>
           <div className="ga-admin-brand-mark">TGA</div>
           <div>
             <p className="ga-admin-brand-title">The Global Awakening</p>
             <p className="ga-admin-brand-subtitle">Admin workspace</p>
           </div>
-        </div>
+        </button>
 
         <nav className="ga-admin-nav">
+          <button type="button" className={`ga-admin-nav-pill ${activeTab === "home" ? "is-active" : ""}`} onClick={() => setActiveTab("home")}>
+            Home
+          </button>
           <button type="button" className={`ga-admin-nav-pill ${activeTab === "orders" ? "is-active" : ""}`} onClick={() => setActiveTab("orders")}>
             Orders
           </button>
@@ -237,165 +257,210 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
         </div>
       </header>
 
-      <section className="ga-admin-hero-card">
-        <div>
-          <p className="ga-admin-kicker">Dashboard overview</p>
-          <h1 className="ga-admin-title">Monitor registrations, payments, enrollments, and fee waivers</h1>
-          <p className="ga-admin-subtitle">
-            A cleaner control room for live course operations. Review what came in, what is pending, what is active,
-            and what needs manual intervention.
-          </p>
-        </div>
-        <div className="ga-admin-date-chip">{new Date().toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" })}</div>
-      </section>
-
-      <section className="ga-admin-metric-grid">
-        <article className="ga-admin-metric-card is-mint">
-          <span>Total Orders</span>
-          <strong>{data.summary.totalOrders}</strong>
-          <small>Live registrations in system</small>
-        </article>
-        <article className="ga-admin-metric-card is-blue">
-          <span>Revenue</span>
-          <strong>{currencyFormatter.format(data.summary.revenuePence / 100)}</strong>
-          <small>Confirmed GBP revenue</small>
-        </article>
-        <article className="ga-admin-metric-card is-lilac">
-          <span>Fee Waivers</span>
-          <strong>{data.summary.feeWaivers}</strong>
-          <small>Approved or pending waivers</small>
-        </article>
-        <article className="ga-admin-metric-card is-gold">
-          <span>Pending Value</span>
-          <strong>{currencyFormatter.format(data.summary.pendingPence / 100)}</strong>
-          <small>Still awaiting completion</small>
-        </article>
-        <article className="ga-admin-metric-card is-blue">
-          <span>Mission Support</span>
-          <strong>{currencyFormatter.format(data.summary.missionSupportRevenuePence / 100)}</strong>
-          <small>{data.summary.missionSupportCount} support submissions</small>
-        </article>
-      </section>
-
-      <section className="ga-admin-analytics-grid">
-        <article className="ga-admin-card">
-          <div className="ga-admin-card-head">
+      {isHomeTab ? (
+        <>
+          <section className="ga-admin-hero-card">
             <div>
-              <h2>Order Health</h2>
-              <p>Live split of completed, pending, and cancelled orders</p>
+              <p className="ga-admin-kicker">Dashboard overview</p>
+              <h1 className="ga-admin-title">Monitor registrations, payments, enrollments, and fee waivers</h1>
+              <p className="ga-admin-subtitle">
+                A cleaner control room for live course operations. Review what came in, what is pending, what is active,
+                and what needs manual intervention.
+              </p>
             </div>
-          </div>
-          <div className="ga-admin-donut-wrap">
-            <div className="ga-admin-donut" style={{ background: donutSegments }}>
-              <div className="ga-admin-donut-hole">
-                <strong>{completionPct}%</strong>
-                <span>completed</span>
+            <div className="ga-admin-date-chip">{new Date().toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" })}</div>
+          </section>
+
+          <section className="ga-admin-metric-grid">
+            <article className="ga-admin-metric-card is-mint">
+              <span>Total Orders</span>
+              <strong>{data.summary.totalOrders}</strong>
+              <small>Live registrations in system</small>
+            </article>
+            <article className="ga-admin-metric-card is-blue">
+              <span>Revenue</span>
+              <strong>{currencyFormatter.format(data.summary.revenuePence / 100)}</strong>
+              <small>Confirmed GBP revenue</small>
+            </article>
+            <article className="ga-admin-metric-card is-lilac">
+              <span>Fee Waivers</span>
+              <strong>{data.summary.feeWaivers}</strong>
+              <small>Approved or pending waivers</small>
+            </article>
+            <article className="ga-admin-metric-card is-gold">
+              <span>Pending Value</span>
+              <strong>{currencyFormatter.format(data.summary.pendingPence / 100)}</strong>
+              <small>Still awaiting completion</small>
+            </article>
+            <article className="ga-admin-metric-card is-blue">
+              <span>Mission Support</span>
+              <strong>{currencyFormatter.format(data.summary.missionSupportRevenuePence / 100)}</strong>
+              <small>{data.summary.missionSupportCount} support submissions</small>
+            </article>
+          </section>
+
+          <section className="ga-admin-analytics-grid">
+            <article className="ga-admin-card">
+              <div className="ga-admin-card-head">
+                <div>
+                  <h2>Order Health</h2>
+                  <p>Live split of completed, pending, and cancelled orders</p>
+                </div>
               </div>
-            </div>
-            <div className="ga-admin-legend">
-              <div><span className="dot is-blue" /> Completed <strong>{data.summary.completedOrders}</strong></div>
-              <div><span className="dot is-gold" /> Pending <strong>{data.summary.pendingOrders}</strong></div>
-              <div><span className="dot is-rose" /> Cancelled <strong>{data.summary.cancelledOrders}</strong></div>
-            </div>
-          </div>
-        </article>
-
-        <article className="ga-admin-card">
-          <div className="ga-admin-card-head">
-            <div>
-              <h2>Payment Mix</h2>
-              <p>Distribution by payment provider</p>
-            </div>
-          </div>
-          <div className="ga-admin-bars">
-            {paymentOptions.map((option, index) => {
-              const count = paymentCounts[option] ?? 0;
-              const width = percent(count, data.summary.totalOrders);
-              const className = ["is-blue", "is-lilac", "is-mint", "is-gold", "is-rose"][index % 5];
-              return (
-                <div key={option} className="ga-admin-bar-row">
-                  <div className="ga-admin-bar-meta">
-                    <span>{prettify(option)}</span>
-                    <strong>{count}</strong>
-                  </div>
-                  <div className="ga-admin-bar-track">
-                    <div className={`ga-admin-bar-fill ${className}`} style={{ width: `${Math.max(width, 8)}%` }} />
+              <div className="ga-admin-donut-wrap">
+                <div className="ga-admin-donut" style={{ background: donutSegments }}>
+                  <div className="ga-admin-donut-hole">
+                    <strong>{completionPct}%</strong>
+                    <span>completed</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </article>
-      </section>
+                <div className="ga-admin-legend">
+                  <div><span className="dot is-blue" /> Completed <strong>{data.summary.completedOrders}</strong></div>
+                  <div><span className="dot is-gold" /> Pending <strong>{data.summary.pendingOrders}</strong></div>
+                  <div><span className="dot is-rose" /> Cancelled <strong>{data.summary.cancelledOrders}</strong></div>
+                </div>
+              </div>
+            </article>
 
-      <section className="ga-admin-panels-grid">
-        <article className="ga-admin-card ga-admin-highlight-card">
-          <h2>This Month</h2>
-          <div className="ga-admin-highlight-metrics">
-            <div>
-              <strong>{currencyFormatter.format(data.summary.revenuePence / 100)}</strong>
-              <span>Revenue</span>
-            </div>
-            <div>
-              <strong>{data.summary.studentCount}</strong>
-              <span>Students</span>
-            </div>
-          </div>
-        </article>
+            <article className="ga-admin-card">
+              <div className="ga-admin-card-head">
+                <div>
+                  <h2>Payment Mix</h2>
+                  <p>Distribution by payment provider</p>
+                </div>
+              </div>
+              <div className="ga-admin-bars">
+                {paymentOptions.map((option, index) => {
+                  const count = paymentCounts[option] ?? 0;
+                  const width = percent(count, data.summary.totalOrders);
+                  const className = ["is-blue", "is-lilac", "is-mint", "is-gold", "is-rose"][index % 5];
+                  return (
+                    <div key={option} className="ga-admin-bar-row">
+                      <div className="ga-admin-bar-meta">
+                        <span>{prettify(option)}</span>
+                        <strong>{count}</strong>
+                      </div>
+                      <div className="ga-admin-bar-track">
+                        <div className={`ga-admin-bar-fill ${className}`} style={{ width: `${Math.max(width, 8)}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          </section>
 
-        <article className="ga-admin-card">
-          <div className="ga-admin-card-head">
-            <div>
-              <h2>Status Breakdown</h2>
-              <p>Operational split for quick scanning</p>
-            </div>
-          </div>
-          <div className="ga-admin-progress-stack">
-            <div>
-              <div className="ga-admin-progress-meta"><span>Completed</span><strong>{completionPct}%</strong></div>
-              <div className="ga-admin-progress-track"><div className="ga-admin-progress-fill is-blue" style={{ width: `${completionPct}%` }} /></div>
-            </div>
-            <div>
-              <div className="ga-admin-progress-meta"><span>Pending</span><strong>{pendingPct}%</strong></div>
-              <div className="ga-admin-progress-track"><div className="ga-admin-progress-fill is-gold" style={{ width: `${pendingPct}%` }} /></div>
-            </div>
-            <div>
-              <div className="ga-admin-progress-meta"><span>Cancelled</span><strong>{cancelledPct}%</strong></div>
-              <div className="ga-admin-progress-track"><div className="ga-admin-progress-fill is-rose" style={{ width: `${Math.max(cancelledPct, data.summary.cancelledOrders ? 8 : 0)}%` }} /></div>
-            </div>
-          </div>
-        </article>
+          <section className="ga-admin-panels-grid">
+            <article className="ga-admin-card ga-admin-highlight-card">
+              <h2>This Month</h2>
+              <div className="ga-admin-highlight-metrics">
+                <div>
+                  <strong>{currencyFormatter.format(data.summary.revenuePence / 100)}</strong>
+                  <span>Revenue</span>
+                </div>
+                <div>
+                  <strong>{data.summary.studentCount}</strong>
+                  <span>Students</span>
+                </div>
+              </div>
+            </article>
 
-        <article className="ga-admin-card">
-          <div className="ga-admin-card-head">
-            <div>
-              <h2>Quick Actions</h2>
-              <p>Jump directly into the main admin tasks</p>
-            </div>
-          </div>
-          <div className="ga-admin-quick-actions">
-            <button type="button" onClick={() => setActiveTab("orders")}>Review Orders</button>
-            <button type="button" onClick={() => setActiveTab("students")}>View Students</button>
-            <button type="button" onClick={() => setActiveTab("scholarships")}>Check Fee Waivers</button>
-            <button type="button" onClick={() => setActiveTab("mission")}>Review Mission Support</button>
-          </div>
-        </article>
-      </section>
+            <article className="ga-admin-card">
+              <div className="ga-admin-card-head">
+                <div>
+                  <h2>Status Breakdown</h2>
+                  <p>Operational split for quick scanning</p>
+                </div>
+              </div>
+              <div className="ga-admin-progress-stack">
+                <div>
+                  <div className="ga-admin-progress-meta"><span>Completed</span><strong>{completionPct}%</strong></div>
+                  <div className="ga-admin-progress-track"><div className="ga-admin-progress-fill is-blue" style={{ width: `${completionPct}%` }} /></div>
+                </div>
+                <div>
+                  <div className="ga-admin-progress-meta"><span>Pending</span><strong>{pendingPct}%</strong></div>
+                  <div className="ga-admin-progress-track"><div className="ga-admin-progress-fill is-gold" style={{ width: `${pendingPct}%` }} /></div>
+                </div>
+                <div>
+                  <div className="ga-admin-progress-meta"><span>Cancelled</span><strong>{cancelledPct}%</strong></div>
+                  <div className="ga-admin-progress-track"><div className="ga-admin-progress-fill is-rose" style={{ width: `${Math.max(cancelledPct, data.summary.cancelledOrders ? 8 : 0)}%` }} /></div>
+                </div>
+              </div>
+            </article>
 
+            <article className="ga-admin-card">
+              <div className="ga-admin-card-head">
+                <div>
+                  <h2>Quick Actions</h2>
+                  <p>Jump directly into the main admin tasks</p>
+                </div>
+              </div>
+              <div className="ga-admin-quick-actions">
+                <button type="button" onClick={() => setActiveTab("orders")}>Review Orders</button>
+                <button type="button" onClick={() => setActiveTab("students")}>View Students</button>
+                <button type="button" onClick={() => setActiveTab("scholarships")}>Check Fee Waivers</button>
+                <button type="button" onClick={() => setActiveTab("mission")}>Review Mission Support</button>
+              </div>
+            </article>
+          </section>
+
+          <section className="ga-admin-bottom-grid">
+            <article className="ga-admin-card">
+              <div className="ga-admin-card-head">
+                <div>
+                  <h2>Recent Orders</h2>
+                  <p>Latest five order records from the live database</p>
+                </div>
+              </div>
+              <div className="ga-admin-simple-list">
+                {recentOrders.map((row) => (
+                  <div key={row.id} className="ga-admin-simple-list-item">
+                    <div>
+                      <strong>{row.paymentReference ?? row.id}</strong>
+                      <p>{row.email}</p>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <strong>{row.amountLabel}</strong>
+                      <span className={`ga-admin-status is-${row.adminState.toLowerCase()}`}>{prettify(row.adminState)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="ga-admin-card">
+              <div className="ga-admin-card-head">
+                <div>
+                  <h2>Recent Enrollments</h2>
+                  <p>Quick scan of currently active student activity</p>
+                </div>
+              </div>
+              <div className="ga-admin-simple-list">
+                {recentStudents.map((row) => (
+                  <div key={row.id} className="ga-admin-simple-list-item">
+                    <div>
+                      <strong>{row.fullName}</strong>
+                      <p>{row.email}</p>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <strong>{row.activeEnrollments} active</strong>
+                      <p>{row.countryName ?? "N/A"}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </section>
+        </>
+      ) : null}
+
+      {!isHomeTab ? (
       <section className="ga-admin-workspace-card">
         <div className="ga-admin-workspace-head">
           <div>
             <p className="ga-admin-kicker">Operations</p>
-            <h2>{activeTab === "orders" ? "Orders" : activeTab === "students" ? "Students" : activeTab === "scholarships" ? "Fee Waiver Applications" : "Mission Support Donations"}</h2>
-            <p>
-              {activeTab === "orders"
-                ? "Filter and update registration, payment, and enrollment states."
-                : activeTab === "students"
-                  ? "Scan the current student base and track access history."
-                  : activeTab === "scholarships"
-                    ? "Review scholarship requests and approve or reject them."
-                    : "Review donor submissions, confirm manual support payments, and track contribution details."}
-            </p>
+            <h2>{workspaceTitle}</h2>
+            <p>{workspaceDescription}</p>
           </div>
 
           <input
@@ -693,54 +758,7 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
         {message ? <p className="ga-admin-success-banner">{message}</p> : null}
         {error ? <p className="ga-admin-error-banner">{error}</p> : null}
       </section>
-
-      <section className="ga-admin-bottom-grid">
-        <article className="ga-admin-card">
-          <div className="ga-admin-card-head">
-            <div>
-              <h2>Recent Orders</h2>
-              <p>Latest five order records from the live database</p>
-            </div>
-          </div>
-          <div className="ga-admin-simple-list">
-            {recentOrders.map((row) => (
-              <div key={row.id} className="ga-admin-simple-list-item">
-                <div>
-                  <strong>{row.paymentReference ?? row.id}</strong>
-                  <p>{row.email}</p>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <strong>{row.amountLabel}</strong>
-                  <span className={`ga-admin-status is-${row.adminState.toLowerCase()}`}>{prettify(row.adminState)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="ga-admin-card">
-          <div className="ga-admin-card-head">
-            <div>
-              <h2>Recent Enrollments</h2>
-              <p>Quick scan of currently active student activity</p>
-            </div>
-          </div>
-          <div className="ga-admin-simple-list">
-            {recentStudents.map((row) => (
-              <div key={row.id} className="ga-admin-simple-list-item">
-                <div>
-                  <strong>{row.fullName}</strong>
-                  <p>{row.email}</p>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <strong>{row.activeEnrollments} active</strong>
-                  <p>{row.countryName ?? "N/A"}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
+      ) : null}
     </div>
   );
 }
