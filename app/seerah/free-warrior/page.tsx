@@ -698,6 +698,7 @@ const manualRowTextStyle: CSSProperties = {
 const copyButtonStyle: CSSProperties = {
   border: "1px solid #bfd4e6",
   background: "#eff7fd",
+  color: "#1f4f73",
   borderRadius: 6,
   padding: "0.25rem 0.6rem",
   cursor: "pointer",
