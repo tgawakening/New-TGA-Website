@@ -10,6 +10,29 @@ import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { adminConfirmManualPayment } from "@/services/payment.service";
 import type { AdminRegistrationActionInput } from "@/lib/validations/admin";
 
+function isMissingDatabaseStructureError(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) {
+    return false;
+  }
+
+  return error.code === "P2021" || error.code === "P2022";
+}
+
+async function loadMissionSupportForAdmin() {
+  try {
+    return await prisma.missionSupportDonation.findMany({
+      include: { manualSubmission: true },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    if (isMissingDatabaseStructureError(error)) {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
 export type AdminDashboardSnapshot = {
   summary: {
     totalOrders: number;
@@ -213,10 +236,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
     prisma.freeWarriorApplication.findMany({
       orderBy: { createdAt: "desc" },
     }),
-    prisma.missionSupportDonation.findMany({
-      include: { manualSubmission: true },
-      orderBy: { createdAt: "desc" },
-    }),
+    loadMissionSupportForAdmin(),
   ]);
 
   const mappedRegistrations = registrations.map((row) => {
