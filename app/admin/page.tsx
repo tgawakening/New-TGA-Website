@@ -1,7 +1,7 @@
 import AdminDashboard from "@/components/admin/admin-dashboard";
 import AdminLogin from "@/components/admin/admin-login";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
-import { getAdminDashboardSnapshot } from "@/services/admin.service";
+import { getAdminDashboardSnapshot, getAdminNotifications } from "@/services/admin.service";
 
 export default async function AdminPage() {
   const admin = await getCurrentAdmin();
@@ -18,13 +18,16 @@ export default async function AdminPage() {
     );
   }
 
-  const data = await getAdminDashboardSnapshot();
+  const [data, notifications] = await Promise.all([
+    getAdminDashboardSnapshot(),
+    getAdminNotifications(),
+  ]);
 
   return (
     <main className="ga-admin-page">
       <section className="ga-admin-page-section">
         <div className="ga-admin-container">
-          <AdminDashboard data={data} adminEmail={admin.email} />
+          <AdminDashboard data={data} adminEmail={admin.email} initialNotifications={notifications} />
         </div>
       </section>
     </main>

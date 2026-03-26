@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
-import type { AdminDashboardSnapshot } from "@/services/admin.service";
+import type { AdminDashboardSnapshot, AdminNotificationItem } from "@/services/admin.service";
 
 type Props = {
   data: AdminDashboardSnapshot;
   adminEmail: string;
+  initialNotifications: AdminNotificationItem[];
 };
 
 type TabKey = "home" | "orders" | "students" | "scholarships" | "mission";
@@ -17,6 +18,8 @@ const currencyFormatter = new Intl.NumberFormat("en-GB", {
   currency: "GBP",
   minimumFractionDigits: 2,
 });
+
+const ADMIN_NOTIFICATIONS_LAST_SEEN_KEY = "ga-admin-notifications-last-seen";
 
 function formatDate(value: string | null) {
   if (!value) return "N/A";
@@ -39,7 +42,7 @@ function percent(value: number, total: number) {
   return Math.round((value / total) * 100);
 }
 
-export default function AdminDashboard({ data, adminEmail }: Props) {
+export default function AdminDashboard({ data, adminEmail, initialNotifications }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [search, setSearch] = useState("");
@@ -53,6 +56,10 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [feeWaiverNotes, setFeeWaiverNotes] = useState<Record<string, string>>({});
+  const [notifications, setNotifications] = useState<AdminNotificationItem[]>(initialNotifications);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
+  const notificationPanelRef = useRef<HTMLDivElement | null>(null);
 
   const orderRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -195,6 +202,11 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
 
   const recentOrders = orderRows.slice(0, 5);
   const recentStudents = studentRows.slice(0, 5);
+  const unreadNotificationsCount = useMemo(() => {
+    if (!lastSeenAt) return 0;
+    const lastSeenTime = new Date(lastSeenAt).getTime();
+    return notifications.filter((item) => new Date(item.createdAt).getTime() > lastSeenTime).length;
+  }, [lastSeenAt, notifications]);
   const isHomeTab = activeTab === "home";
   const workspaceTitle =
     activeTab === "orders"
@@ -210,8 +222,67 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
       : activeTab === "students"
         ? "Scan the current student base and track access history."
         : activeTab === "scholarships"
-          ? "Review scholarship requests and approve or reject them."
-          : "Review donor submissions, confirm manual support payments, and track contribution details.";
+        ? "Review scholarship requests and approve or reject them."
+        : "Review donor submissions, confirm manual support payments, and track contribution details.";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const stored = window.localStorage.getItem(ADMIN_NOTIFICATIONS_LAST_SEEN_KEY);
+    if (stored) {
+      setLastSeenAt(stored);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    window.localStorage.setItem(ADMIN_NOTIFICATIONS_LAST_SEEN_KEY, now);
+    setLastSeenAt(now);
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(async () => {
+      try {
+        const response = await fetch("/api/admin/notifications", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const payload = (await response.json()) as { notifications?: AdminNotificationItem[] };
+        if (payload.notifications) {
+          setNotifications(payload.notifications);
+        }
+      } catch {
+        // Keep the current notification list if polling fails.
+      }
+    }, 45000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      if (!notificationPanelRef.current?.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    }
+
+    if (isNotificationsOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [isNotificationsOpen]);
+
+  function handleNotificationBellClick() {
+    const nextOpenState = !isNotificationsOpen;
+    setIsNotificationsOpen(nextOpenState);
+
+    if (nextOpenState) {
+      const now = new Date().toISOString();
+      setLastSeenAt(now);
+      window.localStorage.setItem(ADMIN_NOTIFICATIONS_LAST_SEEN_KEY, now);
+    }
+  }
 
   return (
     <div className="ga-admin-shell">
@@ -243,6 +314,70 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
         </nav>
 
         <div className="ga-admin-topbar-actions">
+          <div className="ga-admin-notification-wrap" ref={notificationPanelRef}>
+            <button
+              type="button"
+              className="ga-admin-bell-btn"
+              aria-label="Open notifications"
+              aria-expanded={isNotificationsOpen}
+              onClick={handleNotificationBellClick}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="ga-admin-bell-icon">
+                <path
+                  d="M12 3a4 4 0 0 0-4 4v1.1c0 1.1-.4 2.1-1.1 2.9L5.7 12.3A3 3 0 0 0 8 17h8a3 3 0 0 0 2.3-4.7l-1.2-1.4A4.5 4.5 0 0 1 16 8.1V7a4 4 0 0 0-4-4Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M10 19a2 2 0 0 0 4 0"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+              {unreadNotificationsCount > 0 ? (
+                <span className="ga-admin-bell-badge">{Math.min(unreadNotificationsCount, 9)}+</span>
+              ) : null}
+            </button>
+
+            {isNotificationsOpen ? (
+              <div className="ga-admin-notification-panel">
+                <div className="ga-admin-notification-head">
+                  <div>
+                    <strong>Notifications</strong>
+                    <p>{unreadNotificationsCount > 0 ? `${unreadNotificationsCount} new updates` : "All caught up"}</p>
+                  </div>
+                  <button type="button" className="ga-admin-notification-close" onClick={() => setIsNotificationsOpen(false)}>
+                    Close
+                  </button>
+                </div>
+
+                <div className="ga-admin-notification-list">
+                  {notifications.length > 0 ? (
+                    notifications.map((item) => {
+                      const isUnread = lastSeenAt ? new Date(item.createdAt).getTime() > new Date(lastSeenAt).getTime() : false;
+                      return (
+                        <article key={item.id} className={`ga-admin-notification-item ${isUnread ? "is-unread" : ""}`}>
+                          <div className="ga-admin-notification-item-head">
+                            <strong>{item.title}</strong>
+                            <span>{formatDate(item.createdAt)}</span>
+                          </div>
+                          <p>{item.message}</p>
+                        </article>
+                      );
+                    })
+                  ) : (
+                    <p className="ga-admin-notification-empty">No notifications yet.</p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           <button type="button" className="ga-admin-ghost-btn" onClick={() => router.refresh()}>
             Refresh
           </button>

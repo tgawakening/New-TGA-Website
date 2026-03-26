@@ -65,6 +65,7 @@ export type AdminDashboardSnapshot = {
     paymentStatus: string;
     registrationStatus: string;
     enrollmentStatus: string;
+    enrollmentActivatedAt: string | null;
     subscriptionStatus: string | null;
     hasDiscount: boolean;
     discountLabel: string | null;
@@ -124,6 +125,14 @@ export type AdminDashboardSnapshot = {
     createdAt: string;
     hasManualSubmission: boolean;
   }>;
+};
+
+export type AdminNotificationItem = {
+  id: string;
+  kind: "ORDER" | "ENROLLMENT" | "FEE_WAIVER" | "MISSION_SUPPORT";
+  title: string;
+  message: string;
+  createdAt: string;
 };
 
 function formatAmount(amount: number, currency: string) {
@@ -265,6 +274,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       paymentStatus: row.payment?.status ?? "INITIATED",
       registrationStatus: row.status,
       enrollmentStatus: row.enrollment?.status ?? "PENDING",
+      enrollmentActivatedAt: row.enrollment?.activatedAt?.toISOString() ?? null,
       subscriptionStatus: row.subscription?.status ?? null,
       hasDiscount: row.autoDiscountAmount > 0 || row.couponDiscountAmount > 0 || row.finalAmount === 0,
       discountLabel,
@@ -353,6 +363,47 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       hasManualSubmission: Boolean(item.manualSubmission),
     })),
   };
+}
+
+export async function getAdminNotifications(limit = 20): Promise<AdminNotificationItem[]> {
+  const snapshot = await getAdminDashboardSnapshot();
+
+  const notifications: AdminNotificationItem[] = [
+    ...snapshot.registrations.map((row) => ({
+      id: `order-${row.id}`,
+      kind: "ORDER" as const,
+      title: "New order received",
+      message: `${row.fullName} placed an order for ${row.courseTitle}.`,
+      createdAt: row.createdAt,
+    })),
+    ...snapshot.registrations
+      .filter((row) => row.enrollmentStatus === "ACTIVE" && row.enrollmentActivatedAt)
+      .map((row) => ({
+        id: `enrollment-${row.id}`,
+        kind: "ENROLLMENT" as const,
+        title: "New student enrolled",
+        message: `${row.fullName} is now enrolled in ${row.courseTitle}.`,
+        createdAt: row.enrollmentActivatedAt as string,
+      })),
+    ...snapshot.freeWarriorApplications.map((row) => ({
+      id: `fee-waiver-${row.id}`,
+      kind: "FEE_WAIVER" as const,
+      title: "New Fee Warrior application",
+      message: `${row.fullName} submitted a Fee Warrior application.`,
+      createdAt: row.createdAt,
+    })),
+    ...snapshot.missionSupportDonations.map((row) => ({
+      id: `mission-support-${row.id}`,
+      kind: "MISSION_SUPPORT" as const,
+      title: "New mission support submission",
+      message: `${row.fullName} submitted a mission support contribution.`,
+      createdAt: row.createdAt,
+    })),
+  ];
+
+  return notifications
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, limit);
 }
 
 export async function adminUpdateRegistrationRecord(input: AdminRegistrationActionInput) {
