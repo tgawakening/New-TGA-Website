@@ -147,7 +147,7 @@ export default function FreeWarriorPage() {
               <p className="ga-kicker">Fee Waiver Application</p>
               <h1 className="ga-heading">Apply for the Fee Waiver Scholarship</h1>
               <p className="ga-copy" style={{ marginTop: "0.8rem" }}>
-                One complete application. No separate steps. Fill it once and we will send it directly to admin review.
+                We have made it easy for committed students to avail the course.
               </p>
             </div>
 
