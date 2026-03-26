@@ -40,14 +40,16 @@ export function Header() {
     <header className={`ga-header sticky top-0 z-50 ${isScrolled ? "ga-header-scrolled" : ""}`}>
       <div className="ga-container flex h-24 items-center justify-between gap-4">
         <div className="flex items-center">
-          <Image
-            src="/logo.webp"
-            alt="Global Awakening"
-            width={220}
-            height={74}
-            className="ga-header-logo h-auto w-[150px] md:w-[182px]"
-            priority
-          />
+          <Link href="/" aria-label="Go to homepage">
+            <Image
+              src="/logo.webp"
+              alt="Global Awakening"
+              width={220}
+              height={74}
+              className="ga-header-logo h-auto w-[150px] md:w-[182px]"
+              priority
+            />
+          </Link>
         </div>
 
         <nav className="hidden items-center gap-2 lg:flex">

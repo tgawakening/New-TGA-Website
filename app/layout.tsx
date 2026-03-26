@@ -16,11 +16,9 @@ export const metadata: Metadata = {
   description: "Global Awakening learning platform homepage",
   metadataBase: getMetadataBase(),
   icons: {
-    icon: [
-      { url: "/logo.webp", type: "image/webp" },
-    ],
+    icon: [{ url: "/logo.webp", type: "image/webp", sizes: "512x512" }],
     shortcut: [{ url: "/logo.webp", type: "image/webp" }],
-    apple: [{ url: "/logo.webp", type: "image/webp" }],
+    apple: [{ url: "/logo.webp", type: "image/webp", sizes: "180x180" }],
   },
   alternates: {
     canonical: "/",
