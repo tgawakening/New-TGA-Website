@@ -572,14 +572,6 @@ export default function AdminDashboard({ data, adminEmail }: Props) {
                     <p><strong>Most interesting topic:</strong> {row.mostInterestingTopic}</p>
                     <p><strong>Why this topic:</strong> {row.whyThisTopic}</p>
                     <p><strong>Reason for waiver:</strong> {row.reasonForWaiver}</p>
-                    {row.hasTransactionScreenshot ? (
-                      <p>
-                        <strong>Transaction screenshot:</strong>{" "}
-                        <a href={`/api/free-warrior/screenshot/${row.id}`} target="_blank" rel="noreferrer">
-                          {row.transactionScreenshotName ?? "View screenshot"}
-                        </a>
-                      </p>
-                    ) : null}
                   </div>
 
                   <textarea

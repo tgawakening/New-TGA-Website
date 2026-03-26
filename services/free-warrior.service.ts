@@ -96,14 +96,9 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   Reflect.deleteProperty(applicationInput, "manualSenderNumber");
   Reflect.deleteProperty(applicationInput, "manualReferenceKey");
   Reflect.deleteProperty(applicationInput, "manualNotes");
-  Reflect.deleteProperty(applicationInput, "transactionScreenshotName");
-  Reflect.deleteProperty(applicationInput, "transactionScreenshotData");
-
   const application = await prisma.freeWarriorApplication.create({
     data: {
       ...applicationInput,
-      transactionScreenshotData: input.transactionScreenshotData || null,
-      transactionScreenshotName: input.transactionScreenshotName || null,
       previousSeerahStudy: input.previousSeerahStudy || null,
       currentInvolvement: input.currentInvolvement || null,
       howHeard: input.howHeard || null,

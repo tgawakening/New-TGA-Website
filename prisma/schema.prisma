@@ -363,8 +363,6 @@ model FreeWarriorApplication {
   canAttendRegularly     String
   attendedOrientation    Boolean
   reasonForWaiver        String
-  transactionScreenshotData String?                  @db.LongText
-  transactionScreenshotName String?
   howHeard               String?
   adabCommitment         Boolean
   genuineFinancialNeed   Boolean
