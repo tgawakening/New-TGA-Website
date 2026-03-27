@@ -333,6 +333,11 @@ function SeerahRegisterContent() {
     return phoneCountries.filter((item) => item.countryName.toLowerCase().startsWith(term));
   }, [countrySearch, phoneCountries]);
 
+  const paymentMethodsToShow = useMemo(() => {
+    const methods = pricing?.allowedPaymentMethods ?? [PaymentMethod.STRIPE, PaymentMethod.PAYPAL];
+    return methods.includes(form.paymentMethod) ? methods : [form.paymentMethod, ...methods];
+  }, [form.paymentMethod, pricing]);
+
   const fetchPricing = useCallback(async (nextCouponCode?: string) => {
     const normalizedCountryCode = form.countryCode.trim().toUpperCase();
     if (normalizedCountryCode.length !== 2) {
@@ -359,6 +364,9 @@ function SeerahRegisterContent() {
       }
 
       setPricing(data.pricing);
+      if (resumeRegistrationId) {
+        return;
+      }
       if (!data.pricing.allowedPaymentMethods.includes(form.paymentMethod)) {
         setForm((prev) => ({
           ...prev,
@@ -368,7 +376,7 @@ function SeerahRegisterContent() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pricing error.");
     }
-  }, [form.countryCode, form.couponCode, form.paymentMethod]);
+  }, [form.countryCode, form.couponCode, form.paymentMethod, resumeRegistrationId]);
 
   useEffect(() => {
     void fetchPricing();
@@ -873,7 +881,7 @@ function SeerahRegisterContent() {
                   </div>
                 ) : null}
                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                  {(pricing?.allowedPaymentMethods ?? [PaymentMethod.STRIPE, PaymentMethod.PAYPAL]).map((method) => (
+                  {paymentMethodsToShow.map((method) => (
                     <button
                       key={method}
                       type="button"

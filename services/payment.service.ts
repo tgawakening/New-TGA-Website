@@ -624,7 +624,7 @@ export async function getPendingRegistrationForResume({
   return {
     registrationId: registration.id,
     paymentReference: registration.paymentReference,
-    paymentMethod: registration.paymentMethod,
+    paymentMethod: registration.payment.provider,
     fullName: registration.user.fullName,
     email: registration.user.email,
     phoneCountryCode: registration.user.phoneCountryCode,
