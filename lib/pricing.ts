@@ -52,7 +52,7 @@ function getAllowedPaymentMethods(countryCode: string): PaymentMethod[] {
     return [PaymentMethod.STRIPE, PaymentMethod.PAYPAL];
   }
 
-  return [PaymentMethod.STRIPE, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH];
+  return [PaymentMethod.STRIPE, PaymentMethod.PAYPAL, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH];
 }
 
 function applyCoupon(amount: number, coupon: Coupon): number {
