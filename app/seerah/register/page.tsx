@@ -3,7 +3,7 @@
 import { PaymentMethod } from "@prisma/client";
 import { countries } from "countries-list";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Header } from "@/components/home/sections/header";
 
@@ -129,6 +129,7 @@ function getDynamicPhoneCountries(): PhoneCountry[] {
 }
 
 function SeerahRegisterContent() {
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(true);
@@ -142,6 +143,7 @@ function SeerahRegisterContent() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resumeRegistrationId, setResumeRegistrationId] = useState<string | null>(null);
   const [resumePaymentReference, setResumePaymentReference] = useState<string | null>(null);
+  const [resumeEmail, setResumeEmail] = useState<string | null>(null);
   const [restoringResume, setRestoringResume] = useState(false);
   const countryDropdownRef = useRef<HTMLDivElement | null>(null);
   const countrySearchRef = useRef<HTMLInputElement | null>(null);
@@ -247,6 +249,23 @@ function SeerahRegisterContent() {
     window.localStorage.removeItem(registrationResumeStorageKey);
   }, [resumePaymentReference, resumeRegistrationId]);
 
+  const clearResumeState = useCallback(
+    (message?: string) => {
+      setResumeRegistrationId(null);
+      setResumePaymentReference(null);
+      setResumeEmail(null);
+      if (message) {
+        setInfo(message);
+      }
+
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("resume");
+      const nextQuery = params.toString();
+      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (searchParams.get("payment") === "success") {
@@ -254,6 +273,7 @@ function SeerahRegisterContent() {
       window.localStorage.removeItem(registrationResumeStorageKey);
       setResumeRegistrationId(null);
       setResumePaymentReference(null);
+      setResumeEmail(null);
     }
   }, [searchParams]);
 
@@ -294,6 +314,7 @@ function SeerahRegisterContent() {
 
         setResumeRegistrationId(registration.registrationId);
         setResumePaymentReference(registration.paymentReference);
+        setResumeEmail(registration.email.trim().toLowerCase());
         setInfo(
           `Your pending order${registration.paymentReference ? ` (${registration.paymentReference})` : ""} has been restored. Continue from the payment step below.`,
         );
@@ -308,6 +329,17 @@ function SeerahRegisterContent() {
         setRestoringResume(false);
       });
   }, [phoneCountries, searchParams]);
+
+  useEffect(() => {
+    if (!resumeRegistrationId || !resumeEmail) return;
+
+    const normalizedEmail = form.email.trim().toLowerCase();
+    if (!normalizedEmail || normalizedEmail === resumeEmail) {
+      return;
+    }
+
+    clearResumeState("Email changed. This will now be treated as a fresh registration with new payment options.");
+  }, [clearResumeState, form.email, resumeEmail, resumeRegistrationId]);
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent) {
