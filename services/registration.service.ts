@@ -19,11 +19,15 @@ function getAppUrl() {
 }
 
 function formatAmount(amount: number, currency: string) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount / 100);
+  if (currency === "GBP") {
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+    }).format(amount / 100);
+  }
+
+  return `${currency} ${amount.toLocaleString("en-GB")}`;
 }
 
 export async function registerStudent(input: RegistrationInput) {

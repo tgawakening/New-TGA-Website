@@ -75,6 +75,18 @@ function getAppUrl() {
   return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 }
 
+function formatAmount(amount: number, currency: string) {
+  if (currency === "GBP") {
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+    }).format(amount / 100);
+  }
+
+  return `${currency} ${amount.toLocaleString("en-GB")}`;
+}
+
 function buildResumePaymentLink(registrationId: string) {
   const appUrl = getAppUrl();
   return `${appUrl}/seerah/register?resume=${encodeURIComponent(registrationId)}`;
@@ -87,11 +99,7 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
   });
 
   const resumeLink = buildResumePaymentLink(registration.id);
-  const orderAmount = new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: registration.selectedCurrency,
-    minimumFractionDigits: 2,
-  }).format(registration.finalAmount / 100);
+  const orderAmount = formatAmount(registration.finalAmount, registration.selectedCurrency);
 
   await Promise.allSettled([
     sendTransactionalEmail({
@@ -238,11 +246,7 @@ async function markSuccessfulPayment({
   const appUrl = getAppUrl();
   const dashboardUrl = `${appUrl}/dashboard`;
   const adminDashboardUrl = `${appUrl}/admin`;
-  const orderAmount = new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: result.currency,
-    minimumFractionDigits: 2,
-  }).format(result.amount / 100);
+  const orderAmount = formatAmount(result.amount, result.currency);
 
   await Promise.allSettled([
     sendTransactionalEmail({
@@ -761,11 +765,7 @@ export async function submitManualPayment({
   if (registrationDetails) {
     const appUrl = getAppUrl();
     const adminDashboardUrl = `${appUrl}/admin`;
-    const orderAmount = new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: registrationDetails.selectedCurrency,
-      minimumFractionDigits: 2,
-    }).format(registrationDetails.finalAmount / 100);
+    const orderAmount = formatAmount(registrationDetails.finalAmount, registrationDetails.selectedCurrency);
 
     await Promise.allSettled([
       sendTransactionalEmail({
