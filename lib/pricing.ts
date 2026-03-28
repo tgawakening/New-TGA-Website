@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 const SOUTH_ASIA_DISCOUNT_COUNTRIES = new Set(["PK", "IN", "AF", "BD"]);
 const MANUAL_PAYMENT_COUNTRIES = new Set(["PK"]);
 const GBP_TO_PKR_APPROX = 376;
+export const SOUTH_ASIA_ONLINE_AMOUNT_PENCE = 572;
 const HAS_DATABASE_URL = Boolean(process.env.DATABASE_URL);
 
 function gbpPenceToPkr(pence: number): number {
@@ -175,7 +176,12 @@ export async function calculatePricing(input: PricingInput): Promise<PricingOutp
     allowedPaymentMethods,
     display: {
       baseGbp: course.basePrice / 100,
-      finalGbpApprox: currency === "GBP" ? finalAmount / 100 : Number((finalAmount / GBP_TO_PKR_APPROX).toFixed(2)),
+      finalGbpApprox:
+        regionGroup === RegionGroup.SOUTH_ASIA
+          ? SOUTH_ASIA_ONLINE_AMOUNT_PENCE / 100
+          : currency === "GBP"
+            ? finalAmount / 100
+            : Number((finalAmount / GBP_TO_PKR_APPROX).toFixed(2)),
       exchangeRateApprox: GBP_TO_PKR_APPROX,
     },
   };

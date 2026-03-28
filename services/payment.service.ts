@@ -11,6 +11,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
+import { SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
 import { handleMissionSupportStripeSessionCompleted } from "@/services/mission-support.service";
 
 type RegistrationWithPayment = Registration & {
@@ -67,8 +68,28 @@ function toJsonValue(input: unknown): Prisma.InputJsonValue {
 
 function getStripeMonthlyAmountPence(registration: Registration) {
   if (registration.selectedCurrency === "GBP") return registration.finalAmount;
-  // South Asia discounted path is represented as approximately GBP 5/month recurring billing.
-  return 500;
+  return SOUTH_ASIA_ONLINE_AMOUNT_PENCE;
+}
+
+function getOnlinePaymentAmount(registration: RegistrationWithPayment) {
+  if (registration.payment.currency === "GBP") {
+    return {
+      amount: registration.payment.amount,
+      currency: registration.payment.currency,
+    };
+  }
+
+  if (registration.selectedCurrency === "GBP") {
+    return {
+      amount: registration.finalAmount,
+      currency: registration.selectedCurrency,
+    };
+  }
+
+  return {
+    amount: SOUTH_ASIA_ONLINE_AMOUNT_PENCE,
+    currency: "GBP",
+  };
 }
 
 function getAppUrl() {
@@ -99,7 +120,8 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
   });
 
   const resumeLink = buildResumePaymentLink(registration.id);
-  const orderAmount = formatAmount(registration.finalAmount, registration.selectedCurrency);
+  const onlinePaymentAmount = getOnlinePaymentAmount(registration);
+  const orderAmount = formatAmount(onlinePaymentAmount.amount, onlinePaymentAmount.currency);
 
   await Promise.allSettled([
     sendTransactionalEmail({
@@ -384,6 +406,95 @@ export async function createStripeCheckout({
   };
 }
 
+async function syncStripeSubscriptionFromSession({
+  session,
+  registrationId,
+  userId,
+}: {
+  session: {
+    subscription?: string | { id?: string } | null;
+    customer?: string | { id?: string } | null;
+  };
+  registrationId?: string;
+  userId?: string;
+}) {
+  if (
+    !registrationId ||
+    !userId ||
+    !session.subscription ||
+    typeof session.subscription !== "string"
+  ) {
+    return;
+  }
+
+  await prisma.subscription.upsert({
+    where: { registrationId },
+    update: {
+      provider: SubscriptionProvider.STRIPE,
+      status: SubscriptionStatus.ACTIVE,
+      providerSubscriptionId: session.subscription,
+      providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+    },
+    create: {
+      userId,
+      registrationId,
+      provider: SubscriptionProvider.STRIPE,
+      status: SubscriptionStatus.ACTIVE,
+      providerSubscriptionId: session.subscription,
+      providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+    },
+  });
+}
+
+export async function confirmStripeCheckoutSession({
+  registrationId,
+  userId,
+  sessionId,
+}: {
+  registrationId: string;
+  userId: string;
+  sessionId: string;
+}) {
+  const registration = await loadRegistrationForUser(registrationId, userId);
+  const payment = registration.payment;
+  if (payment.provider !== "STRIPE") {
+    throw new Error("This registration is not set for Stripe.");
+  }
+
+  const stripeSecretKey = getRequiredEnv("STRIPE_SECRET_KEY");
+  const stripeModule = await import("stripe");
+  const Stripe = stripeModule.default;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  if (session.metadata?.paymentKind === "MISSION_SUPPORT") {
+    throw new Error("This confirmation endpoint is only for course registrations.");
+  }
+
+  if (session.metadata?.paymentId !== payment.id) {
+    throw new Error("Stripe session does not belong to this registration.");
+  }
+
+  if (session.payment_status !== "paid" || session.status !== "complete") {
+    throw new Error("Stripe payment is not completed yet.");
+  }
+
+  await markSuccessfulPayment({
+    paymentId: payment.id,
+    providerOrderId: session.id,
+    providerPaymentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+    payload: session,
+  });
+
+  await syncStripeSubscriptionFromSession({
+    session,
+    registrationId: session.metadata?.registrationId ?? registrationId,
+    userId: session.metadata?.userId ?? userId,
+  });
+
+  return { success: true };
+}
+
 export async function handleStripeWebhook({
   signature,
   payloadText,
@@ -418,30 +529,7 @@ export async function handleStripeWebhook({
 
     const registrationId = session.metadata?.registrationId;
     const userId = session.metadata?.userId;
-    if (
-      session.subscription &&
-      typeof session.subscription === "string" &&
-      registrationId &&
-      userId
-    ) {
-      await prisma.subscription.upsert({
-        where: { registrationId },
-        update: {
-          provider: SubscriptionProvider.STRIPE,
-          status: SubscriptionStatus.ACTIVE,
-          providerSubscriptionId: session.subscription,
-          providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
-        },
-        create: {
-          userId,
-          registrationId,
-          provider: SubscriptionProvider.STRIPE,
-          status: SubscriptionStatus.ACTIVE,
-          providerSubscriptionId: session.subscription,
-          providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
-        },
-      });
-    }
+    await syncStripeSubscriptionFromSession({ session, registrationId, userId });
   }
 
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
@@ -541,7 +629,8 @@ export async function createPaypalOrder({
 
   const token = await getPaypalAccessToken();
   const base = getPaypalApiBase();
-  const amountGbp = (registration.finalAmount / 100).toFixed(2);
+  const onlinePaymentAmount = getOnlinePaymentAmount(registration);
+  const amountGbp = (onlinePaymentAmount.amount / 100).toFixed(2);
 
   const orderResponse = await fetch(`${base}/v2/checkout/orders`, {
     method: "POST",

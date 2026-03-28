@@ -154,7 +154,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
     setMessage(null);
     setError(null);
     try {
-      const response = await fetch("/api/admin/free-warrior/review", {
+      const response = await fetch("/api/admin/fee-waiver/review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

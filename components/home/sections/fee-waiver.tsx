@@ -25,7 +25,7 @@ export function FeeWaiverSection() {
             We believe Islamic education is a right, not a privilege. If financial circumstances are holding you back,
             do not let that stop you. We offer full fee waivers for those in genuine need.
           </p>
-          <Link href="/seerah/fee-warrior" className="ga-fee-btn mt-7">
+          <Link href="/seerah/fee-waiver" className="ga-fee-btn mt-7">
             Apply for Fee Waiver <CtaArrow />
           </Link>
           <p className="ga-fee-note mt-5">Your request is completely confidential. We&apos;re here to help.</p>

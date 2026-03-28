@@ -551,16 +551,18 @@ function SeerahRegisterContent() {
         amount: Math.round(2000 * southAsiaLocalCurrencyApprox[form.countryCode].multiplier),
       }
     : null;
+  const isManualPaymentMethod =
+    form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.JAZZCASH;
 
   const visiblePoundPrice = isSouthAsia && pricing
     ? `${formatMoney(Math.round(pricing.display.finalGbpApprox * 100), "GBP", true)}/mo`
     : "GBP 20.00/mo";
-  const visibleConverted = isSouthAsia
-    ? `${localApprox ? `(~${formatMoney(localApprox.amount, localApprox.currency)})` : ""}`
+  const visibleConverted = isSouthAsia && isManualPaymentMethod
+    ? `${localApprox ? `(${formatMoney(localApprox.amount, localApprox.currency)} for manual transfer)` : ""}`
     : "";
 
   const orderSummaryAmount = isSouthAsia
-    ? `${visiblePoundPrice} ${visibleConverted}`
+    ? [visiblePoundPrice, visibleConverted].filter(Boolean).join(" ")
     : pricing
       ? `${formatMoney(pricing.baseAmount, "GBP", true)}/mo`
       : "GBP 20.00/mo";

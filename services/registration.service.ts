@@ -2,7 +2,7 @@ import { PaymentStatus, RegistrationStatus, type PaymentMethod } from "@prisma/c
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
-import { calculatePricing } from "@/lib/pricing";
+import { calculatePricing, SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
 import type { RegistrationInput } from "@/lib/validations/registration";
 
 function buildPaymentReference() {
@@ -28,6 +28,25 @@ function formatAmount(amount: number, currency: string) {
   }
 
   return `${currency} ${amount.toLocaleString("en-GB")}`;
+}
+
+function getPaymentRecordAmount(
+  pricing: Awaited<ReturnType<typeof calculatePricing>>,
+  paymentMethod: RegistrationInput["paymentMethod"],
+) {
+  const isOnlinePayment = paymentMethod === "STRIPE" || paymentMethod === "PAYPAL";
+
+  if (isOnlinePayment && pricing.autoDiscountApplied && pricing.currency !== "GBP") {
+    return {
+      amount: SOUTH_ASIA_ONLINE_AMOUNT_PENCE,
+      currency: "GBP",
+    };
+  }
+
+  return {
+    amount: pricing.finalAmount,
+    currency: pricing.currency,
+  };
 }
 
 export async function registerStudent(input: RegistrationInput) {
@@ -59,6 +78,7 @@ export async function registerStudent(input: RegistrationInput) {
 
   const passwordHash = await bcrypt.hash(input.password, 12);
   const paymentReference = buildPaymentReference();
+  const paymentRecord = getPaymentRecordAmount(pricing, input.paymentMethod);
 
   const result = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -104,8 +124,8 @@ export async function registerStudent(input: RegistrationInput) {
       data: {
         registrationId: registration.id,
         provider: input.paymentMethod as PaymentMethod,
-        amount: pricing.finalAmount,
-        currency: pricing.currency,
+        amount: paymentRecord.amount,
+        currency: paymentRecord.currency,
         status: PaymentStatus.INITIATED,
       },
     });

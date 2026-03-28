@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const result = await createStripeCheckout({
       registrationId: parsed.data.registrationId,
       userId: user.id,
-      successUrl: `${appUrl}/dashboard?payment=success&provider=stripe`,
+      successUrl: `${appUrl}/dashboard?payment=success&provider=stripe&registrationId=${encodeURIComponent(parsed.data.registrationId)}&session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${appUrl}/seerah/register?payment=cancelled&resume=${encodeURIComponent(parsed.data.registrationId)}`,
     });
 

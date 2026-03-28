@@ -388,8 +388,8 @@ export async function getAdminNotifications(limit = 20): Promise<AdminNotificati
     ...snapshot.freeWarriorApplications.map((row) => ({
       id: `fee-waiver-${row.id}`,
       kind: "FEE_WAIVER" as const,
-      title: "New Fee Warrior application",
-      message: `${row.fullName} submitted a Fee Warrior application.`,
+      title: "New Fee Waiver application",
+      message: `${row.fullName} submitted a Fee Waiver application.`,
       createdAt: row.createdAt,
     })),
     ...snapshot.missionSupportDonations.map((row) => ({

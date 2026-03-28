@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { countries } from "countries-list";
 import LogoutButton from "@/components/dashboard/logout-button";
 
@@ -76,6 +77,9 @@ function formatMoney(amount: number, currency: string) {
 }
 
 export default function StudentDashboard({ user }: DashboardProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [fullName, setFullName] = useState(user.fullName);
   const [phoneCountryCode, setPhoneCountryCode] = useState(user.phoneCountryCode);
   const [phoneNumber, setPhoneNumber] = useState(user.phoneNumber);
@@ -85,6 +89,9 @@ export default function StudentDashboard({ user }: DashboardProps) {
   const [saving, setSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const paymentSyncRan = useRef(false);
 
   const seerahEnrollment = user.enrollments.find((item) => item.course.slug === "seerah-course");
   const latestRegistration = user.registrations.find((item) => item.course.slug === "seerah-course");
@@ -98,6 +105,87 @@ export default function StudentDashboard({ user }: DashboardProps) {
         .sort((left, right) => left.name.localeCompare(right.name)),
     [],
   );
+
+  useEffect(() => {
+    if (paymentSyncRan.current) return;
+
+    const payment = searchParams.get("payment");
+    const provider = searchParams.get("provider");
+    const registrationId = searchParams.get("registrationId");
+    if (payment !== "success" || !provider || !registrationId) return;
+
+    paymentSyncRan.current = true;
+    setPaymentError(null);
+    setPaymentMessage(provider === "paypal" ? "Confirming your PayPal payment..." : "Confirming your Stripe payment...");
+
+    const finish = (message?: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("payment");
+      params.delete("provider");
+      params.delete("registrationId");
+      params.delete("session_id");
+      params.delete("token");
+      params.delete("PayerID");
+      router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
+      router.refresh();
+      if (message) {
+        setPaymentMessage(message);
+      }
+    };
+
+    if (provider === "paypal") {
+      const orderId = searchParams.get("token");
+      if (!orderId) {
+        setPaymentError("PayPal returned without an order token, so payment could not be confirmed automatically.");
+        finish();
+        return;
+      }
+
+      void fetch("/api/payments/paypal/capture-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId, orderId }),
+      })
+        .then(async (response) => {
+          const payload = (await response.json()) as { error?: string };
+          if (!response.ok) {
+            throw new Error(payload.error || "PayPal payment confirmation failed.");
+          }
+          finish("Your payment has been confirmed and your registration is now fully active.");
+        })
+        .catch((error: unknown) => {
+          setPaymentError(error instanceof Error ? error.message : "PayPal payment confirmation failed.");
+          setPaymentMessage(null);
+        });
+      return;
+    }
+
+    if (provider === "stripe") {
+      const sessionId = searchParams.get("session_id");
+      if (!sessionId) {
+        setPaymentError("Stripe returned without a session id, so payment could not be confirmed automatically.");
+        finish();
+        return;
+      }
+
+      void fetch("/api/payments/stripe/confirm-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ registrationId, sessionId }),
+      })
+        .then(async (response) => {
+          const payload = (await response.json()) as { error?: string };
+          if (!response.ok) {
+            throw new Error(payload.error || "Stripe payment confirmation failed.");
+          }
+          finish("Your payment has been confirmed and your registration is now fully active.");
+        })
+        .catch((error: unknown) => {
+          setPaymentError(error instanceof Error ? error.message : "Stripe payment confirmation failed.");
+          setPaymentMessage(null);
+        });
+    }
+  }, [pathname, router, searchParams]);
 
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -143,6 +231,16 @@ export default function StudentDashboard({ user }: DashboardProps) {
               <p className="ga-copy" style={{ marginTop: "0.75rem", maxWidth: 760 }}>
                 Track your enrollment, payment, subscription, and Seerah LMS access from one place.
               </p>
+              {paymentMessage ? (
+                <p className="ga-copy" style={{ marginTop: "0.75rem", color: "#0f5e91" }}>
+                  {paymentMessage}
+                </p>
+              ) : null}
+              {paymentError ? (
+                <p className="ga-copy" style={{ marginTop: "0.75rem", color: "#a33f3f" }}>
+                  {paymentError}
+                </p>
+              ) : null}
             </div>
             <div className="ga-dashboard-actions">
               <Link href="/seerah/register" className="ga-btn ga-btn-outline">

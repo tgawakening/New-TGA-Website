@@ -60,7 +60,7 @@ const initialForm: FormState = {
   genuineFinancialNeed: false,
 };
 
-export default function FreeWarriorPage() {
+export default function FeeWaiverPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +102,7 @@ export default function FreeWarriorPage() {
     setSuccess(null);
 
     try {
-      const response = await fetch("/api/free-warrior/apply", {
+      const response = await fetch("/api/fee-waiver/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
