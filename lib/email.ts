@@ -10,7 +10,15 @@ type EmailPayload = {
 };
 
 function getOptionalEnv(name: string) {
-  const value = process.env[name]?.trim();
+  const rawValue = process.env[name]?.trim();
+  const value =
+    rawValue && (
+      (rawValue.startsWith("\"") && rawValue.endsWith("\"")) ||
+      (rawValue.startsWith("'") && rawValue.endsWith("'"))
+    )
+      ? rawValue.slice(1, -1).trim()
+      : rawValue;
+
   return value ? value : null;
 }
 
@@ -65,20 +73,36 @@ export async function sendTransactionalEmail(payload: EmailPayload) {
     return { status: "SKIPPED" as const };
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: emailFrom,
-      to: [payload.to],
+  let response: Response;
+
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: emailFrom,
+        to: [payload.to],
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
+      }),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown email send error.";
+    await logEmail({
+      userId: payload.userId,
+      to: payload.to,
       subject: payload.subject,
-      html: payload.html,
-      text: payload.text,
-    }),
-  });
+      emailType: payload.emailType,
+      status: "FAILED",
+      payload,
+      error: message,
+    });
+    throw new Error(`Email send failed: ${message}`);
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

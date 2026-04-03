@@ -12,6 +12,9 @@ type Props = {
 };
 
 type TabKey = "home" | "orders" | "students" | "scholarships" | "mission";
+type RegistrationRow = AdminDashboardSnapshot["registrations"][number];
+type StudentRow = AdminDashboardSnapshot["students"][number];
+type FeeWaiverRow = AdminDashboardSnapshot["freeWarriorApplications"][number];
 
 const currencyFormatter = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -42,6 +45,37 @@ function percent(value: number, total: number) {
   return Math.round((value / total) * 100);
 }
 
+function formatBoolean(value: boolean) {
+  return value ? "Yes" : "No";
+}
+
+function getPrimaryActionLabel(row: RegistrationRow) {
+  if (row.adminState === "COMPLETED") {
+    return row.canManuallyComplete ? "Marked Paid" : row.isPartialScholarshipOrder ? "Approved" : "Completed";
+  }
+
+  if (row.canManuallyComplete) return "Mark Paid";
+  return row.isPartialScholarshipOrder ? "Approve" : "Complete";
+}
+
+function DetailsButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="ga-admin-icon-btn" onClick={onClick} aria-label="View details">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6S2 12 2 12Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      </svg>
+    </button>
+  );
+}
+
 export default function AdminDashboard({ data, adminEmail, initialNotifications }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("home");
@@ -59,6 +93,8 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>(initialNotifications);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedFeeWaiverId, setSelectedFeeWaiverId] = useState<string | null>(null);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
 
   const orderRows = useMemo(() => {
@@ -66,7 +102,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
     return data.registrations.filter((row) => {
       if (
         term &&
-        ![row.paymentReference ?? "", row.fullName, row.email, row.courseTitle, row.countryName]
+        ![row.paymentReference ?? "", row.fullName, row.email, row.courseTitle, row.countryName, row.contributionLabel ?? ""]
           .join(" ")
           .toLowerCase()
           .includes(term)
@@ -75,7 +111,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
       }
 
       if (statusFilter !== "ALL" && row.adminState !== statusFilter) return false;
-      if (paymentFilter !== "ALL" && row.paymentMethod !== paymentFilter) return false;
+      if (paymentFilter !== "ALL" && row.paymentLabel !== paymentFilter) return false;
       if (courseFilter !== "ALL" && row.courseSlug !== courseFilter) return false;
       if (pricingFilter === "DISCOUNTED" && !row.hasDiscount) return false;
       if (pricingFilter === "FULL_PRICE" && row.hasDiscount) return false;
@@ -88,7 +124,10 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
     const term = search.trim().toLowerCase();
     return data.students.filter((row) => {
       if (!term) return true;
-      return [row.fullName, row.email, row.countryName ?? "", row.phone].join(" ").toLowerCase().includes(term);
+      return [row.fullName, row.email, row.countryName ?? "", row.phone, row.latestPaymentLabel ?? "", row.latestAmountLabel ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(term);
     });
   }, [data.students, search]);
 
@@ -97,7 +136,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
     return data.freeWarriorApplications.filter((row) => {
       if (applicationStatusFilter !== "ALL" && row.status !== applicationStatusFilter) return false;
       if (!term) return true;
-      return [row.fullName, row.email, row.whatsapp, row.cityCountry].join(" ").toLowerCase().includes(term);
+      return [row.fullName, row.email, row.whatsapp, row.cityCountry, row.contributionLabel].join(" ").toLowerCase().includes(term);
     });
   }, [applicationStatusFilter, data.freeWarriorApplications, search]);
 
@@ -110,12 +149,12 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
     });
   }, [data.missionSupportDonations, missionStatusFilter, search]);
 
-  const paymentOptions = Array.from(new Set(data.registrations.map((row) => row.paymentMethod)));
+  const paymentOptions = Array.from(new Set(data.registrations.map((row) => row.paymentLabel)));
   const courseOptions = Array.from(new Set(data.registrations.map((row) => row.courseSlug)));
 
   const paymentCounts = useMemo(() => {
     return data.registrations.reduce<Record<string, number>>((acc, row) => {
-      acc[row.paymentMethod] = (acc[row.paymentMethod] ?? 0) + 1;
+      acc[row.paymentLabel] = (acc[row.paymentLabel] ?? 0) + 1;
       return acc;
     }, {});
   }, [data.registrations]);
@@ -202,6 +241,10 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
 
   const recentOrders = orderRows.slice(0, 5);
   const recentStudents = studentRows.slice(0, 5);
+  const selectedStudent: StudentRow | null = selectedStudentId ? data.students.find((row) => row.id === selectedStudentId) ?? null : null;
+  const selectedFeeWaiver: FeeWaiverRow | null = selectedFeeWaiverId
+    ? data.freeWarriorApplications.find((row) => row.id === selectedFeeWaiverId) ?? null
+    : null;
   const unreadNotificationsCount = useMemo(() => {
     if (!lastSeenAt) return 0;
     const lastSeenTime = new Date(lastSeenAt).getTime();
@@ -218,11 +261,11 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
           : "Mission Support Donations";
   const workspaceDescription =
     activeTab === "orders"
-      ? "Filter and update registration, payment, and enrollment states."
+      ? "Review live orders with cleaner payment labels and state-aware action buttons."
       : activeTab === "students"
-        ? "Scan the current student base and track access history."
+        ? "Scan the full student list in a compact table and open details only when needed."
         : activeTab === "scholarships"
-        ? "Review scholarship requests and approve or reject them."
+        ? "Review fee warrior applications in a compact list with quick actions and detail popups."
         : "Review donor submissions, confirm manual support payments, and track contribution details.";
 
   useEffect(() => {
@@ -306,7 +349,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
             Students
           </button>
           <button type="button" className={`ga-admin-nav-pill ${activeTab === "scholarships" ? "is-active" : ""}`} onClick={() => setActiveTab("scholarships")}>
-            Fee Waivers
+            Fee Warriors
           </button>
           <button type="button" className={`ga-admin-nav-pill ${activeTab === "mission" ? "is-active" : ""}`} onClick={() => setActiveTab("mission")}>
             Mission Support
@@ -410,7 +453,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
             <article className="ga-admin-metric-card is-mint">
               <span>Total Orders</span>
               <strong>{data.summary.totalOrders}</strong>
-              <small>Live registrations in system</small>
+                  <small>Payable orders in system</small>
             </article>
             <article className="ga-admin-metric-card is-blue">
               <span>Revenue</span>
@@ -420,7 +463,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
             <article className="ga-admin-metric-card is-lilac">
               <span>Fee Waivers</span>
               <strong>{data.summary.feeWaivers}</strong>
-              <small>Approved or pending waivers</small>
+                  <small>Approved or pending applications</small>
             </article>
             <article className="ga-admin-metric-card is-gold">
               <span>Pending Value</span>
@@ -461,7 +504,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
               <div className="ga-admin-card-head">
                 <div>
                   <h2>Payment Mix</h2>
-                  <p>Distribution by payment provider</p>
+                  <p>Distribution by payment flow</p>
                 </div>
               </div>
               <div className="ga-admin-bars">
@@ -472,7 +515,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                   return (
                     <div key={option} className="ga-admin-bar-row">
                       <div className="ga-admin-bar-meta">
-                        <span>{prettify(option)}</span>
+                        <span>{option}</span>
                         <strong>{count}</strong>
                       </div>
                       <div className="ga-admin-bar-track">
@@ -533,7 +576,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
               <div className="ga-admin-quick-actions">
                 <button type="button" onClick={() => setActiveTab("orders")}>Review Orders</button>
                 <button type="button" onClick={() => setActiveTab("students")}>View Students</button>
-                <button type="button" onClick={() => setActiveTab("scholarships")}>Check Fee Waivers</button>
+                <button type="button" onClick={() => setActiveTab("scholarships")}>Check Fee Warriors</button>
                 <button type="button" onClick={() => setActiveTab("mission")}>Review Mission Support</button>
               </div>
             </article>
@@ -618,7 +661,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
               <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
                 <option value="ALL">All payments</option>
                 {paymentOptions.map((option) => (
-                  <option key={option} value={option}>{prettify(option)}</option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
               <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)}>
@@ -644,93 +687,120 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                 <span>Date</span>
                 <span>Actions</span>
               </div>
-              {orderRows.map((row) => (
-                <article key={row.id} className="ga-admin-table-row">
-                  <div>
-                    <span className="ga-admin-pill">Seerah</span>
-                    <strong>{row.paymentReference ?? row.id}</strong>
-                    <p>{row.courseTitle}</p>
-                    {row.discountLabel ? <span className="ga-admin-subpill">{row.discountLabel}</span> : null}
-                  </div>
+              {orderRows.length > 0 ? (
+                orderRows.map((row) => {
+                  const isSaving = submittingRow === row.id;
+                  const isCompleted = row.adminState === "COMPLETED";
+                  const isPending = row.adminState === "PENDING";
+                  const isCancelled = row.adminState === "CANCELLED";
+
+                  return (
+                    <article key={row.id} className="ga-admin-table-row">
+                      <div>
+                        <span className="ga-admin-pill">Seerah</span>
+                        <strong>{row.paymentReference ?? row.id}</strong>
+                        <p>{row.courseTitle}</p>
+                        {row.discountLabel ? <span className="ga-admin-subpill">{row.discountLabel}</span> : null}
+                      </div>
+                      <div>
+                        <strong>{row.fullName}</strong>
+                        <p>{row.email}</p>
+                        <p>{row.phone}</p>
+                      </div>
+                      <div>
+                        <strong>{row.amountLabel}</strong>
+                        <p>{row.countryName}</p>
+                        {row.contributionLabel ? <p>{row.contributionLabel}</p> : null}
+                      </div>
+                      <div>
+                        <strong>{row.paymentLabel}</strong>
+                        {row.paymentDetail ? <p>{row.paymentDetail}</p> : null}
+                        <p>{prettify(row.paymentStatus)}</p>
+                        {row.subscriptionStatus ? <p>Subscription: {prettify(row.subscriptionStatus)}</p> : null}
+                      </div>
+                      <div>
+                        <span className={`ga-admin-status is-${row.adminState.toLowerCase()}`}>{prettify(row.adminState)}</span>
+                        <p>Reg: {prettify(row.registrationStatus)}</p>
+                        <p>Enroll: {prettify(row.enrollmentStatus)}</p>
+                      </div>
+                      <div>
+                        <strong>{formatDate(row.createdAt)}</strong>
+                      </div>
+                      <div className="ga-admin-actions">
+                        <button
+                          type="button"
+                          className="ga-admin-primary-btn"
+                          disabled={isSaving || isCompleted}
+                          onClick={() => void updateRegistrationStatus(row.id, "COMPLETE")}
+                        >
+                          {isSaving ? "Saving..." : getPrimaryActionLabel(row)}
+                        </button>
+                        <button
+                          type="button"
+                          className="ga-admin-outline-btn"
+                          disabled={isSaving || isPending}
+                          onClick={() => void updateRegistrationStatus(row.id, "PENDING")}
+                        >
+                          {isPending ? "Pending" : "Set Pending"}
+                        </button>
+                        <button
+                          type="button"
+                          className="ga-admin-outline-btn is-danger"
+                          disabled={isSaving || isCancelled}
+                          onClick={() => void updateRegistrationStatus(row.id, "CANCEL")}
+                        >
+                          {isCancelled ? "Cancelled" : "Cancel"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })
+              ) : (
+                <p className="ga-admin-empty-state">No orders match the current filters.</p>
+              )}
+            </div>
+          </>
+        ) : null}
+
+        {activeTab === "students" ? (
+          <div className="ga-admin-data-table">
+            <div className="ga-admin-table-head ga-admin-table-head-students">
+              <span>Student</span>
+              <span>Country</span>
+              <span>Access</span>
+              <span>Latest Order</span>
+              <span>Details</span>
+            </div>
+            {studentRows.length > 0 ? (
+                studentRows.map((row) => (
+                <article key={row.id} className="ga-admin-table-row ga-admin-table-row-students">
                   <div>
                     <strong>{row.fullName}</strong>
                     <p>{row.email}</p>
                     <p>{row.phone}</p>
                   </div>
                   <div>
-                    <strong>{row.amountLabel}</strong>
-                    <p>{row.countryName}</p>
+                    <strong>{row.countryName ?? "N/A"}</strong>
+                    <p>Scholarships: {row.scholarshipCount}</p>
                   </div>
                   <div>
-                    <strong>{prettify(row.paymentMethod)}</strong>
-                    <p>{prettify(row.paymentStatus)}</p>
-                    {row.subscriptionStatus ? <p>Subscription: {prettify(row.subscriptionStatus)}</p> : null}
+                    <strong>{row.activeEnrollments} active</strong>
+                    <p>{row.completedPayments} completed payments</p>
+                    <p>{row.totalRegistrations} registrations</p>
                   </div>
                   <div>
-                    <span className={`ga-admin-status is-${row.adminState.toLowerCase()}`}>{prettify(row.adminState)}</span>
-                    <p>Reg: {prettify(row.registrationStatus)}</p>
-                    <p>Enroll: {prettify(row.enrollmentStatus)}</p>
+                    <strong>{row.latestAmountLabel ?? "N/A"}</strong>
+                    <p>{row.latestPaymentLabel ?? "No orders yet"}</p>
+                    <p>{row.latestAdminState ? prettify(row.latestAdminState) : "N/A"}</p>
                   </div>
-                  <div>
-                    <strong>{formatDate(row.createdAt)}</strong>
-                  </div>
-                  <div className="ga-admin-actions">
-                    <button
-                      type="button"
-                      className="ga-admin-primary-btn"
-                      disabled={submittingRow === row.id}
-                      onClick={() => void updateRegistrationStatus(row.id, "COMPLETE")}
-                    >
-                      {submittingRow === row.id ? "Saving..." : row.canManuallyComplete ? "Mark Paid" : "Complete"}
-                    </button>
-                    <button
-                      type="button"
-                      className="ga-admin-outline-btn"
-                      disabled={submittingRow === row.id}
-                      onClick={() => void updateRegistrationStatus(row.id, "PENDING")}
-                    >
-                      Pending
-                    </button>
-                    <button
-                      type="button"
-                      className="ga-admin-outline-btn is-danger"
-                      disabled={submittingRow === row.id}
-                      onClick={() => void updateRegistrationStatus(row.id, "CANCEL")}
-                    >
-                      Cancel
-                    </button>
+                  <div className="ga-admin-actions ga-admin-actions-inline">
+                    <DetailsButton onClick={() => setSelectedStudentId(row.id)} />
                   </div>
                 </article>
-              ))}
-            </div>
-          </>
-        ) : null}
-
-        {activeTab === "students" ? (
-          <div className="ga-admin-card-grid">
-            {recentStudents.map((row) => (
-              <article key={row.id} className="ga-admin-mini-card">
-                <div className="ga-admin-mini-head">
-                  <div className="ga-admin-mini-avatar">{row.fullName.slice(0, 1).toUpperCase()}</div>
-                  <div>
-                    <strong>{row.fullName}</strong>
-                    <p>{row.email}</p>
-                  </div>
-                </div>
-                <div className="ga-admin-mini-stats">
-                  <div><span>Phone</span><strong>{row.phone}</strong></div>
-                  <div><span>Country</span><strong>{row.countryName ?? "N/A"}</strong></div>
-                  <div><span>Registrations</span><strong>{row.totalRegistrations}</strong></div>
-                  <div><span>Active</span><strong>{row.activeEnrollments}</strong></div>
-                </div>
-              </article>
-            ))}
-            {studentRows.length > recentStudents.length ? (
-              <article className="ga-admin-mini-card is-more">
-                <strong>{studentRows.length - recentStudents.length} more students</strong>
-                <p>Use search to scan the full student base.</p>
-              </article>
-            ) : null}
+              ))
+            ) : (
+              <p className="ga-admin-empty-state">No students match the current search.</p>
+            )}
           </div>
         ) : null}
 
@@ -745,65 +815,64 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
               </select>
             </div>
 
-            <div className="ga-admin-card-grid">
-              {feeWaiverRows.map((row) => (
-                <article key={row.id} className="ga-admin-fee-card">
-                  <div className="ga-admin-fee-head">
+            <div className="ga-admin-data-table">
+              <div className="ga-admin-table-head ga-admin-table-head-scholarships">
+                <span>Applicant</span>
+                <span>Contact</span>
+                <span>City</span>
+                <span>Payment Preference</span>
+                <span>Status</span>
+                <span>Actions</span>
+              </div>
+              {feeWaiverRows.length > 0 ? (
+                  feeWaiverRows.map((row) => (
+                  <article key={row.id} className="ga-admin-table-row ga-admin-table-row-scholarships">
                     <div>
                       <strong>{row.fullName}</strong>
                       <p>{row.email}</p>
-                      <p>{row.whatsapp}</p>
+                      <p>{row.courseTitle}</p>
                     </div>
-                    <span className={`ga-admin-status is-${row.status.toLowerCase()}`}>{prettify(row.status)}</span>
-                  </div>
-
-                  <div className="ga-admin-fee-grid">
-                    <p><strong>City:</strong> {row.cityCountry}</p>
-                    <p><strong>Occupation:</strong> {row.occupation}</p>
-                    <p><strong>Level:</strong> {row.knowledgeLevel}</p>
-                    <p><strong>Course:</strong> {row.courseTitle}</p>
-                    <p><strong>Price:</strong> {row.listedPrice}</p>
-                    <p><strong>Attendance:</strong> {row.canAttendRegularly}</p>
-                  </div>
-
-                  <div className="ga-admin-fee-copy">
-                    <p><strong>What draws them:</strong> {row.whatDrawsYou}</p>
-                    <p><strong>How it benefits:</strong> {row.howItBenefits}</p>
-                    <p><strong>Most interesting topic:</strong> {row.mostInterestingTopic}</p>
-                    <p><strong>Why this topic:</strong> {row.whyThisTopic}</p>
-                    <p><strong>Reason for waiver:</strong> {row.reasonForWaiver}</p>
-                  </div>
-
-                  <textarea
-                    rows={3}
-                    value={feeWaiverNotes[row.id] ?? row.reviewNote ?? ""}
-                    onChange={(event) => setFeeWaiverNotes((current) => ({ ...current, [row.id]: event.target.value }))}
-                    placeholder="Optional admin note"
-                    className="ga-admin-note"
-                  />
-
-                  {row.status === "PENDING" ? (
+                    <div>
+                      <strong>{row.whatsapp}</strong>
+                      <p>{row.occupation}</p>
+                    </div>
+                    <div>
+                      <strong>{row.cityCountry}</strong>
+                      <p>{row.knowledgeLevel}</p>
+                    </div>
+                    <div>
+                      <strong>{row.paymentLabel}</strong>
+                      <p>{row.amountLabel}</p>
+                      <p>{row.contributionLabel}</p>
+                    </div>
+                    <div>
+                      <span className={`ga-admin-status is-${row.status.toLowerCase()}`}>{prettify(row.status)}</span>
+                      {row.reviewNote ? <p>{row.reviewNote}</p> : null}
+                    </div>
                     <div className="ga-admin-actions">
                       <button
                         type="button"
                         className="ga-admin-primary-btn"
-                        disabled={submittingRow === row.id}
+                        disabled={submittingRow === row.id || row.status !== "PENDING"}
                         onClick={() => void reviewFeeWaiver(row.id, true)}
                       >
-                        {submittingRow === row.id ? "Saving..." : "Approve"}
+                        {submittingRow === row.id ? "Saving..." : row.status === "APPROVED" ? "Approved" : "Approve"}
                       </button>
                       <button
                         type="button"
                         className="ga-admin-outline-btn is-danger"
-                        disabled={submittingRow === row.id}
+                        disabled={submittingRow === row.id || row.status !== "PENDING"}
                         onClick={() => void reviewFeeWaiver(row.id, false)}
                       >
-                        Reject
+                        {row.status === "REJECTED" ? "Rejected" : "Reject"}
                       </button>
+                      <DetailsButton onClick={() => setSelectedFeeWaiverId(row.id)} />
                     </div>
-                  ) : null}
-                </article>
-              ))}
+                  </article>
+                ))
+              ) : (
+                <p className="ga-admin-empty-state">No fee warrior applications match the current filters.</p>
+              )}
             </div>
           </>
         ) : null}
@@ -893,6 +962,135 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
         {message ? <p className="ga-admin-success-banner">{message}</p> : null}
         {error ? <p className="ga-admin-error-banner">{error}</p> : null}
       </section>
+      ) : null}
+
+      {selectedStudent ? (
+        <div className="ga-admin-modal-backdrop" onClick={() => setSelectedStudentId(null)}>
+          <section className="ga-admin-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="ga-admin-modal-head">
+              <div>
+                <p className="ga-admin-kicker">Student Details</p>
+                <h3>{selectedStudent.fullName}</h3>
+              </div>
+              <button type="button" className="ga-admin-notification-close" onClick={() => setSelectedStudentId(null)}>
+                Close
+              </button>
+            </div>
+
+            <div className="ga-admin-modal-grid">
+              <p><strong>Email:</strong> {selectedStudent.email}</p>
+              <p><strong>Phone:</strong> {selectedStudent.phone}</p>
+              <p><strong>Country:</strong> {selectedStudent.countryName ?? "N/A"}</p>
+              <p><strong>Total registrations:</strong> {selectedStudent.totalRegistrations}</p>
+              <p><strong>Active enrollments:</strong> {selectedStudent.activeEnrollments}</p>
+              <p><strong>Scholarships:</strong> {selectedStudent.scholarshipCount}</p>
+              <p><strong>Completed payments:</strong> {selectedStudent.completedPayments}</p>
+              <p><strong>Latest order:</strong> {formatDate(selectedStudent.latestOrderDate)}</p>
+            </div>
+
+            <div className="ga-admin-modal-section">
+              <h4>Registrations</h4>
+              <div className="ga-admin-detail-list">
+                {selectedStudent.registrationSummaries.map((item) => (
+                  <div key={item.id} className="ga-admin-detail-list-item">
+                    <div>
+                      <strong>{item.paymentReference ?? item.id}</strong>
+                      <p>{item.courseTitle}</p>
+                    </div>
+                    <div>
+                      <strong>{item.amountLabel}</strong>
+                      <p>{item.paymentLabel}</p>
+                    </div>
+                    <div>
+                      <span className={`ga-admin-status is-${item.adminState.toLowerCase()}`}>{prettify(item.adminState)}</span>
+                      <p>{formatDate(item.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {selectedFeeWaiver ? (
+        <div className="ga-admin-modal-backdrop" onClick={() => setSelectedFeeWaiverId(null)}>
+          <section className="ga-admin-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="ga-admin-modal-head">
+              <div>
+                <p className="ga-admin-kicker">Fee Warrior Details</p>
+                <h3>{selectedFeeWaiver.fullName}</h3>
+              </div>
+              <button type="button" className="ga-admin-notification-close" onClick={() => setSelectedFeeWaiverId(null)}>
+                Close
+              </button>
+            </div>
+
+            <div className="ga-admin-modal-grid">
+              <p><strong>Email:</strong> {selectedFeeWaiver.email}</p>
+              <p><strong>WhatsApp:</strong> {selectedFeeWaiver.whatsapp}</p>
+              <p><strong>Age:</strong> {selectedFeeWaiver.age ?? "N/A"}</p>
+              <p><strong>City and country:</strong> {selectedFeeWaiver.cityCountry}</p>
+              <p><strong>Occupation:</strong> {selectedFeeWaiver.occupation}</p>
+              <p><strong>Knowledge level:</strong> {selectedFeeWaiver.knowledgeLevel}</p>
+              <p><strong>Course:</strong> {selectedFeeWaiver.courseTitle}</p>
+              <p><strong>Listed price:</strong> {selectedFeeWaiver.listedPrice}</p>
+              <p><strong>Payment preference:</strong> {selectedFeeWaiver.paymentLabel}</p>
+              <p><strong>Amount:</strong> {selectedFeeWaiver.amountLabel}</p>
+              <p><strong>Can attend regularly:</strong> {selectedFeeWaiver.canAttendRegularly}</p>
+              <p><strong>How heard:</strong> {selectedFeeWaiver.howHeard ?? "N/A"}</p>
+              <p><strong>Orientation attended:</strong> {formatBoolean(selectedFeeWaiver.attendedOrientation)}</p>
+              <p><strong>Adab commitment:</strong> {formatBoolean(selectedFeeWaiver.adabCommitment)}</p>
+              <p><strong>Genuine need confirmed:</strong> {formatBoolean(selectedFeeWaiver.genuineFinancialNeed)}</p>
+              <p><strong>Status:</strong> {prettify(selectedFeeWaiver.status)}</p>
+              {selectedFeeWaiver.senderName ? <p><strong>Sender name:</strong> {selectedFeeWaiver.senderName}</p> : null}
+              {selectedFeeWaiver.senderNumber ? <p><strong>Sender number:</strong> {selectedFeeWaiver.senderNumber}</p> : null}
+              {selectedFeeWaiver.referenceKey ? <p><strong>Reference key:</strong> {selectedFeeWaiver.referenceKey}</p> : null}
+            </div>
+
+            <div className="ga-admin-modal-section">
+              <h4>Application Responses</h4>
+              <div className="ga-admin-copy-stack">
+                <p><strong>Previous Seerah study:</strong> {selectedFeeWaiver.previousSeerahStudy ?? "N/A"}</p>
+                <p><strong>Current involvement:</strong> {selectedFeeWaiver.currentInvolvement ?? "N/A"}</p>
+                <p><strong>What draws them:</strong> {selectedFeeWaiver.whatDrawsYou}</p>
+                <p><strong>How it benefits:</strong> {selectedFeeWaiver.howItBenefits}</p>
+                <p><strong>Most interesting topic:</strong> {selectedFeeWaiver.mostInterestingTopic}</p>
+                <p><strong>Why this topic:</strong> {selectedFeeWaiver.whyThisTopic}</p>
+                <p><strong>Financial reason:</strong> {selectedFeeWaiver.applicationReason}</p>
+                {selectedFeeWaiver.manualNotes ? <p><strong>Manual notes:</strong> {selectedFeeWaiver.manualNotes}</p> : null}
+                {selectedFeeWaiver.reviewNote ? <p><strong>Admin note:</strong> {selectedFeeWaiver.reviewNote}</p> : null}
+              </div>
+            </div>
+
+            <textarea
+              rows={4}
+              value={feeWaiverNotes[selectedFeeWaiver.id] ?? selectedFeeWaiver.reviewNote ?? ""}
+              onChange={(event) => setFeeWaiverNotes((current) => ({ ...current, [selectedFeeWaiver.id]: event.target.value }))}
+              placeholder="Optional admin note"
+              className="ga-admin-note"
+            />
+
+            <div className="ga-admin-actions ga-admin-modal-actions">
+              <button
+                type="button"
+                className="ga-admin-primary-btn"
+                disabled={submittingRow === selectedFeeWaiver.id || selectedFeeWaiver.status !== "PENDING"}
+                onClick={() => void reviewFeeWaiver(selectedFeeWaiver.id, true)}
+              >
+                {submittingRow === selectedFeeWaiver.id ? "Saving..." : selectedFeeWaiver.status === "APPROVED" ? "Approved" : "Approve"}
+              </button>
+              <button
+                type="button"
+                className="ga-admin-outline-btn is-danger"
+                disabled={submittingRow === selectedFeeWaiver.id || selectedFeeWaiver.status !== "PENDING"}
+                onClick={() => void reviewFeeWaiver(selectedFeeWaiver.id, false)}
+              >
+                {selectedFeeWaiver.status === "REJECTED" ? "Rejected" : "Reject"}
+              </button>
+            </div>
+          </section>
+        </div>
       ) : null}
     </div>
   );

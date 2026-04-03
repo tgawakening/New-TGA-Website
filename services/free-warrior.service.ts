@@ -2,6 +2,7 @@ import { PaymentMethod, PaymentStatus, RegistrationStatus, EnrollmentStatus, Fre
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
+import { parseFreeWarriorContribution } from "@/lib/free-warrior";
 import type { FreeWarriorApplicationInput, FreeWarriorReviewInput } from "@/lib/validations/free-warrior";
 
 function buildScholarshipReference() {
@@ -231,11 +232,23 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
     throw new Error("Course not found for this application.");
   }
 
+  const contribution = parseFreeWarriorContribution(application.reasonForWaiver);
   const scholarshipReference = buildScholarshipReference();
   const temporaryPassword = buildTemporaryPassword();
   const passwordHash = await bcrypt.hash(temporaryPassword, 12);
   const country = parseCountryFromCityCountry(application.cityCountry);
   const phone = parsePhoneParts(application.whatsapp);
+  const approvedAt = new Date();
+  const isFullScholarship = contribution.contributionPreference === "FULL_SCHOLARSHIP";
+  const approvedAmountPence = contribution.monthlyContributionGbp
+    ? Math.round(contribution.monthlyContributionGbp * 100)
+    : 0;
+  const registrationStatus = isFullScholarship ? RegistrationStatus.ACTIVE : RegistrationStatus.MANUAL_REVIEW;
+  const paymentStatus = isFullScholarship ? PaymentStatus.CONFIRMED : PaymentStatus.UNDER_REVIEW;
+  const enrollmentStatus = isFullScholarship ? EnrollmentStatus.ACTIVE : EnrollmentStatus.PENDING;
+  const adminPaymentNote = isFullScholarship
+    ? "Approved fee warrior application with full scholarship."
+    : `Approved fee warrior application with partial contribution: ${contribution.amountLabel}.`;
 
   const result = await prisma.$transaction(async (tx) => {
     let createdNewUser = false;
@@ -289,87 +302,199 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
 
     let registrationId = existingRegistration?.id ?? null;
 
-    if (!existingRegistration) {
-      const registration = await tx.registration.create({
-        data: {
-          userId: user.id,
-          courseId: course.id,
-          selectedCountryCode: country.countryCode,
-          selectedCountryName: country.countryName,
-          selectedCurrency: "GBP",
-          baseAmount: 2000,
-          autoDiscountAmount: 2000,
-          couponDiscountAmount: 0,
-          finalAmount: 0,
-          paymentMethod: PaymentMethod.BANK_TRANSFER,
-          paymentReference: scholarshipReference,
-          status: RegistrationStatus.ACTIVE,
-          pricingSnapshot: {
-            mode: "FREE_WARRIOR_SCHOLARSHIP",
-            originalPrice: application.listedPrice,
-            approvedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      await tx.payment.create({
-        data: {
-          registrationId: registration.id,
-          provider: PaymentMethod.BANK_TRANSFER,
-          amount: 0,
-          currency: "GBP",
-          status: PaymentStatus.CONFIRMED,
-          manualNotes: "Approved fee waiver scholarship with full waiver.",
-          paidAt: new Date(),
-          rawPayloadJson: {
-            source: "FREE_WARRIOR_APPLICATION",
-            applicationId: application.id,
-          },
-        },
-      });
-
-      await tx.enrollment.create({
-        data: {
-          userId: user.id,
-          courseId: course.id,
-          registrationId: registration.id,
-          status: EnrollmentStatus.ACTIVE,
-          activatedAt: new Date(),
-        },
-      });
-
-      registrationId = registration.id;
-    } else {
-      await tx.registration.update({
-        where: { id: existingRegistration.id },
-        data: {
-          status: RegistrationStatus.ACTIVE,
-        },
-      });
-
-      if (existingRegistration.enrollment) {
-        await tx.enrollment.update({
-          where: { registrationId: existingRegistration.id },
+      if (!existingRegistration) {
+        const registration = await tx.registration.create({
           data: {
-            status: EnrollmentStatus.ACTIVE,
-            activatedAt: new Date(),
+            userId: user.id,
+            courseId: course.id,
+            selectedCountryCode: country.countryCode,
+            selectedCountryName: country.countryName,
+            selectedCurrency: "GBP",
+            baseAmount: 2000,
+            autoDiscountAmount: Math.max(2000 - approvedAmountPence, 0),
+            couponDiscountAmount: 0,
+            finalAmount: approvedAmountPence,
+            paymentMethod: PaymentMethod.BANK_TRANSFER,
+            paymentReference: scholarshipReference,
+            status: registrationStatus,
+            pricingSnapshot: {
+              mode: "FREE_WARRIOR_SCHOLARSHIP",
+              originalPrice: application.listedPrice,
+              approvedAt: approvedAt.toISOString(),
+              contributionPreference: contribution.contributionPreference,
+              monthlyContributionPkr: contribution.monthlyContributionPkr,
+              monthlyContributionGbp: contribution.monthlyContributionGbp,
+              contributionLabel: contribution.contributionLabel,
+            },
           },
         });
-      }
 
-      if (existingRegistration.payment) {
-        await tx.payment.update({
-          where: { registrationId: existingRegistration.id },
+        const payment = await tx.payment.create({
           data: {
-            status: PaymentStatus.CONFIRMED,
-            amount: 0,
+            registrationId: registration.id,
+            provider: PaymentMethod.BANK_TRANSFER,
+            amount: approvedAmountPence,
             currency: "GBP",
-            manualNotes: "Approved fee waiver scholarship with full waiver.",
-            paidAt: new Date(),
+            status: paymentStatus,
+            manualNotes: adminPaymentNote,
+            paidAt: isFullScholarship ? approvedAt : null,
+            rawPayloadJson: {
+              source: "FREE_WARRIOR_APPLICATION",
+              applicationId: application.id,
+              contributionPreference: contribution.contributionPreference,
+              monthlyContributionPkr: contribution.monthlyContributionPkr,
+              monthlyContributionGbp: contribution.monthlyContributionGbp,
+            },
           },
         });
+
+        if (!isFullScholarship && contribution.senderName && contribution.senderNumber && contribution.referenceKey) {
+          await tx.manualPaymentSubmission.create({
+            data: {
+              paymentId: payment.id,
+              method: PaymentMethod.BANK_TRANSFER,
+              senderName: contribution.senderName,
+              senderNumber: contribution.senderNumber,
+              referenceKey: contribution.referenceKey,
+              notes: contribution.manualNotes,
+              submittedAt: approvedAt,
+            },
+          });
+        }
+
+        await tx.enrollment.create({
+          data: {
+            userId: user.id,
+            courseId: course.id,
+            registrationId: registration.id,
+            status: enrollmentStatus,
+            activatedAt: isFullScholarship ? approvedAt : null,
+          },
+        });
+
+        registrationId = registration.id;
+      } else {
+        await tx.registration.update({
+          where: { id: existingRegistration.id },
+          data: {
+            selectedCountryCode: country.countryCode,
+            selectedCountryName: country.countryName,
+            selectedCurrency: "GBP",
+            baseAmount: 2000,
+            autoDiscountAmount: Math.max(2000 - approvedAmountPence, 0),
+            couponDiscountAmount: 0,
+            finalAmount: approvedAmountPence,
+            paymentMethod: PaymentMethod.BANK_TRANSFER,
+            paymentReference: scholarshipReference,
+            status: registrationStatus,
+            pricingSnapshot: {
+              mode: "FREE_WARRIOR_SCHOLARSHIP",
+              originalPrice: application.listedPrice,
+              approvedAt: approvedAt.toISOString(),
+              contributionPreference: contribution.contributionPreference,
+              monthlyContributionPkr: contribution.monthlyContributionPkr,
+              monthlyContributionGbp: contribution.monthlyContributionGbp,
+              contributionLabel: contribution.contributionLabel,
+            },
+          },
+        });
+
+        if (existingRegistration.enrollment) {
+          await tx.enrollment.update({
+            where: { registrationId: existingRegistration.id },
+            data: {
+              status: enrollmentStatus,
+              activatedAt: isFullScholarship ? approvedAt : null,
+            },
+          });
+        } else {
+          await tx.enrollment.create({
+            data: {
+              userId: user.id,
+              courseId: course.id,
+              registrationId: existingRegistration.id,
+              status: enrollmentStatus,
+              activatedAt: isFullScholarship ? approvedAt : null,
+            },
+          });
+        }
+
+        if (existingRegistration.payment) {
+          await tx.payment.update({
+            where: { registrationId: existingRegistration.id },
+            data: {
+              provider: PaymentMethod.BANK_TRANSFER,
+              status: paymentStatus,
+              amount: approvedAmountPence,
+              currency: "GBP",
+              manualNotes: adminPaymentNote,
+              paidAt: isFullScholarship ? approvedAt : null,
+              rawPayloadJson: {
+                source: "FREE_WARRIOR_APPLICATION",
+                applicationId: application.id,
+                contributionPreference: contribution.contributionPreference,
+                monthlyContributionPkr: contribution.monthlyContributionPkr,
+                monthlyContributionGbp: contribution.monthlyContributionGbp,
+              },
+            },
+          });
+
+          if (!isFullScholarship && contribution.senderName && contribution.senderNumber && contribution.referenceKey) {
+            await tx.manualPaymentSubmission.upsert({
+              where: { paymentId: existingRegistration.payment.id },
+              update: {
+                method: PaymentMethod.BANK_TRANSFER,
+                senderName: contribution.senderName,
+                senderNumber: contribution.senderNumber,
+                referenceKey: contribution.referenceKey,
+                notes: contribution.manualNotes,
+              },
+              create: {
+                paymentId: existingRegistration.payment.id,
+                method: PaymentMethod.BANK_TRANSFER,
+                senderName: contribution.senderName,
+                senderNumber: contribution.senderNumber,
+                referenceKey: contribution.referenceKey,
+                notes: contribution.manualNotes,
+                submittedAt: approvedAt,
+              },
+            });
+          }
+        } else {
+          const payment = await tx.payment.create({
+            data: {
+              registrationId: existingRegistration.id,
+              provider: PaymentMethod.BANK_TRANSFER,
+              amount: approvedAmountPence,
+              currency: "GBP",
+              status: paymentStatus,
+              manualNotes: adminPaymentNote,
+              paidAt: isFullScholarship ? approvedAt : null,
+              rawPayloadJson: {
+                source: "FREE_WARRIOR_APPLICATION",
+                applicationId: application.id,
+                contributionPreference: contribution.contributionPreference,
+                monthlyContributionPkr: contribution.monthlyContributionPkr,
+                monthlyContributionGbp: contribution.monthlyContributionGbp,
+              },
+            },
+          });
+
+          if (!isFullScholarship && contribution.senderName && contribution.senderNumber && contribution.referenceKey) {
+            await tx.manualPaymentSubmission.create({
+              data: {
+                paymentId: payment.id,
+                method: PaymentMethod.BANK_TRANSFER,
+                senderName: contribution.senderName,
+                senderNumber: contribution.senderNumber,
+                referenceKey: contribution.referenceKey,
+                notes: contribution.manualNotes,
+                submittedAt: approvedAt,
+              },
+            });
+          }
+        }
       }
-    }
 
     const reviewedApplication = await tx.freeWarriorApplication.update({
       where: { id: application.id },
@@ -386,6 +511,8 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
       user,
       registrationId,
       temporaryPassword: createdNewUser ? temporaryPassword : null,
+      contribution,
+      scholarshipReference,
     };
   });
 
@@ -398,20 +525,38 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
       html: `
         <p>Assalam-u-Alaikum ${application.fullName},</p>
         <p>Your Fee Waiver application for ${application.courseTitle} has been approved.</p>
-        <p>Your scholarship has been fully waived and your student access is now active.</p>
+        <p>${
+          isFullScholarship
+            ? "Your scholarship has been fully waived and your student access is now active."
+            : `Your reduced monthly contribution has been approved at <strong>${contribution.amountLabel}</strong>. Your order is now awaiting admin payment confirmation.`
+        }</p>
         ${
           result.temporaryPassword
             ? `<p>Temporary password: <strong>${result.temporaryPassword}</strong></p>`
-            : "<p>Your existing account has been activated for this course.</p>"
+            : isFullScholarship
+              ? "<p>Your existing account has been activated for this course.</p>"
+              : "<p>Your existing account is ready. Access will be activated after payment confirmation.</p>"
         }
-        <p>You can log in and access your dashboard now.</p>
+        <p>${
+          isFullScholarship
+            ? "You can log in and access your dashboard now."
+            : "You can log in now, and the dashboard will unlock fully once admin marks the payment as complete."
+        }</p>
       `,
       text: [
         `Assalam-u-Alaikum ${application.fullName},`,
         `Your Fee Waiver application for ${application.courseTitle} has been approved.`,
-        "Your scholarship has been fully waived and your student access is now active.",
-        result.temporaryPassword ? `Temporary password: ${result.temporaryPassword}` : "Your existing account has been activated for this course.",
-        "You can log in and access your dashboard now.",
+        isFullScholarship
+          ? "Your scholarship has been fully waived and your student access is now active."
+          : `Your reduced monthly contribution has been approved at ${contribution.amountLabel}. Your order is now awaiting admin payment confirmation.`,
+        result.temporaryPassword
+          ? `Temporary password: ${result.temporaryPassword}`
+          : isFullScholarship
+            ? "Your existing account has been activated for this course."
+            : "Your existing account is ready. Access will be activated after payment confirmation.",
+        isFullScholarship
+          ? "You can log in and access your dashboard now."
+          : "You can log in now, and the dashboard will unlock fully once admin marks the payment as complete.",
       ].join("\n"),
     }),
     notifyAdmins({
@@ -421,13 +566,15 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
         <p>Fee Waiver application approved.</p>
         <p>Name: <strong>${application.fullName}</strong></p>
         <p>Email: ${application.email}</p>
-        <p>Scholarship reference: ${scholarshipReference}</p>
+        <p>Contribution: ${contribution.contributionLabel}</p>
+        <p>Scholarship reference: ${result.scholarshipReference}</p>
       `,
       text: [
         "Fee Waiver application approved.",
         `Name: ${application.fullName}`,
         `Email: ${application.email}`,
-        `Scholarship reference: ${scholarshipReference}`,
+        `Contribution: ${contribution.contributionLabel}`,
+        `Scholarship reference: ${result.scholarshipReference}`,
       ].join("\n"),
     }),
   ]);

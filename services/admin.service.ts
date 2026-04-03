@@ -5,6 +5,7 @@ import {
   RegistrationStatus,
   type FreeWarriorApplicationStatus,
 } from "@prisma/client";
+import { formatApproxScholarshipAmount, parseFreeWarriorContribution } from "@/lib/free-warrior";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { adminConfirmManualPayment } from "@/services/payment.service";
@@ -62,6 +63,8 @@ export type AdminDashboardSnapshot = {
     rawAmount: number;
     rawCurrency: string;
     paymentMethod: string;
+    paymentLabel: string;
+    paymentDetail: string | null;
     paymentStatus: string;
     registrationStatus: string;
     enrollmentStatus: string;
@@ -70,6 +73,9 @@ export type AdminDashboardSnapshot = {
     hasDiscount: boolean;
     discountLabel: string | null;
     isFeeWaived: boolean;
+    isFullScholarshipOrder: boolean;
+    isPartialScholarshipOrder: boolean;
+    contributionLabel: string | null;
     adminState: "COMPLETED" | "PENDING" | "CANCELLED";
     canManuallyComplete: boolean;
     adminNote: string | null;
@@ -85,21 +91,37 @@ export type AdminDashboardSnapshot = {
     completedPayments: number;
     scholarshipCount: number;
     latestOrderDate: string | null;
+    latestPaymentLabel: string | null;
+    latestAmountLabel: string | null;
+    latestAdminState: "COMPLETED" | "PENDING" | "CANCELLED" | null;
+    registrationSummaries: Array<{
+      id: string;
+      paymentReference: string | null;
+      courseTitle: string;
+      amountLabel: string;
+      paymentLabel: string;
+      adminState: "COMPLETED" | "PENDING" | "CANCELLED";
+      createdAt: string;
+    }>;
   }>;
   freeWarriorApplications: Array<{
     id: string;
     fullName: string;
     email: string;
     whatsapp: string;
+    age: number | null;
     cityCountry: string;
     occupation: string;
     knowledgeLevel: string;
     reasonForWaiver: string;
+    applicationReason: string;
     courseTitle: string;
     listedPrice: string;
     status: FreeWarriorApplicationStatus;
     reviewNote: string | null;
     createdAt: string;
+    previousSeerahStudy: string | null;
+    currentInvolvement: string | null;
     whatDrawsYou: string;
     howItBenefits: string;
     mostInterestingTopic: string;
@@ -108,6 +130,17 @@ export type AdminDashboardSnapshot = {
     attendedOrientation: boolean;
     adabCommitment: boolean;
     genuineFinancialNeed: boolean;
+    howHeard: string | null;
+    contributionPreference: "FULL_SCHOLARSHIP" | "PARTIAL_CONTRIBUTION";
+    contributionLabel: string;
+    paymentLabel: string;
+    amountLabel: string;
+    monthlyContributionPkr: number | null;
+    monthlyContributionGbp: number | null;
+    senderName: string | null;
+    senderNumber: string | null;
+    referenceKey: string | null;
+    manualNotes: string | null;
   }>;
   missionSupportDonations: Array<{
     id: string;
@@ -214,6 +247,64 @@ function getDiscountLabel(row: {
   return labels.length > 0 ? labels.join(" • ") : null;
 }
 
+function getScholarshipSnapshotDetails(pricingSnapshot: unknown) {
+  if (!pricingSnapshot || typeof pricingSnapshot !== "object") return null;
+  const snapshot = pricingSnapshot as Record<string, unknown>;
+  if (snapshot.mode !== "FREE_WARRIOR_SCHOLARSHIP") return null;
+
+  return {
+    contributionPreference:
+      snapshot.contributionPreference === "PARTIAL_CONTRIBUTION" ? "PARTIAL_CONTRIBUTION" : "FULL_SCHOLARSHIP",
+    monthlyContributionPkr:
+      typeof snapshot.monthlyContributionPkr === "number" ? snapshot.monthlyContributionPkr : null,
+    contributionLabel: typeof snapshot.contributionLabel === "string" ? snapshot.contributionLabel : null,
+  };
+}
+
+function getRegistrationPaymentPresentation(input: {
+  paymentMethod: PaymentMethod;
+  finalAmount: number;
+  pricingSnapshot: unknown;
+}) {
+  const scholarship = getScholarshipSnapshotDetails(input.pricingSnapshot);
+  const isFullScholarshipOrder =
+    input.finalAmount === 0 && scholarship?.contributionPreference === "FULL_SCHOLARSHIP";
+  const isPartialScholarshipOrder = scholarship?.contributionPreference === "PARTIAL_CONTRIBUTION";
+
+  if (isFullScholarshipOrder) {
+    return {
+      paymentLabel: "On Full Scholarship",
+      paymentDetail: "Approved fee waiver",
+      isFullScholarshipOrder: true,
+      isPartialScholarshipOrder: false,
+      contributionLabel: scholarship?.contributionLabel ?? "Needs full scholarship",
+    };
+  }
+
+  if (isPartialScholarshipOrder && scholarship?.monthlyContributionPkr) {
+    return {
+      paymentLabel: "Bank Transfer",
+      paymentDetail: formatApproxScholarshipAmount(scholarship.monthlyContributionPkr),
+      isFullScholarshipOrder: false,
+      isPartialScholarshipOrder: true,
+      contributionLabel: scholarship?.contributionLabel ?? null,
+    };
+  }
+
+  return {
+    paymentLabel:
+      input.paymentMethod === PaymentMethod.BANK_TRANSFER
+        ? "Bank Transfer"
+        : input.paymentMethod === PaymentMethod.JAZZCASH
+          ? "JazzCash"
+          : input.paymentMethod,
+    paymentDetail: null,
+    isFullScholarshipOrder: false,
+    isPartialScholarshipOrder: false,
+    contributionLabel: null,
+  };
+}
+
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
   const [registrations, users, applications, missionSupport] = await Promise.all([
     prisma.registration.findMany({
@@ -235,7 +326,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       include: {
         studentProfile: true,
         registrations: {
-          include: { payment: true },
+          include: { payment: true, course: true },
           orderBy: { createdAt: "desc" },
         },
         enrollments: true,
@@ -255,6 +346,11 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       registrationStatus: row.status,
       enrollmentStatus: row.enrollment?.status ?? EnrollmentStatus.PENDING,
     });
+    const paymentPresentation = getRegistrationPaymentPresentation({
+      paymentMethod: row.paymentMethod,
+      finalAmount: row.finalAmount,
+      pricingSnapshot: row.pricingSnapshot,
+    });
 
     return {
       id: row.id,
@@ -271,6 +367,8 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       rawAmount: row.finalAmount,
       rawCurrency: row.selectedCurrency,
       paymentMethod: row.paymentMethod,
+      paymentLabel: paymentPresentation.paymentLabel,
+      paymentDetail: paymentPresentation.paymentDetail,
       paymentStatus: row.payment?.status ?? "INITIATED",
       registrationStatus: row.status,
       enrollmentStatus: row.enrollment?.status ?? "PENDING",
@@ -279,26 +377,31 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       hasDiscount: row.autoDiscountAmount > 0 || row.couponDiscountAmount > 0 || row.finalAmount === 0,
       discountLabel,
       isFeeWaived: row.finalAmount === 0,
+      isFullScholarshipOrder: paymentPresentation.isFullScholarshipOrder,
+      isPartialScholarshipOrder: paymentPresentation.isPartialScholarshipOrder,
+      contributionLabel: paymentPresentation.contributionLabel,
       adminState,
       canManuallyComplete:
-        row.paymentMethod === PaymentMethod.BANK_TRANSFER || row.paymentMethod === PaymentMethod.JAZZCASH,
+        (row.paymentMethod === PaymentMethod.BANK_TRANSFER || row.paymentMethod === PaymentMethod.JAZZCASH) &&
+        !paymentPresentation.isFullScholarshipOrder,
       adminNote: row.payment?.manualNotes ?? row.payment?.manualSubmission?.reviewNote ?? null,
     };
   });
+  const orderRegistrations = mappedRegistrations.filter((item) => !item.isFullScholarshipOrder);
 
   const summary = {
-    totalOrders: mappedRegistrations.length,
-    completedOrders: mappedRegistrations.filter((item) => item.adminState === "COMPLETED").length,
-    pendingOrders: mappedRegistrations.filter((item) => item.adminState === "PENDING").length,
-    cancelledOrders: mappedRegistrations.filter((item) => item.adminState === "CANCELLED").length,
-    revenuePence: mappedRegistrations
+    totalOrders: orderRegistrations.length,
+    completedOrders: orderRegistrations.filter((item) => item.adminState === "COMPLETED").length,
+    pendingOrders: orderRegistrations.filter((item) => item.adminState === "PENDING").length,
+    cancelledOrders: orderRegistrations.filter((item) => item.adminState === "CANCELLED").length,
+    revenuePence: orderRegistrations
       .filter((item) => item.adminState === "COMPLETED" && item.rawCurrency === "GBP")
       .reduce((sum, item) => sum + item.rawAmount, 0),
-    pendingPence: mappedRegistrations
+    pendingPence: orderRegistrations
       .filter((item) => item.adminState === "PENDING" && item.rawCurrency === "GBP")
       .reduce((sum, item) => sum + item.rawAmount, 0),
-    feeWaivers: mappedRegistrations.filter((item) => item.isFeeWaived).length,
-    discountedOrders: mappedRegistrations.filter((item) => item.hasDiscount).length,
+    feeWaivers: applications.filter((item) => item.status !== "REJECTED").length,
+    discountedOrders: orderRegistrations.filter((item) => item.hasDiscount).length,
     studentCount: users.length,
     missionSupportCount: missionSupport.length,
     missionSupportRevenuePence: missionSupport
@@ -308,44 +411,90 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
 
   return {
     summary,
-    registrations: mappedRegistrations,
-    students: users.map((user) => ({
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      phone: `${user.phoneCountryCode} ${user.phoneNumber}`,
-      countryName: user.studentProfile?.countryName ?? null,
-      totalRegistrations: user.registrations.length,
-      activeEnrollments: user.enrollments.filter((item) => item.status === EnrollmentStatus.ACTIVE).length,
-      completedPayments: user.registrations.filter(
-        (item) => item.payment?.status === PaymentStatus.SUCCEEDED || item.payment?.status === PaymentStatus.CONFIRMED,
-      ).length,
-      scholarshipCount: user.registrations.filter((item) => item.finalAmount === 0).length,
-      latestOrderDate: user.registrations[0]?.createdAt.toISOString() ?? null,
-    })),
-    freeWarriorApplications: applications.map((item) => ({
-      id: item.id,
-      fullName: item.fullName,
-      email: item.email,
-      whatsapp: item.whatsapp,
-      cityCountry: item.cityCountry,
-      occupation: item.occupation,
-      knowledgeLevel: item.knowledgeLevel,
-      reasonForWaiver: item.reasonForWaiver,
-      courseTitle: item.courseTitle,
-      listedPrice: item.listedPrice,
-      status: item.status,
-      reviewNote: item.reviewNote,
-      createdAt: item.createdAt.toISOString(),
-      whatDrawsYou: item.whatDrawsYou,
-      howItBenefits: item.howItBenefits,
-      mostInterestingTopic: item.mostInterestingTopic,
-      whyThisTopic: item.whyThisTopic,
-      canAttendRegularly: item.canAttendRegularly,
-      attendedOrientation: item.attendedOrientation,
-      adabCommitment: item.adabCommitment,
-      genuineFinancialNeed: item.genuineFinancialNeed,
-    })),
+    registrations: orderRegistrations,
+    students: users.map((user) => {
+      const registrationSummaries = user.registrations.map((item) => {
+        const paymentPresentation = getRegistrationPaymentPresentation({
+          paymentMethod: item.paymentMethod,
+          finalAmount: item.finalAmount,
+          pricingSnapshot: item.pricingSnapshot,
+        });
+
+        return {
+          id: item.id,
+          paymentReference: item.paymentReference,
+          courseTitle: item.course.title,
+          amountLabel: formatAmount(item.finalAmount, item.selectedCurrency),
+          paymentLabel: paymentPresentation.paymentLabel,
+          adminState: getAdminOrderState({
+            paymentStatus: item.payment?.status ?? PaymentStatus.INITIATED,
+            registrationStatus: item.status,
+            enrollmentStatus: user.enrollments.find((entry) => entry.registrationId === item.id)?.status ?? EnrollmentStatus.PENDING,
+          }),
+          createdAt: item.createdAt.toISOString(),
+        };
+      });
+
+      return {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: `${user.phoneCountryCode} ${user.phoneNumber}`,
+        countryName: user.studentProfile?.countryName ?? null,
+        totalRegistrations: user.registrations.length,
+        activeEnrollments: user.enrollments.filter((item) => item.status === EnrollmentStatus.ACTIVE).length,
+        completedPayments: user.registrations.filter(
+          (item) => item.payment?.status === PaymentStatus.SUCCEEDED || item.payment?.status === PaymentStatus.CONFIRMED,
+        ).length,
+        scholarshipCount: user.registrations.filter((item) => item.finalAmount === 0).length,
+        latestOrderDate: user.registrations[0]?.createdAt.toISOString() ?? null,
+        latestPaymentLabel: registrationSummaries[0]?.paymentLabel ?? null,
+        latestAmountLabel: registrationSummaries[0]?.amountLabel ?? null,
+        latestAdminState: registrationSummaries[0]?.adminState ?? null,
+        registrationSummaries,
+      };
+    }),
+    freeWarriorApplications: applications.map((item) => {
+      const contribution = parseFreeWarriorContribution(item.reasonForWaiver);
+      return {
+        id: item.id,
+        fullName: item.fullName,
+        email: item.email,
+        whatsapp: item.whatsapp,
+        age: item.age ?? null,
+        cityCountry: item.cityCountry,
+        occupation: item.occupation,
+        knowledgeLevel: item.knowledgeLevel,
+        reasonForWaiver: item.reasonForWaiver,
+        applicationReason: contribution.applicationReason,
+        courseTitle: item.courseTitle,
+        listedPrice: item.listedPrice,
+        status: item.status,
+        reviewNote: item.reviewNote,
+        createdAt: item.createdAt.toISOString(),
+        previousSeerahStudy: item.previousSeerahStudy ?? null,
+        currentInvolvement: item.currentInvolvement ?? null,
+        whatDrawsYou: item.whatDrawsYou,
+        howItBenefits: item.howItBenefits,
+        mostInterestingTopic: item.mostInterestingTopic,
+        whyThisTopic: item.whyThisTopic,
+        canAttendRegularly: item.canAttendRegularly,
+        attendedOrientation: item.attendedOrientation,
+        adabCommitment: item.adabCommitment,
+        genuineFinancialNeed: item.genuineFinancialNeed,
+        howHeard: item.howHeard ?? null,
+        contributionPreference: contribution.contributionPreference,
+        contributionLabel: contribution.contributionLabel,
+        paymentLabel: contribution.paymentLabel,
+        amountLabel: contribution.amountLabel,
+        monthlyContributionPkr: contribution.monthlyContributionPkr,
+        monthlyContributionGbp: contribution.monthlyContributionGbp,
+        senderName: contribution.senderName,
+        senderNumber: contribution.senderNumber,
+        referenceKey: contribution.referenceKey,
+        manualNotes: contribution.manualNotes,
+      };
+    }),
     missionSupportDonations: missionSupport.map((item) => ({
       id: item.id,
       fullName: item.fullName,
@@ -427,6 +576,23 @@ export async function adminUpdateRegistrationRecord(input: AdminRegistrationActi
 
   const payment = registration.payment;
   const enrollment = registration.enrollment;
+  const currentAdminState = getAdminOrderState({
+    paymentStatus: payment.status,
+    registrationStatus: registration.status,
+    enrollmentStatus: enrollment.status,
+  });
+
+  if (input.action === "COMPLETE" && currentAdminState === "COMPLETED") {
+    return { status: "COMPLETED" as const };
+  }
+
+  if (input.action === "PENDING" && currentAdminState === "PENDING") {
+    return { status: "PENDING" as const };
+  }
+
+  if (input.action === "CANCEL" && currentAdminState === "CANCELLED") {
+    return { status: "CANCELLED" as const };
+  }
 
   if (
     input.action === "COMPLETE" &&
