@@ -2,6 +2,7 @@ import AdminDashboard from "@/components/admin/admin-dashboard";
 import AdminLogin from "@/components/admin/admin-login";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { getAdminDashboardSnapshot, getAdminNotifications } from "@/services/admin.service";
+import { reconcileMissingStripeSubscriptions } from "@/services/payment.service";
 
 export default async function AdminPage() {
   const admin = await getCurrentAdmin();
@@ -17,6 +18,8 @@ export default async function AdminPage() {
       </main>
     );
   }
+
+  await reconcileMissingStripeSubscriptions();
 
   const [data, notifications] = await Promise.all([
     getAdminDashboardSnapshot(),

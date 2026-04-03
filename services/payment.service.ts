@@ -113,6 +113,14 @@ function buildResumePaymentLink(registrationId: string) {
   return `${appUrl}/seerah/register?resume=${encodeURIComponent(registrationId)}`;
 }
 
+function mapStripeSubscriptionStatus(status?: string | null) {
+  if (status === "active" || status === "trialing") return SubscriptionStatus.ACTIVE;
+  if (status === "past_due" || status === "unpaid") return SubscriptionStatus.PAST_DUE;
+  if (status === "canceled" || status === "incomplete_expired") return SubscriptionStatus.CANCELED;
+  if (status === "paused") return SubscriptionStatus.PAUSED;
+  return SubscriptionStatus.INCOMPLETE;
+}
+
 async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPayment) {
   const course = await prisma.course.findUnique({
     where: { id: registration.courseId },
@@ -362,11 +370,19 @@ export async function createStripeCheckout({
     mode: "subscription",
     success_url: successUrl,
     cancel_url: cancelUrl,
+    client_reference_id: registration.id,
     metadata: {
       registrationId: registration.id,
       paymentId: payment.id,
         userId,
       },
+    subscription_data: {
+      metadata: {
+        registrationId: registration.id,
+        paymentId: payment.id,
+        userId,
+      },
+    },
     line_items: [
       {
         quantity: 1,
@@ -407,10 +423,12 @@ export async function createStripeCheckout({
 }
 
 async function syncStripeSubscriptionFromSession({
+  stripe,
   session,
   registrationId,
   userId,
 }: {
+  stripe: import("stripe").default;
   session: {
     subscription?: string | { id?: string } | null;
     customer?: string | { id?: string } | null;
@@ -427,21 +445,55 @@ async function syncStripeSubscriptionFromSession({
     return;
   }
 
+  const stripeSubscription = (await stripe.subscriptions.retrieve(session.subscription)) as unknown as {
+    status?: string | null;
+    current_period_start?: number;
+    current_period_end?: number;
+    cancel_at_period_end?: boolean;
+    canceled_at?: number | null;
+  };
+
   await prisma.subscription.upsert({
     where: { registrationId },
     update: {
       provider: SubscriptionProvider.STRIPE,
-      status: SubscriptionStatus.ACTIVE,
+      status: mapStripeSubscriptionStatus(stripeSubscription.status),
       providerSubscriptionId: session.subscription,
       providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+      currentPeriodStart:
+        typeof stripeSubscription.current_period_start === "number"
+          ? new Date(stripeSubscription.current_period_start * 1000)
+          : null,
+      currentPeriodEnd:
+        typeof stripeSubscription.current_period_end === "number"
+          ? new Date(stripeSubscription.current_period_end * 1000)
+          : null,
+      cancelAtPeriodEnd: Boolean(stripeSubscription.cancel_at_period_end),
+      canceledAt:
+        typeof stripeSubscription.canceled_at === "number"
+          ? new Date(stripeSubscription.canceled_at * 1000)
+          : null,
     },
     create: {
       userId,
       registrationId,
       provider: SubscriptionProvider.STRIPE,
-      status: SubscriptionStatus.ACTIVE,
+      status: mapStripeSubscriptionStatus(stripeSubscription.status),
       providerSubscriptionId: session.subscription,
       providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+      currentPeriodStart:
+        typeof stripeSubscription.current_period_start === "number"
+          ? new Date(stripeSubscription.current_period_start * 1000)
+          : null,
+      currentPeriodEnd:
+        typeof stripeSubscription.current_period_end === "number"
+          ? new Date(stripeSubscription.current_period_end * 1000)
+          : null,
+      cancelAtPeriodEnd: Boolean(stripeSubscription.cancel_at_period_end),
+      canceledAt:
+        typeof stripeSubscription.canceled_at === "number"
+          ? new Date(stripeSubscription.canceled_at * 1000)
+          : null,
     },
   });
 }
@@ -487,6 +539,7 @@ export async function confirmStripeCheckoutSession({
   });
 
   await syncStripeSubscriptionFromSession({
+    stripe,
     session,
     registrationId: session.metadata?.registrationId ?? registrationId,
     userId: session.metadata?.userId ?? userId,
@@ -529,7 +582,7 @@ export async function handleStripeWebhook({
 
     const registrationId = session.metadata?.registrationId;
     const userId = session.metadata?.userId;
-    await syncStripeSubscriptionFromSession({ session, registrationId, userId });
+    await syncStripeSubscriptionFromSession({ stripe, session, registrationId, userId });
   }
 
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
@@ -546,13 +599,7 @@ export async function handleStripeWebhook({
         where: { providerSubscriptionId: subscription.id },
         data: {
           status:
-            subscription.status === "active"
-              ? SubscriptionStatus.ACTIVE
-              : subscription.status === "past_due"
-                ? SubscriptionStatus.PAST_DUE
-                : subscription.status === "canceled"
-                  ? SubscriptionStatus.CANCELED
-                  : SubscriptionStatus.INCOMPLETE,
+            mapStripeSubscriptionStatus(subscription.status),
           currentPeriodStart:
             typeof subscription.current_period_start === "number"
               ? new Date(subscription.current_period_start * 1000)
@@ -586,6 +633,62 @@ export async function handleStripeWebhook({
   }
 
   return { received: true };
+}
+
+export async function reconcileMissingStripeSubscriptions({
+  userId,
+  limit = 25,
+}: {
+  userId?: string;
+  limit?: number;
+} = {}) {
+  const stripeSecretKey = getRequiredEnv("STRIPE_SECRET_KEY");
+  const stripeModule = await import("stripe");
+  const Stripe = stripeModule.default;
+  const stripe = new Stripe(stripeSecretKey);
+
+  const registrations = await prisma.registration.findMany({
+    where: {
+      ...(userId ? { userId } : {}),
+      paymentMethod: "STRIPE",
+      payment: {
+        is: {
+          provider: "STRIPE",
+          providerOrderId: { not: null },
+        },
+      },
+      subscription: null,
+    },
+    include: {
+      payment: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+
+  let synced = 0;
+
+  for (const registration of registrations) {
+    const sessionId = registration.payment?.providerOrderId;
+    if (!sessionId) continue;
+
+    try {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (!session.subscription || typeof session.subscription !== "string") continue;
+
+      await syncStripeSubscriptionFromSession({
+        stripe,
+        session,
+        registrationId: registration.id,
+        userId: registration.userId,
+      });
+      synced += 1;
+    } catch {
+      // Skip broken or inaccessible sessions so one bad record does not block the rest.
+    }
+  }
+
+  return { checked: registrations.length, synced };
 }
 
 async function getPaypalAccessToken() {
