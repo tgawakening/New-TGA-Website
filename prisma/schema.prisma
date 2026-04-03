@@ -65,6 +65,7 @@ enum FreeWarriorApplicationStatus {
 enum SubscriptionProvider {
   STRIPE
   PAYPAL
+  MANUAL
 }
 
 enum SubscriptionStatus {

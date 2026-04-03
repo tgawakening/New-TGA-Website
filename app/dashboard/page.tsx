@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import StudentDashboard from "@/components/dashboard/student-dashboard";
 import { getCurrentUser } from "@/lib/auth/session";
-import { reconcileMissingStripeSubscriptions } from "@/services/payment.service";
+import { processDueManualSubscriptions, reconcileMissingStripeSubscriptions } from "@/services/payment.service";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -9,6 +9,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  await processDueManualSubscriptions();
   await reconcileMissingStripeSubscriptions({ userId: user.id, limit: 10 });
   const refreshedUser = await getCurrentUser();
   if (!refreshedUser) {

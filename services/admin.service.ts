@@ -8,7 +8,7 @@ import {
 import { formatApproxScholarshipAmount, parseFreeWarriorContribution } from "@/lib/free-warrior";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
-import { adminConfirmManualPayment } from "@/services/payment.service";
+import { adminActivateManualRecurringPayment, adminConfirmManualPayment } from "@/services/payment.service";
 import type { AdminRegistrationActionInput } from "@/lib/validations/admin";
 
 function isMissingDatabaseStructureError(error: unknown) {
@@ -602,6 +602,16 @@ export async function adminUpdateRegistrationRecord(input: AdminRegistrationActi
     return adminConfirmManualPayment({
       paymentId: payment.id,
       approve: true,
+      note: input.note,
+    });
+  }
+
+  if (
+    input.action === "COMPLETE" &&
+    (payment.provider === PaymentMethod.BANK_TRANSFER || payment.provider === PaymentMethod.JAZZCASH)
+  ) {
+    return adminActivateManualRecurringPayment({
+      paymentId: payment.id,
       note: input.note,
     });
   }

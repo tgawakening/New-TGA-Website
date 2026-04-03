@@ -121,6 +121,12 @@ function mapStripeSubscriptionStatus(status?: string | null) {
   return SubscriptionStatus.INCOMPLETE;
 }
 
+function addOneMonth(date: Date) {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + 1);
+  return next;
+}
+
 async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPayment) {
   const course = await prisma.course.findUnique({
     where: { id: registration.courseId },
@@ -224,6 +230,7 @@ async function markSuccessfulPayment({
     if (!payment) throw new Error("Payment not found.");
     if (payment.status === PaymentStatus.SUCCEEDED || payment.status === PaymentStatus.CONFIRMED) {
       return {
+        registrationId: payment.registrationId,
         userId: payment.registration.userId,
         fullName: payment.registration.user.fullName,
         email: payment.registration.user.email,
@@ -233,8 +240,11 @@ async function markSuccessfulPayment({
         paymentMethod: payment.provider,
         amount: payment.amount,
         currency: payment.currency,
+        paidAt: payment.paidAt ?? new Date(),
       };
     }
+
+    const paidAt = new Date();
 
     await tx.payment.update({
       where: { id: payment.id },
@@ -242,7 +252,7 @@ async function markSuccessfulPayment({
         status: PaymentStatus.SUCCEEDED,
         providerOrderId: providerOrderId ?? payment.providerOrderId,
         providerPaymentId: providerPaymentId ?? payment.providerPaymentId,
-        paidAt: new Date(),
+        paidAt,
         rawPayloadJson: payload ? toJsonValue(payload) : undefined,
       },
     });
@@ -261,6 +271,7 @@ async function markSuccessfulPayment({
     });
 
     return {
+      registrationId: payment.registrationId,
       userId: payment.registration.userId,
       fullName: payment.registration.user.fullName,
       email: payment.registration.user.email,
@@ -270,8 +281,19 @@ async function markSuccessfulPayment({
       paymentMethod: payment.provider,
       amount: payment.amount,
       currency: payment.currency,
+      paidAt,
     };
   });
+
+  if (result.paymentMethod === "BANK_TRANSFER" || result.paymentMethod === "JAZZCASH") {
+    await syncManualRecurringSubscription({
+      registrationId: result.registrationId,
+      userId: result.userId,
+      amount: result.amount,
+      activationDate: result.paidAt,
+      provider: result.paymentMethod,
+    });
+  }
 
   const appUrl = getAppUrl();
   const dashboardUrl = `${appUrl}/dashboard`;
@@ -342,6 +364,28 @@ async function markSuccessfulPayment({
       ].join("\n"),
     }),
   ]);
+}
+
+export async function adminActivateManualRecurringPayment({
+  paymentId,
+  note,
+}: {
+  paymentId: string;
+  note?: string;
+}) {
+  if (note) {
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { manualNotes: note },
+    });
+  }
+
+  await markSuccessfulPayment({
+    paymentId,
+    payload: { source: "admin-manual-recurring-complete", adminNote: note ?? null },
+  });
+
+  return { status: "CONFIRMED" as const };
 }
 
 export async function createStripeCheckout({
@@ -496,6 +540,54 @@ async function syncStripeSubscriptionFromSession({
           : null,
     },
   });
+}
+
+async function syncManualRecurringSubscription({
+  registrationId,
+  userId,
+  amount,
+  activationDate,
+  provider,
+}: {
+  registrationId: string;
+  userId: string;
+  amount: number;
+  activationDate: Date;
+  provider: "BANK_TRANSFER" | "JAZZCASH";
+}) {
+  if (amount <= 0) {
+    return null;
+  }
+
+  const manualProvider = "MANUAL" as unknown as SubscriptionProvider;
+
+  const currentPeriodStart = activationDate;
+  const currentPeriodEnd = addOneMonth(activationDate);
+
+  await prisma.subscription.upsert({
+    where: { registrationId },
+    update: {
+      provider: manualProvider,
+      status: SubscriptionStatus.ACTIVE,
+      providerCustomerId: provider,
+      currentPeriodStart,
+      currentPeriodEnd,
+      cancelAtPeriodEnd: false,
+      canceledAt: null,
+    },
+    create: {
+      userId,
+      registrationId,
+      provider: manualProvider,
+      status: SubscriptionStatus.ACTIVE,
+      providerCustomerId: provider,
+      currentPeriodStart,
+      currentPeriodEnd,
+      cancelAtPeriodEnd: false,
+    },
+  });
+
+  return { currentPeriodStart, currentPeriodEnd };
 }
 
 export async function confirmStripeCheckoutSession({
@@ -689,6 +781,143 @@ export async function reconcileMissingStripeSubscriptions({
   }
 
   return { checked: registrations.length, synced };
+}
+
+export async function processDueManualSubscriptions({
+  limit = 50,
+}: {
+  limit?: number;
+} = {}) {
+  const dueSubscriptions = await prisma.subscription.findMany({
+    where: {
+      provider: "MANUAL" as unknown as SubscriptionProvider,
+      status: SubscriptionStatus.ACTIVE,
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: {
+        lte: new Date(),
+      },
+    },
+    include: {
+      user: true,
+      registration: {
+        include: {
+          course: true,
+          payment: true,
+          enrollment: true,
+        },
+      },
+    },
+    orderBy: { currentPeriodEnd: "asc" },
+    take: limit,
+  });
+
+  let processed = 0;
+
+  for (const subscription of dueSubscriptions) {
+    const payment = subscription.registration.payment;
+    const enrollment = subscription.registration.enrollment;
+    if (!payment || !enrollment) continue;
+
+    const dueDate = subscription.currentPeriodEnd ?? new Date();
+    const orderAmount = formatAmount(payment.amount, payment.currency);
+    const appUrl = getAppUrl();
+    const resumeLink = buildResumePaymentLink(subscription.registrationId);
+    const adminDashboardUrl = `${appUrl}/admin`;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          status: SubscriptionStatus.PAST_DUE,
+        },
+      });
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: PaymentStatus.PENDING,
+          paidAt: null,
+          manualNotes: `Manual recurring payment due for cycle ending ${dueDate.toISOString()}.`,
+        },
+      });
+
+      await tx.registration.update({
+        where: { id: subscription.registrationId },
+        data: {
+          status: RegistrationStatus.PENDING_PAYMENT,
+        },
+      });
+
+      await tx.enrollment.update({
+        where: { registrationId: subscription.registrationId },
+        data: {
+          status: EnrollmentStatus.PENDING,
+          activatedAt: null,
+        },
+      });
+    });
+
+    await Promise.allSettled([
+      sendTransactionalEmail({
+        userId: subscription.userId,
+        to: subscription.user.email,
+        subject: "Monthly manual payment due for your Seerah access",
+        emailType: "MANUAL_SUBSCRIPTION_PAYMENT_DUE",
+        html: `
+          <p>Assalam-u-Alaikum ${subscription.user.fullName},</p>
+          <p>Your next monthly payment for <strong>${subscription.registration.course.title}</strong> is now due.</p>
+          <p><strong>Reference:</strong> ${subscription.registration.paymentReference ?? "N/A"}</p>
+          <p><strong>Amount:</strong> ${orderAmount}</p>
+          <p><strong>Due since:</strong> ${dueDate.toLocaleDateString("en-GB")}</p>
+          <p>Your registration has been moved to pending until this month&apos;s manual payment is confirmed.</p>
+          <p>Please submit your bank transfer or JazzCash payment and then notify admin so your access can be activated again.</p>
+          <p style="margin: 24px 0;">
+            <a href="${resumeLink}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0f5e91;color:#ffffff;text-decoration:none;font-weight:700;">Open Registration</a>
+          </p>
+        `,
+        text: [
+          `Assalam-u-Alaikum ${subscription.user.fullName},`,
+          `Your next monthly payment for ${subscription.registration.course.title} is now due.`,
+          `Reference: ${subscription.registration.paymentReference ?? "N/A"}`,
+          `Amount: ${orderAmount}`,
+          `Due since: ${dueDate.toLocaleDateString("en-GB")}`,
+          "Your registration has been moved to pending until this month's manual payment is confirmed.",
+          "Please submit your bank transfer or JazzCash payment and then notify admin so your access can be activated again.",
+          `Open registration: ${resumeLink}`,
+        ].join("\n"),
+      }),
+      notifyAdmins({
+        subject: `Manual subscription payment due: ${subscription.user.fullName}`,
+        emailType: "ADMIN_MANUAL_SUBSCRIPTION_DUE",
+        html: `
+          <p>A manual recurring subscription is now due.</p>
+          <p><strong>Name:</strong> ${subscription.user.fullName}</p>
+          <p><strong>Email:</strong> ${subscription.user.email}</p>
+          <p><strong>Course:</strong> ${subscription.registration.course.title}</p>
+          <p><strong>Amount:</strong> ${orderAmount}</p>
+          <p><strong>Reference:</strong> ${subscription.registration.paymentReference ?? "N/A"}</p>
+          <p><strong>Due since:</strong> ${dueDate.toLocaleDateString("en-GB")}</p>
+          <p style="margin: 24px 0;">
+            <a href="${adminDashboardUrl}" style="display:inline-block;padding:12px 18px;border-radius:8px;background:#0f5e91;color:#ffffff;text-decoration:none;font-weight:700;">Review in Dashboard</a>
+          </p>
+        `,
+        text: [
+          "A manual recurring subscription is now due.",
+          `Name: ${subscription.user.fullName}`,
+          `Email: ${subscription.user.email}`,
+          `Course: ${subscription.registration.course.title}`,
+          `Amount: ${orderAmount}`,
+          `Reference: ${subscription.registration.paymentReference ?? "N/A"}`,
+          `Due since: ${dueDate.toLocaleDateString("en-GB")}`,
+          `Review in dashboard: ${adminDashboardUrl}`,
+        ].join("\n"),
+      }),
+    ]);
+
+    processed += 1;
+  }
+
+  return { checked: dueSubscriptions.length, processed };
 }
 
 async function getPaypalAccessToken() {
