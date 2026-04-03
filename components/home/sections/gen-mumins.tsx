@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { fadeInUp } from "@/components/home/sections/shared";
 
 const GM_PHASES = [
@@ -163,9 +164,9 @@ export function GenMuminsTimeline() {
               ))}
             </div>
 
-            <button type="button" className={`ga-gm-cta ga-gm-cta-${active.tone}`}>
-              {active.cta}
-            </button>
+            <Link href="/projects/gen-mumin" className={`ga-gm-cta ga-gm-cta-${active.tone}`}>
+              Coming Soon
+            </Link>
           </div>
 
           <div className="ga-gm-side">
@@ -189,6 +190,12 @@ export function GenMuminsTimeline() {
             </p>
           </div>
         </motion.article>
+
+        <motion.div {...fadeInUp} className="ga-gm-summary-link">
+          <Link href="/projects/gen-mumin" className="ga-gm-summary-btn">
+            Explore Gen-Mumin Overview
+          </Link>
+        </motion.div>
       </div>
     </section>
   );

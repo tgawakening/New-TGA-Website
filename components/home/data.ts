@@ -70,6 +70,10 @@ export const navItems = [
     label: "Courses",
     children: [{ label: "Seerah:Prophetic Strategies", href: "/seerah" }],
   },
+  {
+    label: "Projects",
+    children: [{ label: "Gen-Mumin Project", href: "/projects/gen-mumin" }],
+  },
 ] satisfies NavItem[];
 
 export const missionStats: StatItem[] = [

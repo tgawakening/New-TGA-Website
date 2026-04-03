@@ -5880,3 +5880,418 @@ body {
     padding: 1rem;
   }
 }
+
+.ga-gen-page {
+  background:
+    radial-gradient(55% 38% at 10% 0%, rgba(255, 209, 153, 0.25), transparent 72%),
+    radial-gradient(45% 30% at 95% 8%, rgba(126, 210, 229, 0.22), transparent 70%),
+    linear-gradient(180deg, #fffaf3 0%, #fffefc 28%, #f7fcff 68%, #eef7fb 100%);
+  color: #294767;
+}
+
+.ga-gen-page::before,
+.ga-gen-page::after {
+  display: none;
+}
+
+.ga-gen-page .ga-header::before {
+  background: linear-gradient(180deg, rgba(255, 251, 245, 0.92), rgba(255, 251, 245, 0.84));
+}
+
+.ga-gen-page .ga-header::after {
+  background:
+    radial-gradient(circle, rgba(255, 188, 120, 0.2) 1px, transparent 1.6px),
+    radial-gradient(circle, rgba(116, 198, 221, 0.18) 1px, transparent 1.7px),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.96), rgba(251, 254, 255, 0.95));
+  background-size: 160px 160px, 220px 220px, auto 100%;
+  background-position: 0 0, 50px 40px, 0 0;
+  opacity: 1;
+}
+
+.ga-gen-page .ga-header-scrolled {
+  background: rgba(255, 252, 247, 0.96);
+  border-bottom-color: rgba(243, 198, 139, 0.28);
+  box-shadow: 0 14px 32px rgba(216, 188, 150, 0.2);
+}
+
+.ga-gen-page .ga-nav-btn,
+.ga-gen-page .ga-nav-link {
+  border-color: rgba(237, 204, 170, 0.7);
+  background: rgba(255, 255, 255, 0.88);
+  color: #6f5a47;
+}
+
+.ga-gen-page .ga-nav-btn:hover,
+.ga-gen-page .ga-nav-link:hover {
+  background: linear-gradient(180deg, rgba(255, 247, 235, 0.98), rgba(255, 255, 255, 0.96));
+  color: #504130;
+  box-shadow: 0 12px 24px rgba(225, 190, 149, 0.24);
+}
+
+.ga-gen-page .ga-header-cta.ga-cta-signin {
+  color: #5a4a3a;
+  background: linear-gradient(180deg, #fff7ea, #fff1df);
+  border-color: rgba(239, 194, 130, 0.72);
+  box-shadow: 0 10px 22px rgba(239, 194, 130, 0.24);
+}
+
+.ga-gen-page .ga-header-cta.ga-cta-register {
+  color: #fff8f2;
+  background: linear-gradient(180deg, #f2a652, #ea7d4b);
+  border-color: rgba(239, 152, 88, 0.86);
+  box-shadow: 0 12px 26px rgba(234, 125, 75, 0.28);
+}
+
+.ga-gen-shell {
+  display: grid;
+  gap: clamp(1.5rem, 2vw, 2rem);
+}
+
+.ga-gen-hero-section {
+  padding-top: clamp(2.5rem, 6vw, 5rem);
+}
+
+.ga-gen-topbar,
+.ga-gen-actions,
+.ga-gen-program-top,
+.ga-gen-banner-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ga-gen-kicker,
+.ga-gen-section-kicker {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 2.25rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid rgba(237, 196, 150, 0.68);
+  color: #e88753;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.ga-gen-top-cta,
+.ga-gen-primary-cta,
+.ga-gen-secondary-cta,
+.ga-gen-inline-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  border-radius: 999px;
+  padding: 0.72rem 1.35rem;
+  font-weight: 700;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.ga-gen-top-cta,
+.ga-gen-primary-cta,
+.ga-gen-inline-cta {
+  color: #fff8f2;
+  background: linear-gradient(180deg, #f4a24d, #ed7d4f);
+  box-shadow: 0 16px 28px rgba(237, 125, 79, 0.2);
+}
+
+.ga-gen-secondary-cta {
+  color: #4e6f8d;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(176, 214, 226, 0.76);
+}
+
+.ga-gen-top-cta:hover,
+.ga-gen-primary-cta:hover,
+.ga-gen-secondary-cta:hover,
+.ga-gen-inline-cta:hover {
+  transform: translateY(-2px);
+}
+
+.ga-gen-hero-grid,
+.ga-gen-philosophy-grid {
+  display: grid;
+  gap: clamp(1.4rem, 3vw, 2.6rem);
+  align-items: center;
+}
+
+.ga-gen-copy,
+.ga-gen-visual-card,
+.ga-gen-feature-card,
+.ga-gen-program-card,
+.ga-gen-philosophy-card,
+.ga-gen-banner-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2rem;
+  border: 1px solid rgba(234, 209, 178, 0.7);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 20px 48px rgba(226, 201, 174, 0.16);
+}
+
+.ga-gen-copy,
+.ga-gen-visual-card,
+.ga-gen-feature-card,
+.ga-gen-program-card,
+.ga-gen-philosophy-card {
+  padding: clamp(1.3rem, 3vw, 2rem);
+}
+
+.ga-gen-copy::before,
+.ga-gen-visual-card::before,
+.ga-gen-feature-card::before,
+.ga-gen-program-card::before,
+.ga-gen-philosophy-card::before,
+.ga-gen-banner-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 80% at 100% 0%, rgba(255, 196, 133, 0.16), transparent 44%),
+    radial-gradient(70% 70% at 0% 100%, rgba(146, 214, 229, 0.14), transparent 40%);
+}
+
+.ga-gen-copy > *,
+.ga-gen-visual-card > *,
+.ga-gen-feature-card > *,
+.ga-gen-program-card > *,
+.ga-gen-philosophy-card > *,
+.ga-gen-banner-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ga-gen-badge {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 242, 224, 0.95);
+  color: #d97b46;
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+
+.ga-gen-title,
+.ga-gen-section-head h2,
+.ga-gen-philosophy-card h2,
+.ga-gen-banner-card h2 {
+  margin: 0;
+  font-family: var(--font-marko-one), Georgia, serif;
+  color: #314c68;
+  line-height: 1.08;
+}
+
+.ga-gen-title {
+  margin-top: 0.95rem;
+  font-size: clamp(2.3rem, 5vw, 4.8rem);
+}
+
+.ga-gen-lead,
+.ga-gen-section-head p,
+.ga-gen-feature-card p,
+.ga-gen-program-card p,
+.ga-gen-philosophy-card p,
+.ga-gen-banner-card p,
+.ga-gen-visual-note p,
+.ga-gen-promise-card p {
+  margin: 0;
+  color: #6984a0;
+  line-height: 1.75;
+}
+
+.ga-gen-lead {
+  margin-top: 1rem;
+  max-width: 46rem;
+  font-size: 1.05rem;
+}
+
+.ga-gen-actions {
+  margin-top: 1.4rem;
+}
+
+.ga-gen-promise-grid,
+.ga-gen-feature-grid,
+.ga-gen-program-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.ga-gen-promise-grid {
+  margin-top: 1.4rem;
+}
+
+.ga-gen-promise-card {
+  border-radius: 1.4rem;
+  padding: 1rem 1.05rem;
+  background: rgba(255, 250, 243, 0.88);
+  border: 1px solid rgba(240, 214, 179, 0.72);
+}
+
+.ga-gen-promise-card strong,
+.ga-gen-feature-card h3,
+.ga-gen-program-card h3,
+.ga-gen-philosophy-card h3,
+.ga-gen-visual-note strong {
+  display: block;
+  margin: 0;
+  color: #36516d;
+}
+
+.ga-gen-promise-card strong {
+  margin-bottom: 0.35rem;
+}
+
+.ga-gen-image-frame {
+  border-radius: 1.8rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, #fff6e8, #fff);
+}
+
+.ga-gen-hero-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.ga-gen-visual-note {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1.35rem;
+  background: rgba(246, 251, 255, 0.86);
+  border: 1px solid rgba(182, 216, 230, 0.56);
+}
+
+.ga-gen-visual-note span,
+.ga-gen-program-index,
+.ga-gen-program-next,
+.ga-gen-program-stats span {
+  color: #7f97ad;
+  font-size: 0.84rem;
+}
+
+.ga-gen-section-head {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 52rem;
+}
+
+.ga-gen-feature-grid,
+.ga-gen-program-grid {
+  margin-top: 1rem;
+}
+
+.ga-gen-feature-card h3,
+.ga-gen-program-card h3,
+.ga-gen-philosophy-card h3 {
+  font-family: var(--font-marko-one), Georgia, serif;
+  font-size: 1.4rem;
+}
+
+.ga-gen-program-top {
+  margin-bottom: 0.95rem;
+}
+
+.ga-gen-program-index {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ga-gen-program-next {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.38rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(242, 248, 253, 0.92);
+}
+
+.ga-gen-program-subtitle {
+  margin-top: 0.4rem;
+  font-weight: 700;
+}
+
+.ga-gen-program-points,
+.ga-gen-program-stats,
+.ga-gen-highlight-list {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.ga-gen-program-points,
+.ga-gen-program-stats {
+  margin-top: 1rem;
+}
+
+.ga-gen-program-points span,
+.ga-gen-program-stats span,
+.ga-gen-highlight-list p {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 250, 243, 0.92);
+  border: 1px solid rgba(240, 214, 179, 0.68);
+  color: #5a6f86;
+}
+
+.ga-gen-philosophy-main {
+  background: linear-gradient(180deg, rgba(255, 250, 243, 0.94), rgba(255, 255, 255, 0.88));
+}
+
+.ga-gen-philosophy-side {
+  background: linear-gradient(180deg, rgba(241, 250, 253, 0.94), rgba(255, 255, 255, 0.88));
+}
+
+.ga-gen-banner-card {
+  padding: clamp(1.35rem, 3vw, 2rem);
+  background:
+    radial-gradient(50% 90% at 100% 0%, rgba(255, 197, 134, 0.2), transparent 42%),
+    radial-gradient(50% 90% at 0% 100%, rgba(129, 211, 231, 0.18), transparent 38%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(243, 250, 252, 0.96));
+}
+
+@media (min-width: 760px) {
+  .ga-gen-promise-grid,
+  .ga-gen-feature-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ga-gen-program-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 980px) {
+  .ga-gen-hero-grid,
+  .ga-gen-philosophy-grid {
+    grid-template-columns: minmax(0, 1.18fr) minmax(340px, 0.82fr);
+  }
+}
+
+@media (max-width: 759px) {
+  .ga-gen-topbar,
+  .ga-gen-actions,
+  .ga-gen-program-top,
+  .ga-gen-banner-card {
+    align-items: stretch;
+  }
+
+  .ga-gen-top-cta,
+  .ga-gen-primary-cta,
+  .ga-gen-secondary-cta,
+  .ga-gen-inline-cta {
+    width: 100%;
+  }
+}
