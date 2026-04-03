@@ -12,6 +12,8 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 export function PropheticStrategiesSlider() {
+  const regularPrice = "\u00A320";
+
   const getStatPair = (value: string) => {
     const parts = value.trim().split(/\s+/);
     if (parts.length === 1) {
@@ -55,7 +57,7 @@ export function PropheticStrategiesSlider() {
                   <div className="ga-seerah-content">
                     <div className="ga-seerah-head-row">
                       <div className="ga-seerah-kicker-wrap">
-                        <span className="ga-seerah-icon">⌘</span>
+                        <span className="ga-seerah-icon">{"\u2318"}</span>
                         <div>
                           <p className="ga-seerah-kicker">{`${getStatPair(slide.duration).value}-Month Journey`}</p>
                           <p className="ga-seerah-green-text">{slide.subtitle}</p>
@@ -71,7 +73,7 @@ export function PropheticStrategiesSlider() {
                     <div className="ga-seerah-points">
                       {slide.points.map((point) => (
                         <div key={point} className="ga-seerah-point">
-                          <span className="ga-seerah-check">✓</span>
+                          <span className="ga-seerah-check">{"\u2713"}</span>
                           {point}
                         </div>
                       ))}
@@ -97,7 +99,7 @@ export function PropheticStrategiesSlider() {
                         Enroll Now
                       </Link>
                       <p className="ga-seerah-price">
-                        {slide.fee.replace("Â£", "£").replace("/month", "")}
+                        {regularPrice}
                         <span>/month</span>
                       </p>
                     </div>
