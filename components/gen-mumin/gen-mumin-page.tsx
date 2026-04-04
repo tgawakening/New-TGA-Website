@@ -26,6 +26,13 @@ const heroCards = [
   },
 ];
 
+const programAccents: Record<string, string> = {
+  seerah: "Stories, identity, prophetic love",
+  arabic: "Language, reading, Qur'an connection",
+  tajweed: "Recitation, beauty, precision",
+  leadership: "Character, courage, responsibility",
+};
+
 const iconMap: Record<string, IconKind> = {
   seerah: "seerah",
   arabic: "arabic",
@@ -212,6 +219,7 @@ export default function GenMuminPage() {
                   id={`program-${step.id}`}
                   className={`ga-gen-program-card ga-gen-delay-${(index % 3) + 1} is-${step.id}`}
                 >
+                  <span className="ga-gen-program-aura" aria-hidden />
                   <div className="ga-gen-program-card-head">
                     <div className={`ga-gen-icon-shell is-${iconKind}`}>
                       <GenMuminIcon kind={iconKind} />
@@ -223,6 +231,7 @@ export default function GenMuminPage() {
                   </div>
 
                   <p className="ga-gen-program-subtitle">{step.subtitle}</p>
+                  <p className="ga-gen-program-accent-copy">{programAccents[step.id] ?? step.next}</p>
 
                   <div className="ga-gen-program-points">
                     {step.points.slice(0, 3).map((point) => (
