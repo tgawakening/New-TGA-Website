@@ -5987,20 +5987,17 @@ body {
 }
 
 .ga-gen-hero-wrap {
-  padding: clamp(1.25rem, 3vw, 2rem) 0 0;
+  padding: 0 0 1.5rem;
+  background:
+    radial-gradient(44% 46% at 0% 0%, rgba(255, 213, 162, 0.28), transparent 62%),
+    radial-gradient(38% 34% at 100% 8%, rgba(128, 210, 233, 0.26), transparent 58%),
+    linear-gradient(180deg, #fff9f2 0%, #fffdf9 58%, transparent 100%);
 }
 
 .ga-gen-hero-panel {
   display: grid;
   gap: 1.4rem;
-  padding: clamp(1.35rem, 3vw, 2.2rem);
-  border-radius: 2rem;
-  border: 1px solid rgba(236, 207, 171, 0.72);
-  background:
-    radial-gradient(60% 100% at 0% 0%, rgba(255, 218, 181, 0.24), transparent 45%),
-    radial-gradient(46% 80% at 100% 0%, rgba(145, 220, 236, 0.18), transparent 42%),
-    linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(252, 255, 255, 0.96));
-  box-shadow: 0 20px 48px rgba(218, 197, 171, 0.16);
+  padding: clamp(2rem, 5vw, 4.2rem) 0 0;
 }
 
 .ga-gen-hero-copy,
@@ -6049,8 +6046,8 @@ body {
 
 .ga-gen-title {
   margin-top: 0.9rem;
-  max-width: 12ch;
-  font-size: clamp(2rem, 3.8vw, 3.3rem);
+  max-width: 13ch;
+  font-size: clamp(1.95rem, 3.4vw, 3rem);
 }
 
 .ga-gen-lead,
@@ -6075,10 +6072,12 @@ body {
 }
 
 .ga-gen-image-frame {
-  border-radius: 1.6rem;
+  border-radius: 2rem;
   overflow: hidden;
   background: linear-gradient(180deg, #fff7e9, #fff);
-  box-shadow: inset 0 0 0 1px rgba(240, 213, 177, 0.7);
+  box-shadow:
+    inset 0 0 0 1px rgba(240, 213, 177, 0.7),
+    0 22px 46px rgba(210, 191, 171, 0.18);
 }
 
 .ga-gen-hero-image {
@@ -6094,7 +6093,6 @@ body {
 }
 
 .ga-gen-hero-card,
-.ga-gen-summary-card,
 .ga-gen-program-card,
 .ga-gen-banner-card {
   padding: 1.2rem;
@@ -6105,7 +6103,6 @@ body {
 }
 
 .ga-gen-hero-card::before,
-.ga-gen-summary-card::before,
 .ga-gen-program-card::before,
 .ga-gen-banner-card::before {
   content: "";
@@ -6118,7 +6115,6 @@ body {
 }
 
 .ga-gen-hero-card > *,
-.ga-gen-summary-card > *,
 .ga-gen-program-card > *,
 .ga-gen-banner-card > * {
   position: relative;
@@ -6132,6 +6128,18 @@ body {
 .ga-gen-hero-card p {
   margin-top: 0.45rem;
   font-size: 0.94rem;
+}
+
+.ga-gen-hero-card.is-warm {
+  background: linear-gradient(180deg, rgba(255, 246, 235, 0.96), rgba(255, 255, 255, 0.96));
+}
+
+.ga-gen-hero-card.is-sky {
+  background: linear-gradient(180deg, rgba(238, 248, 255, 0.96), rgba(255, 255, 255, 0.96));
+}
+
+.ga-gen-hero-card.is-lilac {
+  background: linear-gradient(180deg, rgba(245, 241, 255, 0.96), rgba(255, 255, 255, 0.96));
 }
 
 .ga-gen-icon-shell {
@@ -6185,50 +6193,16 @@ body {
   animation-delay: 1s;
 }
 
-.ga-gen-summary-section {
-  padding-top: 2.4rem;
-  padding-bottom: 2.6rem;
-}
-
-.ga-gen-summary-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.ga-gen-summary-card.is-soft {
-  background: linear-gradient(180deg, rgba(243, 250, 253, 0.96), rgba(255, 255, 255, 0.96));
-}
-
-.ga-gen-summary-card h2,
 .ga-gen-section-head h2,
 .ga-gen-banner-card h2 {
-  font-size: clamp(1.55rem, 2.2vw, 2.1rem);
-}
-
-.ga-gen-bullet-list {
-  display: grid;
-  gap: 0.7rem;
-}
-
-.ga-gen-bullet-list p,
-.ga-gen-program-points span,
-.ga-gen-program-stats span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.3rem;
-  width: fit-content;
-  padding: 0.45rem 0.78rem;
-  border-radius: 999px;
-  border: 1px solid rgba(227, 212, 191, 0.84);
-  background: rgba(255, 250, 244, 0.94);
-  color: #5d7287;
+  font-size: clamp(1.45rem, 2vw, 1.95rem);
 }
 
 .ga-gen-section-head {
   display: grid;
   gap: 0.8rem;
   max-width: 52rem;
-  margin-bottom: 1.2rem;
+  margin-bottom: 1rem;
 }
 
 .ga-gen-program-grid {
@@ -6249,12 +6223,12 @@ body {
 }
 
 .ga-gen-program-card h3 {
-  font-size: 1.22rem;
+  font-size: 1.1rem;
 }
 
 .ga-gen-program-subtitle {
   margin-top: 0.4rem;
-  font-size: 0.96rem;
+  font-size: 0.92rem;
 }
 
 .ga-gen-program-points,
@@ -6263,6 +6237,36 @@ body {
   gap: 0.6rem;
   flex-wrap: wrap;
   margin-top: 1rem;
+}
+
+.ga-gen-program-points span,
+.ga-gen-program-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.15rem;
+  width: fit-content;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(227, 212, 191, 0.84);
+  background: rgba(255, 255, 255, 0.68);
+  color: #5d7287;
+  font-size: 0.84rem;
+}
+
+.ga-gen-program-card.is-seerah {
+  background: linear-gradient(180deg, rgba(240, 249, 255, 0.96), rgba(255, 255, 255, 0.96));
+}
+
+.ga-gen-program-card.is-arabic {
+  background: linear-gradient(180deg, rgba(247, 243, 255, 0.96), rgba(255, 255, 255, 0.96));
+}
+
+.ga-gen-program-card.is-tajweed {
+  background: linear-gradient(180deg, rgba(255, 247, 238, 0.96), rgba(255, 255, 255, 0.96));
+}
+
+.ga-gen-program-card.is-leadership {
+  background: linear-gradient(180deg, rgba(239, 251, 247, 0.96), rgba(255, 255, 255, 0.96));
 }
 
 .ga-gen-cta-section {
@@ -6289,7 +6293,6 @@ body {
 
 @media (min-width: 760px) {
   .ga-gen-hero-cards,
-  .ga-gen-summary-grid,
   .ga-gen-program-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -6306,7 +6309,7 @@ body {
   }
 
   .ga-gen-program-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

@@ -10,23 +10,20 @@ const heroCards = [
     title: "Mission-led learning",
     copy: "A child-focused Islamic journey that builds identity, adab, and confidence with clarity.",
     icon: "mission" as const,
+    tone: "warm",
   },
   {
     title: "Gentle teaching method",
     copy: "Interactive delivery, memorable visuals, and practical lessons designed for young minds.",
     icon: "method" as const,
+    tone: "sky",
   },
   {
     title: "Structured growth path",
     copy: "Seerah, Arabic, Tajweed, and leadership are introduced as one connected development journey.",
     icon: "journey" as const,
+    tone: "lilac",
   },
-];
-
-const philosophyPoints = [
-  "Short, engaging, age-appropriate learning blocks",
-  "Islamic identity and confidence built through warmth",
-  "Clear progression from love of deen to practical skill",
 ];
 
 const iconMap: Record<string, IconKind> = {
@@ -153,7 +150,7 @@ export default function GenMuminPage() {
             <div className="ga-gen-hero-panel">
               <div className="ga-gen-hero-copy">
                 <span className="ga-gen-badge">TGA Project For Young Muslim Development</span>
-                <h1 className="ga-gen-title">A beautiful, structured overview of the Gen-Mumin learning journey.</h1>
+                <h1 className="ga-gen-title">Raising confident and thoughtful Muslim children through a beautiful, guided learning journey.</h1>
                 <p className="ga-gen-lead">
                   Gen-Mumin is being designed to help children grow in love for the Prophet, confidence in their Muslim
                   identity, and skill in Qur&apos;an, Arabic, and leadership through a clear and engaging path.
@@ -183,7 +180,7 @@ export default function GenMuminPage() {
 
             <div className="ga-gen-hero-cards">
               {heroCards.map((card, index) => (
-                <article key={card.title} className={`ga-gen-hero-card ga-gen-delay-${index + 1}`}>
+                <article key={card.title} className={`ga-gen-hero-card ga-gen-delay-${index + 1} is-${card.tone}`}>
                   <div className={`ga-gen-icon-shell is-${card.icon}`}>
                     <GenMuminIcon kind={card.icon} />
                   </div>
@@ -195,34 +192,13 @@ export default function GenMuminPage() {
           </div>
         </section>
 
-        <section className="ga-section ga-gen-summary-section">
-          <div className="ga-container ga-gen-summary-grid">
-            <article className="ga-gen-summary-card">
-              <span className="ga-gen-section-kicker">Why It Matters</span>
-              <h2>Very summarized, but clear enough for families to understand the full direction.</h2>
-              <p>
-                This landing page is meant to introduce the project simply and beautifully before the dedicated
-                Gen-Mumin registration experience goes live.
-              </p>
-            </article>
-
-            <article className="ga-gen-summary-card is-soft">
-              <span className="ga-gen-section-kicker">Teaching Feel</span>
-              <div className="ga-gen-bullet-list">
-                {philosophyPoints.map((point) => (
-                  <p key={point}>{point}</p>
-                ))}
-              </div>
-            </article>
-          </div>
-        </section>
-
         <section id="gen-mumin-programs" className="ga-section ga-gen-program-section">
           <div className="ga-container ga-gen-section-head">
             <span className="ga-gen-section-kicker">Programs</span>
             <h2>Four connected areas that help children grow in understanding, recitation, language, and character.</h2>
             <p>
-              Each part of the journey is short, focused, and designed to feel interactive rather than heavy.
+              Each part of the journey is introduced in a short, interactive, and easy-to-follow way so families can
+              quickly understand the full program path.
             </p>
           </div>
 
@@ -231,7 +207,11 @@ export default function GenMuminPage() {
               const iconKind = iconMap[step.id] ?? "leadership";
 
               return (
-                <article key={step.id} id={`program-${step.id}`} className={`ga-gen-program-card ga-gen-delay-${(index % 3) + 1}`}>
+                <article
+                  key={step.id}
+                  id={`program-${step.id}`}
+                  className={`ga-gen-program-card ga-gen-delay-${(index % 3) + 1} is-${step.id}`}
+                >
                   <div className="ga-gen-program-card-head">
                     <div className={`ga-gen-icon-shell is-${iconKind}`}>
                       <GenMuminIcon kind={iconKind} />
@@ -245,7 +225,7 @@ export default function GenMuminPage() {
                   <p className="ga-gen-program-subtitle">{step.subtitle}</p>
 
                   <div className="ga-gen-program-points">
-                    {step.points.map((point) => (
+                    {step.points.slice(0, 3).map((point) => (
                       <span key={point}>{point}</span>
                     ))}
                   </div>
