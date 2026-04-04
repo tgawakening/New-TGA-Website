@@ -1,89 +1,173 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Header, Footer } from "@/components/home/sections";
+import { Footer } from "@/components/home/sections";
 import { muminsSteps } from "@/components/home/data";
 
-const promisePoints = [
+type IconKind = "mission" | "method" | "journey" | "seerah" | "arabic" | "tajweed" | "leadership";
+
+const heroCards = [
   {
-    title: "Faith-rooted confidence",
-    copy: "Children learn to love the Prophet, the Qur'an, and their Muslim identity with warmth, joy, and clarity.",
+    title: "Mission-led learning",
+    copy: "A child-focused Islamic journey that builds identity, adab, and confidence with clarity.",
+    icon: "mission" as const,
   },
   {
-    title: "Beautiful learning habits",
-    copy: "Every program is built around steady routines, engaging activities, and age-appropriate understanding.",
+    title: "Gentle teaching method",
+    copy: "Interactive delivery, memorable visuals, and practical lessons designed for young minds.",
+    icon: "method" as const,
   },
   {
-    title: "Leadership with adab",
-    copy: "The journey is designed to nurture courage, communication, service, and responsibility from an Islamic lens.",
+    title: "Structured growth path",
+    copy: "Seerah, Arabic, Tajweed, and leadership are introduced as one connected development journey.",
+    icon: "journey" as const,
   },
 ];
 
-const featureCards = [
-  {
-    title: "Mission & Vision",
-    copy: "Gen-Mumin is being built to raise a generation of thoughtful, grounded, and purpose-driven young Muslims who can lead with ihsan.",
-  },
-  {
-    title: "Teaching Philosophy",
-    copy: "We combine Islamic knowledge, storytelling, reflective practice, and practical skill-building so learning feels alive and relevant.",
-  },
-  {
-    title: "Program Journey",
-    copy: "From Seerah to Arabic, Tajweed, and leadership, each stage helps children grow in understanding, expression, and confidence.",
-  },
+const philosophyPoints = [
+  "Short, engaging, age-appropriate learning blocks",
+  "Islamic identity and confidence built through warmth",
+  "Clear progression from love of deen to practical skill",
 ];
 
-const highlights = [
-  "Interactive classes with clear age-appropriate delivery",
-  "Seerah-inspired identity building and love for the Prophet",
-  "Arabic and Qur'an foundations connected to daily practice",
-  "Leadership and life-skill nurturing for future Muslim contributors",
-];
+const iconMap: Record<string, IconKind> = {
+  seerah: "seerah",
+  arabic: "arabic",
+  tajweed: "tajweed",
+  leadership: "leadership",
+};
+
+function GenMuminIcon({ kind }: { kind: IconKind }) {
+  if (kind === "mission") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="14" fill="none" />
+        <path d="M24 10v10" fill="none" />
+        <path d="M24 24l8-6" fill="none" />
+        <circle cx="24" cy="24" r="3" />
+      </svg>
+    );
+  }
+
+  if (kind === "method") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="10" y="12" width="28" height="22" rx="5" fill="none" />
+        <path d="M16 22h16" fill="none" />
+        <path d="M16 28h10" fill="none" />
+        <path d="M20 34l-2 6" fill="none" />
+        <path d="M28 34l2 6" fill="none" />
+      </svg>
+    );
+  }
+
+  if (kind === "journey") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M10 32c4-12 10-16 18-16 5 0 8 2 10 4" fill="none" />
+        <path d="M28 16h10v10" fill="none" />
+        <circle cx="12" cy="32" r="2.5" />
+        <circle cx="24" cy="20" r="2.5" />
+        <circle cx="38" cy="20" r="2.5" />
+      </svg>
+    );
+  }
+
+  if (kind === "seerah") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M13 34V16c0-2 1.5-3 3.5-3H35v18c0 2-1.5 3-3.5 3H13Z" fill="none" />
+        <path d="M18 18h12" fill="none" />
+        <path d="M18 24h12" fill="none" />
+        <path d="M18 30h8" fill="none" />
+      </svg>
+    );
+  }
+
+  if (kind === "arabic") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M15 31c2-6 5-13 9-13 4 0 6 5 8 13" fill="none" />
+        <path d="M16 31h16" fill="none" />
+        <path d="M19 14h10" fill="none" />
+      </svg>
+    );
+  }
+
+  if (kind === "tajweed") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M24 12c6 0 11 5 11 11 0 8-11 14-11 14S13 31 13 23c0-6 5-11 11-11Z" fill="none" />
+        <path d="M19 24c2 2 8 2 10 0" fill="none" />
+        <path d="M20 19h8" fill="none" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="14" r="5" fill="none" />
+      <path d="M16 35c1-7 5-11 8-11s7 4 8 11" fill="none" />
+      <path d="M10 24l6 4" fill="none" />
+      <path d="M38 24l-6 4" fill="none" />
+    </svg>
+  );
+}
 
 export default function GenMuminPage() {
   return (
     <div className="ga-page ga-gen-page">
-      <Header />
-      <main>
-        <section className="ga-section ga-gen-hero-section">
-          <div className="ga-container ga-gen-shell">
-            <div className="ga-gen-topbar">
-              <span className="ga-gen-kicker">Projects / Gen-Mumin</span>
-              <Link href="/projects/gen-mumin" className="ga-gen-top-cta">
-                Coming Soon
-              </Link>
-            </div>
+      <header className="ga-gen-header">
+        <div className="ga-container ga-gen-header-row">
+          <div className="ga-gen-branding">
+            <Link href="/" className="ga-gen-home-link">
+              <span aria-hidden>&larr;</span>
+              Main Site
+            </Link>
+            <Link href="/projects/gen-mumin" className="ga-gen-logo-link" aria-label="Gen-Mumin project page">
+              <Image
+                src="/gen-mumin logo.webp"
+                alt="Gen-Mumin"
+                width={224}
+                height={72}
+                className="ga-gen-logo"
+                priority
+              />
+            </Link>
+          </div>
 
-            <div className="ga-gen-hero-grid">
-              <div className="ga-gen-copy">
-                <span className="ga-gen-badge">A TGA Project For Young Muslim Growth</span>
-                <h1 className="ga-gen-title">
-                  Raising confident and thoughtful Muslim children through a beautiful, guided learning journey.
-                </h1>
+          <nav className="ga-gen-nav" aria-label="Gen-Mumin sections">
+            <Link href="#gen-mumin-programs">Programs</Link>
+            <Link href="#program-seerah">Seerah</Link>
+            <Link href="#program-arabic">Arabic</Link>
+            <Link href="#program-tajweed">Tajweed</Link>
+            <Link href="#program-leadership">Leadership</Link>
+          </nav>
+
+          <span className="ga-gen-header-cta">Coming Soon</span>
+        </div>
+      </header>
+
+      <main>
+        <section className="ga-gen-hero-wrap">
+          <div className="ga-container">
+            <div className="ga-gen-hero-panel">
+              <div className="ga-gen-hero-copy">
+                <span className="ga-gen-badge">TGA Project For Young Muslim Development</span>
+                <h1 className="ga-gen-title">A beautiful, structured overview of the Gen-Mumin learning journey.</h1>
                 <p className="ga-gen-lead">
-                  Gen-Mumin is a child-focused pathway that introduces Seerah, Arabic, Tajweed, and leadership in a
-                  warm, structured, and inspiring format. This page gives your family a clear overview of what the
-                  program is building before full enrolment opens.
+                  Gen-Mumin is being designed to help children grow in love for the Prophet, confidence in their Muslim
+                  identity, and skill in Qur&apos;an, Arabic, and leadership through a clear and engaging path.
                 </p>
 
-                <div className="ga-gen-actions">
+                <div className="ga-gen-hero-actions">
                   <span className="ga-gen-primary-cta">Coming Soon</span>
                   <Link href="#gen-mumin-programs" className="ga-gen-secondary-cta">
-                    Explore Program Overview
+                    View Programs
                   </Link>
-                </div>
-
-                <div className="ga-gen-promise-grid">
-                  {promisePoints.map((item) => (
-                    <article key={item.title} className="ga-gen-promise-card">
-                      <strong>{item.title}</strong>
-                      <p>{item.copy}</p>
-                    </article>
-                  ))}
                 </div>
               </div>
 
-              <div className="ga-gen-visual-card">
+              <div className="ga-gen-hero-media">
                 <div className="ga-gen-image-frame">
                   <Image
                     src="/Gen-Mumin.jpeg"
@@ -94,31 +178,16 @@ export default function GenMuminPage() {
                     priority
                   />
                 </div>
-                <div className="ga-gen-visual-note">
-                  <span>Program Status</span>
-                  <strong>Launching Soon</strong>
-                  <p>Overview page is live now so TGA families can understand the direction, benefits, and journey.</p>
-                </div>
               </div>
             </div>
-          </div>
-        </section>
 
-        <section className="ga-section ga-gen-story-section">
-          <div className="ga-container ga-gen-shell">
-            <div className="ga-gen-section-head">
-              <span className="ga-gen-section-kicker">Why Gen-Mumin</span>
-              <h2>Built to give children a purposeful start in deen, character, and expression.</h2>
-              <p>
-                This project is designed as a summarized but meaningful entry point for parents who want an
-                integrated Islamic learning experience instead of isolated subjects.
-              </p>
-            </div>
-
-            <div className="ga-gen-feature-grid">
-              {featureCards.map((card) => (
-                <article key={card.title} className="ga-gen-feature-card">
-                  <h3>{card.title}</h3>
+            <div className="ga-gen-hero-cards">
+              {heroCards.map((card, index) => (
+                <article key={card.title} className={`ga-gen-hero-card ga-gen-delay-${index + 1}`}>
+                  <div className={`ga-gen-icon-shell is-${card.icon}`}>
+                    <GenMuminIcon kind={card.icon} />
+                  </div>
+                  <h2>{card.title}</h2>
                   <p>{card.copy}</p>
                 </article>
               ))}
@@ -126,79 +195,81 @@ export default function GenMuminPage() {
           </div>
         </section>
 
-        <section id="gen-mumin-programs" className="ga-section ga-gen-program-section">
-          <div className="ga-container ga-gen-shell">
-            <div className="ga-gen-section-head">
-              <span className="ga-gen-section-kicker">Program Overview</span>
-              <h2>A child-friendly roadmap from identity to skill-building.</h2>
+        <section className="ga-section ga-gen-summary-section">
+          <div className="ga-container ga-gen-summary-grid">
+            <article className="ga-gen-summary-card">
+              <span className="ga-gen-section-kicker">Why It Matters</span>
+              <h2>Very summarized, but clear enough for families to understand the full direction.</h2>
               <p>
-                The Gen-Mumin journey introduces children to the Prophet&apos;s example, Arabic foundations, Qur&apos;an
-                recitation, and leadership habits in a connected and easy-to-follow progression.
+                This landing page is meant to introduce the project simply and beautifully before the dedicated
+                Gen-Mumin registration experience goes live.
               </p>
-            </div>
+            </article>
 
-            <div className="ga-gen-program-grid">
-              {muminsSteps.map((step, index) => (
-                <article key={step.id} className="ga-gen-program-card">
-                  <div className="ga-gen-program-top">
-                    <span className="ga-gen-program-index">0{index + 1}</span>
-                    <span className="ga-gen-program-next">Next: {step.next}</span>
+            <article className="ga-gen-summary-card is-soft">
+              <span className="ga-gen-section-kicker">Teaching Feel</span>
+              <div className="ga-gen-bullet-list">
+                {philosophyPoints.map((point) => (
+                  <p key={point}>{point}</p>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section id="gen-mumin-programs" className="ga-section ga-gen-program-section">
+          <div className="ga-container ga-gen-section-head">
+            <span className="ga-gen-section-kicker">Programs</span>
+            <h2>Four connected areas that help children grow in understanding, recitation, language, and character.</h2>
+            <p>
+              Each part of the journey is short, focused, and designed to feel interactive rather than heavy.
+            </p>
+          </div>
+
+          <div className="ga-container ga-gen-program-grid">
+            {muminsSteps.map((step, index) => {
+              const iconKind = iconMap[step.id] ?? "leadership";
+
+              return (
+                <article key={step.id} id={`program-${step.id}`} className={`ga-gen-program-card ga-gen-delay-${(index % 3) + 1}`}>
+                  <div className="ga-gen-program-card-head">
+                    <div className={`ga-gen-icon-shell is-${iconKind}`}>
+                      <GenMuminIcon kind={iconKind} />
+                    </div>
+                    <div>
+                      <span className="ga-gen-program-index">0{index + 1}</span>
+                      <h3>{step.title}</h3>
+                    </div>
                   </div>
-                  <h3>{step.title}</h3>
+
                   <p className="ga-gen-program-subtitle">{step.subtitle}</p>
+
                   <div className="ga-gen-program-points">
                     {step.points.map((point) => (
                       <span key={point}>{point}</span>
                     ))}
                   </div>
+
                   <div className="ga-gen-program-stats">
                     {step.stats.map((stat) => (
                       <span key={stat}>{stat}</span>
                     ))}
                   </div>
                 </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="ga-section ga-gen-philosophy-section">
-          <div className="ga-container ga-gen-shell ga-gen-philosophy-grid">
-            <div className="ga-gen-philosophy-card ga-gen-philosophy-main">
-              <span className="ga-gen-section-kicker">Teaching Style</span>
-              <h2>Gentle, engaging, and centered on understanding rather than information overload.</h2>
-              <p>
-                Gen-Mumin aims to make young learners feel seen and inspired. Lessons are intended to be visual,
-                encouraging, and rooted in practical takeaways that families can continue beyond class time.
-              </p>
-              <div className="ga-gen-highlight-list">
-                {highlights.map((item) => (
-                  <p key={item}>{item}</p>
-                ))}
-              </div>
-            </div>
-
-            <div className="ga-gen-philosophy-card ga-gen-philosophy-side">
-              <span className="ga-gen-section-kicker">For Families</span>
-              <h3>A clear preview before enrollment opens</h3>
-              <p>
-                Full registrations will later connect to the dedicated Gen-Mumin site. For now, this overview helps
-                TGA families understand the purpose, tone, and expected learning journey.
-              </p>
-              <span className="ga-gen-inline-cta">Coming Soon</span>
-            </div>
+              );
+            })}
           </div>
         </section>
 
         <section className="ga-section ga-gen-cta-section">
-          <div className="ga-container ga-gen-shell">
+          <div className="ga-container">
             <article className="ga-gen-banner-card">
               <div>
-                <span className="ga-gen-section-kicker">Join The Next Phase</span>
-                <h2>Gen-Mumin enrollment will open soon.</h2>
+                <span className="ga-gen-section-kicker">Next Step</span>
+                <h2>Enrollment will be opened on the full Gen-Mumin site after launch.</h2>
                 <p>
-                  Until the full Gen-Mumin site is ready, this page serves as the main summary for TGA families who
-                  want to understand the vision and future learning path.
+                  For now, this page gives the TGA audience a polished overview of the project, its themes, and what
+                  families can expect from the program pathway.
                 </p>
               </div>
               <span className="ga-gen-primary-cta">Coming Soon</span>
