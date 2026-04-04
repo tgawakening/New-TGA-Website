@@ -5901,6 +5901,7 @@ body {
   border-bottom: 1px solid rgba(240, 207, 167, 0.55);
   background: rgba(255, 252, 247, 0.9);
   backdrop-filter: blur(14px);
+  box-shadow: 0 8px 26px rgba(224, 201, 174, 0.1);
 }
 
 .ga-gen-header-row,
@@ -5998,6 +5999,7 @@ body {
   display: grid;
   gap: 1.4rem;
   padding: clamp(2rem, 5vw, 4.2rem) 0 0;
+  align-items: center;
 }
 
 .ga-gen-hero-copy {
@@ -6037,7 +6039,6 @@ body {
 }
 
 .ga-gen-title,
-.ga-gen-summary-card h2,
 .ga-gen-section-head h2,
 .ga-gen-banner-card h2,
 .ga-gen-hero-card h2,
@@ -6050,8 +6051,9 @@ body {
 
 .ga-gen-title {
   margin-top: 0.9rem;
-  max-width: 13ch;
-  font-size: clamp(1.95rem, 3.4vw, 3rem);
+  max-width: 17ch;
+  font-size: clamp(1.9rem, 3vw, 2.85rem);
+  line-height: 1.08;
 }
 
 .ga-gen-lead,
@@ -6067,7 +6069,7 @@ body {
 
 .ga-gen-lead {
   margin-top: 0.85rem;
-  max-width: 36rem;
+  max-width: 32rem;
   font-size: 1rem;
 }
 
@@ -6084,7 +6086,7 @@ body {
   box-shadow:
     inset 0 0 0 1px rgba(240, 213, 177, 0.7),
     0 22px 46px rgba(210, 191, 171, 0.18);
-  transform: rotate(-1.5deg);
+  transform: rotate(-0.8deg);
 }
 
 .ga-gen-hero-media {
@@ -6126,6 +6128,7 @@ body {
   display: grid;
   gap: 1rem;
   margin-top: -2rem;
+  align-items: stretch;
 }
 
 .ga-gen-hero-card,
@@ -6133,9 +6136,8 @@ body {
 .ga-gen-banner-card {
   padding: 1.2rem;
   border-radius: 1.5rem;
-  border: 1px solid rgba(235, 208, 178, 0.72);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 18px 38px rgba(224, 202, 179, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px rgba(23, 29, 58, 0.12);
 }
 
 .ga-gen-hero-card::before,
@@ -6167,15 +6169,26 @@ body {
 }
 
 .ga-gen-hero-card.is-warm {
-  background: linear-gradient(180deg, rgba(255, 246, 235, 0.96), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(180deg, #2f355f, #1f2447);
 }
 
 .ga-gen-hero-card.is-sky {
-  background: linear-gradient(180deg, rgba(238, 248, 255, 0.96), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(180deg, #22486b, #17344f);
 }
 
 .ga-gen-hero-card.is-lilac {
-  background: linear-gradient(180deg, rgba(245, 241, 255, 0.96), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(180deg, #463767, #2f2449);
+}
+
+.ga-gen-hero-card h2,
+.ga-gen-program-card h3,
+.ga-gen-banner-card h2 {
+  color: #f7fbff;
+}
+
+.ga-gen-hero-card p,
+.ga-gen-banner-card p {
+  color: rgba(233, 241, 250, 0.82);
 }
 
 .ga-gen-icon-shell {
@@ -6200,21 +6213,21 @@ body {
 
 .ga-gen-icon-shell.is-mission,
 .ga-gen-icon-shell.is-seerah {
-  background: rgba(255, 241, 225, 0.95);
-  color: #e48653;
+  background: rgba(255, 205, 159, 0.18);
+  color: #ffc28d;
 }
 
 .ga-gen-icon-shell.is-method,
 .ga-gen-icon-shell.is-arabic {
-  background: rgba(238, 248, 253, 0.95);
-  color: #4f8db3;
+  background: rgba(141, 213, 238, 0.16);
+  color: #9adfff;
 }
 
 .ga-gen-icon-shell.is-journey,
 .ga-gen-icon-shell.is-tajweed,
 .ga-gen-icon-shell.is-leadership {
-  background: rgba(246, 242, 255, 0.95);
-  color: #8467be;
+  background: rgba(201, 176, 255, 0.16);
+  color: #d1bbff;
 }
 
 .ga-gen-delay-1 .ga-gen-icon-shell {
@@ -6241,9 +6254,14 @@ body {
   margin-bottom: 1rem;
 }
 
+.ga-gen-section-head p {
+  max-width: 42rem;
+}
+
 .ga-gen-program-grid {
   display: grid;
   gap: 1rem;
+  align-items: stretch;
 }
 
 .ga-gen-program-card-head {
@@ -6269,6 +6287,9 @@ body {
 
 .ga-gen-program-card {
   isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 .ga-gen-program-aura {
@@ -6312,7 +6333,7 @@ body {
 }
 
 .ga-gen-program-card.is-seerah {
-  background: linear-gradient(180deg, rgba(240, 249, 255, 0.96), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(180deg, #204868, #172f46);
 }
 
 .ga-gen-program-card.is-seerah .ga-gen-program-aura {
@@ -6320,11 +6341,11 @@ body {
 }
 
 .ga-gen-program-card.is-seerah .ga-gen-program-accent-copy {
-  color: #4f89a6;
+  color: #8fd4ef;
 }
 
 .ga-gen-program-card.is-arabic {
-  background: linear-gradient(180deg, rgba(247, 243, 255, 0.96), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(180deg, #433063, #2c2144);
 }
 
 .ga-gen-program-card.is-arabic .ga-gen-program-aura {
@@ -6332,11 +6353,11 @@ body {
 }
 
 .ga-gen-program-card.is-arabic .ga-gen-program-accent-copy {
-  color: #7862bc;
+  color: #c6b1ff;
 }
 
 .ga-gen-program-card.is-tajweed {
-  background: linear-gradient(180deg, rgba(255, 247, 238, 0.96), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(180deg, #5a3b2e, #3d281f);
 }
 
 .ga-gen-program-card.is-tajweed .ga-gen-program-aura {
@@ -6344,11 +6365,11 @@ body {
 }
 
 .ga-gen-program-card.is-tajweed .ga-gen-program-accent-copy {
-  color: #d07d44;
+  color: #ffc98f;
 }
 
 .ga-gen-program-card.is-leadership {
-  background: linear-gradient(180deg, rgba(239, 251, 247, 0.96), rgba(255, 255, 255, 0.96));
+  background: linear-gradient(180deg, #1f5447, #173b33);
 }
 
 .ga-gen-program-card.is-leadership .ga-gen-program-aura {
@@ -6356,11 +6377,18 @@ body {
 }
 
 .ga-gen-program-card.is-leadership .ga-gen-program-accent-copy {
-  color: #3f9a75;
+  color: #94e2be;
 }
 
-.ga-gen-cta-section {
-  padding-top: 1.4rem;
+.ga-gen-program-card p {
+  color: rgba(235, 242, 249, 0.82);
+}
+
+.ga-gen-program-points span,
+.ga-gen-program-stats span {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(247, 250, 255, 0.9);
 }
 
 .ga-gen-banner-card {
@@ -6368,7 +6396,11 @@ body {
   background:
     radial-gradient(52% 88% at 100% 0%, rgba(255, 199, 140, 0.18), transparent 42%),
     radial-gradient(50% 84% at 0% 100%, rgba(138, 212, 231, 0.14), transparent 38%),
-    linear-gradient(180deg, rgba(255, 253, 248, 0.98), rgba(246, 251, 253, 0.98));
+    linear-gradient(180deg, #17223f, #0f1730);
+}
+
+.ga-gen-cta-section {
+  padding-top: 1.4rem;
 }
 
 @keyframes genMuminFloat {
@@ -6390,7 +6422,7 @@ body {
 
 @media (min-width: 980px) {
   .ga-gen-hero-panel {
-    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+    grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
     align-items: center;
   }
 
