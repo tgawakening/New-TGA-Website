@@ -65,14 +65,17 @@ const supportLinks = [
 ];
 
 function formatMoney(amount: number, currency: string) {
+  const normalizedCurrency = currency.toUpperCase();
+  const formattedAmount = normalizedCurrency === "GBP" ? amount / 100 : amount;
+
   try {
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
-      currency,
+      currency: normalizedCurrency,
       maximumFractionDigits: 2,
-    }).format(amount / 100);
+    }).format(formattedAmount);
   } catch {
-    return `${amount} ${currency}`;
+    return `${normalizedCurrency} ${formattedAmount}`;
   }
 }
 
