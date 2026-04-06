@@ -18,7 +18,13 @@ foreach ($line in $lines) {
   if ($parts.Count -ne 2) { continue }
 
   $name = $parts[0].Trim()
-  $value = $parts[1]
+  $value = $parts[1].Trim()
+  if (
+    ($value.StartsWith('"') -and $value.EndsWith('"')) -or
+    ($value.StartsWith("'") -and $value.EndsWith("'"))
+  ) {
+    $value = $value.Substring(1, $value.Length - 2)
+  }
 
   Write-Host "Importing $name to $Environment..."
   $value | vercel env add $name $Environment

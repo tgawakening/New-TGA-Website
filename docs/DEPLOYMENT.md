@@ -10,7 +10,7 @@
 
 ```env
 NEXT_PUBLIC_APP_URL=https://your-domain.com
-DATABASE_URL=mysql://doadmin:password@db-mysql-lon1-97811-do-user-34426921-0.d.db.ondigitalocean.com:25060/defaultdb
+DATABASE_URL=mysql://doadmin:password@db-mysql-lon1-97811-do-user-34426921-0.d.db.ondigitalocean.com:25060/defaultdb?sslcert=./certs/ca-certificate.crt&sslaccept=strict
 ADMIN_API_TOKEN=replace_with_long_random_admin_token
 
 STRIPE_SECRET_KEY=sk_live_or_test_xxx
@@ -28,6 +28,8 @@ ADMIN_NOTIFICATION_EMAIL=admin@your-domain.com
 ## Prisma and database notes
 
 - `postinstall` runs `prisma generate`, which is needed for Vercel builds.
+- Managed DigitalOcean MySQL should use SSL in the Prisma connection URL.
+- This repo includes the CA file at `certs/ca-certificate.crt`, and production `DATABASE_URL` should reference it with `sslcert=./certs/ca-certificate.crt&sslaccept=strict`.
 - The repository includes Prisma migrations. For a fresh production database, use:
 
 ```bash
