@@ -1,11 +1,17 @@
 "use client";
 
-import { PaymentMethod } from "@prisma/client";
+import { PaymentMethod, PaymentPlanType } from "@prisma/client";
 import { countries } from "countries-list";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Header } from "@/components/home/sections/header";
+import {
+  COURSE_DURATION_MONTHS,
+  DEFAULT_PAYMENT_PLAN_TYPE,
+  getPaymentMethodsForPlan,
+  paymentPlanTypeLabels,
+} from "@/lib/course-payment";
 
 type PricingResponse = {
   pricing: {
@@ -13,13 +19,20 @@ type PricingResponse = {
     autoDiscountAmount: number;
     couponDiscountAmount: number;
     finalAmount: number;
+    fullCourseAmount: number;
+    fullCourseMonths: number;
     currency: string;
     autoDiscountApplied: boolean;
     canUseCoupon: boolean;
     allowedPaymentMethods: PaymentMethod[];
+    allowedPaymentMethodsByPlan: {
+      subscription: PaymentMethod[];
+      fullCourse: PaymentMethod[];
+    };
     display: {
       baseGbp: number;
       finalGbpApprox: number;
+      fullCourseGbpApprox: number;
       exchangeRateApprox: number;
     };
   };
@@ -41,6 +54,7 @@ type ResumeResponse = {
     registrationId: string;
     paymentReference: string | null;
     paymentMethod: PaymentMethod;
+    paymentPlanType: PaymentPlanType;
     fullName: string;
     email: string;
     phoneCountryCode: string;
@@ -63,6 +77,7 @@ type RegistrationFormState = {
   countryCode: string;
   countryName: string;
   couponCode: string;
+  paymentPlanType: PaymentPlanType;
   paymentMethod: PaymentMethod;
   manualSenderName: string;
   manualReferenceKey: string;
@@ -170,6 +185,7 @@ function SeerahRegisterContent() {
     countryCode: defaultCountry?.countryCode ?? "GB",
     countryName: defaultCountry?.countryName ?? "United Kingdom",
     couponCode: "",
+    paymentPlanType: DEFAULT_PAYMENT_PLAN_TYPE,
     paymentMethod: PaymentMethod.STRIPE,
     manualSenderName: "",
     manualReferenceKey: "",
@@ -304,6 +320,7 @@ function SeerahRegisterContent() {
           phoneNumber: registration.phoneNumber,
           countryCode: registration.countryCode,
           countryName: registration.countryName,
+          paymentPlanType: registration.paymentPlanType,
           paymentMethod: registration.paymentMethod,
         }));
 
@@ -366,9 +383,11 @@ function SeerahRegisterContent() {
   }, [countrySearch, phoneCountries]);
 
   const paymentMethodsToShow = useMemo(() => {
-    const methods = pricing?.allowedPaymentMethods ?? [PaymentMethod.STRIPE, PaymentMethod.PAYPAL];
+    const methods = pricing
+      ? getPaymentMethodsForPlan(pricing.allowedPaymentMethodsByPlan, form.paymentPlanType)
+      : [PaymentMethod.STRIPE];
     return methods.includes(form.paymentMethod) ? methods : [form.paymentMethod, ...methods];
-  }, [form.paymentMethod, pricing]);
+  }, [form.paymentMethod, form.paymentPlanType, pricing]);
 
   const fetchPricing = useCallback(async (nextCouponCode?: string) => {
     const normalizedCountryCode = form.countryCode.trim().toUpperCase();
@@ -399,16 +418,17 @@ function SeerahRegisterContent() {
       if (resumeRegistrationId) {
         return;
       }
-      if (!data.pricing.allowedPaymentMethods.includes(form.paymentMethod)) {
+      const methodsForPlan = getPaymentMethodsForPlan(data.pricing.allowedPaymentMethodsByPlan, form.paymentPlanType);
+      if (!methodsForPlan.includes(form.paymentMethod)) {
         setForm((prev) => ({
           ...prev,
-          paymentMethod: data.pricing.allowedPaymentMethods[0] ?? PaymentMethod.STRIPE,
+          paymentMethod: methodsForPlan[0] ?? PaymentMethod.STRIPE,
         }));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pricing error.");
     }
-  }, [form.countryCode, form.couponCode, form.paymentMethod, resumeRegistrationId]);
+  }, [form.countryCode, form.couponCode, form.paymentMethod, form.paymentPlanType, resumeRegistrationId]);
 
   useEffect(() => {
     void fetchPricing();
@@ -553,19 +573,25 @@ function SeerahRegisterContent() {
     : null;
   const isManualPaymentMethod =
     form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.JAZZCASH;
-
-  const visiblePoundPrice = isSouthAsia && pricing
+  const subscriptionPriceLabel = pricing
     ? `${formatMoney(Math.round(pricing.display.finalGbpApprox * 100), "GBP", true)}/mo`
     : "GBP 20.00/mo";
-  const visibleConverted = isSouthAsia && isManualPaymentMethod
-    ? `${localApprox ? `(${formatMoney(localApprox.amount, localApprox.currency)} for manual transfer)` : ""}`
-    : "";
-
-  const orderSummaryAmount = isSouthAsia
-    ? [visiblePoundPrice, visibleConverted].filter(Boolean).join(" ")
-    : pricing
-      ? `${formatMoney(pricing.baseAmount, "GBP", true)}/mo`
-      : "GBP 20.00/mo";
+  const fullCoursePriceLabel = pricing
+    ? formatMoney(Math.round(pricing.display.fullCourseGbpApprox * 100), "GBP", true)
+    : "GBP 160.00";
+  const subscriptionLocalLabel =
+    isSouthAsia && isManualPaymentMethod
+      ? `(${formatMoney(pricing?.finalAmount ?? localApprox?.amount ?? 0, pricing?.currency ?? localApprox?.currency ?? "PKR")} for manual transfer)`
+      : "";
+  const fullCourseLocalLabel =
+    isSouthAsia && isManualPaymentMethod
+      ? `(${formatMoney(pricing?.fullCourseAmount ?? (localApprox?.amount ?? 0) * COURSE_DURATION_MONTHS, pricing?.currency ?? localApprox?.currency ?? "PKR")} for manual transfer)`
+      : "";
+  const orderSummaryAmount =
+    form.paymentPlanType === PaymentPlanType.FULL_COURSE
+      ? [fullCoursePriceLabel, fullCourseLocalLabel].filter(Boolean).join(" ")
+      : [subscriptionPriceLabel, subscriptionLocalLabel].filter(Boolean).join(" ");
+  const selectedPlanLabel = paymentPlanTypeLabels[form.paymentPlanType];
 
   return (
     <>
@@ -880,16 +906,61 @@ function SeerahRegisterContent() {
                   <p style={{ margin: "0.2rem 0 0.35rem", fontSize: "0.72rem", color: "#25694b" }}>
                     Learning made easier, enjoy this special regional discount.
                   </p>
-                  <p style={{ margin: 0, fontWeight: 700, color: "#154e31" }}>
-                    {visiblePoundPrice} {visibleConverted}
+                  <p style={{ margin: 0, fontWeight: 700, color: "#154e31" }}>{subscriptionPriceLabel}</p>
+                  <p style={{ margin: "0.2rem 0 0", fontSize: "0.72rem", color: "#25694b" }}>
+                    Full course: {fullCoursePriceLabel}
                   </p>
                 </div>
               ) : null}
 
               <div style={{ background: "#fff", border: "1px solid #d5e2ee", borderRadius: 8, padding: "0.64rem", fontSize: "0.85rem" }}>
+                <p style={{ margin: "0 0 0.45rem", color: "#5b7e9e", fontWeight: 700, fontSize: "0.66rem" }}>PAYMENT PLAN</p>
+                <div style={{ display: "grid", gap: "0.45rem", marginBottom: "0.75rem" }}>
+                  {[PaymentPlanType.SUBSCRIPTION, PaymentPlanType.FULL_COURSE].map((planType) => {
+                    const isSelected = form.paymentPlanType === planType;
+                    const priceLabel = planType === PaymentPlanType.FULL_COURSE ? fullCoursePriceLabel : subscriptionPriceLabel;
+                    const localLabel = planType === PaymentPlanType.FULL_COURSE ? fullCourseLocalLabel : subscriptionLocalLabel;
+
+                    return (
+                      <button
+                        key={planType}
+                        type="button"
+                        onClick={() => {
+                          if (resumeRegistrationId) return;
+                          setForm((prev) => ({ ...prev, paymentPlanType: planType }));
+                        }}
+                        disabled={Boolean(resumeRegistrationId)}
+                        style={{
+                          border: `1px solid ${isSelected ? "#1e6fa3" : "#c6d7e5"}`,
+                          background: isSelected ? "#eaf4fd" : "#f9fcff",
+                          borderRadius: 8,
+                          padding: "0.7rem",
+                          display: "grid",
+                          gap: "0.18rem",
+                          textAlign: "left",
+                          cursor: resumeRegistrationId ? "not-allowed" : "pointer",
+                          opacity: resumeRegistrationId && !isSelected ? 0.6 : 1,
+                        }}
+                      >
+                        <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#204c6d" }}>
+                          {paymentPlanTypeLabels[planType]}
+                        </span>
+                        <span style={{ fontSize: "0.86rem", fontWeight: 700, color: "#123f61" }}>{priceLabel}</span>
+                        {localLabel ? (
+                          <span style={{ fontSize: "0.72rem", color: "#4c6b86" }}>{localLabel}</span>
+                        ) : null}
+                        <span style={{ fontSize: "0.7rem", color: "#5f7c96" }}>
+                          {planType === PaymentPlanType.FULL_COURSE
+                            ? `Pay once for all ${pricing?.fullCourseMonths ?? COURSE_DURATION_MONTHS} months.`
+                            : "Pay monthly and continue as a subscription."}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
                 <p style={{ margin: "0 0 0.45rem", color: "#5b7e9e", fontWeight: 700, fontSize: "0.66rem" }}>ORDER SUMMARY</p>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <span>Prophetic Seerah and Planning</span>
+                  <span>Prophetic Seerah and Planning ({selectedPlanLabel})</span>
                   <span>{orderSummaryAmount}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, color: "#1b6ea3" }}>
@@ -900,6 +971,9 @@ function SeerahRegisterContent() {
 
               <div style={{ display: "grid", gap: "0.4rem" }}>
                 <p style={{ margin: 0, fontSize: "0.66rem", fontWeight: 700, color: "#5b7e9e" }}>PAYMENT METHOD</p>
+                <p style={{ margin: 0, fontSize: "0.72rem", color: "#4f6981" }}>
+                  Selected plan: <strong>{selectedPlanLabel}</strong>
+                </p>
                 {resumeRegistrationId ? (
                   <div
                     style={{
@@ -1046,7 +1120,9 @@ function SeerahRegisterContent() {
                 {submitting
                   ? "Processing..."
                   : form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.JAZZCASH
-                    ? "Submit Manual Payment"
+                    ? form.paymentPlanType === PaymentPlanType.FULL_COURSE
+                      ? "Submit Full Course Payment"
+                      : "Submit Manual Payment"
                     : resumeRegistrationId
                       ? "Continue Pending Payment"
                       : "Continue to Payment"}

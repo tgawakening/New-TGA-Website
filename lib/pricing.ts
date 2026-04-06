@@ -1,5 +1,9 @@
 import { PaymentMethod, RegionGroup, type Coupon } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  COURSE_DURATION_MONTHS,
+  type PaymentMethodsByPlan,
+} from "@/lib/course-payment";
 
 const SOUTH_ASIA_DISCOUNT_COUNTRIES = new Set(["PK", "IN", "AF", "BD"]);
 const MANUAL_PAYMENT_COUNTRIES = new Set(["PK"]);
@@ -32,14 +36,18 @@ export type PricingOutput = {
   autoDiscountAmount: number;
   couponDiscountAmount: number;
   finalAmount: number;
+  fullCourseAmount: number;
+  fullCourseMonths: number;
   currency: string;
   autoDiscountApplied: boolean;
   canUseCoupon: boolean;
   couponCode?: string;
   allowedPaymentMethods: PaymentMethod[];
+  allowedPaymentMethodsByPlan: PaymentMethodsByPlan;
   display: {
     baseGbp: number;
     finalGbpApprox: number;
+    fullCourseGbpApprox: number;
     exchangeRateApprox: number;
   };
 };
@@ -48,12 +56,18 @@ function resolveRegionGroup(countryCode: string): RegionGroup {
   return SOUTH_ASIA_DISCOUNT_COUNTRIES.has(countryCode) ? RegionGroup.SOUTH_ASIA : RegionGroup.GLOBAL;
 }
 
-function getAllowedPaymentMethods(countryCode: string): PaymentMethod[] {
+function getAllowedPaymentMethodsByPlan(countryCode: string): PaymentMethodsByPlan {
   if (!MANUAL_PAYMENT_COUNTRIES.has(countryCode)) {
-    return [PaymentMethod.STRIPE, PaymentMethod.PAYPAL];
+    return {
+      subscription: [PaymentMethod.STRIPE],
+      fullCourse: [PaymentMethod.STRIPE, PaymentMethod.PAYPAL],
+    };
   }
 
-  return [PaymentMethod.STRIPE, PaymentMethod.PAYPAL, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH];
+  return {
+    subscription: [PaymentMethod.STRIPE, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH],
+    fullCourse: [PaymentMethod.STRIPE, PaymentMethod.PAYPAL, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH],
+  };
 }
 
 function applyCoupon(amount: number, coupon: Coupon): number {
@@ -133,7 +147,8 @@ export async function calculatePricing(input: PricingInput): Promise<PricingOutp
   const course = await getCourse(input.courseSlug);
   const pricingRule = await getActivePricingRule(course.id, countryCode);
   const regionGroup = pricingRule?.regionGroup ?? resolveRegionGroup(countryCode);
-  const allowedPaymentMethods = getAllowedPaymentMethods(countryCode);
+  const allowedPaymentMethodsByPlan = getAllowedPaymentMethodsByPlan(countryCode);
+  const allowedPaymentMethods = allowedPaymentMethodsByPlan.subscription;
 
   let currency = course.currency.toUpperCase();
   let baseAmount = course.basePrice;
@@ -160,6 +175,13 @@ export async function calculatePricing(input: PricingInput): Promise<PricingOutp
 
   const couponDiscountAmount = coupon ? applyCoupon(baseAmount, coupon) : 0;
   const finalAmount = Math.max(0, baseAmount - couponDiscountAmount);
+  const fullCourseAmount = finalAmount * COURSE_DURATION_MONTHS;
+  const finalGbpApprox =
+    regionGroup === RegionGroup.SOUTH_ASIA
+      ? SOUTH_ASIA_ONLINE_AMOUNT_PENCE / 100
+      : currency === "GBP"
+        ? finalAmount / 100
+        : Number((finalAmount / GBP_TO_PKR_APPROX).toFixed(2));
 
   return {
     courseId: course.id,
@@ -169,19 +191,18 @@ export async function calculatePricing(input: PricingInput): Promise<PricingOutp
     autoDiscountAmount,
     couponDiscountAmount,
     finalAmount,
+    fullCourseAmount,
+    fullCourseMonths: COURSE_DURATION_MONTHS,
     currency,
     autoDiscountApplied: regionGroup === RegionGroup.SOUTH_ASIA,
     canUseCoupon,
     couponCode: coupon?.code,
     allowedPaymentMethods,
+    allowedPaymentMethodsByPlan,
     display: {
       baseGbp: course.basePrice / 100,
-      finalGbpApprox:
-        regionGroup === RegionGroup.SOUTH_ASIA
-          ? SOUTH_ASIA_ONLINE_AMOUNT_PENCE / 100
-          : currency === "GBP"
-            ? finalAmount / 100
-            : Number((finalAmount / GBP_TO_PKR_APPROX).toFixed(2)),
+      finalGbpApprox,
+      fullCourseGbpApprox: Number((finalGbpApprox * COURSE_DURATION_MONTHS).toFixed(2)),
       exchangeRateApprox: GBP_TO_PKR_APPROX,
     },
   };

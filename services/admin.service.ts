@@ -1,10 +1,12 @@
 import {
   EnrollmentStatus,
   PaymentMethod,
+  PaymentPlanType,
   PaymentStatus,
   RegistrationStatus,
   type FreeWarriorApplicationStatus,
 } from "@prisma/client";
+import { paymentPlanTypeLabels } from "@/lib/course-payment";
 import { formatApproxScholarshipAmount, parseFreeWarriorContribution } from "@/lib/free-warrior";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
@@ -62,6 +64,8 @@ export type AdminDashboardSnapshot = {
     amountLabel: string;
     rawAmount: number;
     rawCurrency: string;
+    paymentPlanType: PaymentPlanType;
+    paymentPlanLabel: string;
     paymentMethod: string;
     paymentLabel: string;
     paymentDetail: string | null;
@@ -262,6 +266,7 @@ function getScholarshipSnapshotDetails(pricingSnapshot: unknown) {
 }
 
 function getRegistrationPaymentPresentation(input: {
+  paymentPlanType: PaymentPlanType;
   paymentMethod: PaymentMethod;
   finalAmount: number;
   pricingSnapshot: unknown;
@@ -298,11 +303,11 @@ function getRegistrationPaymentPresentation(input: {
         : input.paymentMethod === PaymentMethod.JAZZCASH
           ? "JazzCash"
           : input.paymentMethod,
-    paymentDetail: null,
+    paymentDetail: paymentPlanTypeLabels[input.paymentPlanType],
     isFullScholarshipOrder: false,
     isPartialScholarshipOrder: false,
     contributionLabel: null,
-  };
+    };
 }
 
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
@@ -347,6 +352,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       enrollmentStatus: row.enrollment?.status ?? EnrollmentStatus.PENDING,
     });
     const paymentPresentation = getRegistrationPaymentPresentation({
+      paymentPlanType: row.paymentPlanType,
       paymentMethod: row.paymentMethod,
       finalAmount: row.finalAmount,
       pricingSnapshot: row.pricingSnapshot,
@@ -363,9 +369,11 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       countryName: row.selectedCountryName,
       courseTitle: row.course.title,
       courseSlug: row.course.slug,
-      amountLabel: formatAmount(row.finalAmount, row.selectedCurrency),
-      rawAmount: row.finalAmount,
-      rawCurrency: row.selectedCurrency,
+      amountLabel: formatAmount(row.payment?.amount ?? row.finalAmount, row.payment?.currency ?? row.selectedCurrency),
+      rawAmount: row.payment?.amount ?? row.finalAmount,
+      rawCurrency: row.payment?.currency ?? row.selectedCurrency,
+      paymentPlanType: row.paymentPlanType,
+      paymentPlanLabel: paymentPlanTypeLabels[row.paymentPlanType],
       paymentMethod: row.paymentMethod,
       paymentLabel: paymentPresentation.paymentLabel,
       paymentDetail: paymentPresentation.paymentDetail,
@@ -415,6 +423,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
     students: users.map((user) => {
       const registrationSummaries = user.registrations.map((item) => {
         const paymentPresentation = getRegistrationPaymentPresentation({
+          paymentPlanType: item.paymentPlanType,
           paymentMethod: item.paymentMethod,
           finalAmount: item.finalAmount,
           pricingSnapshot: item.pricingSnapshot,
@@ -424,7 +433,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
           id: item.id,
           paymentReference: item.paymentReference,
           courseTitle: item.course.title,
-          amountLabel: formatAmount(item.finalAmount, item.selectedCurrency),
+          amountLabel: formatAmount(item.payment?.amount ?? item.finalAmount, item.payment?.currency ?? item.selectedCurrency),
           paymentLabel: paymentPresentation.paymentLabel,
           adminState: getAdminOrderState({
             paymentStatus: item.payment?.status ?? PaymentStatus.INITIATED,

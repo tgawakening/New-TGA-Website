@@ -43,6 +43,7 @@ export default async function DashboardPage() {
           id: item.id,
           selectedCurrency: item.selectedCurrency,
           finalAmount: item.finalAmount,
+          paymentPlanType: item.paymentPlanType,
           status: item.status,
           paymentMethod: item.paymentMethod,
           paymentReference: item.paymentReference,
@@ -53,6 +54,8 @@ export default async function DashboardPage() {
           },
           payment: item.payment
             ? {
+                amount: item.payment.amount,
+                currency: item.payment.currency,
                 status: item.payment.status,
                 paidAt: item.payment.paidAt ? item.payment.paidAt.toISOString() : null,
               }

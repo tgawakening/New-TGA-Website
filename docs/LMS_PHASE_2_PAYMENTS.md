@@ -3,12 +3,15 @@
 ## What is implemented
 - Stripe checkout session creation endpoint
 - Stripe webhook endpoint to mark payment paid and activate enrollment
-- PayPal order creation endpoint
-- PayPal order capture endpoint
+- PayPal order creation endpoint for one-time payments only
+- PayPal order capture endpoint for one-time payments only
 - Manual payment submit endpoint (Pakistan only)
 - Admin manual payment review endpoints (confirm/reject)
 - Dashboard now shows latest payment method/status/reference
 - Admin review page for manual payments
+- Registration now lets students choose between monthly subscription and one-time full course payment
+- Full course price is calculated dynamically as `monthly price x 8 months`
+- Payment plan selection is stored on registrations and drives Stripe/PayPal/manual charge amounts
 
 ## Key files
 - `services/payment.service.ts`: payment orchestration and status transitions
@@ -56,11 +59,36 @@ PAYPAL_CLIENT_SECRET="paypal_client_secret"
 4. Copy Secret -> `PAYPAL_CLIENT_SECRET`.
 5. Set `PAYPAL_ENV=sandbox` for test mode, `live` for production.
 
+## Important limitation
+- The Seerah registration flow is monthly/recurring, but this codebase does not yet implement PayPal Subscriptions.
+- Current PayPal code uses the Orders API (`/v2/checkout/orders`) with capture, which is suitable for one-time checkout, not recurring billing.
+- Stripe is the only provider currently connected to an actual recurring subscription record for course registrations.
+- PayPal is now suitable for the new one-time full course payment option, but it should still remain unavailable for monthly subscriptions until the Billing Plans + Subscriptions flow is added.
+
+## What is required before enabling recurring PayPal
+1. Create a PayPal product and monthly billing plan in PayPal.
+2. Replace order creation with subscription creation using PayPal's subscriptions APIs.
+3. Store the PayPal `subscription_id` in `Subscription.providerSubscriptionId`.
+4. Add webhook handling for subscription lifecycle events and payment events.
+5. Sync renewals, failed payments, cancellations, and period dates into the local `Subscription` table.
+6. Test the full buyer return flow and webhook flow in sandbox before switching to live.
+
 ## Prisma migration for Phase 2
 ```bash
 npm run prisma:migrate:dev -- --name phase2_payments
 npm run prisma:generate
 ```
+
+## Prisma migration for payment plan selection
+```bash
+npm run prisma:migrate:deploy
+npm run prisma:generate
+```
+
+- New registration field: `paymentPlanType`
+- Values:
+  - `SUBSCRIPTION`
+  - `FULL_COURSE`
 
 ## Admin review flow
 1. Open `/admin/payments`.

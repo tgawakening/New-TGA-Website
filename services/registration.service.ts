@@ -1,6 +1,11 @@
 import { PaymentStatus, RegistrationStatus, type PaymentMethod } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import {
+  COURSE_DURATION_MONTHS,
+  getPaymentMethodsForPlan,
+  paymentPlanTypeLabels,
+} from "@/lib/course-payment";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { calculatePricing, SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
 import type { RegistrationInput } from "@/lib/validations/registration";
@@ -32,19 +37,23 @@ function formatAmount(amount: number, currency: string) {
 
 function getPaymentRecordAmount(
   pricing: Awaited<ReturnType<typeof calculatePricing>>,
+  paymentPlanType: RegistrationInput["paymentPlanType"],
   paymentMethod: RegistrationInput["paymentMethod"],
 ) {
   const isOnlinePayment = paymentMethod === "STRIPE" || paymentMethod === "PAYPAL";
+  const isFullCoursePayment = paymentPlanType === "FULL_COURSE";
 
   if (isOnlinePayment && pricing.autoDiscountApplied && pricing.currency !== "GBP") {
     return {
-      amount: SOUTH_ASIA_ONLINE_AMOUNT_PENCE,
+      amount: isFullCoursePayment
+        ? SOUTH_ASIA_ONLINE_AMOUNT_PENCE * COURSE_DURATION_MONTHS
+        : SOUTH_ASIA_ONLINE_AMOUNT_PENCE,
       currency: "GBP",
     };
   }
 
   return {
-    amount: pricing.finalAmount,
+    amount: isFullCoursePayment ? pricing.fullCourseAmount : pricing.finalAmount,
     currency: pricing.currency,
   };
 }
@@ -64,8 +73,9 @@ export async function registerStudent(input: RegistrationInput) {
     countryCode: input.countryCode,
     couponCode: input.couponCode,
   });
+  const allowedPaymentMethods = getPaymentMethodsForPlan(pricing.allowedPaymentMethodsByPlan, input.paymentPlanType);
 
-  if (!pricing.allowedPaymentMethods.includes(input.paymentMethod)) {
+  if (!allowedPaymentMethods.includes(input.paymentMethod)) {
     throw new Error("Selected payment method is not available for this country.");
   }
 
@@ -78,7 +88,7 @@ export async function registerStudent(input: RegistrationInput) {
 
   const passwordHash = await bcrypt.hash(input.password, 12);
   const paymentReference = buildPaymentReference();
-  const paymentRecord = getPaymentRecordAmount(pricing, input.paymentMethod);
+  const paymentRecord = getPaymentRecordAmount(pricing, input.paymentPlanType, input.paymentMethod);
 
   const result = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -111,12 +121,18 @@ export async function registerStudent(input: RegistrationInput) {
         autoDiscountAmount: pricing.autoDiscountAmount,
         couponDiscountAmount: pricing.couponDiscountAmount,
         finalAmount: pricing.finalAmount,
+        paymentPlanType: input.paymentPlanType,
         paymentMethod: input.paymentMethod as PaymentMethod,
         paymentReference,
         status: RegistrationStatus.PENDING_PAYMENT,
         couponId: coupon?.id,
         couponCode: pricing.couponCode,
-        pricingSnapshot: pricing,
+        pricingSnapshot: {
+          ...pricing,
+          selectedPaymentPlanType: input.paymentPlanType,
+          chargeAmount: paymentRecord.amount,
+          chargeCurrency: paymentRecord.currency,
+        },
       },
     });
 
@@ -143,6 +159,7 @@ export async function registerStudent(input: RegistrationInput) {
       registrationId: registration.id,
       pricing,
       paymentReference,
+      paymentRecord,
     };
   });
 
@@ -152,7 +169,8 @@ export async function registerStudent(input: RegistrationInput) {
   if (isManualPayment) {
     const appUrl = getAppUrl();
     const adminDashboardUrl = `${appUrl}/admin`;
-    const orderAmount = formatAmount(result.pricing.finalAmount, result.pricing.currency);
+    const orderAmount = formatAmount(result.paymentRecord.amount, result.paymentRecord.currency);
+    const paymentPlanLabel = paymentPlanTypeLabels[input.paymentPlanType];
 
     await Promise.allSettled([
       sendTransactionalEmail({
@@ -167,6 +185,7 @@ export async function registerStudent(input: RegistrationInput) {
           <p><strong>Email:</strong> ${input.email}</p>
           <p><strong>Phone:</strong> ${input.phoneCountryCode} ${input.phoneNumber}</p>
           <p><strong>Country:</strong> ${input.countryName}</p>
+          <p><strong>Payment plan:</strong> ${paymentPlanLabel}</p>
           <p><strong>Payment method:</strong> ${input.paymentMethod}</p>
           <p><strong>Status:</strong> Pending manual review</p>
           <p><strong>Amount:</strong> ${orderAmount}</p>
@@ -179,6 +198,7 @@ export async function registerStudent(input: RegistrationInput) {
           `Email: ${input.email}`,
           `Phone: ${input.phoneCountryCode} ${input.phoneNumber}`,
           `Country: ${input.countryName}`,
+          `Payment plan: ${paymentPlanLabel}`,
           `Payment method: ${input.paymentMethod}`,
           "Status: Pending manual review",
           `Amount: ${orderAmount}`,
@@ -194,6 +214,7 @@ export async function registerStudent(input: RegistrationInput) {
           <p><strong>Email:</strong> ${input.email}</p>
           <p><strong>Phone:</strong> ${input.phoneCountryCode} ${input.phoneNumber}</p>
           <p><strong>Country:</strong> ${input.countryName}</p>
+          <p><strong>Payment plan:</strong> ${paymentPlanLabel}</p>
           <p><strong>Payment mode:</strong> Pending</p>
           <p><strong>Payment method:</strong> ${input.paymentMethod}</p>
           <p><strong>Amount:</strong> ${orderAmount}</p>
@@ -208,6 +229,7 @@ export async function registerStudent(input: RegistrationInput) {
           `Email: ${input.email}`,
           `Phone: ${input.phoneCountryCode} ${input.phoneNumber}`,
           `Country: ${input.countryName}`,
+          `Payment plan: ${paymentPlanLabel}`,
           "Payment mode: Pending",
           `Payment method: ${input.paymentMethod}`,
           `Amount: ${orderAmount}`,

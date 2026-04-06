@@ -1,4 +1,5 @@
 import {
+  PaymentPlanType,
   EnrollmentStatus,
   PaymentStatus,
   Prisma,
@@ -10,6 +11,7 @@ import {
   type User,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { COURSE_DURATION_MONTHS, paymentPlanTypeLabels } from "@/lib/course-payment";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
 import { handleMissionSupportStripeSessionCompleted } from "@/services/mission-support.service";
@@ -66,9 +68,12 @@ function toJsonValue(input: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(input)) as Prisma.InputJsonValue;
 }
 
-function getStripeMonthlyAmountPence(registration: Registration) {
-  if (registration.selectedCurrency === "GBP") return registration.finalAmount;
-  return SOUTH_ASIA_ONLINE_AMOUNT_PENCE;
+function isFullCoursePayment(registration: Registration) {
+  return registration.paymentPlanType === PaymentPlanType.FULL_COURSE;
+}
+
+function isSubscriptionPayment(registration: Registration) {
+  return registration.paymentPlanType !== PaymentPlanType.FULL_COURSE;
 }
 
 function getOnlinePaymentAmount(registration: RegistrationWithPayment) {
@@ -90,6 +95,31 @@ function getOnlinePaymentAmount(registration: RegistrationWithPayment) {
     amount: SOUTH_ASIA_ONLINE_AMOUNT_PENCE,
     currency: "GBP",
   };
+}
+
+function getRegistrationChargeAmount(registration: RegistrationWithPayment) {
+  if (isFullCoursePayment(registration)) {
+    if (registration.selectedCurrency === "GBP") {
+      return {
+        amount: registration.finalAmount * COURSE_DURATION_MONTHS,
+        currency: "GBP",
+      };
+    }
+
+    if (registration.payment.currency === "GBP") {
+      return {
+        amount: SOUTH_ASIA_ONLINE_AMOUNT_PENCE * COURSE_DURATION_MONTHS,
+        currency: "GBP",
+      };
+    }
+
+    return {
+      amount: registration.finalAmount * COURSE_DURATION_MONTHS,
+      currency: registration.selectedCurrency,
+    };
+  }
+
+  return getOnlinePaymentAmount(registration);
 }
 
 function getAppUrl() {
@@ -134,8 +164,9 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
   });
 
   const resumeLink = buildResumePaymentLink(registration.id);
-  const onlinePaymentAmount = getOnlinePaymentAmount(registration);
+  const onlinePaymentAmount = getRegistrationChargeAmount(registration);
   const orderAmount = formatAmount(onlinePaymentAmount.amount, onlinePaymentAmount.currency);
+  const paymentPlanLabel = prettifyPaymentPlanType(registration.paymentPlanType);
 
   await Promise.allSettled([
     sendTransactionalEmail({
@@ -149,6 +180,7 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
         <p><strong>Reference:</strong> ${registration.paymentReference ?? "N/A"}</p>
         <p><strong>Email:</strong> ${registration.user.email}</p>
         <p><strong>Phone:</strong> ${registration.user.phoneCountryCode} ${registration.user.phoneNumber}</p>
+        <p><strong>Payment plan:</strong> ${paymentPlanLabel}</p>
         <p><strong>Payment method:</strong> ${registration.payment.provider}</p>
         <p><strong>Payment status:</strong> Pending</p>
         <p><strong>Amount:</strong> ${orderAmount}</p>
@@ -163,6 +195,7 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
         `Reference: ${registration.paymentReference ?? "N/A"}`,
         `Email: ${registration.user.email}`,
         `Phone: ${registration.user.phoneCountryCode} ${registration.user.phoneNumber}`,
+        `Payment plan: ${paymentPlanLabel}`,
         `Payment method: ${registration.payment.provider}`,
         "Payment status: Pending",
         `Amount: ${orderAmount}`,
@@ -177,6 +210,7 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
         <p><strong>Name:</strong> ${registration.user.fullName}</p>
         <p><strong>Email:</strong> ${registration.user.email}</p>
         <p><strong>Phone:</strong> ${registration.user.phoneCountryCode} ${registration.user.phoneNumber}</p>
+        <p><strong>Payment plan:</strong> ${paymentPlanLabel}</p>
         <p><strong>Payment method:</strong> ${registration.payment.provider}</p>
         <p><strong>Payment mode:</strong> Pending</p>
         <p><strong>Amount:</strong> ${orderAmount}</p>
@@ -187,6 +221,7 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
         `Name: ${registration.user.fullName}`,
         `Email: ${registration.user.email}`,
         `Phone: ${registration.user.phoneCountryCode} ${registration.user.phoneNumber}`,
+        `Payment plan: ${paymentPlanLabel}`,
         `Payment method: ${registration.payment.provider}`,
         "Payment mode: Pending",
         `Amount: ${orderAmount}`,
@@ -202,6 +237,10 @@ function prettifyPaymentMethod(method: string) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function prettifyPaymentPlanType(paymentPlanType: PaymentPlanType) {
+  return paymentPlanTypeLabels[paymentPlanType] ?? paymentPlanType.replaceAll("_", " ");
 }
 
 async function markSuccessfulPayment({
@@ -236,6 +275,7 @@ async function markSuccessfulPayment({
         email: payment.registration.user.email,
         phone: `${payment.registration.user.phoneCountryCode} ${payment.registration.user.phoneNumber}`,
         courseTitle: payment.registration.course.title,
+        paymentPlanType: payment.registration.paymentPlanType,
         paymentReference: payment.registration.paymentReference,
         paymentMethod: payment.provider,
         amount: payment.amount,
@@ -277,6 +317,7 @@ async function markSuccessfulPayment({
       email: payment.registration.user.email,
       phone: `${payment.registration.user.phoneCountryCode} ${payment.registration.user.phoneNumber}`,
       courseTitle: payment.registration.course.title,
+      paymentPlanType: payment.registration.paymentPlanType,
       paymentReference: payment.registration.paymentReference,
       paymentMethod: payment.provider,
       amount: payment.amount,
@@ -285,7 +326,10 @@ async function markSuccessfulPayment({
     };
   });
 
-  if (result.paymentMethod === "BANK_TRANSFER" || result.paymentMethod === "JAZZCASH") {
+  if (
+    result.paymentPlanType === PaymentPlanType.SUBSCRIPTION &&
+    (result.paymentMethod === "BANK_TRANSFER" || result.paymentMethod === "JAZZCASH")
+  ) {
     await syncManualRecurringSubscription({
       registrationId: result.registrationId,
       userId: result.userId,
@@ -299,6 +343,7 @@ async function markSuccessfulPayment({
   const dashboardUrl = `${appUrl}/dashboard`;
   const adminDashboardUrl = `${appUrl}/admin`;
   const orderAmount = formatAmount(result.amount, result.currency);
+  const paymentPlanLabel = prettifyPaymentPlanType(result.paymentPlanType);
 
   await Promise.allSettled([
     sendTransactionalEmail({
@@ -312,6 +357,7 @@ async function markSuccessfulPayment({
         <p><strong>Reference:</strong> ${result.paymentReference ?? "N/A"}</p>
         <p><strong>Email:</strong> ${result.email}</p>
         <p><strong>Phone:</strong> ${result.phone}</p>
+        <p><strong>Payment plan:</strong> ${paymentPlanLabel}</p>
         <p><strong>Payment method:</strong> ${prettifyPaymentMethod(result.paymentMethod)}</p>
         <p><strong>Payment mode:</strong> Completed</p>
         <p><strong>Amount:</strong> ${orderAmount}</p>
@@ -326,6 +372,7 @@ async function markSuccessfulPayment({
         `Reference: ${result.paymentReference ?? "N/A"}`,
         `Email: ${result.email}`,
         `Phone: ${result.phone}`,
+        `Payment plan: ${paymentPlanLabel}`,
         `Payment method: ${prettifyPaymentMethod(result.paymentMethod)}`,
         "Payment mode: Completed",
         `Amount: ${orderAmount}`,
@@ -342,6 +389,7 @@ async function markSuccessfulPayment({
         <p><strong>Email:</strong> ${result.email}</p>
         <p><strong>Phone:</strong> ${result.phone}</p>
         <p><strong>Course:</strong> ${result.courseTitle}</p>
+        <p><strong>Payment plan:</strong> ${paymentPlanLabel}</p>
         <p><strong>Payment method:</strong> ${prettifyPaymentMethod(result.paymentMethod)}</p>
         <p><strong>Payment mode:</strong> Completed</p>
         <p><strong>Amount:</strong> ${orderAmount}</p>
@@ -356,6 +404,7 @@ async function markSuccessfulPayment({
         `Email: ${result.email}`,
         `Phone: ${result.phone}`,
         `Course: ${result.courseTitle}`,
+        `Payment plan: ${paymentPlanLabel}`,
         `Payment method: ${prettifyPaymentMethod(result.paymentMethod)}`,
         "Payment mode: Completed",
         `Amount: ${orderAmount}`,
@@ -410,35 +459,47 @@ export async function createStripeCheckout({
     throw new Error("This registration is not set for Stripe.");
   }
 
+  const isSubscriptionCheckout = isSubscriptionPayment(registration);
+  const checkoutAmount = getRegistrationChargeAmount(registration);
   const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
+    mode: isSubscriptionCheckout ? "subscription" : "payment",
     success_url: successUrl,
     cancel_url: cancelUrl,
     client_reference_id: registration.id,
     metadata: {
       registrationId: registration.id,
       paymentId: payment.id,
-        userId,
-      },
-    subscription_data: {
-      metadata: {
-        registrationId: registration.id,
-        paymentId: payment.id,
-        userId,
-      },
+      userId,
     },
+    ...(isSubscriptionCheckout
+      ? {
+          subscription_data: {
+            metadata: {
+              registrationId: registration.id,
+              paymentId: payment.id,
+              userId,
+            },
+          },
+        }
+      : {}),
     line_items: [
       {
         quantity: 1,
         price_data: {
-          currency: "gbp",
-          unit_amount: getStripeMonthlyAmountPence(registration),
-          recurring: {
-            interval: "month",
-          },
+          currency: checkoutAmount.currency.toLowerCase(),
+          unit_amount: checkoutAmount.amount,
+          ...(isSubscriptionCheckout
+            ? {
+                recurring: {
+                  interval: "month",
+                },
+              }
+            : {}),
           product_data: {
             name: "Prophetic Seerah and Planning",
-            description: `Reference: ${registration.paymentReference}`,
+            description: isSubscriptionCheckout
+              ? `Monthly subscription • Reference: ${registration.paymentReference}`
+              : `Full course payment (${COURSE_DURATION_MONTHS} months) • Reference: ${registration.paymentReference}`,
           },
         },
       },
@@ -749,6 +810,7 @@ export async function reconcileMissingStripeSubscriptions({
           providerOrderId: { not: null },
         },
       },
+      paymentPlanType: PaymentPlanType.SUBSCRIPTION,
       subscription: null,
     },
     include: {
@@ -958,10 +1020,13 @@ export async function createPaypalOrder({
   if (payment.provider !== "PAYPAL") {
     throw new Error("This registration is not set for PayPal.");
   }
+  if (isSubscriptionPayment(registration)) {
+    throw new Error("PayPal monthly subscriptions are not enabled yet. Use Stripe for subscription or choose full course payment.");
+  }
 
   const token = await getPaypalAccessToken();
   const base = getPaypalApiBase();
-  const onlinePaymentAmount = getOnlinePaymentAmount(registration);
+  const onlinePaymentAmount = getRegistrationChargeAmount(registration);
   const amountGbp = (onlinePaymentAmount.amount / 100).toFixed(2);
 
   const orderResponse = await fetch(`${base}/v2/checkout/orders`, {
@@ -977,10 +1042,10 @@ export async function createPaypalOrder({
           reference_id: registration.id,
           custom_id: payment.id,
           amount: {
-            currency_code: "GBP",
+            currency_code: onlinePaymentAmount.currency,
             value: amountGbp,
           },
-          description: `Prophetic Seerah and Planning (${registration.paymentReference})`,
+          description: `Prophetic Seerah and Planning full course payment (${registration.paymentReference})`,
         },
       ],
       application_context: {
@@ -1050,6 +1115,7 @@ export async function getPendingRegistrationForResume({
     registrationId: registration.id,
     paymentReference: registration.paymentReference,
     paymentMethod: registration.payment.provider,
+    paymentPlanType: registration.paymentPlanType,
     fullName: registration.user.fullName,
     email: registration.user.email,
     phoneCountryCode: registration.user.phoneCountryCode,
@@ -1186,7 +1252,8 @@ export async function submitManualPayment({
   if (registrationDetails) {
     const appUrl = getAppUrl();
     const adminDashboardUrl = `${appUrl}/admin`;
-    const orderAmount = formatAmount(registrationDetails.finalAmount, registrationDetails.selectedCurrency);
+    const orderAmount = formatAmount(payment.amount, payment.currency);
+    const paymentPlanLabel = prettifyPaymentPlanType(registrationDetails.paymentPlanType);
 
     await Promise.allSettled([
       sendTransactionalEmail({
@@ -1200,6 +1267,7 @@ export async function submitManualPayment({
           <p><strong>Reference:</strong> ${registrationDetails.paymentReference ?? "N/A"}</p>
           <p><strong>Email:</strong> ${registrationDetails.user.email}</p>
           <p><strong>Phone:</strong> ${registrationDetails.user.phoneCountryCode} ${registrationDetails.user.phoneNumber}</p>
+          <p><strong>Payment plan:</strong> ${paymentPlanLabel}</p>
           <p><strong>Payment method:</strong> ${prettifyPaymentMethod(payment.provider)}</p>
           <p><strong>Payment mode:</strong> Pending review</p>
           <p><strong>Amount:</strong> ${orderAmount}</p>
@@ -1211,6 +1279,7 @@ export async function submitManualPayment({
           `Reference: ${registrationDetails.paymentReference ?? "N/A"}`,
           `Email: ${registrationDetails.user.email}`,
           `Phone: ${registrationDetails.user.phoneCountryCode} ${registrationDetails.user.phoneNumber}`,
+          `Payment plan: ${paymentPlanLabel}`,
           `Payment method: ${prettifyPaymentMethod(payment.provider)}`,
           "Payment mode: Pending review",
           `Amount: ${orderAmount}`,
@@ -1227,6 +1296,7 @@ export async function submitManualPayment({
           <p><strong>Phone:</strong> ${registrationDetails.user.phoneCountryCode} ${registrationDetails.user.phoneNumber}</p>
           <p><strong>Course:</strong> ${registrationDetails.course.title}</p>
           <p><strong>Country:</strong> ${registrationDetails.selectedCountryName}</p>
+          <p><strong>Payment plan:</strong> ${paymentPlanLabel}</p>
           <p><strong>Payment method:</strong> ${prettifyPaymentMethod(payment.provider)}</p>
           <p><strong>Payment mode:</strong> Pending</p>
           <p><strong>Amount:</strong> ${orderAmount}</p>
@@ -1245,6 +1315,7 @@ export async function submitManualPayment({
           `Phone: ${registrationDetails.user.phoneCountryCode} ${registrationDetails.user.phoneNumber}`,
           `Course: ${registrationDetails.course.title}`,
           `Country: ${registrationDetails.selectedCountryName}`,
+          `Payment plan: ${paymentPlanLabel}`,
           `Payment method: ${prettifyPaymentMethod(payment.provider)}`,
           "Payment mode: Pending",
           `Amount: ${orderAmount}`,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PaymentMethod } from "@prisma/client";
+import { DEFAULT_PAYMENT_PLAN_TYPE, PAYMENT_PLAN_TYPES } from "@/lib/course-payment";
 
 const countryCodeSchema = z
   .string()
@@ -22,6 +23,7 @@ export const registrationSchema = z
     countryName: z.string().trim().min(2, "Country name is required."),
     timezone: z.string().trim().optional(),
     courseSlug: z.string().trim().default("seerah-course"),
+    paymentPlanType: z.enum(PAYMENT_PLAN_TYPES).default(DEFAULT_PAYMENT_PLAN_TYPE),
     paymentMethod: z.nativeEnum(PaymentMethod),
     couponCode: z
       .string()

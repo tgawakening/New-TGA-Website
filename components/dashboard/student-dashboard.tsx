@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { countries } from "countries-list";
 import LogoutButton from "@/components/dashboard/logout-button";
+import { paymentPlanTypeLabels } from "@/lib/course-payment";
 
 type DashboardProps = {
   user: {
@@ -30,6 +31,7 @@ type DashboardProps = {
       id: string;
       selectedCurrency: string;
       finalAmount: number;
+      paymentPlanType: "SUBSCRIPTION" | "FULL_COURSE";
       status: string;
       paymentMethod: string;
       paymentReference: string | null;
@@ -39,6 +41,8 @@ type DashboardProps = {
         title: string;
       };
       payment: {
+        amount: number;
+        currency: string;
         status: string;
         paidAt: string | null;
       } | null;
@@ -100,6 +104,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
   const latestRegistration = user.registrations.find((item) => item.course.slug === "seerah-course");
   const latestSubscription = user.subscriptions[0];
   const hasActiveLmsAccess = seerahEnrollment?.status === "ACTIVE";
+  const latestPaymentPlanLabel = latestRegistration ? paymentPlanTypeLabels[latestRegistration.paymentPlanType] : "N/A";
 
   const countryEntries = useMemo(
     () =>
@@ -261,15 +266,29 @@ export default function StudentDashboard({ user }: DashboardProps) {
                 <p>Country: {countryName}</p>
                 <p>Enrollment: {seerahEnrollment?.status ?? "NOT_REGISTERED"}</p>
                 <p>LMS Access: {hasActiveLmsAccess ? "Granted" : "Locked pending payment approval"}</p>
-                <p>Subscription: {latestSubscription?.status ?? "Not started"}</p>
                 <p>
-                  Renewal:{" "}
-                  {latestSubscription?.currentPeriodEnd
-                    ? new Date(latestSubscription.currentPeriodEnd).toLocaleDateString()
-                    : "Will appear after subscription activation"}
+                  Subscription:{" "}
+                  {latestRegistration?.paymentPlanType === "FULL_COURSE"
+                    ? "Not required for full course payment"
+                    : latestSubscription?.status ?? "Not started"}
                 </p>
                 <p>
-                  Auto renew: {latestSubscription ? (latestSubscription.cancelAtPeriodEnd ? "Will stop" : "On") : "N/A"}
+                  Renewal:{" "}
+                  {latestRegistration?.paymentPlanType === "FULL_COURSE"
+                    ? "Not applicable"
+                    : latestSubscription?.currentPeriodEnd
+                      ? new Date(latestSubscription.currentPeriodEnd).toLocaleDateString()
+                      : "Will appear after subscription activation"}
+                </p>
+                <p>
+                  Auto renew:{" "}
+                  {latestRegistration?.paymentPlanType === "FULL_COURSE"
+                    ? "Off"
+                    : latestSubscription
+                      ? latestSubscription.cancelAtPeriodEnd
+                        ? "Will stop"
+                        : "On"
+                      : "N/A"}
                 </p>
               </div>
             </article>
@@ -277,6 +296,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
             <article className="ga-dashboard-card">
               <p className="ga-dashboard-card-title">Payment Status</p>
               <div className="ga-dashboard-stack">
+                <p>Plan: {latestPaymentPlanLabel}</p>
                 <p>Method: {latestRegistration?.paymentMethod ?? "N/A"}</p>
                 <p>Registration status: {latestRegistration?.status ?? "N/A"}</p>
                 <p>Payment status: {latestRegistration?.payment?.status ?? "N/A"}</p>
@@ -284,7 +304,10 @@ export default function StudentDashboard({ user }: DashboardProps) {
                 <p>
                   Latest amount:{" "}
                   {latestRegistration
-                    ? formatMoney(latestRegistration.finalAmount, latestRegistration.selectedCurrency)
+                    ? formatMoney(
+                        latestRegistration.payment?.amount ?? latestRegistration.finalAmount,
+                        latestRegistration.payment?.currency ?? latestRegistration.selectedCurrency,
+                      )
                     : "N/A"}
                 </p>
                 <p>
@@ -393,11 +416,14 @@ export default function StudentDashboard({ user }: DashboardProps) {
                       <div>
                         <strong>{registration.course.title}</strong>
                         <p>
-                          {registration.paymentMethod} • {registration.status}
+                          {paymentPlanTypeLabels[registration.paymentPlanType]} • {registration.paymentMethod} • {registration.status}
                         </p>
                       </div>
                       <span>
-                        {formatMoney(registration.finalAmount, registration.selectedCurrency)}
+                        {formatMoney(
+                          registration.payment?.amount ?? registration.finalAmount,
+                          registration.payment?.currency ?? registration.selectedCurrency,
+                        )}
                       </span>
                     </div>
                   ))
