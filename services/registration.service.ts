@@ -1,6 +1,6 @@
 import { PaymentStatus, RegistrationStatus, type PaymentMethod } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { ensureRegistrationPaymentPlanColumn, prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import {
   COURSE_DURATION_MONTHS,
   getPaymentMethodsForPlan,
@@ -59,8 +59,6 @@ function getPaymentRecordAmount(
 }
 
 export async function registerStudent(input: RegistrationInput) {
-  await ensureRegistrationPaymentPlanColumn();
-
   const existingUser = await prisma.user.findUnique({
     where: { email: input.email },
     select: { id: true },
@@ -123,7 +121,6 @@ export async function registerStudent(input: RegistrationInput) {
         autoDiscountAmount: pricing.autoDiscountAmount,
         couponDiscountAmount: pricing.couponDiscountAmount,
         finalAmount: pricing.finalAmount,
-        paymentPlanType: input.paymentPlanType,
         paymentMethod: input.paymentMethod as PaymentMethod,
         paymentReference,
         status: RegistrationStatus.PENDING_PAYMENT,
@@ -244,3 +241,4 @@ export async function registerStudent(input: RegistrationInput) {
 
   return result;
 }
+

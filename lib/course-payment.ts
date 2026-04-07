@@ -5,6 +5,10 @@ export const COURSE_DURATION_MONTHS = 8;
 export const PAYMENT_PLAN_TYPES = ["SUBSCRIPTION", "FULL_COURSE"] as const;
 
 export type PaymentPlanType = (typeof PAYMENT_PLAN_TYPES)[number];
+export const PaymentPlanType = {
+  SUBSCRIPTION: "SUBSCRIPTION",
+  FULL_COURSE: "FULL_COURSE",
+} as const satisfies Record<string, PaymentPlanType>;
 
 export const DEFAULT_PAYMENT_PLAN_TYPE: PaymentPlanType = "SUBSCRIPTION";
 
@@ -23,5 +27,19 @@ export function getPaymentMethodsForPlan(
   paymentPlanType: PaymentPlanType,
 ) {
   return paymentPlanType === "FULL_COURSE" ? methodsByPlan.fullCourse : methodsByPlan.subscription;
+}
+
+
+export function resolvePaymentPlanType(value: unknown): PaymentPlanType {
+  return value === "FULL_COURSE" ? "FULL_COURSE" : "SUBSCRIPTION";
+}
+
+export function getPaymentPlanTypeFromSnapshot(snapshot: unknown): PaymentPlanType {
+  if (!snapshot || typeof snapshot !== "object") {
+    return DEFAULT_PAYMENT_PLAN_TYPE;
+  }
+
+  const record = snapshot as Record<string, unknown>;
+  return resolvePaymentPlanType(record.selectedPaymentPlanType);
 }
 

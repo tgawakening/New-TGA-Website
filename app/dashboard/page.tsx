@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import StudentDashboard from "@/components/dashboard/student-dashboard";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getPaymentPlanTypeFromSnapshot } from "@/lib/course-payment";
 import { processDueManualSubscriptions, reconcileMissingStripeSubscriptions } from "@/services/payment.service";
 
 export default async function DashboardPage() {
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
           id: item.id,
           selectedCurrency: item.selectedCurrency,
           finalAmount: item.finalAmount,
-          paymentPlanType: item.paymentPlanType,
+          paymentPlanType: getPaymentPlanTypeFromSnapshot(item.pricingSnapshot),
           status: item.status,
           paymentMethod: item.paymentMethod,
           paymentReference: item.paymentReference,

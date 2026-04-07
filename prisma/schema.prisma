@@ -76,11 +76,6 @@ enum SubscriptionStatus {
   PAUSED
 }
 
-enum PaymentPlanType {
-  SUBSCRIPTION
-  FULL_COURSE
-}
-
 enum CouponType {
   PERCENT
   FIXED
@@ -185,7 +180,6 @@ model Registration {
   autoDiscountAmount    Int               @default(0)
   couponDiscountAmount  Int               @default(0)
   finalAmount           Int
-  paymentPlanType       PaymentPlanType   @default(SUBSCRIPTION)
   paymentMethod         PaymentMethod
   paymentReference      String?            @unique
   status                RegistrationStatus @default(PENDING_PAYMENT)
@@ -388,3 +382,7 @@ model FreeWarriorApplication {
   @@index([email, status])
   @@index([approvedUserId])
 }
+
+
+
+

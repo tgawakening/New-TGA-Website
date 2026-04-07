@@ -1,5 +1,4 @@
 import {
-  PaymentPlanType,
   EnrollmentStatus,
   PaymentStatus,
   Prisma,
@@ -10,8 +9,13 @@ import {
   type Registration,
   type User,
 } from "@prisma/client";
-import { ensureRegistrationPaymentPlanColumn, prisma } from "@/lib/prisma";
-import { COURSE_DURATION_MONTHS, paymentPlanTypeLabels } from "@/lib/course-payment";
+import { prisma } from "@/lib/prisma";
+import {
+  COURSE_DURATION_MONTHS,
+  getPaymentPlanTypeFromSnapshot,
+  paymentPlanTypeLabels,
+  type PaymentPlanType,
+} from "@/lib/course-payment";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
 import { handleMissionSupportStripeSessionCompleted } from "@/services/mission-support.service";
@@ -54,7 +58,6 @@ function getPaypalApiBase() {
 }
 
 async function loadRegistrationForUser(registrationId: string, userId: string): Promise<RegistrationWithPayment> {
-  await ensureRegistrationPaymentPlanColumn();
   const registration = await prisma.registration.findFirst({
     where: { id: registrationId, userId },
     include: { payment: true, user: true },
@@ -70,11 +73,11 @@ function toJsonValue(input: unknown): Prisma.InputJsonValue {
 }
 
 function isFullCoursePayment(registration: Registration) {
-  return registration.paymentPlanType === PaymentPlanType.FULL_COURSE;
+  return getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) === "FULL_COURSE";
 }
 
 function isSubscriptionPayment(registration: Registration) {
-  return registration.paymentPlanType !== PaymentPlanType.FULL_COURSE;
+  return getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) !== "FULL_COURSE";
 }
 
 function getOnlinePaymentAmount(registration: RegistrationWithPayment) {
@@ -167,7 +170,7 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
   const resumeLink = buildResumePaymentLink(registration.id);
   const onlinePaymentAmount = getRegistrationChargeAmount(registration);
   const orderAmount = formatAmount(onlinePaymentAmount.amount, onlinePaymentAmount.currency);
-  const paymentPlanLabel = prettifyPaymentPlanType(registration.paymentPlanType);
+  const paymentPlanLabel = prettifyPaymentPlanType(getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot));
 
   await Promise.allSettled([
     sendTransactionalEmail({
@@ -276,7 +279,7 @@ async function markSuccessfulPayment({
         email: payment.registration.user.email,
         phone: `${payment.registration.user.phoneCountryCode} ${payment.registration.user.phoneNumber}`,
         courseTitle: payment.registration.course.title,
-        paymentPlanType: payment.registration.paymentPlanType,
+        paymentPlanType: getPaymentPlanTypeFromSnapshot(payment.registration.pricingSnapshot),
         paymentReference: payment.registration.paymentReference,
         paymentMethod: payment.provider,
         amount: payment.amount,
@@ -318,7 +321,7 @@ async function markSuccessfulPayment({
       email: payment.registration.user.email,
       phone: `${payment.registration.user.phoneCountryCode} ${payment.registration.user.phoneNumber}`,
       courseTitle: payment.registration.course.title,
-      paymentPlanType: payment.registration.paymentPlanType,
+      paymentPlanType: getPaymentPlanTypeFromSnapshot(payment.registration.pricingSnapshot),
       paymentReference: payment.registration.paymentReference,
       paymentMethod: payment.provider,
       amount: payment.amount,
@@ -328,7 +331,7 @@ async function markSuccessfulPayment({
   });
 
   if (
-    result.paymentPlanType === PaymentPlanType.SUBSCRIPTION &&
+    result.paymentPlanType === "SUBSCRIPTION" &&
     (result.paymentMethod === "BANK_TRANSFER" || result.paymentMethod === "JAZZCASH")
   ) {
     await syncManualRecurringSubscription({
@@ -499,8 +502,8 @@ export async function createStripeCheckout({
           product_data: {
             name: "Prophetic Seerah and Planning",
             description: isSubscriptionCheckout
-              ? `Monthly subscription â€¢ Reference: ${registration.paymentReference}`
-              : `Full course payment (${COURSE_DURATION_MONTHS} months) â€¢ Reference: ${registration.paymentReference}`,
+              ? `Monthly subscription • Reference: ${registration.paymentReference}`
+              : `Full course payment (${COURSE_DURATION_MONTHS} months) • Reference: ${registration.paymentReference}`,
           },
         },
       },
@@ -796,7 +799,6 @@ export async function reconcileMissingStripeSubscriptions({
   userId?: string;
   limit?: number;
 } = {}) {
-  await ensureRegistrationPaymentPlanColumn();
   const stripeSecretKey = getRequiredEnv("STRIPE_SECRET_KEY");
   const stripeModule = await import("stripe");
   const Stripe = stripeModule.default;
@@ -812,7 +814,6 @@ export async function reconcileMissingStripeSubscriptions({
           providerOrderId: { not: null },
         },
       },
-      paymentPlanType: PaymentPlanType.SUBSCRIPTION,
       subscription: null,
     },
     include: {
@@ -827,6 +828,7 @@ export async function reconcileMissingStripeSubscriptions({
   for (const registration of registrations) {
     const sessionId = registration.payment?.providerOrderId;
     if (!sessionId) continue;
+    if (getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) !== 'SUBSCRIPTION') continue;
 
     try {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -852,7 +854,6 @@ export async function processDueManualSubscriptions({
 }: {
   limit?: number;
 } = {}) {
-  await ensureRegistrationPaymentPlanColumn();
   const dueSubscriptions = await prisma.subscription.findMany({
     where: {
       provider: "MANUAL" as unknown as SubscriptionProvider,
@@ -1118,7 +1119,7 @@ export async function getPendingRegistrationForResume({
     registrationId: registration.id,
     paymentReference: registration.paymentReference,
     paymentMethod: registration.payment.provider,
-    paymentPlanType: registration.paymentPlanType,
+    paymentPlanType: getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot),
     fullName: registration.user.fullName,
     email: registration.user.email,
     phoneCountryCode: registration.user.phoneCountryCode,
@@ -1256,7 +1257,7 @@ export async function submitManualPayment({
     const appUrl = getAppUrl();
     const adminDashboardUrl = `${appUrl}/admin`;
     const orderAmount = formatAmount(payment.amount, payment.currency);
-    const paymentPlanLabel = prettifyPaymentPlanType(registrationDetails.paymentPlanType);
+    const paymentPlanLabel = prettifyPaymentPlanType(getPaymentPlanTypeFromSnapshot(registrationDetails.pricingSnapshot));
 
     await Promise.allSettled([
       sendTransactionalEmail({
@@ -1458,6 +1459,10 @@ export async function adminConfirmManualPayment({
 
   return { status: "REJECTED" as const };
 }
+
+
+
+
 
 
 

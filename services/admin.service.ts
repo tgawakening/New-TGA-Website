@@ -1,14 +1,13 @@
 import {
   EnrollmentStatus,
   PaymentMethod,
-  PaymentPlanType,
   PaymentStatus,
   RegistrationStatus,
   type FreeWarriorApplicationStatus,
 } from "@prisma/client";
-import { paymentPlanTypeLabels } from "@/lib/course-payment";
+import { getPaymentPlanTypeFromSnapshot, paymentPlanTypeLabels, type PaymentPlanType } from "@/lib/course-payment";
 import { formatApproxScholarshipAmount, parseFreeWarriorContribution } from "@/lib/free-warrior";
-import { ensureRegistrationPaymentPlanColumn, prisma } from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { adminActivateManualRecurringPayment, adminConfirmManualPayment } from "@/services/payment.service";
 import type { AdminRegistrationActionInput } from "@/lib/validations/admin";
@@ -248,7 +247,7 @@ function getDiscountLabel(row: {
     }
   }
 
-  return labels.length > 0 ? labels.join(" â€¢ ") : null;
+  return labels.length > 0 ? labels.join(" • ") : null;
 }
 
 function getScholarshipSnapshotDetails(pricingSnapshot: unknown) {
@@ -311,7 +310,6 @@ function getRegistrationPaymentPresentation(input: {
 }
 
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
-  await ensureRegistrationPaymentPlanColumn();
   const [registrations, users, applications, missionSupport] = await Promise.all([
     prisma.registration.findMany({
       include: {
@@ -346,6 +344,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
   ]);
 
   const mappedRegistrations = registrations.map((row) => {
+    const paymentPlanType = getPaymentPlanTypeFromSnapshot(row.pricingSnapshot);
     const discountLabel = getDiscountLabel(row);
     const adminState = getAdminOrderState({
       paymentStatus: row.payment?.status ?? PaymentStatus.INITIATED,
@@ -353,7 +352,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       enrollmentStatus: row.enrollment?.status ?? EnrollmentStatus.PENDING,
     });
     const paymentPresentation = getRegistrationPaymentPresentation({
-      paymentPlanType: row.paymentPlanType,
+      paymentPlanType,
       paymentMethod: row.paymentMethod,
       finalAmount: row.finalAmount,
       pricingSnapshot: row.pricingSnapshot,
@@ -373,8 +372,8 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       amountLabel: formatAmount(row.payment?.amount ?? row.finalAmount, row.payment?.currency ?? row.selectedCurrency),
       rawAmount: row.payment?.amount ?? row.finalAmount,
       rawCurrency: row.payment?.currency ?? row.selectedCurrency,
-      paymentPlanType: row.paymentPlanType,
-      paymentPlanLabel: paymentPlanTypeLabels[row.paymentPlanType],
+      paymentPlanType,
+      paymentPlanLabel: paymentPlanTypeLabels[paymentPlanType],
       paymentMethod: row.paymentMethod,
       paymentLabel: paymentPresentation.paymentLabel,
       paymentDetail: paymentPresentation.paymentDetail,
@@ -423,8 +422,9 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
     registrations: orderRegistrations,
     students: users.map((user) => {
       const registrationSummaries = user.registrations.map((item) => {
+        const paymentPlanType = getPaymentPlanTypeFromSnapshot(item.pricingSnapshot);
         const paymentPresentation = getRegistrationPaymentPresentation({
-          paymentPlanType: item.paymentPlanType,
+          paymentPlanType,
           paymentMethod: item.paymentMethod,
           finalAmount: item.finalAmount,
           pricingSnapshot: item.pricingSnapshot,
@@ -780,5 +780,7 @@ export async function adminUpdateRegistrationRecord(input: AdminRegistrationActi
 
   return { status: "CANCELLED" as const };
 }
+
+
 
 

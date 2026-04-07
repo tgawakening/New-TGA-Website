@@ -1,6 +1,6 @@
 "use client";
 
-import { PaymentMethod, PaymentPlanType } from "@prisma/client";
+import { PaymentMethod } from "@prisma/client";
 import { countries } from "countries-list";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -11,6 +11,7 @@ import {
   DEFAULT_PAYMENT_PLAN_TYPE,
   getPaymentMethodsForPlan,
   paymentPlanTypeLabels,
+  PaymentPlanType,
 } from "@/lib/course-payment";
 
 type PricingResponse = {
@@ -1157,3 +1158,5 @@ export default function SeerahRegisterPage() {
     </Suspense>
   );
 }
+
+
