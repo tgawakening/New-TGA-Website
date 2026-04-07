@@ -2,9 +2,22 @@
 
 ## Local vs production
 
-- Local development uses `.env.local` and your localhost MySQL database.
+- Local development uses `.env.local`.
+- Local development can use the same managed DigitalOcean MySQL database as production.
+- A local MySQL server is optional, not required.
 - Production uses host-managed environment variables, not `.env.local`.
 - For Vercel, set environment variables in the Vercel project dashboard.
+
+## Using DigitalOcean for all environments
+
+If you want to lighten your laptop and remove MySQL Server / MySQL Workbench:
+
+- keep the app running locally with `npm run dev`
+- set `DATABASE_URL` in `.env.local` to the DigitalOcean managed MySQL connection string
+- keep SSL enabled with `sslcert=./certs/ca-certificate.crt&sslaccept=strict`
+- run Prisma commands against that remote database when needed
+
+After that, the project no longer depends on a MySQL installation on your laptop. Uninstalling MySQL Server or Workbench will not affect the app as long as `DATABASE_URL` still points to the DigitalOcean database.
 
 ## Required production environment variables
 
@@ -30,6 +43,7 @@ ADMIN_NOTIFICATION_EMAIL=admin@your-domain.com
 - `postinstall` runs `prisma generate`, which is needed for Vercel builds.
 - Managed DigitalOcean MySQL should use SSL in the Prisma connection URL.
 - This repo includes the CA file at `certs/ca-certificate.crt`, and production `DATABASE_URL` should reference it with `sslcert=./certs/ca-certificate.crt&sslaccept=strict`.
+- The same DigitalOcean connection string can also be used in `.env.local` for development.
 - The repository includes Prisma migrations. For a fresh production database, use:
 
 ```bash

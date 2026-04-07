@@ -17,11 +17,14 @@ Production-ready Next.js 16 app for the Global Awakening website.
    ```bash
    cp .env.example .env.local
    ```
-3. Set `NEXT_PUBLIC_APP_URL` in `.env.local` to your deployed domain (for canonical URLs, robots, and sitemap).
-4. Run development server:
+3. Keep `NEXT_PUBLIC_APP_URL=http://localhost:3000` for local development unless you specifically need another local URL.
+4. Set `DATABASE_URL` in `.env.local` to your managed DigitalOcean MySQL connection string if you want the project to avoid any local MySQL dependency.
+5. Run development server:
    ```bash
    npm run dev
    ```
+
+Using a managed DigitalOcean database means the app, Prisma, and local dev server connect over the network. MySQL Server or MySQL Workbench do not need to be installed on your laptop for this project to run.
 
 ## Production Preflight
 Run this before every deployment:
@@ -58,6 +61,8 @@ Required for production:
 - `NEXT_PUBLIC_APP_URL=https://your-domain.com`
 - `DATABASE_URL=mysql://...`
 - payment/email env vars if those workflows are enabled
+
+For a laptop-friendly setup, you can also use the same DigitalOcean `DATABASE_URL` in local development.
 
 ## Suggested Deploy Targets
 - Vercel (zero-config for Next.js)

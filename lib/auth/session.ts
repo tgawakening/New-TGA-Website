@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { ensureRegistrationPaymentPlanColumn, prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE_NAME = "ga_session";
 const SESSION_DAYS = 14;
@@ -59,6 +59,7 @@ export async function clearSessionCookie(response: NextResponse) {
 }
 
 export async function getCurrentUser() {
+  await ensureRegistrationPaymentPlanColumn();
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
@@ -101,3 +102,5 @@ export async function getCurrentUser() {
   if (!session) return null;
   return session.user;
 }
+
+

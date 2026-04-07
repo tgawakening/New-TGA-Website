@@ -1,6 +1,6 @@
 import { PaymentStatus, RegistrationStatus, type PaymentMethod } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { ensureRegistrationPaymentPlanColumn, prisma } from "@/lib/prisma";
 import {
   COURSE_DURATION_MONTHS,
   getPaymentMethodsForPlan,
@@ -59,6 +59,8 @@ function getPaymentRecordAmount(
 }
 
 export async function registerStudent(input: RegistrationInput) {
+  await ensureRegistrationPaymentPlanColumn();
+
   const existingUser = await prisma.user.findUnique({
     where: { email: input.email },
     select: { id: true },

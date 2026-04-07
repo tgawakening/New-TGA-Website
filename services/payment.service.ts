@@ -10,7 +10,7 @@ import {
   type Registration,
   type User,
 } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { ensureRegistrationPaymentPlanColumn, prisma } from "@/lib/prisma";
 import { COURSE_DURATION_MONTHS, paymentPlanTypeLabels } from "@/lib/course-payment";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
@@ -54,6 +54,7 @@ function getPaypalApiBase() {
 }
 
 async function loadRegistrationForUser(registrationId: string, userId: string): Promise<RegistrationWithPayment> {
+  await ensureRegistrationPaymentPlanColumn();
   const registration = await prisma.registration.findFirst({
     where: { id: registrationId, userId },
     include: { payment: true, user: true },
@@ -795,6 +796,7 @@ export async function reconcileMissingStripeSubscriptions({
   userId?: string;
   limit?: number;
 } = {}) {
+  await ensureRegistrationPaymentPlanColumn();
   const stripeSecretKey = getRequiredEnv("STRIPE_SECRET_KEY");
   const stripeModule = await import("stripe");
   const Stripe = stripeModule.default;
@@ -850,6 +852,7 @@ export async function processDueManualSubscriptions({
 }: {
   limit?: number;
 } = {}) {
+  await ensureRegistrationPaymentPlanColumn();
   const dueSubscriptions = await prisma.subscription.findMany({
     where: {
       provider: "MANUAL" as unknown as SubscriptionProvider,
@@ -1455,3 +1458,8 @@ export async function adminConfirmManualPayment({
 
   return { status: "REJECTED" as const };
 }
+
+
+
+
+

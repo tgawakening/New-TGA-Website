@@ -8,7 +8,7 @@ import {
 } from "@prisma/client";
 import { paymentPlanTypeLabels } from "@/lib/course-payment";
 import { formatApproxScholarshipAmount, parseFreeWarriorContribution } from "@/lib/free-warrior";
-import { prisma } from "@/lib/prisma";
+import { ensureRegistrationPaymentPlanColumn, prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { adminActivateManualRecurringPayment, adminConfirmManualPayment } from "@/services/payment.service";
 import type { AdminRegistrationActionInput } from "@/lib/validations/admin";
@@ -311,6 +311,7 @@ function getRegistrationPaymentPresentation(input: {
 }
 
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
+  await ensureRegistrationPaymentPlanColumn();
   const [registrations, users, applications, missionSupport] = await Promise.all([
     prisma.registration.findMany({
       include: {
@@ -779,3 +780,5 @@ export async function adminUpdateRegistrationRecord(input: AdminRegistrationActi
 
   return { status: "CANCELLED" as const };
 }
+
+
