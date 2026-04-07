@@ -247,7 +247,7 @@ function getDiscountLabel(row: {
     }
   }
 
-  return labels.length > 0 ? labels.join(" • ") : null;
+  return labels.length > 0 ? labels.join(" - ") : null;
 }
 
 function getScholarshipSnapshotDetails(pricingSnapshot: unknown) {

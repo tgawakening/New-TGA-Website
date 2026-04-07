@@ -502,8 +502,8 @@ export async function createStripeCheckout({
           product_data: {
             name: "Prophetic Seerah and Planning",
             description: isSubscriptionCheckout
-              ? `Monthly subscription • Reference: ${registration.paymentReference}`
-              : `Full course payment (${COURSE_DURATION_MONTHS} months) • Reference: ${registration.paymentReference}`,
+              ? `Monthly subscription - Reference: ${registration.paymentReference}`
+              : `Full course payment (${COURSE_DURATION_MONTHS} months) - Reference: ${registration.paymentReference}`,
           },
         },
       },
