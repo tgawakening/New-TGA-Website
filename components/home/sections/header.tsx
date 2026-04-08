@@ -28,12 +28,20 @@ function PillButton({
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 78);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const syncSession = () => setHasSession(document.cookie.includes("ga_session="));
+    syncSession();
+    window.addEventListener("focus", syncSession);
+    return () => window.removeEventListener("focus", syncSession);
   }, []);
 
   return (
@@ -82,8 +90,8 @@ export function Header() {
           <Link href="/support-our-mission" className="ga-btn ga-header-cta ga-cta-signin">
             Support Our Mission
           </Link>
-          <Link href="/seerah/register" className="ga-btn ga-header-cta ga-cta-register">
-            Enroll Now
+          <Link href={hasSession ? "/dashboard" : "/seerah/register"} className="ga-btn ga-header-cta ga-cta-register">
+            {hasSession ? "Your Dashboard" : "Enroll Now"}
           </Link>
         </div>
 
@@ -98,4 +106,3 @@ export function Header() {
     </header>
   );
 }
-

@@ -416,9 +416,6 @@ function SeerahRegisterContent() {
       }
 
       setPricing(data.pricing);
-      if (resumeRegistrationId) {
-        return;
-      }
       const methodsForPlan = getPaymentMethodsForPlan(data.pricing.allowedPaymentMethodsByPlan, form.paymentPlanType);
       if (!methodsForPlan.includes(form.paymentMethod)) {
         setForm((prev) => ({
@@ -429,7 +426,7 @@ function SeerahRegisterContent() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Pricing error.");
     }
-  }, [form.countryCode, form.couponCode, form.paymentMethod, form.paymentPlanType, resumeRegistrationId]);
+  }, [form.countryCode, form.couponCode, form.paymentMethod, form.paymentPlanType]);
 
   useEffect(() => {
     void fetchPricing();
@@ -451,7 +448,7 @@ function SeerahRegisterContent() {
       setError("Pricing is still loading. Please wait.");
       return;
     }
-    if (form.password !== form.confirmPassword) {
+    if (!resumeRegistrationId && form.password !== form.confirmPassword) {
       setError("Confirm password does not match.");
       return;
     }
@@ -464,15 +461,17 @@ function SeerahRegisterContent() {
       let registrationId = resumeRegistrationId;
       let paymentReference = resumePaymentReference;
 
+      const registrationPayload = {
+        ...form,
+        countryCode: form.countryCode.trim().toUpperCase(),
+        courseSlug: "seerah-course",
+      };
+
       if (!registrationId) {
         const registerResponse = await fetch("/api/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...form,
-            countryCode: form.countryCode.trim().toUpperCase(),
-            courseSlug: "seerah-course",
-          }),
+          body: JSON.stringify(registrationPayload),
         });
 
         const registerData = (await registerResponse.json()) as RegisterResponse;
@@ -487,6 +486,34 @@ function SeerahRegisterContent() {
         paymentReference = registerData.paymentReference;
         setResumeRegistrationId(registerData.registrationId);
         setResumePaymentReference(registerData.paymentReference);
+      } else {
+        const updateResponse = await fetch("/api/register/update-pending", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            registrationId,
+            fullName: registrationPayload.fullName,
+            phoneCountryCode: registrationPayload.phoneCountryCode,
+            phoneNumber: registrationPayload.phoneNumber,
+            countryCode: registrationPayload.countryCode,
+            countryName: registrationPayload.countryName,
+            courseSlug: registrationPayload.courseSlug,
+            paymentPlanType: registrationPayload.paymentPlanType,
+            paymentMethod: registrationPayload.paymentMethod,
+            couponCode: registrationPayload.couponCode,
+          }),
+        });
+
+        const updateData = (await updateResponse.json()) as RegisterResponse;
+        if (!updateResponse.ok) {
+          const detailMessage =
+            updateData.details?.formErrors?.[0] ??
+            Object.values(updateData.details?.fieldErrors ?? {}).flat().find(Boolean);
+          throw new Error(detailMessage || updateData.error || "Could not update pending registration.");
+        }
+
+        paymentReference = updateData.paymentReference;
+        setResumePaymentReference(updateData.paymentReference);
       }
 
       if (form.paymentMethod === PaymentMethod.STRIPE) {
@@ -593,6 +620,7 @@ function SeerahRegisterContent() {
       ? [fullCoursePriceLabel, fullCourseLocalLabel].filter(Boolean).join(" ")
       : [subscriptionPriceLabel, subscriptionLocalLabel].filter(Boolean).join(" ");
   const selectedPlanLabel = paymentPlanTypeLabels[form.paymentPlanType];
+  const submitDisabled = submitting || !pricing || restoringResume;
 
   return (
     <>
@@ -649,7 +677,7 @@ function SeerahRegisterContent() {
                   border: "1px solid rgba(255,255,255,0.4)",
                   background: "rgba(255,255,255,0.1)",
                   color: "#e8f6ff",
-                  cursor: "pointer",
+                  cursor: submitDisabled ? "not-allowed" : "pointer",
                 }}
               >
                 x
@@ -696,8 +724,8 @@ function SeerahRegisterContent() {
                     type={showPassword ? "text" : "password"}
                     value={form.password}
                     onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-                    required
-                    placeholder="Minimum 8 characters"
+                    required={!resumeRegistrationId}
+                    placeholder={resumeRegistrationId ? "Already saved on your account" : "Minimum 8 characters"}
                     style={{ width: "100%", padding: "0.56rem 2.8rem 0.56rem 0.56rem", borderRadius: 6, border: "1px solid #b8cadb" }}
                   />
                   <button
@@ -712,7 +740,7 @@ function SeerahRegisterContent() {
                       border: 0,
                       background: "transparent",
                       color: "#50708f",
-                      cursor: "pointer",
+                      cursor: submitDisabled ? "not-allowed" : "pointer",
                       fontSize: "0.76rem",
                       fontWeight: 700,
                     }}
@@ -731,8 +759,8 @@ function SeerahRegisterContent() {
                     type={showConfirmPassword ? "text" : "password"}
                     value={form.confirmPassword}
                     onChange={(event) => setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
-                    required
-                    placeholder="Re-enter password"
+                    required={!resumeRegistrationId}
+                    placeholder={resumeRegistrationId ? "Not needed for pending payment" : "Re-enter password"}
                     style={{ width: "100%", padding: "0.56rem 2.8rem 0.56rem 0.56rem", borderRadius: 6, border: "1px solid #b8cadb" }}
                   />
                   <button
@@ -747,7 +775,7 @@ function SeerahRegisterContent() {
                       border: 0,
                       background: "transparent",
                       color: "#50708f",
-                      cursor: "pointer",
+                      cursor: submitDisabled ? "not-allowed" : "pointer",
                       fontSize: "0.76rem",
                       fontWeight: 700,
                     }}
@@ -755,6 +783,11 @@ function SeerahRegisterContent() {
                     {showConfirmPassword ? "Hide" : "View"}
                   </button>
                 </div>
+                {resumeRegistrationId ? (
+                  <p style={{ margin: "0.28rem 0 0", color: "#456580", fontSize: "0.72rem", fontWeight: 700 }}>
+                    Password is already saved on your account. You can change payment details below and continue.
+                  </p>
+                ) : null}
                 {passwordMatchState === "match" ? (
                   <p style={{ margin: "0.28rem 0 0", color: "#1d6b43", fontSize: "0.72rem", fontWeight: 700 }}>
                     Confirm password matches.
@@ -787,7 +820,7 @@ function SeerahRegisterContent() {
                         alignItems: "center",
                         justifyContent: "space-between",
                         gap: "0.4rem",
-                        cursor: "pointer",
+                        cursor: submitDisabled ? "not-allowed" : "pointer",
                       }}
                     >
                       <span style={{ display: "flex", alignItems: "center", gap: "0.42rem", minWidth: 0 }}>
@@ -866,7 +899,7 @@ function SeerahRegisterContent() {
                               alignItems: "center",
                               gap: "0.42rem",
                               textAlign: "left",
-                              cursor: "pointer",
+                              cursor: submitDisabled ? "not-allowed" : "pointer",
                             }}
                           >
                             <Image
@@ -927,10 +960,8 @@ function SeerahRegisterContent() {
                         key={planType}
                         type="button"
                         onClick={() => {
-                          if (resumeRegistrationId) return;
                           setForm((prev) => ({ ...prev, paymentPlanType: planType }));
                         }}
-                        disabled={Boolean(resumeRegistrationId)}
                         style={{
                           border: `1px solid ${isSelected ? "#1e6fa3" : "#c6d7e5"}`,
                           background: isSelected ? "#eaf4fd" : "#f9fcff",
@@ -939,8 +970,8 @@ function SeerahRegisterContent() {
                           display: "grid",
                           gap: "0.18rem",
                           textAlign: "left",
-                          cursor: resumeRegistrationId ? "not-allowed" : "pointer",
-                          opacity: resumeRegistrationId && !isSelected ? 0.6 : 1,
+                          cursor: submitDisabled ? "not-allowed" : "pointer",
+                          opacity: 1,
                         }}
                       >
                         <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#204c6d" }}>
@@ -986,7 +1017,7 @@ function SeerahRegisterContent() {
                       padding: "0.55rem",
                     }}
                   >
-                    Resuming saved order{resumePaymentReference ? ` (${resumePaymentReference})` : ""}. Your details are preserved below.
+                    Resuming saved order{resumePaymentReference ? ` (${resumePaymentReference})` : ""}. You can update your payment plan or payment method below before continuing.
                   </div>
                 ) : null}
                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
@@ -995,10 +1026,8 @@ function SeerahRegisterContent() {
                       key={method}
                       type="button"
                       onClick={() => {
-                        if (resumeRegistrationId) return;
                         setForm((prev) => ({ ...prev, paymentMethod: method }));
                       }}
-                      disabled={Boolean(resumeRegistrationId)}
                       style={{
                         border: `1px solid ${form.paymentMethod === method ? "#1e6fa3" : "#9db7ce"}`,
                         background: form.paymentMethod === method ? "#e7f2fc" : "#fff",
@@ -1006,8 +1035,8 @@ function SeerahRegisterContent() {
                         borderRadius: 7,
                         padding: "0.44rem 0.8rem",
                         fontWeight: 700,
-                        cursor: resumeRegistrationId ? "not-allowed" : "pointer",
-                        opacity: resumeRegistrationId && form.paymentMethod !== method ? 0.55 : 1,
+                        cursor: submitDisabled ? "not-allowed" : "pointer",
+                        opacity: 1,
                       }}
                     >
                       {paymentLabels[method]}
@@ -1106,16 +1135,16 @@ function SeerahRegisterContent() {
 
               <button
                 type="submit"
-                disabled={submitting || !pricing || restoringResume}
+                disabled={submitDisabled}
                 style={{
-                  border: "1px solid #7fa7c8",
-                  background: "#83a8c6",
+                  border: submitDisabled ? "1px solid #9db8cf" : "1px solid #0c4f7a",
+                  background: submitDisabled ? "#a8c0d3" : "#0f5e91",
                   color: "#f3fbff",
                   borderRadius: 7,
                   padding: "0.72rem",
                   fontSize: "0.95rem",
                   fontWeight: 800,
-                  cursor: "pointer",
+                  cursor: submitDisabled ? "not-allowed" : "pointer",
                 }}
               >
                 {submitting
@@ -1158,5 +1187,7 @@ export default function SeerahRegisterPage() {
     </Suspense>
   );
 }
+
+
 
 

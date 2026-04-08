@@ -1,4 +1,4 @@
-import { PaymentStatus, RegistrationStatus, type PaymentMethod } from "@prisma/client";
+import { PaymentStatus, Prisma, RegistrationStatus, type PaymentMethod } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import {
@@ -8,7 +8,7 @@ import {
 } from "@/lib/course-payment";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { calculatePricing, SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
-import type { RegistrationInput } from "@/lib/validations/registration";
+import type { PendingRegistrationUpdateInput, RegistrationInput } from "@/lib/validations/registration";
 
 function buildPaymentReference() {
   const now = new Date();
@@ -240,5 +240,134 @@ export async function registerStudent(input: RegistrationInput) {
   }
 
   return result;
+}
+export async function updatePendingRegistration(input: PendingRegistrationUpdateInput & { userId: string }) {
+  const registration = await prisma.registration.findFirst({
+    where: {
+      id: input.registrationId,
+      userId: input.userId,
+    },
+    include: {
+      payment: true,
+      subscription: true,
+    },
+  });
+
+  if (!registration || !registration.payment) {
+    throw new Error("Pending registration not found.");
+  }
+
+  const payment = registration.payment;
+
+  if (
+    registration.payment.status === PaymentStatus.SUCCEEDED ||
+    registration.payment.status === PaymentStatus.CONFIRMED ||
+    registration.status === RegistrationStatus.ACTIVE ||
+    registration.status === RegistrationStatus.PAID
+  ) {
+    throw new Error("This registration is already completed.");
+  }
+
+  if (
+    registration.payment.status === PaymentStatus.UNDER_REVIEW ||
+    registration.status === RegistrationStatus.MANUAL_REVIEW
+  ) {
+    throw new Error("This payment is already under manual review and cannot be changed now.");
+  }
+
+  const pricing = await calculatePricing({
+    courseSlug: input.courseSlug,
+    countryCode: input.countryCode,
+    couponCode: input.couponCode,
+  });
+  const allowedPaymentMethods = getPaymentMethodsForPlan(pricing.allowedPaymentMethodsByPlan, input.paymentPlanType);
+
+  if (!allowedPaymentMethods.includes(input.paymentMethod)) {
+    throw new Error("Selected payment method is not available for this country.");
+  }
+
+  const coupon = pricing.couponCode
+    ? await prisma.coupon.findUnique({
+        where: { code: pricing.couponCode },
+        select: { id: true },
+      })
+    : null;
+
+  const paymentRecord = getPaymentRecordAmount(pricing, input.paymentPlanType, input.paymentMethod);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: input.userId },
+      data: {
+        fullName: input.fullName,
+        phoneCountryCode: input.phoneCountryCode,
+        phoneNumber: input.phoneNumber,
+      },
+    });
+
+    await tx.studentProfile.upsert({
+      where: { userId: input.userId },
+      update: {
+        countryCode: input.countryCode,
+        countryName: input.countryName,
+        timezone: input.timezone || null,
+      },
+      create: {
+        userId: input.userId,
+        countryCode: input.countryCode,
+        countryName: input.countryName,
+        timezone: input.timezone || null,
+      },
+    });
+
+    await tx.registration.update({
+      where: { id: registration.id },
+      data: {
+        selectedCountryCode: input.countryCode,
+        selectedCountryName: input.countryName,
+        selectedCurrency: pricing.currency,
+        baseAmount: pricing.baseAmount,
+        autoDiscountAmount: pricing.autoDiscountAmount,
+        couponDiscountAmount: pricing.couponDiscountAmount,
+        finalAmount: pricing.finalAmount,
+        paymentMethod: input.paymentMethod as PaymentMethod,
+        status: RegistrationStatus.PENDING_PAYMENT,
+        couponId: coupon?.id ?? null,
+        couponCode: pricing.couponCode ?? null,
+        pricingSnapshot: {
+          ...pricing,
+          selectedPaymentPlanType: input.paymentPlanType,
+          chargeAmount: paymentRecord.amount,
+          chargeCurrency: paymentRecord.currency,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        provider: input.paymentMethod as PaymentMethod,
+        amount: paymentRecord.amount,
+        currency: paymentRecord.currency,
+        status: PaymentStatus.INITIATED,
+        providerOrderId: null,
+        providerPaymentId: null,
+        paidAt: null,
+        rawPayloadJson: Prisma.JsonNull,
+        manualNotes: null,
+      },
+    });
+
+    await tx.manualPaymentSubmission.deleteMany({
+      where: { paymentId: payment.id },
+    });
+  });
+
+  return {
+    registrationId: registration.id,
+    paymentReference: registration.paymentReference,
+    pricing,
+    paymentRecord,
+  };
 }
 

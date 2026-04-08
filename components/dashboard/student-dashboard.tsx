@@ -105,6 +105,15 @@ export default function StudentDashboard({ user }: DashboardProps) {
   const latestSubscription = user.subscriptions[0];
   const hasActiveLmsAccess = seerahEnrollment?.status === "ACTIVE";
   const latestPaymentPlanLabel = latestRegistration ? paymentPlanTypeLabels[latestRegistration.paymentPlanType] : "N/A";
+  const hasPendingPayment = Boolean(
+    latestRegistration &&
+      latestRegistration.payment &&
+      latestRegistration.payment.status !== "SUCCEEDED" &&
+      latestRegistration.payment.status !== "CONFIRMED" &&
+      latestRegistration.status !== "ACTIVE" &&
+      latestRegistration.status !== "PAID",
+  );
+  const pendingPaymentHref = latestRegistration ? `/seerah/register?resume=${encodeURIComponent(latestRegistration.id)}` : "/seerah/register";
 
   const countryEntries = useMemo(
     () =>
@@ -118,6 +127,12 @@ export default function StudentDashboard({ user }: DashboardProps) {
     if (paymentSyncRan.current) return;
 
     const payment = searchParams.get("payment");
+    if (payment === "manual-under-review") {
+      setPaymentError(null);
+      setPaymentMessage("Your manual payment has been submitted. You can return here any time or complete another pending payment from below.");
+      return;
+    }
+
     const provider = searchParams.get("provider");
     const registrationId = searchParams.get("registrationId");
     if (payment !== "success" || !provider || !registrationId) return;
@@ -251,12 +266,34 @@ export default function StudentDashboard({ user }: DashboardProps) {
               ) : null}
             </div>
             <div className="ga-dashboard-actions">
+              {hasPendingPayment ? (
+                <Link href={pendingPaymentHref} className="ga-btn ga-btn-primary">
+                  Complete Pending Payment
+                </Link>
+              ) : null}
               <Link href="/seerah/register" className="ga-btn ga-btn-outline">
                 Register Another Seat
               </Link>
               <LogoutButton />
             </div>
           </div>
+
+          {hasPendingPayment ? (
+            <section className="ga-dashboard-card">
+              <p className="ga-dashboard-card-title">Pending Payment</p>
+              <p className="ga-dashboard-muted">
+                Your registration account is active, but this order still needs payment completion. You can reopen the payment page, switch payment method, or change between monthly and full course payment.
+              </p>
+              <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
+                <Link href={pendingPaymentHref} className="ga-btn ga-btn-primary">
+                  Complete Pending Payment
+                </Link>
+                <Link href="/dashboard" className="ga-btn ga-btn-outline">
+                  Stay on Dashboard
+                </Link>
+              </div>
+            </section>
+          ) : null}
 
           <section className="ga-dashboard-grid">
             <article className="ga-dashboard-card">
@@ -416,7 +453,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
                       <div>
                         <strong>{registration.course.title}</strong>
                         <p>
-                          {paymentPlanTypeLabels[registration.paymentPlanType]} • {registration.paymentMethod} • {registration.status}
+                          {paymentPlanTypeLabels[registration.paymentPlanType]} - {registration.paymentMethod} - {registration.status}
                         </p>
                       </div>
                       <span>
