@@ -8,8 +8,15 @@ import {
 const SOUTH_ASIA_DISCOUNT_COUNTRIES = new Set(["PK", "IN", "AF", "BD"]);
 const MANUAL_PAYMENT_COUNTRIES = new Set(["PK"]);
 const GBP_TO_PKR_APPROX = 376;
-export const SOUTH_ASIA_ONLINE_AMOUNT_PENCE = 572;
+export const SOUTH_ASIA_ONLINE_AMOUNT_PENCE = 575;
 const HAS_DATABASE_URL = Boolean(process.env.DATABASE_URL);
+
+const SOUTH_ASIA_LOCAL_PRICING: Record<string, { currency: string; amount: number }> = {
+  PK: { currency: "PKR", amount: 2000 },
+  IN: { currency: "INR", amount: 600 },
+  BD: { currency: "BDT", amount: 840 },
+  AF: { currency: "AFN", amount: 300 },
+};
 
 function gbpPenceToPkr(pence: number): number {
   return Math.round((pence / 100) * GBP_TO_PKR_APPROX);
@@ -144,9 +151,10 @@ async function findValidCoupon({
 
 export async function calculatePricing(input: PricingInput): Promise<PricingOutput> {
   const countryCode = input.countryCode.toUpperCase();
+  const isSouthAsiaCountry = SOUTH_ASIA_DISCOUNT_COUNTRIES.has(countryCode);
   const course = await getCourse(input.courseSlug);
   const pricingRule = await getActivePricingRule(course.id, countryCode);
-  const regionGroup = pricingRule?.regionGroup ?? resolveRegionGroup(countryCode);
+  const regionGroup = isSouthAsiaCountry ? RegionGroup.SOUTH_ASIA : pricingRule?.regionGroup ?? resolveRegionGroup(countryCode);
   const allowedPaymentMethodsByPlan = getAllowedPaymentMethodsByPlan(countryCode);
   const allowedPaymentMethods = allowedPaymentMethodsByPlan.subscription;
 
@@ -154,20 +162,20 @@ export async function calculatePricing(input: PricingInput): Promise<PricingOutp
   let baseAmount = course.basePrice;
   let autoDiscountAmount = 0;
 
-  if (pricingRule) {
+  if (isSouthAsiaCountry) {
+    const localPricing = SOUTH_ASIA_LOCAL_PRICING[countryCode] ?? SOUTH_ASIA_LOCAL_PRICING.PK;
+    currency = localPricing.currency;
+    baseAmount = localPricing.amount;
+    autoDiscountAmount = Math.max(0, course.basePrice - SOUTH_ASIA_ONLINE_AMOUNT_PENCE);
+  } else if (pricingRule) {
     currency = pricingRule.currency.toUpperCase();
     baseAmount = pricingRule.amount;
     autoDiscountAmount = pricingRule.isDiscounted
       ? Math.max(0, gbpPenceToPkr(course.basePrice) - pricingRule.amount)
       : 0;
-  } else if (regionGroup === RegionGroup.SOUTH_ASIA) {
-    const targetAmountPkr = 2000;
-    currency = "PKR";
-    baseAmount = targetAmountPkr;
-    autoDiscountAmount = Math.max(0, gbpPenceToPkr(course.basePrice) - targetAmountPkr);
   }
 
-  const canUseCoupon = regionGroup !== RegionGroup.SOUTH_ASIA;
+  const canUseCoupon = !isSouthAsiaCountry;
   const couponCode = input.couponCode?.trim().toUpperCase();
   const coupon = canUseCoupon
     ? await findValidCoupon({ couponCode, courseId: course.id, regionGroup })
@@ -176,12 +184,11 @@ export async function calculatePricing(input: PricingInput): Promise<PricingOutp
   const couponDiscountAmount = coupon ? applyCoupon(baseAmount, coupon) : 0;
   const finalAmount = Math.max(0, baseAmount - couponDiscountAmount);
   const fullCourseAmount = finalAmount * COURSE_DURATION_MONTHS;
-  const finalGbpApprox =
-    regionGroup === RegionGroup.SOUTH_ASIA
-      ? SOUTH_ASIA_ONLINE_AMOUNT_PENCE / 100
-      : currency === "GBP"
-        ? finalAmount / 100
-        : Number((finalAmount / GBP_TO_PKR_APPROX).toFixed(2));
+  const finalGbpApprox = isSouthAsiaCountry
+    ? SOUTH_ASIA_ONLINE_AMOUNT_PENCE / 100
+    : currency === "GBP"
+      ? finalAmount / 100
+      : Number((finalAmount / GBP_TO_PKR_APPROX).toFixed(2));
 
   return {
     courseId: course.id,
@@ -194,7 +201,7 @@ export async function calculatePricing(input: PricingInput): Promise<PricingOutp
     fullCourseAmount,
     fullCourseMonths: COURSE_DURATION_MONTHS,
     currency,
-    autoDiscountApplied: regionGroup === RegionGroup.SOUTH_ASIA,
+    autoDiscountApplied: isSouthAsiaCountry,
     canUseCoupon,
     couponCode: coupon?.code,
     allowedPaymentMethods,

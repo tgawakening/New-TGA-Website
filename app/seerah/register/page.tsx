@@ -608,12 +608,12 @@ function SeerahRegisterContent() {
     ? formatMoney(Math.round(pricing.display.fullCourseGbpApprox * 100), "GBP", true)
     : "GBP 160.00";
   const subscriptionLocalLabel =
-    isSouthAsia && isManualPaymentMethod
-      ? `(${formatMoney(pricing?.finalAmount ?? localApprox?.amount ?? 0, pricing?.currency ?? localApprox?.currency ?? "PKR")} for manual transfer)`
+    isSouthAsia
+      ? `(${formatMoney(pricing?.finalAmount ?? localApprox?.amount ?? 0, pricing?.currency ?? localApprox?.currency ?? "PKR")} local currency)`
       : "";
   const fullCourseLocalLabel =
-    isSouthAsia && isManualPaymentMethod
-      ? `(${formatMoney(pricing?.fullCourseAmount ?? (localApprox?.amount ?? 0) * COURSE_DURATION_MONTHS, pricing?.currency ?? localApprox?.currency ?? "PKR")} for manual transfer)`
+    isSouthAsia
+      ? `(${formatMoney(pricing?.fullCourseAmount ?? (localApprox?.amount ?? 0) * COURSE_DURATION_MONTHS, pricing?.currency ?? localApprox?.currency ?? "PKR")} local currency)`
       : "";
   const orderSummaryAmount =
     form.paymentPlanType === PaymentPlanType.FULL_COURSE

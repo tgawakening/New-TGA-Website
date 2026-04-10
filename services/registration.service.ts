@@ -43,7 +43,7 @@ function getPaymentRecordAmount(
   const isOnlinePayment = paymentMethod === "STRIPE" || paymentMethod === "PAYPAL";
   const isFullCoursePayment = paymentPlanType === "FULL_COURSE";
 
-  if (isOnlinePayment && pricing.autoDiscountApplied && pricing.currency !== "GBP") {
+  if (isOnlinePayment && pricing.autoDiscountApplied) {
     return {
       amount: isFullCoursePayment
         ? SOUTH_ASIA_ONLINE_AMOUNT_PENCE * COURSE_DURATION_MONTHS
