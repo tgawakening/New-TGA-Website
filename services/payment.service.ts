@@ -30,6 +30,32 @@ type PaypalOrder = {
   links?: Array<{ rel: string; href: string }>;
 };
 
+type PaypalSubscription = {
+  id: string;
+  status?: string;
+  plan_id?: string;
+  start_time?: string;
+  status_update_time?: string;
+  custom_id?: string;
+  subscriber?: {
+    payer_id?: string;
+  };
+  billing_info?: {
+    next_billing_time?: string;
+    last_payment?: {
+      amount?: {
+        currency_code?: string;
+        value?: string;
+      };
+      time?: string;
+    };
+    final_payment_time?: string;
+  };
+  links?: Array<{ rel: string; href: string }>;
+};
+
+const PAYPAL_SOUTH_ASIA_COUNTRIES = new Set(["PK", "IN", "AF", "BD"]);
+
 function normalizeEnvValue(value: string) {
   const trimmed = value.trim();
   if (
@@ -159,6 +185,65 @@ function addOneMonth(date: Date) {
   const next = new Date(date);
   next.setMonth(next.getMonth() + 1);
   return next;
+}
+
+function mapPaypalSubscriptionStatus(status?: string | null) {
+  if (status === "ACTIVE") return SubscriptionStatus.ACTIVE;
+  if (status === "SUSPENDED") return SubscriptionStatus.PAUSED;
+  if (status === "CANCELLED" || status === "EXPIRED") return SubscriptionStatus.CANCELED;
+  return SubscriptionStatus.INCOMPLETE;
+}
+
+function getPaypalSubscriptionPlanId(registration: Registration) {
+  const countryCode = registration.selectedCountryCode.toUpperCase();
+  return PAYPAL_SOUTH_ASIA_COUNTRIES.has(countryCode)
+    ? getRequiredEnv("PAYPAL_PLAN_SOUTH_ASIA_MONTHLY")
+    : getRequiredEnv("PAYPAL_PLAN_STANDARD_MONTHLY");
+}
+
+async function syncPaypalSubscription({
+  registrationId,
+  userId,
+  subscription,
+}: {
+  registrationId: string;
+  userId: string;
+  subscription: PaypalSubscription;
+}) {
+  const currentPeriodStart = subscription.start_time ? new Date(subscription.start_time) : null;
+  const currentPeriodEnd = subscription.billing_info?.next_billing_time
+    ? new Date(subscription.billing_info.next_billing_time)
+    : currentPeriodStart
+      ? addOneMonth(currentPeriodStart)
+      : null;
+  const mappedStatus = mapPaypalSubscriptionStatus(subscription.status);
+  const isCanceled = mappedStatus === SubscriptionStatus.CANCELED;
+
+  await prisma.subscription.upsert({
+    where: { registrationId },
+    update: {
+      provider: SubscriptionProvider.PAYPAL,
+      status: mappedStatus,
+      providerSubscriptionId: subscription.id,
+      providerCustomerId: subscription.subscriber?.payer_id,
+      currentPeriodStart,
+      currentPeriodEnd,
+      cancelAtPeriodEnd: isCanceled,
+      canceledAt: isCanceled ? new Date(subscription.status_update_time ?? Date.now()) : null,
+    },
+    create: {
+      userId,
+      registrationId,
+      provider: SubscriptionProvider.PAYPAL,
+      status: mappedStatus,
+      providerSubscriptionId: subscription.id,
+      providerCustomerId: subscription.subscriber?.payer_id,
+      currentPeriodStart,
+      currentPeriodEnd,
+      cancelAtPeriodEnd: isCanceled,
+      canceledAt: isCanceled ? new Date(subscription.status_update_time ?? Date.now()) : null,
+    },
+  });
 }
 
 async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPayment) {
@@ -1025,7 +1110,53 @@ export async function createPaypalOrder({
     throw new Error("This registration is not set for PayPal.");
   }
   if (isSubscriptionPayment(registration)) {
-    throw new Error("PayPal monthly subscriptions are not enabled yet. Use Stripe for subscription or choose full course payment.");
+    const token = await getPaypalAccessToken();
+    const base = getPaypalApiBase();
+    const planId = getPaypalSubscriptionPlanId(registration);
+    const subscriptionResponse = await fetch(`${base}/v1/billing/subscriptions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify({
+        plan_id: planId,
+        custom_id: payment.id,
+        application_context: {
+          brand_name: "Global Awakening",
+          user_action: "SUBSCRIBE_NOW",
+          shipping_preference: "NO_SHIPPING",
+          return_url: returnUrl,
+          cancel_url: cancelUrl,
+        },
+      }),
+    });
+
+    if (!subscriptionResponse.ok) {
+      throw new Error("Failed to create PayPal subscription.");
+    }
+
+    const subscription = (await subscriptionResponse.json()) as PaypalSubscription;
+    const shouldSendPendingEmails = payment.status === PaymentStatus.INITIATED;
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: PaymentStatus.PENDING,
+        providerOrderId: subscription.id,
+        rawPayloadJson: toJsonValue(subscription),
+      },
+    });
+
+    if (shouldSendPendingEmails) {
+      await sendPendingOnlinePaymentEmails(registration);
+    }
+
+    return {
+      orderId: subscription.id,
+      approveUrl: subscription.links?.find((item) => item.rel === "approve")?.href ?? null,
+    };
   }
 
   const token = await getPaypalAccessToken();
@@ -1169,6 +1300,62 @@ export async function capturePaypalOrder({
     providerOrderId: orderId,
     providerPaymentId: paymentId,
     payload: capture,
+  });
+
+  return { success: true };
+}
+
+export async function confirmPaypalSubscription({
+  registrationId,
+  userId,
+  subscriptionId,
+}: {
+  registrationId: string;
+  userId: string;
+  subscriptionId: string;
+}) {
+  const registration = await loadRegistrationForUser(registrationId, userId);
+  const payment = registration.payment;
+  if (payment.provider !== "PAYPAL") {
+    throw new Error("This registration is not set for PayPal.");
+  }
+  if (!isSubscriptionPayment(registration)) {
+    throw new Error("This PayPal payment is a one-time order, not a subscription.");
+  }
+
+  const token = await getPaypalAccessToken();
+  const base = getPaypalApiBase();
+  const subscriptionResponse = await fetch(`${base}/v1/billing/subscriptions/${subscriptionId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!subscriptionResponse.ok) {
+    throw new Error("Failed to confirm PayPal subscription.");
+  }
+
+  const subscription = (await subscriptionResponse.json()) as PaypalSubscription;
+  if (subscription.custom_id && subscription.custom_id !== payment.id) {
+    throw new Error("PayPal subscription does not belong to this registration.");
+  }
+  if (subscription.status !== "ACTIVE") {
+    throw new Error(`PayPal subscription is not active yet. Current status: ${subscription.status ?? "UNKNOWN"}.`);
+  }
+
+  await markSuccessfulPayment({
+    paymentId: payment.id,
+    providerOrderId: subscription.id,
+    providerPaymentId: subscription.subscriber?.payer_id,
+    payload: subscription,
+  });
+
+  await syncPaypalSubscription({
+    registrationId,
+    userId,
+    subscription,
   });
 
   return { success: true };

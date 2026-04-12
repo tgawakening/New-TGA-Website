@@ -149,6 +149,8 @@ export default function StudentDashboard({ user }: DashboardProps) {
       params.delete("session_id");
       params.delete("token");
       params.delete("PayerID");
+      params.delete("subscription_id");
+      params.delete("ba_token");
       router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
       router.refresh();
       if (message) {
@@ -157,6 +159,28 @@ export default function StudentDashboard({ user }: DashboardProps) {
     };
 
     if (provider === "paypal") {
+      const subscriptionId = searchParams.get("subscription_id") || searchParams.get("ba_token");
+      if (subscriptionId) {
+        setPaymentMessage("Confirming your PayPal subscription...");
+        void fetch("/api/payments/paypal/confirm-subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ registrationId, subscriptionId }),
+        })
+          .then(async (response) => {
+            const payload = (await response.json()) as { error?: string };
+            if (!response.ok) {
+              throw new Error(payload.error || "PayPal subscription confirmation failed.");
+            }
+            finish("Your PayPal subscription is active and your registration is now fully active.");
+          })
+          .catch((error: unknown) => {
+            setPaymentError(error instanceof Error ? error.message : "PayPal subscription confirmation failed.");
+            setPaymentMessage(null);
+          });
+        return;
+      }
+
       const orderId = searchParams.get("token");
       if (!orderId) {
         setPaymentError("PayPal returned without an order token, so payment could not be confirmed automatically.");
@@ -495,3 +519,4 @@ export default function StudentDashboard({ user }: DashboardProps) {
     </main>
   );
 }
+

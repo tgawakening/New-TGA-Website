@@ -66,13 +66,13 @@ function resolveRegionGroup(countryCode: string): RegionGroup {
 function getAllowedPaymentMethodsByPlan(countryCode: string): PaymentMethodsByPlan {
   if (!MANUAL_PAYMENT_COUNTRIES.has(countryCode)) {
     return {
-      subscription: [PaymentMethod.STRIPE],
+      subscription: [PaymentMethod.STRIPE, PaymentMethod.PAYPAL],
       fullCourse: [PaymentMethod.STRIPE, PaymentMethod.PAYPAL],
     };
   }
 
   return {
-    subscription: [PaymentMethod.STRIPE, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH],
+    subscription: [PaymentMethod.STRIPE, PaymentMethod.PAYPAL, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH],
     fullCourse: [PaymentMethod.STRIPE, PaymentMethod.PAYPAL, PaymentMethod.BANK_TRANSFER, PaymentMethod.JAZZCASH],
   };
 }
