@@ -11,10 +11,11 @@ type Props = {
   initialNotifications: AdminNotificationItem[];
 };
 
-type TabKey = "home" | "orders" | "students" | "scholarships" | "mission";
+type TabKey = "home" | "orders" | "students" | "scholarships" | "mission" | "genmumin";
 type RegistrationRow = AdminDashboardSnapshot["registrations"][number];
 type StudentRow = AdminDashboardSnapshot["students"][number];
 type FeeWaiverRow = AdminDashboardSnapshot["freeWarriorApplications"][number];
+type GenMuminRow = AdminDashboardSnapshot["genMumin"]["recentRegistrations"][number];
 
 const currencyFormatter = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -33,6 +34,18 @@ function formatDate(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatFlexibleCurrency(amount: number, currency: string) {
+  if (currency === "GBP") {
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      minimumFractionDigits: 2,
+    }).format(amount);
+  }
+
+  return `${currency} ${amount.toLocaleString("en-GB")}`;
 }
 
 function prettify(value: string | null) {
@@ -149,6 +162,17 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
     });
   }, [data.missionSupportDonations, missionStatusFilter, search]);
 
+  const genMuminRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return data.genMumin.recentRegistrations.filter((row) => {
+      if (!term) return true;
+      return [row.parentName, row.parentEmail, row.country, row.source ?? "", row.referrer ?? "", row.status]
+        .join(" ")
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [data.genMumin.recentRegistrations, search]);
+
   const paymentOptions = Array.from(new Set(data.registrations.map((row) => row.paymentLabel)));
   const courseOptions = Array.from(new Set(data.registrations.map((row) => row.courseSlug)));
 
@@ -258,15 +282,19 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
         ? "Students"
         : activeTab === "scholarships"
           ? "Fee Waiver Applications"
-          : "Mission Support Donations";
+          : activeTab === "mission"
+            ? "Mission Support Donations"
+            : "Gen-Mumin Feed";
   const workspaceDescription =
     activeTab === "orders"
       ? "Review live orders with cleaner payment labels and state-aware action buttons."
       : activeTab === "students"
         ? "Scan the full student list in a compact table and open details only when needed."
         : activeTab === "scholarships"
-        ? "Review fee warrior applications in a compact list with quick actions and detail popups."
-        : "Review donor submissions, confirm manual support payments, and track contribution details.";
+          ? "Review fee warrior applications in a compact list with quick actions and detail popups."
+          : activeTab === "mission"
+            ? "Review donor submissions, confirm manual support payments, and track contribution details."
+            : "Monitor Gen-Mumin registrations from the main TGA workspace using the secure external feed.";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -353,6 +381,9 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
           </button>
           <button type="button" className={`ga-admin-nav-pill ${activeTab === "mission" ? "is-active" : ""}`} onClick={() => setActiveTab("mission")}>
             Mission Support
+          </button>
+          <button type="button" className={`ga-admin-nav-pill ${activeTab === "genmumin" ? "is-active" : ""}`} onClick={() => setActiveTab("genmumin")}>
+            Gen-Mumin
           </button>
         </nav>
 
@@ -475,6 +506,13 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
               <strong>{currencyFormatter.format(data.summary.missionSupportRevenuePence / 100)}</strong>
               <small>{data.summary.missionSupportCount} support submissions</small>
             </article>
+            <article className="ga-admin-metric-card is-lilac">
+              <span>Gen-Mumin Pending</span>
+              <strong>{data.genMumin.metrics?.pendingRegistrations ?? 0}</strong>
+              <small>
+                {data.genMumin.status === "CONNECTED" ? "Live cross-project feed" : "Feed not connected yet"}
+              </small>
+            </article>
           </section>
 
           <section className="ga-admin-analytics-grid">
@@ -546,6 +584,48 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
             <article className="ga-admin-card">
               <div className="ga-admin-card-head">
                 <div>
+                  <h2>Gen-Mumin Feed</h2>
+                  <p>
+                    {data.genMumin.status === "CONNECTED"
+                      ? "Live registration visibility from the Gen-Mumin project."
+                      : data.genMumin.status === "NOT_CONFIGURED"
+                        ? "Add the Gen-Mumin feed URL and secret to activate cross-project monitoring."
+                        : "The feed is configured, but it could not be reached right now."}
+                  </p>
+                </div>
+                <span className={`ga-admin-status is-${data.genMumin.status === "CONNECTED" ? "completed" : "pending"}`}>
+                  {data.genMumin.status === "CONNECTED" ? "Connected" : data.genMumin.status === "NOT_CONFIGURED" ? "Not configured" : "Unavailable"}
+                </span>
+              </div>
+              <div className="ga-admin-progress-stack">
+                <div>
+                  <div className="ga-admin-progress-meta">
+                    <span>Pending registrations</span>
+                    <strong>{data.genMumin.metrics?.pendingRegistrations ?? 0}</strong>
+                  </div>
+                  <div className="ga-admin-progress-track">
+                    <div
+                      className="ga-admin-progress-fill is-lilac"
+                      style={{ width: `${Math.min(100, Math.max(12, (data.genMumin.metrics?.pendingRegistrations ?? 0) * 12))}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="ga-admin-highlight-metrics">
+                  <div>
+                    <strong>{data.genMumin.metrics?.totalStudents ?? 0}</strong>
+                    <span>Students</span>
+                  </div>
+                  <div>
+                    <strong>{currencyFormatter.format(data.genMumin.metrics?.revenueGbp ?? 0)}</strong>
+                    <span>Revenue</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article className="ga-admin-card">
+              <div className="ga-admin-card-head">
+                <div>
                   <h2>Status Breakdown</h2>
                   <p>Operational split for quick scanning</p>
                 </div>
@@ -578,6 +658,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                 <button type="button" onClick={() => setActiveTab("students")}>View Students</button>
                 <button type="button" onClick={() => setActiveTab("scholarships")}>Check Fee Warriors</button>
                 <button type="button" onClick={() => setActiveTab("mission")}>Review Mission Support</button>
+                <button type="button" onClick={() => setActiveTab("genmumin")}>Open Gen-Mumin Feed</button>
               </div>
             </article>
           </section>
@@ -626,6 +707,35 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                     </div>
                   </div>
                 ))}
+              </div>
+            </article>
+
+            <article className="ga-admin-card">
+              <div className="ga-admin-card-head">
+                <div>
+                  <h2>Gen-Mumin Recent Registrations</h2>
+                  <p>Latest intake coming through the linked Gen-Mumin project</p>
+                </div>
+              </div>
+              <div className="ga-admin-simple-list">
+                {data.genMumin.recentRegistrations.length > 0 ? (
+                  data.genMumin.recentRegistrations.slice(0, 5).map((row) => (
+                    <div key={row.id} className="ga-admin-simple-list-item">
+                      <div>
+                        <strong>{row.parentName}</strong>
+                        <p>{row.parentEmail}</p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <strong>{formatFlexibleCurrency(row.totalAmount, row.currency)}</strong>
+                        <p>{prettify(row.status)}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="ga-admin-empty-state">
+                    {data.genMumin.status === "CONNECTED" ? "No Gen-Mumin registrations yet." : "Gen-Mumin feed is not available yet."}
+                  </p>
+                )}
               </div>
             </article>
           </section>
@@ -955,6 +1065,104 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                   </div>
                 </article>
               ))}
+            </div>
+          </>
+        ) : null}
+
+        {activeTab === "genmumin" ? (
+          <>
+            <section className="ga-admin-panels-grid">
+              <article className="ga-admin-card ga-admin-highlight-card">
+                <h2>Feed Status</h2>
+                <div className="ga-admin-highlight-metrics">
+                  <div>
+                    <strong>{data.genMumin.status === "CONNECTED" ? "Connected" : data.genMumin.status === "NOT_CONFIGURED" ? "Setup needed" : "Unavailable"}</strong>
+                    <span>Connection</span>
+                  </div>
+                  <div>
+                    <strong>{formatDate(data.genMumin.lastCheckedAt)}</strong>
+                    <span>Last checked</span>
+                  </div>
+                </div>
+                {data.genMumin.error ? <p>{data.genMumin.error}</p> : null}
+                {data.genMumin.endpoint ? <p>{data.genMumin.endpoint}</p> : null}
+              </article>
+
+              <article className="ga-admin-card">
+                <div className="ga-admin-card-head">
+                  <div>
+                    <h2>Gen-Mumin Metrics</h2>
+                    <p>Shared admin visibility for registrations and student growth</p>
+                  </div>
+                </div>
+                <div className="ga-admin-highlight-metrics">
+                  <div>
+                    <strong>{data.genMumin.metrics?.totalStudents ?? 0}</strong>
+                    <span>Students</span>
+                  </div>
+                  <div>
+                    <strong>{data.genMumin.metrics?.activeEnrollments ?? 0}</strong>
+                    <span>Active enrollments</span>
+                  </div>
+                  <div>
+                    <strong>{data.genMumin.metrics?.pendingRegistrations ?? 0}</strong>
+                    <span>Pending registrations</span>
+                  </div>
+                  <div>
+                    <strong>{currencyFormatter.format(data.genMumin.metrics?.revenueGbp ?? 0)}</strong>
+                    <span>Revenue</span>
+                  </div>
+                </div>
+              </article>
+            </section>
+
+            <div className="ga-admin-data-table">
+              <div className="ga-admin-table-head">
+                <span>Parent</span>
+                <span>Location</span>
+                <span>Students</span>
+                <span>Amount</span>
+                <span>Status</span>
+                <span>Source</span>
+                <span>Date</span>
+              </div>
+              {genMuminRows.length > 0 ? (
+                genMuminRows.map((row) => (
+                  <article key={row.id} className="ga-admin-table-row">
+                    <div>
+                      <strong>{row.parentName}</strong>
+                      <p>{row.parentEmail}</p>
+                    </div>
+                    <div>
+                      <strong>{row.country}</strong>
+                      <p>{row.referrer ?? "Direct / unknown"}</p>
+                    </div>
+                    <div>
+                      <strong>{row.studentCount}</strong>
+                      <p>{row.studentCount === 1 ? "Child" : "Children"}</p>
+                    </div>
+                    <div>
+                      <strong>{formatFlexibleCurrency(row.totalAmount, row.currency)}</strong>
+                      <p>{row.currency}</p>
+                    </div>
+                    <div>
+                      <span className={`ga-admin-status is-${row.status.toLowerCase().replaceAll("_", "-")}`}>{prettify(row.status)}</span>
+                    </div>
+                    <div>
+                      <strong>{row.source ?? "Unknown"}</strong>
+                    </div>
+                    <div>
+                      <strong>{formatDate(row.createdAt)}</strong>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p className="ga-admin-empty-state">
+                  {data.genMumin.status === "CONNECTED"
+                    ? "No Gen-Mumin registrations match the current search."
+                    : "Gen-Mumin feed is not ready yet. Add GEN_MUMIN_FEED_URL and GEN_MUMIN_FEED_SECRET in the TGA app."}
+                </p>
+              )}
             </div>
           </>
         ) : null}

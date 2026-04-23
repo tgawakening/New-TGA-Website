@@ -161,6 +161,55 @@ export type AdminDashboardSnapshot = {
     createdAt: string;
     hasManualSubmission: boolean;
   }>;
+  genMumin: {
+    status: "CONNECTED" | "UNAVAILABLE" | "NOT_CONFIGURED";
+    endpoint: string | null;
+    error: string | null;
+    lastCheckedAt: string;
+    metrics: {
+      totalStudents: number;
+      activeEnrollments: number;
+      pendingRegistrations: number;
+      unreadMessages: number;
+      revenueGbp: number;
+    } | null;
+    recentRegistrations: Array<{
+      id: string;
+      parentName: string;
+      parentEmail: string;
+      status: string;
+      currency: string;
+      totalAmount: number;
+      studentCount: number;
+      createdAt: string;
+      country: string;
+      source: string | null;
+      referrer: string | null;
+    }>;
+  };
+};
+
+type GenMuminFeedResponse = {
+  metrics: {
+    totalStudents: number;
+    activeEnrollments: number;
+    pendingRegistrations: number;
+    unreadMessages: number;
+    revenueGbp: number;
+  };
+  recentRegistrations: Array<{
+    id: string;
+    parentName: string;
+    parentEmail: string;
+    status: string;
+    currency: string;
+    totalAmount: number;
+    studentCount: number;
+    createdAt: string;
+    country: string;
+    source: string | null;
+    referrer: string | null;
+  }>;
 };
 
 export type AdminNotificationItem = {
@@ -309,8 +358,65 @@ function getRegistrationPaymentPresentation(input: {
     };
 }
 
+async function getGenMuminOverview() {
+  const endpoint = process.env.GEN_MUMIN_FEED_URL?.trim() ?? "";
+  const secret = process.env.GEN_MUMIN_FEED_SECRET?.trim() ?? "";
+
+  if (!endpoint || !secret) {
+    return {
+      status: "NOT_CONFIGURED" as const,
+      endpoint: endpoint || null,
+      error: "Gen-Mumin feed environment variables are missing.",
+      lastCheckedAt: new Date().toISOString(),
+      metrics: null,
+      recentRegistrations: [],
+    };
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "x-admin-feed-secret": secret,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return {
+        status: "UNAVAILABLE" as const,
+        endpoint,
+        error: `Feed responded with ${response.status}.`,
+        lastCheckedAt: new Date().toISOString(),
+        metrics: null,
+        recentRegistrations: [],
+      };
+    }
+
+    const payload = (await response.json()) as GenMuminFeedResponse;
+
+    return {
+      status: "CONNECTED" as const,
+      endpoint,
+      error: null,
+      lastCheckedAt: new Date().toISOString(),
+      metrics: payload.metrics,
+      recentRegistrations: payload.recentRegistrations,
+    };
+  } catch (error) {
+    return {
+      status: "UNAVAILABLE" as const,
+      endpoint,
+      error: error instanceof Error ? error.message : "Could not reach Gen-Mumin feed.",
+      lastCheckedAt: new Date().toISOString(),
+      metrics: null,
+      recentRegistrations: [],
+    };
+  }
+}
+
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
-  const [registrations, users, applications, missionSupport] = await Promise.all([
+  const [registrations, users, applications, missionSupport, genMumin] = await Promise.all([
     prisma.registration.findMany({
       include: {
         user: true,
@@ -341,6 +447,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       orderBy: { createdAt: "desc" },
     }),
     loadMissionSupportForAdmin(),
+    getGenMuminOverview(),
   ]);
 
   const mappedRegistrations = registrations.map((row) => {
@@ -521,6 +628,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       createdAt: item.createdAt.toISOString(),
       hasManualSubmission: Boolean(item.manualSubmission),
     })),
+    genMumin,
   };
 }
 
