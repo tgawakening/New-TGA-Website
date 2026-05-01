@@ -10,19 +10,19 @@ const heroCards = [
     title: "Mission-led learning",
     copy: "A child-focused Islamic journey that builds identity, adab, and confidence with clarity.",
     icon: "mission" as const,
-    tone: "warm",
+    tone: "navy",
   },
   {
     title: "Gentle teaching method",
     copy: "Interactive delivery, memorable visuals, and practical lessons designed for young minds.",
     icon: "method" as const,
-    tone: "sky",
+    tone: "orange",
   },
   {
     title: "Structured growth path",
     copy: "Seerah, Arabic, Tajweed, and leadership are introduced as one connected development journey.",
     icon: "journey" as const,
-    tone: "lilac",
+    tone: "amber",
   },
 ];
 
@@ -39,6 +39,11 @@ const iconMap: Record<string, IconKind> = {
   tajweed: "tajweed",
   leadership: "leadership",
 };
+
+const registrationHref = "https://genmumin.com/registration";
+const youtubeIntroHref = "https://youtu.be/dDoOINvjVoQ?feature=shared";
+const youtubeEmbedHref = "https://www.youtube.com/embed/dDoOINvjVoQ";
+const youtubeThumbHref = "https://img.youtube.com/vi/dDoOINvjVoQ/maxresdefault.jpg";
 
 function GenMuminIcon({ kind }: { kind: IconKind }) {
   if (kind === "mission") {
@@ -147,7 +152,9 @@ export default function GenMuminPage() {
             <Link href="#program-leadership">Leadership</Link>
           </nav>
 
-          <span className="ga-gen-header-cta">Coming Soon</span>
+          <Link href={registrationHref} className="ga-gen-header-cta">
+            Enroll Now
+          </Link>
         </div>
       </header>
 
@@ -157,14 +164,16 @@ export default function GenMuminPage() {
             <div className="ga-gen-hero-panel">
               <div className="ga-gen-hero-copy">
                 <span className="ga-gen-badge">TGA Project For Young Muslim Development</span>
-                <h1 className="ga-gen-title">Raising confident and thoughtful Muslim children through a beautiful, guided learning journey.</h1>
+                <h1 className="ga-gen-title">Raising Confident Young Muslims</h1>
                 <p className="ga-gen-lead">
                   Gen-Mumin is being designed to help children grow in love for the Prophet, confidence in their Muslim
                   identity, and skill in Qur&apos;an, Arabic, and leadership through a clear and engaging path.
                 </p>
 
                 <div className="ga-gen-hero-actions">
-                  <span className="ga-gen-primary-cta">Coming Soon</span>
+                  <Link href={registrationHref} className="ga-gen-primary-cta">
+                    Enroll Now
+                  </Link>
                   <Link href="#gen-mumin-programs" className="ga-gen-secondary-cta">
                     View Programs
                   </Link>
@@ -200,7 +209,7 @@ export default function GenMuminPage() {
         </section>
 
         <section id="gen-mumin-programs" className="ga-section ga-gen-program-section">
-          <div className="ga-container ga-gen-section-head">
+          <div className="ga-container ga-gen-section-head ga-gen-section-head-centered">
             <span className="ga-gen-section-kicker">Programs</span>
             <h2>Four connected areas that help children grow in understanding, recitation, language, and character.</h2>
             <p>
@@ -250,18 +259,56 @@ export default function GenMuminPage() {
           </div>
         </section>
 
+        <section className="ga-section ga-gen-video-section">
+          <div className="ga-container">
+            <div className="ga-gen-section-head ga-gen-section-head-centered">
+              <span className="ga-gen-section-kicker">Channel Intro</span>
+              <h2>Meet the Gen-Mumin learning vision.</h2>
+              <p>
+                Watch the intro and get a quick feel for the project, its energy, and the learning journey families can
+                now join.
+              </p>
+            </div>
+
+            <div className="ga-gen-video-card">
+              <a href={youtubeIntroHref} className="ga-gen-video-poster" target="_blank" rel="noreferrer">
+                <Image
+                  src={youtubeThumbHref}
+                  alt="Gen-Mumin YouTube channel intro"
+                  width={1280}
+                  height={720}
+                  className="ga-gen-video-thumb"
+                />
+                <span className="ga-gen-video-play" aria-hidden>
+                  <span />
+                </span>
+              </a>
+              <div className="ga-gen-video-frame">
+                <iframe
+                  src={youtubeEmbedHref}
+                  title="Gen-Mumin YouTube channel intro"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="ga-section ga-gen-cta-section">
           <div className="ga-container">
             <article className="ga-gen-banner-card">
               <div>
                 <span className="ga-gen-section-kicker">Next Step</span>
-                <h2>Enrollment will be opened on the full Gen-Mumin site after launch.</h2>
+                <h2>Enroll in Gen-Mumin today.</h2>
                 <p>
-                  For now, this page gives the TGA audience a polished overview of the project, its themes, and what
-                  families can expect from the program pathway.
+                  Registrations are now open for families who want a guided path through Seerah, Arabic, Tajweed, and
+                  leadership.
                 </p>
               </div>
-              <span className="ga-gen-primary-cta">Coming Soon</span>
+              <Link href={registrationHref} className="ga-gen-primary-cta">
+                Enroll Now
+              </Link>
             </article>
           </div>
         </section>

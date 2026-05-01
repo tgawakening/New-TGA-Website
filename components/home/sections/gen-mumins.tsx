@@ -165,7 +165,7 @@ export function GenMuminsTimeline() {
             </div>
 
             <Link href="/projects/gen-mumin" className={`ga-gm-cta ga-gm-cta-${active.tone}`}>
-              Coming Soon
+              Explore More
             </Link>
           </div>
 
@@ -193,7 +193,7 @@ export function GenMuminsTimeline() {
 
         <motion.div {...fadeInUp} className="ga-gm-summary-link">
           <Link href="/projects/gen-mumin" className="ga-gm-summary-btn">
-            Explore Gen-Mumin Overview
+            Explore More About Gen-Mumin
           </Link>
         </motion.div>
       </div>

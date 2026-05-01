@@ -46,6 +46,11 @@ export function Header() {
 
   return (
     <header className={`ga-header sticky top-0 z-50 ${isScrolled ? "ga-header-scrolled" : ""}`}>
+      <Link href="/projects/gen-mumin" className="ga-gen-announcement">
+        <span className="ga-gen-announcement-pulse" aria-hidden />
+        <span>Registrations are open for our recent project Gen-Mumin</span>
+        <strong>Explore now</strong>
+      </Link>
       <div className="ga-container flex h-24 items-center justify-between gap-4">
         <div className="flex items-center">
           <Link href="/" aria-label="Go to homepage">
