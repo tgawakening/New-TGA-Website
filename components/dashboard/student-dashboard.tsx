@@ -14,6 +14,7 @@ type DashboardProps = {
     email: string;
     phoneCountryCode: string;
     phoneNumber: string;
+    canManageStripeBilling: boolean;
     studentProfile: {
       countryCode: string;
       countryName: string;
@@ -98,6 +99,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const paymentSyncRan = useRef(false);
 
   const seerahEnrollment = user.enrollments.find((item) => item.course.slug === "seerah-course");
@@ -267,6 +269,27 @@ export default function StudentDashboard({ user }: DashboardProps) {
     }
   }
 
+  async function openBillingPortal() {
+    setBillingPortalLoading(true);
+    setPaymentError(null);
+    setPaymentMessage(null);
+
+    try {
+      const response = await fetch("/api/payments/stripe/billing-portal", {
+        method: "POST",
+      });
+      const data = (await response.json()) as { url?: string; error?: string };
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || "Could not open Stripe billing portal.");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Could not open Stripe billing portal.");
+      setBillingPortalLoading(false);
+    }
+  }
+
   return (
     <main className="ga-page">
       <section className="ga-section">
@@ -294,6 +317,16 @@ export default function StudentDashboard({ user }: DashboardProps) {
                 <Link href={pendingPaymentHref} className="ga-btn ga-btn-primary">
                   Complete Pending Payment
                 </Link>
+              ) : null}
+              {user.canManageStripeBilling ? (
+                <button
+                  type="button"
+                  className="ga-btn ga-btn-primary"
+                  onClick={openBillingPortal}
+                  disabled={billingPortalLoading}
+                >
+                  {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
+                </button>
               ) : null}
               <Link href="/seerah/register" className="ga-btn ga-btn-outline">
                 Register Another Seat
@@ -378,6 +411,18 @@ export default function StudentDashboard({ user }: DashboardProps) {
                     : "Pending or awaiting review"}
                 </p>
               </div>
+              {user.canManageStripeBilling ? (
+                <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
+                  <button
+                    type="button"
+                    className="ga-btn ga-btn-outline"
+                    onClick={openBillingPortal}
+                    disabled={billingPortalLoading}
+                  >
+                    {billingPortalLoading ? "Opening Billing..." : "Update Card Details"}
+                  </button>
+                </div>
+              ) : null}
             </article>
           </section>
 

@@ -25,6 +25,9 @@ export default async function DashboardPage() {
         email: refreshedUser.email,
         phoneCountryCode: refreshedUser.phoneCountryCode,
         phoneNumber: refreshedUser.phoneNumber,
+        canManageStripeBilling: refreshedUser.subscriptions.some(
+          (item) => item.provider === "STRIPE" && Boolean(item.providerCustomerId) && item.status !== "CANCELED",
+        ),
         studentProfile: refreshedUser.studentProfile
           ? {
               countryCode: refreshedUser.studentProfile.countryCode,
