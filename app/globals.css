@@ -138,8 +138,8 @@ body {
   text-align: center;
   color: #fff8ef;
   background:
-    linear-gradient(90deg, rgba(44, 62, 80, 0.98), rgba(255, 105, 0, 0.96), rgba(242, 160, 94, 0.98));
-  box-shadow: 0 10px 26px rgba(255, 105, 0, 0.2);
+    linear-gradient(90deg, rgba(44, 62, 80, 0.98), rgba(111, 167, 176, 0.96), rgba(155, 211, 219, 0.98));
+  box-shadow: 0 10px 26px rgba(111, 167, 176, 0.2);
   font-weight: 700;
   line-height: 1.25;
 }
@@ -2454,9 +2454,9 @@ body {
   transition: color 0.3s ease;
 }
 
-.ga-gm-title-accent-seerah { color: rgb(243 159 95); }
-.ga-gm-title-accent-arabic { color: #ff6900; }
-.ga-gm-title-accent-tajweed { color: #f2a05e; }
+.ga-gm-title-accent-seerah { color: #6fa7b0; }
+.ga-gm-title-accent-arabic { color: #6fa7b0; }
+.ga-gm-title-accent-tajweed { color: #9bd3db; }
 .ga-gm-title-accent-leadership { color: #8fb0c8; }
 
 .ga-gm-timeline {
@@ -2516,10 +2516,10 @@ body {
 .ga-gm-step-arabic.ga-gm-step-active .ga-gm-step-icon,
 .ga-gm-step-tajweed.ga-gm-step-active .ga-gm-step-icon,
 .ga-gm-step-leadership.ga-gm-step-active .ga-gm-step-icon {
-  background: linear-gradient(160deg, #ff6900, #f2a05e);
+  background: linear-gradient(160deg, #6fa7b0, #9bd3db);
   color: #fff7ec;
-  border-color: rgba(242, 160, 94, 0.8);
-  box-shadow: 0 0 24px rgba(255, 105, 0, 0.42);
+  border-color: rgba(111, 167, 176, 0.82);
+  box-shadow: 0 0 24px rgba(111, 167, 176, 0.42);
 }
 
 .ga-gm-step-active .ga-gm-step-label {
@@ -2553,7 +2553,7 @@ body {
 .ga-gm-card-seerah::before,
 .ga-gm-card-arabic::before,
 .ga-gm-card-tajweed::before,
-.ga-gm-card-leadership::before { background: linear-gradient(90deg, #2c3e50, #ff6900, #f2a05e); }
+.ga-gm-card-leadership::before { background: linear-gradient(90deg, #2c3e50, #6fa7b0, #9bd3db); }
 
 @media (min-width: 1024px) {
   .ga-gm-card {
@@ -2601,7 +2601,7 @@ body {
 .ga-gm-card-seerah .ga-gm-subtitle,
 .ga-gm-card-arabic .ga-gm-subtitle,
 .ga-gm-card-tajweed .ga-gm-subtitle,
-.ga-gm-card-leadership .ga-gm-subtitle { color: #f2a05e; }
+.ga-gm-card-leadership .ga-gm-subtitle { color: #9bd3db; }
 
 .ga-gm-desc {
   margin-top: 0.55rem;
@@ -2650,9 +2650,9 @@ body {
 .ga-gm-cta-arabic,
 .ga-gm-cta-tajweed,
 .ga-gm-cta-leadership {
-  background: linear-gradient(180deg, #ff6900, #db5700);
+  background: linear-gradient(180deg, #6fa7b0, #4f8792);
   color: #fff8ef;
-  box-shadow: 0 14px 26px rgba(255, 105, 0, 0.26);
+  box-shadow: 0 14px 26px rgba(111, 167, 176, 0.26);
 }
 
 .ga-gm-side {
@@ -2683,7 +2683,7 @@ body {
 .ga-gm-icon-wrap-seerah .ga-gm-icon,
 .ga-gm-icon-wrap-arabic .ga-gm-icon,
 .ga-gm-icon-wrap-tajweed .ga-gm-icon,
-.ga-gm-icon-wrap-leadership .ga-gm-icon { color: #ff6900; }
+.ga-gm-icon-wrap-leadership .ga-gm-icon { color: #6fa7b0; }
 
 .ga-gm-stats {
   margin-top: 0.65rem;
@@ -2703,7 +2703,7 @@ body {
 .ga-gm-card-seerah .ga-gm-stat-value,
 .ga-gm-card-arabic .ga-gm-stat-value,
 .ga-gm-card-tajweed .ga-gm-stat-value,
-.ga-gm-card-leadership .ga-gm-stat-value { color: #f2a05e; }
+.ga-gm-card-leadership .ga-gm-stat-value { color: #9bd3db; }
 
 .ga-gm-stat-label {
   margin-top: 0.15rem;
@@ -6000,10 +6000,10 @@ body {
 
 .ga-gen-header-cta,
 .ga-gen-primary-cta {
-  border: 1px solid rgba(237, 149, 91, 0.7);
-  background: linear-gradient(180deg, #f4a454, #ea7e4b);
+  border: 1px solid rgba(111, 167, 176, 0.72);
+  background: linear-gradient(180deg, #6fa7b0, #4f8792);
   color: #fff8f0;
-  box-shadow: 0 16px 28px rgba(237, 126, 75, 0.18);
+  box-shadow: 0 16px 28px rgba(111, 167, 176, 0.2);
 }
 
 .ga-gen-secondary-cta {
@@ -6058,9 +6058,9 @@ body {
 .ga-gen-section-kicker {
   min-height: 2.15rem;
   padding: 0.5rem 0.9rem;
-  border: 1px solid rgba(238, 203, 161, 0.78);
+  border: 1px solid rgba(111, 167, 176, 0.36);
   background: rgba(255, 255, 255, 0.9);
-  color: #e28751;
+  color: #4f8792;
 }
 
 .ga-gen-title,
@@ -6198,11 +6198,11 @@ body {
 }
 
 .ga-gen-hero-card.is-orange {
-  background: linear-gradient(180deg, #ff7b1f, #d85600);
+  background: linear-gradient(180deg, #78b1ba, #5d96a0);
 }
 
 .ga-gen-hero-card.is-amber {
-  background: linear-gradient(180deg, #f2a05e, #c86f2f);
+  background: linear-gradient(180deg, #6fa7b0, #4f8792);
 }
 
 .ga-gen-hero-card h2,
@@ -6238,21 +6238,21 @@ body {
 
 .ga-gen-icon-shell.is-mission,
 .ga-gen-icon-shell.is-seerah {
-  background: rgba(242, 160, 94, 0.2);
-  color: #ffd5b2;
+  background: rgba(111, 167, 176, 0.24);
+  color: #9bd3db;
 }
 
 .ga-gen-icon-shell.is-method,
 .ga-gen-icon-shell.is-arabic {
-  background: rgba(44, 62, 80, 0.16);
-  color: #fff2e5;
+  background: rgba(44, 62, 80, 0.2);
+  color: #2c3e50;
 }
 
 .ga-gen-icon-shell.is-journey,
 .ga-gen-icon-shell.is-tajweed,
 .ga-gen-icon-shell.is-leadership {
-  background: rgba(255, 105, 0, 0.16);
-  color: #fff3df;
+  background: rgba(44, 62, 80, 0.22);
+  color: #2c3e50;
 }
 
 .ga-gen-delay-1 .ga-gen-icon-shell {
@@ -6368,15 +6368,15 @@ body {
 }
 
 .ga-gen-program-card.is-seerah .ga-gen-program-aura {
-  background: linear-gradient(180deg, #f2a05e, #ff6900);
+  background: linear-gradient(180deg, #6fa7b0, #9bd3db);
 }
 
 .ga-gen-program-card.is-seerah .ga-gen-program-accent-copy {
-  color: #f2a05e;
+  color: #9bd3db;
 }
 
 .ga-gen-program-card.is-arabic {
-  background: linear-gradient(180deg, #ff7d22, #d85800);
+  background: linear-gradient(180deg, #78b1ba, #5d96a0);
 }
 
 .ga-gen-program-card.is-arabic .ga-gen-program-aura {
@@ -6384,11 +6384,11 @@ body {
 }
 
 .ga-gen-program-card.is-arabic .ga-gen-program-accent-copy {
-  color: #fff0df;
+  color: #173442;
 }
 
 .ga-gen-program-card.is-tajweed {
-  background: linear-gradient(180deg, #f2a05e, #b96529);
+  background: linear-gradient(180deg, #6fa7b0, #4f8792);
 }
 
 .ga-gen-program-card.is-tajweed .ga-gen-program-aura {
@@ -6396,7 +6396,7 @@ body {
 }
 
 .ga-gen-program-card.is-tajweed .ga-gen-program-accent-copy {
-  color: #fff4e8;
+  color: #173442;
 }
 
 .ga-gen-program-card.is-leadership {
@@ -6404,11 +6404,23 @@ body {
 }
 
 .ga-gen-program-card.is-leadership .ga-gen-program-aura {
-  background: linear-gradient(180deg, #ff6900, #f2a05e);
+  background: linear-gradient(180deg, #6fa7b0, #9bd3db);
 }
 
 .ga-gen-program-card.is-leadership .ga-gen-program-accent-copy {
-  color: #f2a05e;
+  color: #9bd3db;
+}
+
+.ga-gen-program-card.is-seerah .ga-gen-icon-shell,
+.ga-gen-program-card.is-leadership .ga-gen-icon-shell {
+  background: rgba(111, 167, 176, 0.24);
+  color: #9bd3db;
+}
+
+.ga-gen-program-card.is-arabic .ga-gen-icon-shell,
+.ga-gen-program-card.is-tajweed .ga-gen-icon-shell {
+  background: rgba(44, 62, 80, 0.24);
+  color: #2c3e50;
 }
 
 .ga-gen-program-card p {
@@ -6423,12 +6435,14 @@ body {
 }
 
 .ga-gen-banner-card {
-  justify-content: space-between;
+  flex-direction: column;
+  justify-content: center;
   text-align: center;
   align-items: center;
+  gap: 1.25rem;
   background:
-    radial-gradient(52% 88% at 100% 0%, rgba(242, 160, 94, 0.22), transparent 42%),
-    radial-gradient(50% 84% at 0% 100%, rgba(255, 105, 0, 0.12), transparent 38%),
+    radial-gradient(52% 88% at 100% 0%, rgba(111, 167, 176, 0.26), transparent 42%),
+    radial-gradient(50% 84% at 0% 100%, rgba(155, 211, 219, 0.14), transparent 38%),
     linear-gradient(180deg, #34495f, #2c3e50);
 }
 
@@ -6444,73 +6458,23 @@ body {
 }
 
 .ga-gen-video-card {
-  display: grid;
-  gap: 1rem;
-  align-items: stretch;
+  max-width: 950px;
+  margin-inline: auto;
 }
 
-.ga-gen-video-poster,
 .ga-gen-video-frame {
   position: relative;
   overflow: hidden;
-  min-height: 100%;
   aspect-ratio: 16 / 9;
   border-radius: 1.25rem;
   background: #2c3e50;
   box-shadow: 0 22px 44px rgba(44, 62, 80, 0.16);
 }
 
-.ga-gen-video-poster {
-  display: block;
-  border: 1px solid rgba(242, 160, 94, 0.45);
-}
-
-.ga-gen-video-thumb,
 .ga-gen-video-frame iframe {
   width: 100%;
   height: 100%;
   display: block;
-}
-
-.ga-gen-video-thumb {
-  object-fit: cover;
-}
-
-.ga-gen-video-poster::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 42%, rgba(44, 62, 80, 0.72));
-}
-
-.ga-gen-video-play {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-}
-
-.ga-gen-video-play span {
-  width: 4.4rem;
-  height: 4.4rem;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ff6900, #d85800);
-  box-shadow: 0 18px 36px rgba(255, 105, 0, 0.32);
-  position: relative;
-  animation: genMuminFloat 4.8s ease-in-out infinite;
-}
-
-.ga-gen-video-play span::before {
-  content: "";
-  position: absolute;
-  left: 1.75rem;
-  top: 1.35rem;
-  width: 0;
-  height: 0;
-  border-top: 0.85rem solid transparent;
-  border-bottom: 0.85rem solid transparent;
-  border-left: 1.2rem solid #fff8ef;
 }
 
 .ga-gen-video-frame iframe {
@@ -6559,10 +6523,6 @@ body {
   .ga-gen-hero-cards,
   .ga-gen-program-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ga-gen-video-card {
-    grid-template-columns: 0.85fr 1.15fr;
   }
 }
 

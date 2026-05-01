@@ -41,9 +41,7 @@ const iconMap: Record<string, IconKind> = {
 };
 
 const registrationHref = "https://genmumin.com/registration";
-const youtubeIntroHref = "https://youtu.be/dDoOINvjVoQ?feature=shared";
 const youtubeEmbedHref = "https://www.youtube.com/embed/dDoOINvjVoQ";
-const youtubeThumbHref = "https://img.youtube.com/vi/dDoOINvjVoQ/maxresdefault.jpg";
 
 function GenMuminIcon({ kind }: { kind: IconKind }) {
   if (kind === "mission") {
@@ -271,18 +269,6 @@ export default function GenMuminPage() {
             </div>
 
             <div className="ga-gen-video-card">
-              <a href={youtubeIntroHref} className="ga-gen-video-poster" target="_blank" rel="noreferrer">
-                <Image
-                  src={youtubeThumbHref}
-                  alt="Gen-Mumin YouTube channel intro"
-                  width={1280}
-                  height={720}
-                  className="ga-gen-video-thumb"
-                />
-                <span className="ga-gen-video-play" aria-hidden>
-                  <span />
-                </span>
-              </a>
               <div className="ga-gen-video-frame">
                 <iframe
                   src={youtubeEmbedHref}
