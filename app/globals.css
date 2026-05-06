@@ -6956,11 +6956,18 @@ body {
 }
 
 .ga-gen-ad-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  overflow: visible;
   border-bottom: 1px solid rgba(137, 85, 167, 0.12);
   background: rgba(253, 233, 226, 0.92);
+  backdrop-filter: blur(14px);
 }
 
 .ga-gen-offer-strip {
+  position: relative;
+  z-index: 2;
   background:
     radial-gradient(40% 160% at 0% 50%, rgba(249, 117, 86, 0.32), transparent 56%),
     linear-gradient(90deg, #24103f, #3a1763 52%, #24103f);
