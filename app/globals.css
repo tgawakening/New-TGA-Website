@@ -7403,26 +7403,24 @@ body {
   position: fixed;
   inset: 0;
   z-index: 90;
-  display: none;
+  display: grid;
   place-items: center;
   padding: 1rem;
-}
-
-.ga-gen-video-modal:target {
-  display: grid;
 }
 
 .ga-gen-video-modal-backdrop {
   position: absolute;
   inset: 0;
+  border: 0;
   background: rgba(16, 7, 30, 0.82);
   backdrop-filter: blur(6px);
+  cursor: pointer;
 }
 
 .ga-gen-video-modal-card {
   position: relative;
   z-index: 1;
-  width: min(980px, 100%);
+  width: min(900px, calc(100vw - 2rem), calc(72vh * 16 / 9));
   display: grid;
   gap: 0.7rem;
 }
@@ -7432,16 +7430,19 @@ body {
   min-height: 2.3rem;
   display: inline-flex;
   align-items: center;
+  border: 0;
   border-radius: 999px;
   padding: 0.35rem 0.75rem;
   background: #f97556;
   color: #fff;
   font-weight: 900;
+  cursor: pointer;
 }
 
 .ga-gen-video-modal-card iframe {
   width: 100%;
   aspect-ratio: 16 / 9;
+  max-height: 72vh;
   border: 0;
   border-radius: 1rem;
   background: #000;

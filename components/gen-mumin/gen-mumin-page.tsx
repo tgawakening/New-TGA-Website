@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Footer } from "@/components/home/sections";
@@ -60,6 +63,10 @@ function PlayIcon() {
 }
 
 export default function GenMuminPage() {
+  const [activeVideo, setActiveVideo] = useState<"orientation" | "intro" | null>(null);
+  const activeVideoSrc = activeVideo === "orientation" ? heroVideoEmbed : activeVideo === "intro" ? introVideoEmbed : null;
+  const activeVideoTitle = activeVideo === "orientation" ? "Gen Mumin orientation session" : "Gen Mumin intro video";
+
   return (
     <div className="ga-page ga-gen-page ga-gen-ad-page">
       <header className="ga-gen-header ga-gen-ad-header">
@@ -127,10 +134,14 @@ export default function GenMuminPage() {
                 <Link href={whatsappHref} className="ga-gen-primary-cta" target="_blank" rel="noreferrer">
                   Join Our WhatsApp Community
                 </Link>
-                <Link href="#gen-orientation-video" className="ga-gen-secondary-cta ga-gen-video-button">
+                <button
+                  type="button"
+                  className="ga-gen-secondary-cta ga-gen-video-button"
+                  onClick={() => setActiveVideo("orientation")}
+                >
                   <PlayIcon />
                   Watch Orientation Session
-                </Link>
+                </button>
               </div>
             </div>
 
@@ -219,10 +230,14 @@ export default function GenMuminPage() {
                 Watch the orientation session to understand the programme vision, launch offer, and what families can
                 expect from the learning journey.
               </p>
-              <Link href="#gen-intro-video" className="ga-gen-primary-cta ga-gen-video-button">
+              <button
+                type="button"
+                className="ga-gen-primary-cta ga-gen-video-button"
+                onClick={() => setActiveVideo("intro")}
+              >
                 <PlayIcon />
                 Watch Intro Video
-              </Link>
+              </button>
             </div>
           </div>
         </section>
@@ -268,35 +283,27 @@ export default function GenMuminPage() {
           </div>
         </section>
 
-        <div id="gen-orientation-video" className="ga-gen-video-modal" role="dialog" aria-label="Gen Mumin orientation video">
-          <Link href="#" className="ga-gen-video-modal-backdrop" aria-label="Close video" />
-          <div className="ga-gen-video-modal-card">
-            <Link href="#" className="ga-gen-video-modal-close" aria-label="Close video">
-              Close
-            </Link>
-            <iframe
-              src={heroVideoEmbed}
-              title="Gen Mumin orientation session"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
+        {activeVideoSrc ? (
+          <div className="ga-gen-video-modal" role="dialog" aria-modal="true" aria-label={activeVideoTitle}>
+            <button
+              type="button"
+              className="ga-gen-video-modal-backdrop"
+              aria-label="Close video"
+              onClick={() => setActiveVideo(null)}
             />
+            <div className="ga-gen-video-modal-card">
+              <button type="button" className="ga-gen-video-modal-close" onClick={() => setActiveVideo(null)}>
+                Close
+              </button>
+              <iframe
+                src={activeVideoSrc}
+                title={activeVideoTitle}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
           </div>
-        </div>
-
-        <div id="gen-intro-video" className="ga-gen-video-modal" role="dialog" aria-label="Gen Mumin intro video">
-          <Link href="#" className="ga-gen-video-modal-backdrop" aria-label="Close video" />
-          <div className="ga-gen-video-modal-card">
-            <Link href="#" className="ga-gen-video-modal-close" aria-label="Close video">
-              Close
-            </Link>
-            <iframe
-              src={introVideoEmbed}
-              title="Gen Mumin intro video"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </div>
-        </div>
+        ) : null}
       </main>
       <Footer />
     </div>
