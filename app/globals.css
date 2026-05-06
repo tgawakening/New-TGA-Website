@@ -6300,7 +6300,7 @@ body {
 }
 
 .ga-gen-about-section {
-  padding-top: clamp(4.25rem, 7vw, 6.8rem);
+  padding-top: clamp(5.5rem, 9vw, 8.5rem);
   padding-bottom: clamp(3rem, 5vw, 5rem);
 }
 
