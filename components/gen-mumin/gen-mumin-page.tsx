@@ -1,143 +1,89 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Footer } from "@/components/home/sections";
-import { muminsSteps } from "@/components/home/data";
 
-type IconKind = "mission" | "method" | "journey" | "seerah" | "arabic" | "tajweed" | "leadership";
-
-const heroCards = [
-  {
-    title: "Faith-first confidence",
-    copy: "A warm path that helps children love their Muslim identity and practise adab with clarity.",
-    icon: "mission" as const,
-    tone: "navy",
-  },
-  {
-    title: "Orientation access",
-    copy: "Join the WhatsApp community now. Orientation session links and updates will be shared there.",
-    icon: "method" as const,
-    tone: "orange",
-  },
-  {
-    title: "Clear growth journey",
-    copy: "Arabic, Tajweed, Seerah, character, and life skills are introduced as one connected journey.",
-    icon: "journey" as const,
-    tone: "amber",
-  },
-];
-
-const programAccents: Record<string, string> = {
-  seerah: "Stories, identity, prophetic love",
-  arabic: "Language, reading, Qur'an connection",
-  tajweed: "Recitation, beauty, precision",
-  leadership: "Character, courage, responsibility",
-};
-
-const iconMap: Record<string, IconKind> = {
-  seerah: "seerah",
-  arabic: "arabic",
-  tajweed: "tajweed",
-  leadership: "leadership",
-};
-
+const registrationHref = "https://genmumin.com/registration";
 const whatsappHref = "https://chat.whatsapp.com/EX6fgdY6b4T9XRwpGNkfoU";
-const youtubeEmbedHref = "https://www.youtube.com/embed/dDoOINvjVoQ";
+const orientationVideoEmbed = "https://www.youtube.com/embed/g4RwUl_eSlY";
+const orientationVideoAutoplay =
+  "https://www.youtube.com/embed/g4RwUl_eSlY?autoplay=1&mute=1&controls=0&loop=1&playlist=g4RwUl_eSlY&playsinline=1&rel=0";
 
-const orientationStats = [
-  { value: "4", label: "Learning areas" },
-  { value: "6-12", label: "Age focus" },
-  { value: "Live", label: "Orientation" },
-  { value: "Open", label: "Registrations" },
+const heroPills = ["Strong in faith", "Kind in character", "Courageous in leadership"];
+
+const offerStats = [
+  { label: "Original price", value: "PKR 12,000" },
+  { label: "Early bird", value: "25% OFF" },
+  { label: "Now", value: "PKR 8,999" },
+  { label: "Code", value: "GENM25" },
 ];
 
-const orientationHighlights = [
-  "Arabic and Tajweed foundations",
-  "Seerah stories and prophetic love",
-  "Character building with Islamic values",
-  "Life skills for confident young Muslims",
+const posterFeatures = [
+  "Arabic spoken language",
+  "Tajweed with ijazah",
+  "Seerah Tun Nabawiyah",
+  "Life skills",
 ];
 
-function GenMuminIcon({ kind }: { kind: IconKind }) {
-  if (kind === "mission") {
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <circle cx="24" cy="24" r="14" fill="none" />
-        <path d="M24 10v10" fill="none" />
-        <path d="M24 24l8-6" fill="none" />
-        <circle cx="24" cy="24" r="3" />
-      </svg>
-    );
-  }
+const transformationCards = [
+  { from: "Hollow", to: "Nurturing" },
+  { from: "Shallow", to: "Deep" },
+  { from: "Following", to: "Guiding" },
+];
 
-  if (kind === "method") {
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <rect x="10" y="12" width="28" height="22" rx="5" fill="none" />
-        <path d="M16 22h16" fill="none" />
-        <path d="M16 28h10" fill="none" />
-        <path d="M20 34l-2 6" fill="none" />
-        <path d="M28 34l2 6" fill="none" />
-      </svg>
-    );
-  }
+const programs = [
+  {
+    title: "Arabic Spoken Language",
+    copy: "Build confident reading, speaking, and Qur'an-connected vocabulary.",
+    points: ["Foundations", "Expression", "Qur'an connection"],
+    tone: "light",
+  },
+  {
+    title: "Tajweed With Ijazah",
+    copy: "Learn recitation beauty, pronunciation, and rule-based fluency.",
+    points: ["Makharij", "Rules", "Practice"],
+    tone: "carrot",
+  },
+  {
+    title: "Seerah Tun Nabawiyah",
+    copy: "Grow love for the Prophet through stories, reflection, and identity.",
+    points: ["Stories", "Values", "Prophetic love"],
+    tone: "purple",
+  },
+  {
+    title: "Life Skills",
+    copy: "Shape purposeful habits, leadership, confidence, and stronger values.",
+    points: ["Leadership", "Character", "Purpose"],
+    tone: "blue",
+  },
+];
 
-  if (kind === "journey") {
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M10 32c4-12 10-16 18-16 5 0 8 2 10 4" fill="none" />
-        <path d="M28 16h10v10" fill="none" />
-        <circle cx="12" cy="32" r="2.5" />
-        <circle cx="24" cy="20" r="2.5" />
-        <circle cx="38" cy="20" r="2.5" />
-      </svg>
-    );
-  }
-
-  if (kind === "seerah") {
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M13 34V16c0-2 1.5-3 3.5-3H35v18c0 2-1.5 3-3.5 3H13Z" fill="none" />
-        <path d="M18 18h12" fill="none" />
-        <path d="M18 24h12" fill="none" />
-        <path d="M18 30h8" fill="none" />
-      </svg>
-    );
-  }
-
-  if (kind === "arabic") {
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M15 31c2-6 5-13 9-13 4 0 6 5 8 13" fill="none" />
-        <path d="M16 31h16" fill="none" />
-        <path d="M19 14h10" fill="none" />
-      </svg>
-    );
-  }
-
-  if (kind === "tajweed") {
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true">
-        <path d="M24 12c6 0 11 5 11 11 0 8-11 14-11 14S13 31 13 23c0-6 5-11 11-11Z" fill="none" />
-        <path d="M19 24c2 2 8 2 10 0" fill="none" />
-        <path d="M20 19h8" fill="none" />
-      </svg>
-    );
-  }
-
+function PlayIcon() {
   return (
-    <svg viewBox="0 0 48 48" aria-hidden="true">
-      <circle cx="24" cy="14" r="5" fill="none" />
-      <path d="M16 35c1-7 5-11 8-11s7 4 8 11" fill="none" />
-      <path d="M10 24l6 4" fill="none" />
-      <path d="M38 24l-6 4" fill="none" />
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M8 5v14l11-7-11-7Z" />
     </svg>
   );
 }
 
 export default function GenMuminPage() {
   return (
-    <div className="ga-page ga-gen-page">
-      <header className="ga-gen-header">
+    <div className="ga-page ga-gen-page ga-gen-ad-page">
+      <header className="ga-gen-header ga-gen-ad-header">
+        <div className="ga-gen-offer-strip">
+          <div className="ga-container ga-gen-offer-row">
+            <div className="ga-gen-offer-copy">
+              <span className="ga-gen-discount-badge">Limited slots</span>
+              <strong>Early bird 25% OFF</strong>
+              <span>
+                Use code <b>GENM25</b> - <s>PKR 12,000</s> <b>PKR 8,999</b>
+              </span>
+            </div>
+            <Link href={registrationHref} className="ga-gen-offer-button">
+              Register Now
+            </Link>
+          </div>
+        </div>
+
         <div className="ga-container ga-gen-header-row">
           <div className="ga-gen-branding">
             <Link href="/" className="ga-gen-home-link">
@@ -157,214 +103,185 @@ export default function GenMuminPage() {
           </div>
 
           <nav className="ga-gen-nav" aria-label="Gen-Mumin sections">
-            <Link href="#gen-mumin-about">Overview</Link>
+            <Link href="#gen-mumin-overview">Overview</Link>
             <Link href="#gen-mumin-programs">Programs</Link>
             <Link href="#gen-mumin-video">Intro</Link>
           </nav>
 
           <Link href={whatsappHref} className="ga-gen-header-cta" target="_blank" rel="noreferrer">
-            Join WhatsApp
-          </Link>
-        </div>
-        <div className="ga-container ga-gen-header-note">
-          <span>Orientation session links will be shared inside the Gen-M community.</span>
-          <Link href={whatsappHref} target="_blank" rel="noreferrer">
-            Join the community
+            Join Community
           </Link>
         </div>
       </header>
 
       <main>
-        <section className="ga-gen-hero-wrap">
-          <div className="ga-container">
-            <div className="ga-gen-hero-panel">
-              <div className="ga-gen-hero-copy">
-                <span className="ga-gen-badge">Gen-Mumin Orientation - Registrations Open</span>
-                <h1 className="ga-gen-title">Go Beyond Ordinary Education</h1>
-                <p className="ga-gen-lead">
-                  A child-focused journey for confident Muslim identity, Qur&apos;an connection, Seerah love, character,
-                  and practical life skills. Join the WhatsApp community to receive the orientation session link.
-                </p>
-                <div className="ga-gen-hero-proof" aria-label="Gen-Mumin highlights">
-                  <span>Arabic & Tajweed</span>
-                  <span>Seerah</span>
-                  <span>Character</span>
-                  <span>Life Skills</span>
-                </div>
-
-                <div className="ga-gen-hero-actions">
-                  <Link href={whatsappHref} className="ga-gen-primary-cta" target="_blank" rel="noreferrer">
-                    Join Gen-M Community
-                  </Link>
-                  <Link href={whatsappHref} className="ga-gen-secondary-cta" target="_blank" rel="noreferrer">
-                    Get Orientation Updates
-                  </Link>
-                </div>
+        <section className="ga-gen-ad-hero">
+          <div className="ga-container ga-gen-ad-hero-grid">
+            <div className="ga-gen-ad-hero-copy">
+              <span className="ga-gen-badge">Gen Mumin Orientation Session</span>
+              <h1>Empowered Muslim Children, Not Just Educated Children.</h1>
+              <p>
+                Gen Mumin helps children grow beyond ordinary learning into faith, character, leadership, Qur&apos;an
+                connection, and purposeful living.
+              </p>
+              <div className="ga-gen-ad-pills">
+                {heroPills.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
               </div>
-
-              <div className="ga-gen-hero-media">
-                <div className="ga-gen-image-frame">
-                  <Image
-                    src="/Gen-Mumin.jpeg"
-                    alt="Gen-Mumin banner"
-                    width={760}
-                    height={960}
-                    className="ga-gen-hero-image"
-                    priority
-                  />
-                </div>
+              <div className="ga-gen-ad-actions">
+                <Link href={whatsappHref} className="ga-gen-primary-cta" target="_blank" rel="noreferrer">
+                  Join Our WhatsApp Community
+                </Link>
+                <Link href="#gen-orientation-video" className="ga-gen-secondary-cta ga-gen-video-button">
+                  <PlayIcon />
+                  Watch Orientation Session
+                </Link>
               </div>
             </div>
 
-            <div className="ga-gen-hero-cards">
-              {heroCards.map((card, index) => (
-                <article key={card.title} className={`ga-gen-hero-card ga-gen-delay-${index + 1} is-${card.tone}`}>
-                  <div className={`ga-gen-icon-shell is-${card.icon}`}>
-                    <GenMuminIcon kind={card.icon} />
-                  </div>
-                  <h2>{card.title}</h2>
-                  <p>{card.copy}</p>
-                </article>
-              ))}
+            <div className="ga-gen-ad-hero-media">
+              <Image
+                src="/gen-mumin-hero-poster.jpeg"
+                alt="Gen Mumin orientation session poster"
+                width={1080}
+                height={1350}
+                className="ga-gen-ad-hero-image"
+                priority
+              />
             </div>
           </div>
         </section>
 
-        <section id="gen-mumin-about" className="ga-section ga-gen-about-section">
-          <div className="ga-container ga-gen-about-grid">
-            <div className="ga-gen-about-poster">
+        <section id="gen-mumin-overview" className="ga-section ga-gen-offer-section">
+          <div className="ga-container ga-gen-offer-grid">
+            <div className="ga-gen-offer-poster">
               <Image
-                src="/gen-mumin-orientation.jpeg"
-                alt="Gen-Mumin orientation poster"
+                src="/gen-mumin-offer-poster.jpeg"
+                alt="Gen Mumin limited-time launch offer poster"
                 width={1080}
                 height={1350}
-                className="ga-gen-about-image"
+                className="ga-gen-offer-image"
               />
             </div>
-            <div className="ga-gen-about-copy">
-              <span className="ga-gen-section-kicker">Orientation Invite</span>
-              <h2>Join WhatsApp for orientation access.</h2>
+            <div className="ga-gen-offer-panel">
+              <span className="ga-gen-section-kicker">Limited Time Launch Offer</span>
+              <h2>Guide them before something else does.</h2>
               <p>
-                Gen-Mumin introduces children to a guided Islamic development pathway that blends learning, confidence,
-                values, and practical habits families can continue at home.
+                Gen Mumin is for families who want children shaped by faith, knowledge, values, and purpose while the
+                digital world competes for their attention.
               </p>
-              <div className="ga-gen-stat-grid">
-                {orientationStats.map((item) => (
-                  <div key={item.label} className="ga-gen-stat-card">
-                    <strong>{item.value}</strong>
+              <div className="ga-gen-price-grid">
+                {offerStats.map((item) => (
+                  <div key={item.label}>
                     <span>{item.label}</span>
+                    <strong>{item.value}</strong>
                   </div>
                 ))}
               </div>
-              <div className="ga-gen-highlight-list">
-                {orientationHighlights.map((item) => (
-                  <p key={item}>{item}</p>
+              <div className="ga-gen-transformation-list">
+                {transformationCards.map((item) => (
+                  <p key={item.from}>
+                    From <b>{item.from}</b> to <strong>{item.to}</strong>
+                  </p>
                 ))}
               </div>
-              <Link href={whatsappHref} className="ga-gen-primary-cta" target="_blank" rel="noreferrer">
-                Join WhatsApp for Orientation
+              <div className="ga-gen-feature-row">
+                {posterFeatures.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+              <div className="ga-gen-ad-actions">
+                <Link href={registrationHref} className="ga-gen-primary-cta">
+                  Register With GENM25
+                </Link>
+                <Link href={whatsappHref} className="ga-gen-secondary-cta" target="_blank" rel="noreferrer">
+                  Join Community
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="gen-mumin-video" className="ga-gen-video-band">
+          <iframe
+            src={orientationVideoAutoplay}
+            title="Gen Mumin orientation background"
+            allow="autoplay; encrypted-media; picture-in-picture; web-share"
+            aria-hidden="true"
+          />
+          <div className="ga-gen-video-band-overlay" />
+          <div className="ga-container ga-gen-video-band-content">
+            <div>
+              <span className="ga-gen-section-kicker">Orientation Preview</span>
+              <h2>See why Gen Mumin is built for this generation.</h2>
+              <p>
+                Watch the orientation session to understand the programme vision, launch offer, and what families can
+                expect from the learning journey.
+              </p>
+              <Link href="#gen-orientation-video" className="ga-gen-primary-cta ga-gen-video-button">
+                <PlayIcon />
+                Watch Intro Video
               </Link>
             </div>
           </div>
         </section>
 
-        <section id="gen-mumin-programs" className="ga-section ga-gen-program-section">
+        <section id="gen-mumin-programs" className="ga-section ga-gen-program-lite-section">
           <div className="ga-container ga-gen-section-head ga-gen-section-head-centered">
-            <span className="ga-gen-section-kicker">Programs</span>
-            <h2>Four connected areas that help children grow in understanding, recitation, language, and character.</h2>
+            <span className="ga-gen-section-kicker">Programme Path</span>
+            <h2>Four focused areas for stronger values and purposeful living.</h2>
+            <p>Clear, child-friendly learning areas summarized for parents who want quick understanding.</p>
+          </div>
+
+          <div className="ga-container ga-gen-program-lite-grid">
+            {programs.map((program) => (
+              <article key={program.title} className={`ga-gen-lite-card is-${program.tone}`}>
+                <h3>{program.title}</h3>
+                <p>{program.copy}</p>
+                <div>
+                  {program.points.map((point) => (
+                    <span key={point}>{point}</span>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="ga-gen-final-cta">
+          <div className="ga-container ga-gen-final-card">
+            <span className="ga-gen-section-kicker">Registration Now Open</span>
+            <h2>Reserve your child&apos;s Gen Mumin spot today.</h2>
             <p>
-              Each part of the journey is introduced in a short, interactive, and easy-to-follow way so families can
-              quickly understand the full program path.
+              Use code <b>GENM25</b> for the early bird launch offer. Join the community for updates or register now to
+              secure your place.
             </p>
-          </div>
-
-          <div className="ga-container ga-gen-program-grid">
-            {muminsSteps.map((step, index) => {
-              const iconKind = iconMap[step.id] ?? "leadership";
-
-              return (
-                <article
-                  key={step.id}
-                  id={`program-${step.id}`}
-                  className={`ga-gen-program-card ga-gen-delay-${(index % 3) + 1} is-${step.id}`}
-                >
-                  <span className="ga-gen-program-aura" aria-hidden />
-                  <div className="ga-gen-program-card-head">
-                    <div className={`ga-gen-icon-shell is-${iconKind}`}>
-                      <GenMuminIcon kind={iconKind} />
-                    </div>
-                    <div>
-                      <span className="ga-gen-program-index">0{index + 1}</span>
-                      <h3>{step.title}</h3>
-                    </div>
-                  </div>
-
-                  <p className="ga-gen-program-subtitle">{step.subtitle}</p>
-                  <p className="ga-gen-program-accent-copy">{programAccents[step.id] ?? step.next}</p>
-
-                  <div className="ga-gen-program-points">
-                    {step.points.slice(0, 3).map((point) => (
-                      <span key={point}>{point}</span>
-                    ))}
-                  </div>
-
-                  <div className="ga-gen-program-stats">
-                    {step.stats.map((stat) => (
-                      <span key={stat}>{stat}</span>
-                    ))}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        <section id="gen-mumin-video" className="ga-section ga-gen-video-section">
-          <div className="ga-container">
-            <div className="ga-gen-section-head ga-gen-section-head-centered">
-              <span className="ga-gen-section-kicker">Channel Intro</span>
-              <h2>Meet the Gen-Mumin learning vision.</h2>
-              <p>
-                Watch the intro and get a quick feel for the project, its energy, and the learning journey families can
-                now join.
-              </p>
-            </div>
-
-            <div className="ga-gen-video-card">
-              <div className="ga-gen-video-frame">
-                <iframe
-                  src={youtubeEmbedHref}
-                  title="Gen-Mumin YouTube channel intro"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                />
-              </div>
+            <div className="ga-gen-banner-actions">
+              <Link href={registrationHref} className="ga-gen-primary-cta">
+                Enroll Now
+              </Link>
+              <Link href={whatsappHref} className="ga-gen-secondary-cta" target="_blank" rel="noreferrer">
+                Join Our Community
+              </Link>
             </div>
           </div>
         </section>
 
-        <section className="ga-section ga-gen-cta-section">
-          <div className="ga-container">
-            <article className="ga-gen-banner-card">
-              <div>
-                <span className="ga-gen-section-kicker">Next Step</span>
-                <h2>Join the Gen-M community for orientation access.</h2>
-                <p>
-                  The orientation session link and important updates will be shared in the WhatsApp community. Join now
-                  so your family does not miss the announcement.
-                </p>
-              </div>
-              <div className="ga-gen-banner-actions">
-                <Link href={whatsappHref} className="ga-gen-primary-cta" target="_blank" rel="noreferrer">
-                  Join Our Gen-M Community
-                </Link>
-                <Link href={whatsappHref} className="ga-gen-secondary-cta" target="_blank" rel="noreferrer">
-                  Get Session Link Updates
-                </Link>
-              </div>
-            </article>
+        <div id="gen-orientation-video" className="ga-gen-video-modal" role="dialog" aria-label="Gen Mumin orientation video">
+          <Link href="#" className="ga-gen-video-modal-backdrop" aria-label="Close video" />
+          <div className="ga-gen-video-modal-card">
+            <Link href="#" className="ga-gen-video-modal-close" aria-label="Close video">
+              Close
+            </Link>
+            <iframe
+              src={orientationVideoEmbed}
+              title="Gen Mumin orientation session"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
           </div>
-        </section>
+        </div>
       </main>
       <Footer />
     </div>

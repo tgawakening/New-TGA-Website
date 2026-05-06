@@ -6949,3 +6949,537 @@ body {
     gap: 0.8rem;
   }
 }
+
+.ga-gen-ad-page {
+  background: #fde9e2;
+  color: #2b174f;
+}
+
+.ga-gen-ad-header {
+  border-bottom: 1px solid rgba(137, 85, 167, 0.12);
+  background: rgba(253, 233, 226, 0.92);
+}
+
+.ga-gen-offer-strip {
+  background:
+    radial-gradient(40% 160% at 0% 50%, rgba(249, 117, 86, 0.32), transparent 56%),
+    linear-gradient(90deg, #24103f, #3a1763 52%, #24103f);
+  color: #fff7ef;
+  box-shadow: 0 14px 32px rgba(43, 23, 79, 0.22);
+}
+
+.ga-gen-offer-row {
+  min-height: 4.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.65rem;
+}
+
+.ga-gen-offer-copy {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  line-height: 1.2;
+}
+
+.ga-gen-offer-copy strong {
+  color: #fff;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+}
+
+.ga-gen-offer-copy b {
+  color: #ffd6a4;
+}
+
+.ga-gen-offer-copy s {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.ga-gen-discount-badge,
+.ga-gen-offer-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.35rem;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font-weight: 900;
+}
+
+.ga-gen-discount-badge {
+  background: #f97556;
+  color: #fff;
+  box-shadow: 0 0 0 5px rgba(249, 117, 86, 0.15);
+}
+
+.ga-gen-offer-button {
+  background: #fff4ed;
+  color: #2b174f;
+  white-space: nowrap;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.ga-gen-offer-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+}
+
+.ga-gen-ad-page .ga-gen-header-row {
+  min-height: 4.4rem;
+}
+
+.ga-gen-ad-page .ga-gen-home-link,
+.ga-gen-ad-page .ga-gen-nav a {
+  border-color: rgba(137, 85, 167, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: #3a1763;
+}
+
+.ga-gen-ad-page .ga-gen-header-cta,
+.ga-gen-ad-page .ga-gen-primary-cta {
+  border-color: rgba(249, 117, 86, 0.45);
+  background: linear-gradient(180deg, #f97556, #e85f43);
+  color: #fffaf7;
+  box-shadow: 0 16px 28px rgba(249, 117, 86, 0.22);
+}
+
+.ga-gen-ad-page .ga-gen-secondary-cta {
+  border-color: rgba(137, 85, 167, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  color: #3a1763;
+}
+
+.ga-gen-video-button {
+  gap: 0.45rem;
+}
+
+.ga-gen-video-button svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+}
+
+.ga-gen-ad-hero {
+  background:
+    radial-gradient(34% 44% at 8% 18%, rgba(249, 117, 86, 0.16), transparent 70%),
+    radial-gradient(40% 54% at 100% 12%, rgba(137, 85, 167, 0.13), transparent 72%),
+    linear-gradient(180deg, #fbe6de, #fde9e2);
+  padding-block: clamp(1.2rem, 3vw, 2.2rem) clamp(3rem, 5vw, 5rem);
+}
+
+.ga-gen-ad-hero-grid {
+  display: grid;
+  gap: clamp(1.3rem, 3vw, 2.6rem);
+  align-items: center;
+}
+
+.ga-gen-ad-hero-copy h1,
+.ga-gen-offer-panel h2,
+.ga-gen-video-band-content h2,
+.ga-gen-program-lite-section h2,
+.ga-gen-final-card h2 {
+  margin: 0;
+  color: #2b174f;
+  font-family: var(--font-marko-one), Georgia, serif;
+  line-height: 1.04;
+}
+
+.ga-gen-ad-hero-copy h1 {
+  max-width: 11em;
+  margin-top: 0.8rem;
+  font-size: clamp(2.4rem, 5.4vw, 5.2rem);
+}
+
+.ga-gen-ad-hero-copy p,
+.ga-gen-offer-panel p,
+.ga-gen-video-band-content p,
+.ga-gen-final-card p {
+  margin: 0;
+  max-width: 38rem;
+  color: #5f4c76;
+  line-height: 1.7;
+  font-size: 1.03rem;
+}
+
+.ga-gen-ad-pills,
+.ga-gen-ad-actions,
+.ga-gen-feature-row {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.ga-gen-ad-pills {
+  margin-top: 1.05rem;
+}
+
+.ga-gen-ad-pills span,
+.ga-gen-feature-row span {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.42rem 0.78rem;
+  background: rgba(255, 255, 255, 0.72);
+  color: #3a1763;
+  border: 1px solid rgba(137, 85, 167, 0.14);
+  font-weight: 850;
+  font-size: 0.88rem;
+}
+
+.ga-gen-ad-actions {
+  margin-top: 1.25rem;
+}
+
+.ga-gen-ad-hero-media,
+.ga-gen-offer-poster {
+  border-radius: 1.35rem;
+  overflow: hidden;
+  background: #fce0d5;
+  box-shadow: 0 28px 58px rgba(58, 23, 99, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+}
+
+.ga-gen-ad-hero-media {
+  transform: translateY(0);
+  animation: genAdPosterFloat 5.6s ease-in-out infinite;
+}
+
+.ga-gen-ad-hero-image,
+.ga-gen-offer-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ga-gen-offer-section {
+  background: linear-gradient(180deg, #fff8f4, #fde9e2);
+}
+
+.ga-gen-offer-grid {
+  display: grid;
+  gap: clamp(1.4rem, 3vw, 2.5rem);
+  align-items: stretch;
+}
+
+.ga-gen-offer-panel {
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+  border-radius: 1.35rem;
+  padding: clamp(1.2rem, 2.6vw, 2rem);
+  background:
+    radial-gradient(80% 80% at 100% 0%, rgba(249, 117, 86, 0.12), transparent 55%),
+    rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(137, 85, 167, 0.1);
+}
+
+.ga-gen-offer-panel h2,
+.ga-gen-video-band-content h2,
+.ga-gen-final-card h2 {
+  font-size: clamp(1.85rem, 3.8vw, 3.25rem);
+}
+
+.ga-gen-price-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.ga-gen-price-grid div {
+  border-radius: 1rem;
+  padding: 0.9rem;
+  background: linear-gradient(180deg, #321657, #24103f);
+  color: #fff;
+}
+
+.ga-gen-price-grid span {
+  display: block;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ga-gen-price-grid strong {
+  display: block;
+  margin-top: 0.2rem;
+  color: #f97556;
+  font-size: clamp(1.12rem, 2.4vw, 1.65rem);
+}
+
+.ga-gen-transformation-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ga-gen-transformation-list p {
+  max-width: none;
+  min-height: 2.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  background: #2b174f;
+  color: #fff8f4;
+  font-weight: 800;
+}
+
+.ga-gen-transformation-list strong {
+  color: #ffd6a4;
+}
+
+.ga-gen-video-band {
+  position: relative;
+  min-height: clamp(30rem, 56vw, 42rem);
+  overflow: hidden;
+  display: grid;
+  align-items: center;
+  background: #24103f;
+}
+
+.ga-gen-video-band iframe {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 120vw;
+  height: 67.5vw;
+  min-width: 100%;
+  min-height: 100%;
+  transform: translate(-50%, -50%);
+  border: 0;
+  pointer-events: none;
+}
+
+.ga-gen-video-band-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(36, 16, 63, 0.96), rgba(36, 16, 63, 0.72), rgba(249, 117, 86, 0.16)),
+    radial-gradient(50% 80% at 100% 50%, rgba(249, 117, 86, 0.26), transparent 70%);
+}
+
+.ga-gen-video-band-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: end;
+}
+
+.ga-gen-video-band-content > div {
+  max-width: 34rem;
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  border-radius: 1.25rem;
+  background: rgba(253, 233, 226, 0.9);
+  box-shadow: 0 26px 58px rgba(0, 0, 0, 0.24);
+}
+
+.ga-gen-program-lite-section {
+  background: linear-gradient(180deg, #fde9e2, #fff8f4);
+}
+
+.ga-gen-program-lite-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.ga-gen-lite-card {
+  min-height: 18rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 1.2rem;
+  padding: 1.1rem;
+  box-shadow: 0 20px 40px rgba(43, 23, 79, 0.12);
+}
+
+.ga-gen-lite-card h3 {
+  margin: 0;
+  color: inherit;
+  font-family: var(--font-marko-one), Georgia, serif;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+}
+
+.ga-gen-lite-card p {
+  margin: 0;
+  line-height: 1.55;
+  color: inherit;
+}
+
+.ga-gen-lite-card div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.ga-gen-lite-card span {
+  min-height: 1.95rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.32rem 0.62rem;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.ga-gen-lite-card.is-light {
+  background: #fce0d5;
+  color: #2b174f;
+  border: 1px solid rgba(137, 85, 167, 0.1);
+}
+
+.ga-gen-lite-card.is-carrot {
+  background: linear-gradient(180deg, #ff876d, #f97556);
+  color: #fffaf7;
+}
+
+.ga-gen-lite-card.is-purple {
+  background: linear-gradient(180deg, #8955a7, #522778);
+  color: #fffaf7;
+}
+
+.ga-gen-lite-card.is-blue {
+  background: linear-gradient(180deg, #4f3f8d, #25103f);
+  color: #fffaf7;
+}
+
+.ga-gen-final-cta {
+  padding-block: clamp(4rem, 7vw, 7rem);
+  background:
+    linear-gradient(180deg, rgba(36, 16, 63, 0.82), rgba(36, 16, 63, 0.9)),
+    url("/gen-mumin-hero-poster.jpeg") center 36% / cover;
+}
+
+.ga-gen-final-card {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  text-align: center;
+  border-radius: 1.45rem;
+  padding: clamp(1.5rem, 4vw, 3rem);
+  background: rgba(253, 233, 226, 0.92);
+  box-shadow: 0 28px 58px rgba(0, 0, 0, 0.22);
+}
+
+.ga-gen-final-card p {
+  max-width: 46rem;
+}
+
+.ga-gen-video-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  place-items: center;
+  padding: 1rem;
+}
+
+.ga-gen-video-modal:target {
+  display: grid;
+}
+
+.ga-gen-video-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 7, 30, 0.82);
+  backdrop-filter: blur(6px);
+}
+
+.ga-gen-video-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(980px, 100%);
+  display: grid;
+  gap: 0.7rem;
+}
+
+.ga-gen-video-modal-close {
+  justify-self: end;
+  min-height: 2.3rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  background: #f97556;
+  color: #fff;
+  font-weight: 900;
+}
+
+.ga-gen-video-modal-card iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 1rem;
+  background: #000;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+}
+
+@keyframes genAdPosterFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@media (min-width: 860px) {
+  .ga-gen-ad-hero-grid,
+  .ga-gen-offer-grid {
+    grid-template-columns: minmax(0, 0.95fr) minmax(330px, 1.05fr);
+  }
+
+  .ga-gen-offer-grid {
+    grid-template-columns: minmax(330px, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .ga-gen-program-lite-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 859px) {
+  .ga-gen-offer-row,
+  .ga-gen-offer-copy {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ga-gen-video-band-content {
+    justify-items: center;
+  }
+}
+
+@media (max-width: 620px) {
+  .ga-gen-offer-copy {
+    gap: 0.45rem;
+  }
+
+  .ga-gen-offer-button,
+  .ga-gen-ad-actions .ga-gen-primary-cta,
+  .ga-gen-ad-actions .ga-gen-secondary-cta,
+  .ga-gen-banner-actions .ga-gen-primary-cta,
+  .ga-gen-banner-actions .ga-gen-secondary-cta {
+    width: 100%;
+  }
+
+  .ga-gen-price-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ga-gen-transformation-list p {
+    border-radius: 1rem;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
