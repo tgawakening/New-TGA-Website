@@ -6246,7 +6246,7 @@ body {
 }
 
 .ga-gen-hero-card.is-amber {
-  background: linear-gradient(180deg, #f6ac70, #f39f5f);
+  background: linear-gradient(180deg, #6fa4ad, #5c949e);
 }
 
 .ga-gen-hero-card h2,
@@ -6300,14 +6300,14 @@ body {
 }
 
 .ga-gen-about-section {
-  padding-top: clamp(3rem, 5vw, 5rem);
+  padding-top: clamp(4.25rem, 7vw, 6.8rem);
   padding-bottom: clamp(3rem, 5vw, 5rem);
 }
 
 .ga-gen-about-grid {
   display: grid;
   gap: clamp(1.4rem, 3vw, 2.4rem);
-  align-items: center;
+  align-items: stretch;
 }
 
 .ga-gen-about-poster {
@@ -6330,40 +6330,43 @@ body {
 .ga-gen-about-image {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
 }
 
 .ga-gen-about-copy {
   display: grid;
-  gap: 1rem;
+  align-content: start;
+  gap: 0.72rem;
+  height: 100%;
 }
 
 .ga-gen-about-copy h2 {
   margin: 0;
-  max-width: 13em;
+  max-width: 16em;
   color: #314c68;
   font-family: var(--font-marko-one), Georgia, serif;
-  font-size: clamp(1.7rem, 3vw, 2.55rem);
-  line-height: 1.08;
+  font-size: clamp(1.55rem, 2.5vw, 2.12rem);
+  line-height: 1.06;
 }
 
 .ga-gen-about-copy p {
   margin: 0;
   max-width: 39rem;
   color: #66809a;
-  line-height: 1.68;
+  line-height: 1.55;
 }
 
 .ga-gen-stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.58rem;
 }
 
 .ga-gen-stat-card {
-  min-height: 6.1rem;
-  border-radius: 1rem;
-  padding: 1rem;
+  min-height: 5rem;
+  border-radius: 0.85rem;
+  padding: 0.8rem;
   background: linear-gradient(180deg, #34495f, #2c3e50);
   color: #f7fbff;
   box-shadow: 0 16px 30px rgba(44, 62, 80, 0.12);
@@ -6379,7 +6382,7 @@ body {
 
 .ga-gen-stat-card span {
   display: block;
-  margin-top: 0.35rem;
+  margin-top: 0.24rem;
   color: rgba(240, 247, 250, 0.82);
   font-size: 0.88rem;
   font-weight: 700;
@@ -6387,15 +6390,15 @@ body {
 
 .ga-gen-highlight-list {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.42rem;
 }
 
 .ga-gen-highlight-list p {
   position: relative;
   max-width: none;
-  min-height: 2.55rem;
+  min-height: 2.2rem;
   border-radius: 999px;
-  padding: 0.58rem 0.85rem 0.58rem 2.25rem;
+  padding: 0.46rem 0.75rem 0.46rem 2.05rem;
   background: rgba(111, 167, 176, 0.1);
   color: #314c68;
   font-weight: 800;
@@ -6546,7 +6549,7 @@ body {
 }
 
 .ga-gen-program-card.is-tajweed {
-  background: linear-gradient(180deg, #f6ac70, #f39f5f);
+  background: linear-gradient(180deg, #6fa4ad, #5c949e);
 }
 
 .ga-gen-program-card.is-tajweed .ga-gen-program-aura {

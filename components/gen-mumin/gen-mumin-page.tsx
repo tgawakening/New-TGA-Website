@@ -243,7 +243,7 @@ export default function GenMuminPage() {
             </div>
             <div className="ga-gen-about-copy">
               <span className="ga-gen-section-kicker">Orientation Invite</span>
-              <h2>Reserve attention now. The session link is shared in WhatsApp.</h2>
+              <h2>Join WhatsApp for orientation access.</h2>
               <p>
                 Gen-Mumin introduces children to a guided Islamic development pathway that blends learning, confidence,
                 values, and practical habits families can continue at home.
