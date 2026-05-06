@@ -7,20 +7,20 @@ type IconKind = "mission" | "method" | "journey" | "seerah" | "arabic" | "tajwee
 
 const heroCards = [
   {
-    title: "Mission-led learning",
-    copy: "A child-focused Islamic journey that builds identity, adab, and confidence with clarity.",
+    title: "Faith-first confidence",
+    copy: "A warm path that helps children love their Muslim identity and practise adab with clarity.",
     icon: "mission" as const,
     tone: "navy",
   },
   {
-    title: "Gentle teaching method",
-    copy: "Interactive delivery, memorable visuals, and practical lessons designed for young minds.",
+    title: "Orientation access",
+    copy: "Join the WhatsApp community now. Orientation session links and updates will be shared there.",
     icon: "method" as const,
     tone: "orange",
   },
   {
-    title: "Structured growth path",
-    copy: "Seerah, Arabic, Tajweed, and leadership are introduced as one connected development journey.",
+    title: "Clear growth journey",
+    copy: "Arabic, Tajweed, Seerah, character, and life skills are introduced as one connected journey.",
     icon: "journey" as const,
     tone: "amber",
   },
@@ -40,8 +40,22 @@ const iconMap: Record<string, IconKind> = {
   leadership: "leadership",
 };
 
-const registrationHref = "https://genmumin.com/registration";
+const whatsappHref = "https://chat.whatsapp.com/EX6fgdY6b4T9XRwpGNkfoU";
 const youtubeEmbedHref = "https://www.youtube.com/embed/dDoOINvjVoQ";
+
+const orientationStats = [
+  { value: "4", label: "Learning areas" },
+  { value: "6-12", label: "Age focus" },
+  { value: "Live", label: "Orientation" },
+  { value: "Open", label: "Registrations" },
+];
+
+const orientationHighlights = [
+  "Arabic and Tajweed foundations",
+  "Seerah stories and prophetic love",
+  "Character building with Islamic values",
+  "Life skills for confident young Muslims",
+];
 
 function GenMuminIcon({ kind }: { kind: IconKind }) {
   if (kind === "mission") {
@@ -143,15 +157,19 @@ export default function GenMuminPage() {
           </div>
 
           <nav className="ga-gen-nav" aria-label="Gen-Mumin sections">
+            <Link href="#gen-mumin-about">Overview</Link>
             <Link href="#gen-mumin-programs">Programs</Link>
-            <Link href="#program-seerah">Seerah</Link>
-            <Link href="#program-arabic">Arabic</Link>
-            <Link href="#program-tajweed">Tajweed</Link>
-            <Link href="#program-leadership">Leadership</Link>
+            <Link href="#gen-mumin-video">Intro</Link>
           </nav>
 
-          <Link href={registrationHref} className="ga-gen-header-cta">
-            Enroll Now
+          <Link href={whatsappHref} className="ga-gen-header-cta" target="_blank" rel="noreferrer">
+            Join WhatsApp
+          </Link>
+        </div>
+        <div className="ga-container ga-gen-header-note">
+          <span>Orientation session links will be shared inside the Gen-M community.</span>
+          <Link href={whatsappHref} target="_blank" rel="noreferrer">
+            Join the community
           </Link>
         </div>
       </header>
@@ -161,19 +179,25 @@ export default function GenMuminPage() {
           <div className="ga-container">
             <div className="ga-gen-hero-panel">
               <div className="ga-gen-hero-copy">
-                <span className="ga-gen-badge">TGA Project For Young Muslim Development</span>
-                <h1 className="ga-gen-title">Raising Confident Young Muslims</h1>
+                <span className="ga-gen-badge">Gen-Mumin Orientation - Registrations Open</span>
+                <h1 className="ga-gen-title">Go Beyond Ordinary Education</h1>
                 <p className="ga-gen-lead">
-                  Gen-Mumin is being designed to help children grow in love for the Prophet, confidence in their Muslim
-                  identity, and skill in Qur&apos;an, Arabic, and leadership through a clear and engaging path.
+                  A child-focused journey for confident Muslim identity, Qur&apos;an connection, Seerah love, character,
+                  and practical life skills. Join the WhatsApp community to receive the orientation session link.
                 </p>
+                <div className="ga-gen-hero-proof" aria-label="Gen-Mumin highlights">
+                  <span>Arabic & Tajweed</span>
+                  <span>Seerah</span>
+                  <span>Character</span>
+                  <span>Life Skills</span>
+                </div>
 
                 <div className="ga-gen-hero-actions">
-                  <Link href={registrationHref} className="ga-gen-primary-cta">
-                    Enroll Now
+                  <Link href={whatsappHref} className="ga-gen-primary-cta" target="_blank" rel="noreferrer">
+                    Join Gen-M Community
                   </Link>
-                  <Link href="#gen-mumin-programs" className="ga-gen-secondary-cta">
-                    View Programs
+                  <Link href={whatsappHref} className="ga-gen-secondary-cta" target="_blank" rel="noreferrer">
+                    Get Orientation Updates
                   </Link>
                 </div>
               </div>
@@ -202,6 +226,44 @@ export default function GenMuminPage() {
                   <p>{card.copy}</p>
                 </article>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="gen-mumin-about" className="ga-section ga-gen-about-section">
+          <div className="ga-container ga-gen-about-grid">
+            <div className="ga-gen-about-poster">
+              <Image
+                src="/gen-mumin-orientation.jpeg"
+                alt="Gen-Mumin orientation poster"
+                width={1080}
+                height={1350}
+                className="ga-gen-about-image"
+              />
+            </div>
+            <div className="ga-gen-about-copy">
+              <span className="ga-gen-section-kicker">Orientation Invite</span>
+              <h2>Reserve attention now. The session link is shared in WhatsApp.</h2>
+              <p>
+                Gen-Mumin introduces children to a guided Islamic development pathway that blends learning, confidence,
+                values, and practical habits families can continue at home.
+              </p>
+              <div className="ga-gen-stat-grid">
+                {orientationStats.map((item) => (
+                  <div key={item.label} className="ga-gen-stat-card">
+                    <strong>{item.value}</strong>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="ga-gen-highlight-list">
+                {orientationHighlights.map((item) => (
+                  <p key={item}>{item}</p>
+                ))}
+              </div>
+              <Link href={whatsappHref} className="ga-gen-primary-cta" target="_blank" rel="noreferrer">
+                Join WhatsApp for Orientation
+              </Link>
             </div>
           </div>
         </section>
@@ -257,7 +319,7 @@ export default function GenMuminPage() {
           </div>
         </section>
 
-        <section className="ga-section ga-gen-video-section">
+        <section id="gen-mumin-video" className="ga-section ga-gen-video-section">
           <div className="ga-container">
             <div className="ga-gen-section-head ga-gen-section-head-centered">
               <span className="ga-gen-section-kicker">Channel Intro</span>
@@ -286,15 +348,20 @@ export default function GenMuminPage() {
             <article className="ga-gen-banner-card">
               <div>
                 <span className="ga-gen-section-kicker">Next Step</span>
-                <h2>Enroll in Gen-Mumin today.</h2>
+                <h2>Join the Gen-M community for orientation access.</h2>
                 <p>
-                  Registrations are now open for families who want a guided path through Seerah, Arabic, Tajweed, and
-                  leadership.
+                  The orientation session link and important updates will be shared in the WhatsApp community. Join now
+                  so your family does not miss the announcement.
                 </p>
               </div>
-              <Link href={registrationHref} className="ga-gen-primary-cta">
-                Enroll Now
-              </Link>
+              <div className="ga-gen-banner-actions">
+                <Link href={whatsappHref} className="ga-gen-primary-cta" target="_blank" rel="noreferrer">
+                  Join Our Gen-M Community
+                </Link>
+                <Link href={whatsappHref} className="ga-gen-secondary-cta" target="_blank" rel="noreferrer">
+                  Get Session Link Updates
+                </Link>
+              </div>
             </article>
           </div>
         </section>
