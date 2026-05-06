@@ -4,18 +4,12 @@ import { Footer } from "@/components/home/sections";
 
 const registrationHref = "https://genmumin.com/registration";
 const whatsappHref = "https://chat.whatsapp.com/EX6fgdY6b4T9XRwpGNkfoU";
-const orientationVideoEmbed = "https://www.youtube.com/embed/g4RwUl_eSlY";
+const heroVideoEmbed = "https://www.youtube.com/embed/g4RwUl_eSlY";
+const introVideoEmbed = "https://www.youtube.com/embed/dDoOINvjVoQ";
 const orientationVideoAutoplay =
-  "https://www.youtube.com/embed/g4RwUl_eSlY?autoplay=1&mute=1&controls=0&loop=1&playlist=g4RwUl_eSlY&playsinline=1&rel=0";
+  "https://www.youtube.com/embed/dDoOINvjVoQ?autoplay=1&mute=1&controls=0&loop=1&playlist=dDoOINvjVoQ&playsinline=1&rel=0";
 
 const heroPills = ["Strong in faith", "Kind in character", "Courageous in leadership"];
-
-const offerStats = [
-  { label: "Original price", value: "PKR 12,000" },
-  { label: "Early bird", value: "25% OFF" },
-  { label: "Now", value: "PKR 8,999" },
-  { label: "Code", value: "GENM25" },
-];
 
 const posterFeatures = [
   "Arabic spoken language",
@@ -172,12 +166,18 @@ export default function GenMuminPage() {
                 digital world competes for their attention.
               </p>
               <div className="ga-gen-price-grid">
-                {offerStats.map((item) => (
-                  <div key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </div>
-                ))}
+                <div className="ga-gen-price-card">
+                  <span>Launch price</span>
+                  <strong>
+                    <s>PKR 12,000</s>
+                    PKR 8,999
+                  </strong>
+                </div>
+                <div className="ga-gen-code-card">
+                  <span>Early bird discount</span>
+                  <strong>25% OFF</strong>
+                  <b>Use code GENM25</b>
+                </div>
               </div>
               <div className="ga-gen-transformation-list">
                 {transformationCards.map((item) => (
@@ -219,7 +219,7 @@ export default function GenMuminPage() {
                 Watch the orientation session to understand the programme vision, launch offer, and what families can
                 expect from the learning journey.
               </p>
-              <Link href="#gen-orientation-video" className="ga-gen-primary-cta ga-gen-video-button">
+              <Link href="#gen-intro-video" className="ga-gen-primary-cta ga-gen-video-button">
                 <PlayIcon />
                 Watch Intro Video
               </Link>
@@ -275,8 +275,23 @@ export default function GenMuminPage() {
               Close
             </Link>
             <iframe
-              src={orientationVideoEmbed}
+              src={heroVideoEmbed}
               title="Gen Mumin orientation session"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        </div>
+
+        <div id="gen-intro-video" className="ga-gen-video-modal" role="dialog" aria-label="Gen Mumin intro video">
+          <Link href="#" className="ga-gen-video-modal-backdrop" aria-label="Close video" />
+          <div className="ga-gen-video-modal-card">
+            <Link href="#" className="ga-gen-video-modal-close" aria-label="Close video">
+              Close
+            </Link>
+            <iframe
+              src={introVideoEmbed}
+              title="Gen Mumin intro video"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />

@@ -7108,7 +7108,7 @@ body {
 .ga-gen-ad-actions,
 .ga-gen-feature-row {
   display: flex;
-  gap: 0.65rem;
+  gap: 0.55rem;
   flex-wrap: wrap;
 }
 
@@ -7118,16 +7118,16 @@ body {
 
 .ga-gen-ad-pills span,
 .ga-gen-feature-row span {
-  min-height: 2.25rem;
+  min-height: 2rem;
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0.42rem 0.78rem;
+  padding: 0.34rem 0.62rem;
   background: rgba(255, 255, 255, 0.72);
   color: #3a1763;
   border: 1px solid rgba(137, 85, 167, 0.14);
   font-weight: 850;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 .ga-gen-ad-actions {
@@ -7161,19 +7161,19 @@ body {
 
 .ga-gen-offer-grid {
   display: grid;
-  gap: clamp(1.4rem, 3vw, 2.5rem);
+  gap: clamp(1.2rem, 2.5vw, 2rem);
   align-items: stretch;
 }
 
 .ga-gen-offer-panel {
   display: grid;
   align-content: center;
-  gap: 1rem;
+  gap: 0.78rem;
   border-radius: 1.35rem;
-  padding: clamp(1.2rem, 2.6vw, 2rem);
+  padding: clamp(1rem, 2vw, 1.5rem);
   background:
     radial-gradient(80% 80% at 100% 0%, rgba(249, 117, 86, 0.12), transparent 55%),
-    rgba(255, 255, 255, 0.62);
+    rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(137, 85, 167, 0.1);
 }
 
@@ -7186,12 +7186,12 @@ body {
 .ga-gen-price-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .ga-gen-price-grid div {
   border-radius: 1rem;
-  padding: 0.9rem;
+  padding: 0.78rem;
   background: linear-gradient(180deg, #321657, #24103f);
   color: #fff;
 }
@@ -7212,20 +7212,43 @@ body {
   font-size: clamp(1.12rem, 2.4vw, 1.65rem);
 }
 
+.ga-gen-price-card strong {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.ga-gen-price-card s {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.82rem;
+}
+
+.ga-gen-code-card b {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.38rem;
+  border-radius: 999px;
+  padding: 0.28rem 0.55rem;
+  background: rgba(255, 255, 255, 0.13);
+  color: #ffd6a4;
+  font-size: 0.82rem;
+}
+
 .ga-gen-transformation-list {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.42rem;
 }
 
 .ga-gen-transformation-list p {
   max-width: none;
-  min-height: 2.55rem;
+  min-height: 2.3rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   border-radius: 999px;
-  padding: 0.55rem 0.85rem;
+  padding: 0.46rem 0.75rem;
   background: #2b174f;
   color: #fff8f4;
   font-weight: 800;
@@ -7260,7 +7283,7 @@ body {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(36, 16, 63, 0.96), rgba(36, 16, 63, 0.72), rgba(249, 117, 86, 0.16)),
+    linear-gradient(90deg, rgba(36, 16, 63, 0.72), rgba(36, 16, 63, 0.38), rgba(249, 117, 86, 0.08)),
     radial-gradient(50% 80% at 100% 50%, rgba(249, 117, 86, 0.26), transparent 70%);
 }
 
@@ -7277,7 +7300,9 @@ body {
   gap: 1rem;
   padding: clamp(1.2rem, 3vw, 2rem);
   border-radius: 1.25rem;
-  background: rgba(253, 233, 226, 0.9);
+  background: rgba(253, 233, 226, 0.38);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   box-shadow: 0 26px 58px rgba(0, 0, 0, 0.24);
 }
 
@@ -7356,7 +7381,7 @@ body {
   padding-block: clamp(4rem, 7vw, 7rem);
   background:
     linear-gradient(180deg, rgba(36, 16, 63, 0.82), rgba(36, 16, 63, 0.9)),
-    url("/gen-mumin-hero-poster.jpeg") center 36% / cover;
+    url("/gen-mumin-final-bg.jpeg") center 42% / cover;
 }
 
 .ga-gen-final-card {
