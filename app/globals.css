@@ -3124,11 +3124,17 @@ body {
   max-height: min(92vh, 58rem);
   width: min(92vw, 42rem);
   overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   border-radius: 8px;
   padding: 0.45rem;
   background: rgba(11, 30, 24, 0.72);
   border: 1px solid rgba(169, 236, 199, 0.28);
   box-shadow: 0 28px 76px rgba(0, 0, 0, 0.5);
+}
+
+.ga-poster-lightbox-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .ga-poster-lightbox-panel img {
