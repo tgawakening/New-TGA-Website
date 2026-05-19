@@ -72,7 +72,9 @@ export function Header() {
                 <button type="button" className="ga-nav-btn ga-nav-btn-dropdown">
                   {item.label}
                   <span aria-hidden className="ga-nav-caret">
-                    v
+                    <svg viewBox="0 0 20 20" focusable="false">
+                      <path d="M5.5 7.5L10 12l4.5-4.5" />
+                    </svg>
                   </span>
                 </button>
                 <div className="ga-nav-dropdown-menu">
