@@ -2,6 +2,7 @@
 
 import { type CSSProperties, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
@@ -9,6 +10,8 @@ import { courses, upcomingCourses } from "@/components/home/data";
 import { fadeInUp, SectionHeading } from "@/components/home/sections/shared";
 import "swiper/css";
 import "swiper/css/pagination";
+
+const upcomingRegistrationHref = "https://forms.gle/qXhqNy1FF8bNbmfw7";
 
 export function CtaArrow() {
   return (
@@ -185,8 +188,13 @@ export function UpcomingCoursesSection() {
         <SectionHeading
           badge="Next Launches"
           title="Upcoming Courses"
-          subtitle="New TGA programmes are launching soon. Browse the official posters and scan the QR codes to register."
         />
+
+        <motion.div {...fadeInUp} className="ga-upcoming-register-action">
+          <Link href={upcomingRegistrationHref} target="_blank" rel="noreferrer" className="ga-upcoming-register-btn">
+            Register your interest <CtaArrow />
+          </Link>
+        </motion.div>
 
         <motion.div {...fadeInUp} className="ga-upcoming-posters-track mt-10">
           <Swiper
