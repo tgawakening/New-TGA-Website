@@ -3100,58 +3100,6 @@ body {
   transform: scale(1.025);
 }
 
-.ga-upcoming-poster-info {
-  position: absolute;
-  left: 0.55rem;
-  top: 0.55rem;
-  display: flex;
-  max-width: min(78%, 15rem);
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.3rem;
-  border-radius: 8px;
-  padding: 0.38rem;
-  background: rgba(7, 26, 21, 0.46);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(5px);
-}
-
-.ga-upcoming-poster-status {
-  width: fit-content;
-  border-radius: 999px;
-  padding: 0.22rem 0.5rem;
-  background: color-mix(in srgb, var(--course-accent) 34%, rgba(255, 255, 255, 0.1));
-  border: 1px solid color-mix(in srgb, var(--course-accent) 62%, rgba(255, 255, 255, 0.22));
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.ga-upcoming-poster-title {
-  color: #f6fff9;
-  font-size: 0.72rem;
-  line-height: 1.15;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.ga-upcoming-poster-meta {
-  color: rgba(230, 245, 236, 0.82);
-  font-size: 0.78rem;
-  line-height: 1.35;
-}
-
-.ga-upcoming-poster-action {
-  margin-top: 0.12rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  width: fit-content;
-  color: color-mix(in srgb, var(--course-accent) 62%, white 30%);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
 .ga-poster-lightbox {
   position: fixed;
   inset: 0;
@@ -3221,12 +3169,6 @@ body {
 
   .ga-upcoming-poster-button {
     min-height: 31rem;
-  }
-
-  .ga-upcoming-poster-info {
-    left: 0.5rem;
-    top: 0.5rem;
-    max-width: 82%;
   }
 
   .ga-poster-lightbox {

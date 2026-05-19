@@ -209,10 +209,6 @@ export function UpcomingCoursesSection() {
                     <span className="ga-upcoming-poster-media">
                       <Image src={course.image} alt={`${course.title} poster`} width={1080} height={1527} sizes="(min-width: 1240px) 31vw, (min-width: 900px) 43vw, (min-width: 620px) 64vw, 92vw" />
                     </span>
-                    <span className="ga-upcoming-poster-info">
-                      <span className="ga-upcoming-poster-status">{course.status}</span>
-                      <span className="ga-upcoming-poster-title">{course.title}</span>
-                    </span>
                   </button>
                 </article>
               </SwiperSlide>
