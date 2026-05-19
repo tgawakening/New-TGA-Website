@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties } from "react";
+import { type CSSProperties, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -176,6 +176,8 @@ export function CoursesCarousel() {
 
 export function UpcomingCoursesSection() {
   const upcomingSlides = [...upcomingCourses];
+  const [activePosterId, setActivePosterId] = useState<string | null>(null);
+  const activePoster = upcomingSlides.find((course) => course.id === activePosterId);
 
   return (
     <section className="ga-section ga-upcoming-section">
@@ -189,41 +191,47 @@ export function UpcomingCoursesSection() {
         <motion.div {...fadeInUp} className="ga-upcoming-posters-track mt-10">
           <Swiper
             modules={[Autoplay, Pagination]}
-            spaceBetween={18}
+            spaceBetween={28}
             autoplay={{ delay: 4300, disableOnInteraction: false, pauseOnMouseEnter: true }}
             pagination={{ clickable: true }}
             breakpoints={{
-              320: { slidesPerView: 1.08 },
-              620: { slidesPerView: 1.55 },
-              900: { slidesPerView: 2.25 },
-              1240: { slidesPerView: 3.12 },
+              320: { slidesPerView: 1.02, spaceBetween: 18 },
+              620: { slidesPerView: 1.45, spaceBetween: 24 },
+              900: { slidesPerView: 2.1, spaceBetween: 28 },
+              1240: { slidesPerView: 3, spaceBetween: 30 },
             }}
             className="ga-swiper ga-upcoming-posters-swiper"
           >
             {upcomingSlides.map((course) => (
               <SwiperSlide key={course.id}>
                 <article className="ga-upcoming-poster-card" style={{ "--course-accent": course.accent } as CSSProperties}>
-                  <a className="ga-upcoming-poster-link" href={course.image} target="_blank" rel="noreferrer" aria-label={`Open ${course.title} poster`}>
+                  <button type="button" className="ga-upcoming-poster-button" onClick={() => setActivePosterId(course.id)} aria-label={`Open ${course.title} poster`}>
                     <span className="ga-upcoming-poster-media">
                       <Image src={course.image} alt={`${course.title} poster`} width={1080} height={1527} sizes="(min-width: 1240px) 31vw, (min-width: 900px) 43vw, (min-width: 620px) 64vw, 92vw" />
                     </span>
                     <span className="ga-upcoming-poster-info">
                       <span className="ga-upcoming-poster-status">{course.status}</span>
                       <span className="ga-upcoming-poster-title">{course.title}</span>
-                      <span className="ga-upcoming-poster-meta">
-                        {course.audience} | {course.theme}
-                      </span>
-                      <span className="ga-upcoming-poster-action">
-                        Open poster <CtaArrow />
-                      </span>
                     </span>
-                  </a>
+                  </button>
                 </article>
               </SwiperSlide>
             ))}
           </Swiper>
         </motion.div>
       </div>
+
+      {activePoster ? (
+        <div className="ga-poster-lightbox" role="dialog" aria-modal="true" aria-label={`${activePoster.title} poster`}>
+          <button type="button" className="ga-poster-lightbox-backdrop" aria-label="Close poster preview" onClick={() => setActivePosterId(null)} />
+          <div className="ga-poster-lightbox-panel">
+            <button type="button" className="ga-poster-lightbox-close" onClick={() => setActivePosterId(null)} aria-label="Close poster preview">
+              Close
+            </button>
+            <Image src={activePoster.image} alt={`${activePoster.title} poster`} width={1080} height={1527} sizes="92vw" priority />
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
