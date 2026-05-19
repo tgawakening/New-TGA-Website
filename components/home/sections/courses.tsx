@@ -1,6 +1,7 @@
 "use client";
 
 import { type CSSProperties } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
@@ -179,55 +180,44 @@ export function UpcomingCoursesSection() {
   return (
     <section className="ga-section ga-upcoming-section">
       <div className="ga-container">
-        <SectionHeading badge="Next Launches" title="Upcoming Courses" subtitle="Same experience, next cohort. Join the waitlist for upcoming high-impact tracks." />
+        <SectionHeading
+          badge="Next Launches"
+          title="Upcoming Courses"
+          subtitle="New TGA programmes are launching soon. Browse the official posters and scan the QR codes to register."
+        />
 
-        <motion.div {...fadeInUp} className="ga-courses-track mt-10">
+        <motion.div {...fadeInUp} className="ga-upcoming-posters-track mt-10">
           <Swiper
             modules={[Autoplay, Pagination]}
-            spaceBetween={20}
-            autoplay={{ delay: 3900, disableOnInteraction: false }}
+            spaceBetween={18}
+            autoplay={{ delay: 4300, disableOnInteraction: false, pauseOnMouseEnter: true }}
             pagination={{ clickable: true }}
             breakpoints={{
-              320: { slidesPerView: 1.04 },
-              700: { slidesPerView: 1.6 },
-              1024: { slidesPerView: 2 },
-              1280: { slidesPerView: 3 },
+              320: { slidesPerView: 1.08 },
+              620: { slidesPerView: 1.55 },
+              900: { slidesPerView: 2.25 },
+              1240: { slidesPerView: 3.12 },
             }}
-            className="ga-swiper ga-course-swiper"
+            className="ga-swiper ga-upcoming-posters-swiper"
           >
             {upcomingSlides.map((course) => (
               <SwiperSlide key={course.id}>
-                <article className="ga-course-card-v2 ga-course-card-upcoming" style={{ "--course-accent": course.accent } as CSSProperties}>
-                  <div className="ga-course-topline" />
-                  <div className="ga-course-chip-row">
-                    <span className="ga-course-status">{course.status}</span>
-                    <div className={`ga-course-icon ga-icon-${course.iconMotion}`} aria-hidden>
-                      {getCourseMotiveIcon(course.id)}
-                    </div>
-                  </div>
-                  <div className="ga-course-meta-row">
-                    <span className="ga-course-timeline">{course.timeline}</span>
-                    <span className="ga-course-category">{course.category}</span>
-                  </div>
-                  <h3 className="ga-course-title">{course.title}</h3>
-                  <p className="ga-course-subtitle">{course.subtitle}</p>
-                  <p className="ga-course-mentor">{course.mentor}</p>
-
-                  <ul className="ga-course-points">
-                    {course.outcomes.map((point) => (
-                      <li key={point}>{point}</li>
-                    ))}
-                  </ul>
-
-                  <div className="ga-course-footer-meta">
-                    <span>{course.duration}</span>
-                    <span>{course.level}</span>
-                    <span>{course.rating}</span>
-                  </div>
-
-                  <button type="button" className="ga-course-cta">
-                    {course.action} <CtaArrow />
-                  </button>
+                <article className="ga-upcoming-poster-card" style={{ "--course-accent": course.accent } as CSSProperties}>
+                  <a className="ga-upcoming-poster-link" href={course.image} target="_blank" rel="noreferrer" aria-label={`Open ${course.title} poster`}>
+                    <span className="ga-upcoming-poster-media">
+                      <Image src={course.image} alt={`${course.title} poster`} width={1080} height={1527} sizes="(min-width: 1240px) 31vw, (min-width: 900px) 43vw, (min-width: 620px) 64vw, 92vw" />
+                    </span>
+                    <span className="ga-upcoming-poster-info">
+                      <span className="ga-upcoming-poster-status">{course.status}</span>
+                      <span className="ga-upcoming-poster-title">{course.title}</span>
+                      <span className="ga-upcoming-poster-meta">
+                        {course.audience} | {course.theme}
+                      </span>
+                      <span className="ga-upcoming-poster-action">
+                        Open poster <CtaArrow />
+                      </span>
+                    </span>
+                  </a>
                 </article>
               </SwiperSlide>
             ))}

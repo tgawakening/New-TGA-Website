@@ -3019,6 +3019,131 @@ body {
   min-height: 404px;
 }
 
+.ga-upcoming-section {
+  background:
+    radial-gradient(circle at 12% 22%, rgba(74, 169, 132, 0.12), transparent 34%),
+    radial-gradient(circle at 86% 56%, rgba(46, 122, 193, 0.1), transparent 36%);
+}
+
+.ga-upcoming-posters-track {
+  max-width: 1180px;
+  margin-inline: auto;
+}
+
+.ga-upcoming-posters-swiper {
+  padding: 0.7rem 0 2.6rem !important;
+}
+
+.ga-upcoming-posters-swiper .swiper-slide {
+  height: auto;
+  display: flex;
+}
+
+.ga-upcoming-poster-card {
+  --course-accent: rgb(60 154 103);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  padding: 0.45rem;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--course-accent) 56%, rgba(255, 255, 255, 0.18)), rgba(255, 255, 255, 0.08)),
+    rgba(15, 28, 42, 0.88);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.25);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ga-upcoming-poster-card:hover,
+.ga-upcoming-poster-card:focus-within {
+  transform: translateY(-7px);
+  box-shadow: 0 24px 54px color-mix(in srgb, var(--course-accent) 24%, rgba(0, 0, 0, 0.42));
+}
+
+.ga-upcoming-poster-link {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-height: 34rem;
+  border-radius: 6px;
+  overflow: hidden;
+  color: #ffffff;
+  background: #0b1825;
+  isolation: isolate;
+}
+
+.ga-upcoming-poster-link:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--course-accent) 72%, white 10%);
+  outline-offset: 4px;
+}
+
+.ga-upcoming-poster-media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1080 / 1527;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ga-upcoming-poster-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.ga-upcoming-poster-card:hover .ga-upcoming-poster-media img,
+.ga-upcoming-poster-card:focus-within .ga-upcoming-poster-media img {
+  transform: scale(1.025);
+}
+
+.ga-upcoming-poster-info {
+  position: absolute;
+  left: 0.65rem;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  display: grid;
+  gap: 0.28rem;
+  border-radius: 8px;
+  padding: 0.72rem;
+  background: linear-gradient(180deg, rgba(5, 21, 18, 0.08), rgba(5, 21, 18, 0.88) 24%, rgba(5, 21, 18, 0.96));
+  border: 1px solid color-mix(in srgb, var(--course-accent) 46%, rgba(255, 255, 255, 0.22));
+  backdrop-filter: blur(8px);
+}
+
+.ga-upcoming-poster-status {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.22rem 0.5rem;
+  background: color-mix(in srgb, var(--course-accent) 34%, rgba(255, 255, 255, 0.1));
+  border: 1px solid color-mix(in srgb, var(--course-accent) 62%, rgba(255, 255, 255, 0.22));
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ga-upcoming-poster-title {
+  color: #f6fff9;
+  font-family: var(--font-marko-one), Georgia, serif;
+  font-size: 1.03rem;
+  line-height: 1.2;
+}
+
+.ga-upcoming-poster-meta {
+  color: rgba(230, 245, 236, 0.82);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.ga-upcoming-poster-action {
+  margin-top: 0.12rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  color: color-mix(in srgb, var(--course-accent) 62%, white 30%);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 @media (max-width: 768px) {
   .ga-courses-track {
     max-width: 100%;
@@ -3030,6 +3155,16 @@ body {
 
   .ga-course-card-upcoming {
     min-height: 392px;
+  }
+
+  .ga-upcoming-poster-link {
+    min-height: 31rem;
+  }
+
+  .ga-upcoming-poster-info {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.5rem;
   }
 }
 
