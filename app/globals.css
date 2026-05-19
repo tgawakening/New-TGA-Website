@@ -3030,6 +3030,33 @@ body {
   margin-inline: auto;
 }
 
+.ga-upcoming-register-action {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.ga-upcoming-register-btn {
+  min-height: 2.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.44rem;
+  border-radius: 8px;
+  padding-inline: 1.22rem;
+  color: #f5fbff;
+  font-size: 0.92rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, #1fa66f, #2490c8);
+  box-shadow: 0 12px 26px rgba(15, 122, 104, 0.28);
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.ga-upcoming-register-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.04);
+}
+
 .ga-upcoming-posters-swiper {
   padding: 0.7rem 0 2.6rem !important;
 }
@@ -3175,6 +3202,11 @@ body {
 
   .ga-upcoming-poster-button {
     min-height: 31rem;
+  }
+
+  .ga-upcoming-register-btn {
+    width: 100%;
+    max-width: 18rem;
   }
 
   .ga-poster-lightbox {
