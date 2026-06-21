@@ -3302,17 +3302,32 @@ body {
   font-family: var(--font-marko-one), serif;
 }
 
+.footer-brand-block {
+  padding-top: 4rem;
+  padding-bottom: 2.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-brand-block p {
+  max-width: 520px;
+  margin: 1rem 0 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.98rem;
+  line-height: 1.75;
+}
+
 .footer-main-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(2rem, 5vw, 5rem);
   align-items: start;
+  padding-top: 2.6rem;
+  padding-bottom: 4rem;
 }
 
 .footer-logo {
   width: 170px;
   height: auto;
-  margin-bottom: 1.35rem;
 }
 
 .footer-list {
