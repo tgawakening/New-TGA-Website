@@ -34,7 +34,7 @@ export default function AboutPage() {
           <div className="ga-container about-visual-grid">
             <div className="about-visual-copy">
               <p className="policy-eyebrow">About Global Awakening</p>
-              <h1>Raising Akhira-ready leaders through knowledge, character, and purpose.</h1>
+              <h1>Faith-led learning for a global Ummah.</h1>
               <p>
                 Global Awakening is a faith-driven learning platform and community helping Muslims
                 grow through revelation-grounded education, meaningful projects, and supportive
@@ -44,16 +44,16 @@ export default function AboutPage() {
                 <Link href="/#courses" className="ga-btn ga-btn-primary">
                   Explore Courses
                 </Link>
-                <Link href="/projects/gen-mumin" className="ga-btn ga-btn-outline">
-                  View Gen-Mumin
+                <Link href="/#mission" className="ga-btn ga-btn-outline">
+                  Our Mission
                 </Link>
               </div>
             </div>
 
             <div className="about-visual-media">
               <Image
-                src="/Gen-Mumin.jpeg"
-                alt="Gen-Mumin children learning banner"
+                src="/about-global-education.png"
+                alt="Global Islamic education organization visual"
                 width={760}
                 height={520}
                 className="about-main-image"
@@ -82,8 +82,8 @@ export default function AboutPage() {
           <div className="ga-container about-story-grid">
             <div className="about-story-image-wrap">
               <Image
-                src="/seerah slide-3.jpg"
-                alt="Students exploring prophetic planning and strategy"
+                src="/about-islamic-collaboration.png"
+                alt="Islamic scholarship and global collaboration visual"
                 width={620}
                 height={760}
                 className="about-story-image"

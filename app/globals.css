@@ -3822,26 +3822,26 @@ footer a:hover {
   text-decoration: none;
   background:
     linear-gradient(180deg, rgba(12, 42, 82, 0.44), rgba(5, 18, 38, 0.94)),
-    url("/seerah slide-4.jpg") center / cover;
+    url("/about-global-education.png") center / cover;
   transition: transform 0.22s ease, filter 0.22s ease;
 }
 
 .about-pathway-link:nth-child(2) {
   background-image:
     linear-gradient(180deg, rgba(12, 42, 82, 0.44), rgba(5, 18, 38, 0.94)),
-    url("/seerah slide-2.jpg");
+    url("/about-islamic-collaboration.png");
 }
 
 .about-pathway-link:nth-child(3) {
   background-image:
     linear-gradient(180deg, rgba(12, 42, 82, 0.44), rgba(5, 18, 38, 0.94)),
-    url("/Gen-Mumin.jpeg");
+    url("/about-global-education.png");
 }
 
 .about-pathway-link:nth-child(4) {
   background-image:
     linear-gradient(180deg, rgba(12, 42, 82, 0.44), rgba(5, 18, 38, 0.94)),
-    url("/seerah slide-5.jpg");
+    url("/about-islamic-collaboration.png");
 }
 
 .about-pathway-link:hover {
