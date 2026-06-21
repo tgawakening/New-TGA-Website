@@ -599,8 +599,6 @@ function SeerahRegisterContent() {
         amount: Math.round(2000 * southAsiaLocalCurrencyApprox[form.countryCode].multiplier),
       }
     : null;
-  const isManualPaymentMethod =
-    form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.JAZZCASH;
   const subscriptionPriceLabel = pricing
     ? `${formatMoney(Math.round(pricing.display.finalGbpApprox * 100), "GBP", true)}/mo`
     : "GBP 20.00/mo";
@@ -632,11 +630,11 @@ function SeerahRegisterContent() {
             position: "fixed",
             inset: 0,
             background: "rgba(3, 16, 36, 0.72)",
-            zIndex: 120,
+            zIndex: 5000,
             display: "flex",
             justifyContent: "center",
-            alignItems: "flex-start",
-            padding: "6.5rem 1rem 1rem",
+            alignItems: "center",
+            padding: "1rem",
             overflowY: "auto",
           }}
         >
@@ -648,7 +646,7 @@ function SeerahRegisterContent() {
               border: "1px solid #8db3d3",
               overflow: "hidden",
               boxShadow: "0 24px 42px rgba(0,0,0,0.35)",
-              maxHeight: "92vh",
+              maxHeight: "calc(100vh - 2rem)",
               display: "flex",
               flexDirection: "column",
             }}

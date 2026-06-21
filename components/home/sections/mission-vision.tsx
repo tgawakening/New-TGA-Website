@@ -58,7 +58,7 @@ export function MissionVisionSection() {
   const current = sectionContent[activeMode];
 
   return (
-    <section className="ga-section ga-mission-vision">
+    <section id="mission" className="ga-section ga-mission-vision">
       <div className="ga-container">
         <div
           className="ga-mv-compact"

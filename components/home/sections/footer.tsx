@@ -1,6 +1,47 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+
+const footerGroups = [
+  {
+    title: "Programs",
+    links: [
+      { label: "All Courses", href: "/#courses" },
+      { label: "Gen-Mumins", href: "/projects/gen-mumin" },
+      { label: "Connect for Akhirah", href: "/#community" },
+      { label: "Nashrah", href: "/#projects" },
+    ],
+  },
+  {
+    title: "Organisation",
+    links: [
+      { label: "About Us", href: "/about" },
+      { label: "Our Mission", href: "/#mission" },
+      { label: "Support Us", href: "/support-our-mission" },
+      { label: "Contact", href: "mailto:admin@tgaawakening.com" },
+    ],
+  },
+  {
+    title: "Quick Links",
+    links: [
+      { label: "Terms & Conditions", href: "/policies/terms-and-conditions" },
+      { label: "Terms of Service", href: "/policies/terms-of-service" },
+      { label: "Code of Conduct", href: "/policies/code-of-conduct" },
+      { label: "Refund Policy", href: "/policies/refund-policy" },
+      { label: "Privacy Policy", href: "/policies/privacy-policy" },
+    ],
+  },
+  {
+    title: "My Account",
+    links: [
+      { label: "My Dashboard", href: "/dashboard" },
+      { label: "My Courses", href: "/dashboard" },
+      { label: "My Orders", href: "/dashboard" },
+      { label: "Settings", href: "/dashboard" },
+    ],
+  },
+];
 
 export function Footer() {
   return (
@@ -22,49 +63,25 @@ export function Footer() {
           <p className="mt-2 text-sm text-white/70">United Kingdom</p>
         </div>
 
-        <div>
-          <h4 className="footer-title">Programs</h4>
-          <ul className="footer-list">
-            <li>All Courses</li>
-            <li>Gen-Mumins</li>
-            <li>Connect for Akhirah</li>
-            <li>Nashrah</li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="footer-title">Organisation</h4>
-          <ul className="footer-list">
-            <li>About Us</li>
-            <li>Our Mission</li>
-            <li>Support Us</li>
-            <li>Contact</li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="footer-title">Resources</h4>
-          <ul className="footer-list">
-            <li>Join Community</li>
-            <li>Privacy Policy</li>
-            <li>Terms & Conditions</li>
-            <li>Refund Policy</li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="footer-title">My Account</h4>
-          <ul className="footer-list">
-            <li>My Dashboard</li>
-            <li>My Courses</li>
-            <li>My Orders</li>
-            <li>Settings</li>
-          </ul>
-        </div>
+        {footerGroups.map((group) => (
+          <div key={group.title}>
+            <h4 className="footer-title">{group.title}</h4>
+            <ul className="footer-list">
+              {group.links.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href}>{link.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
 
       <div className="border-t border-white/10 bg-[#050919] py-4">
         <div className="ga-container flex flex-wrap items-center justify-between gap-4 text-xs text-white/70">
           <p>globalawakening.co.uk</p>
-          <p>+44 7886 398150</p>
-          <p>admin@tgaawakening.com</p>
+          <Link href="tel:+447886398150">+44 7886 398150</Link>
+          <Link href="mailto:admin@tgaawakening.com">admin@tgaawakening.com</Link>
         </div>
       </div>
     </footer>

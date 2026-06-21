@@ -76,6 +76,7 @@ export type NavItem = {
 
 export const navItems = [
   { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
   {
     label: "Courses",
     children: [{ label: "Seerah:Prophetic Strategies", href: "/seerah" }],

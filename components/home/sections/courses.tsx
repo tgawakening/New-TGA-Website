@@ -108,7 +108,7 @@ export function CoursesCarousel() {
   const courseSlides = [...courses];
 
   return (
-    <section className="ga-section">
+    <section id="courses" className="ga-section">
       <div className="ga-container">
         <SectionHeading
           badge="Live & Active Learning"
@@ -183,7 +183,7 @@ export function UpcomingCoursesSection() {
   const activePoster = upcomingSlides.find((course) => course.id === activePosterId);
 
   return (
-    <section className="ga-section ga-upcoming-section">
+    <section id="projects" className="ga-section ga-upcoming-section">
       <div className="ga-container">
         <SectionHeading
           badge="Next Launches"

@@ -5,7 +5,7 @@ import { fadeInUp, SectionHeading } from "@/components/home/sections/shared";
 
 export function CommunityCta() {
   return (
-    <section className="ga-section ga-community-bg">
+    <section id="community" className="ga-section ga-community-bg">
       <div className="ga-container">
         <SectionHeading
           badge="Community"

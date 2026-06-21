@@ -191,11 +191,6 @@ export function GenMuminsTimeline() {
           </div>
         </motion.article>
 
-        <motion.div {...fadeInUp} className="ga-gm-summary-link">
-          <Link href="/projects/gen-mumin" className="ga-gm-summary-btn">
-            Explore More About Gen-Mumin
-          </Link>
-        </motion.div>
       </div>
     </section>
   );
