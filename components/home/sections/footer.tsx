@@ -42,21 +42,21 @@ const socialLinks = [
 export function Footer() {
   return (
     <footer className="border-t border-white/10 bg-[#060c1f]">
-      <div className="ga-container footer-brand-block">
-        <Image
-          src="/logo.webp"
-          alt="Global Awakening"
-          width={220}
-          height={74}
-          className="footer-logo"
-        />
-        <p>
-          Uniting minds, inspiring change. A global Muslim community grounded
-          in the timeless wisdom of Qur&apos;an.
-        </p>
-      </div>
-
       <div className="ga-container footer-main-grid">
+        <div className="footer-brand-column">
+          <Image
+            src="/logo.webp"
+            alt="Global Awakening"
+            width={220}
+            height={74}
+            className="footer-logo"
+          />
+          <p>
+            Uniting minds, inspiring change. A global Muslim community grounded
+            in the timeless wisdom of Qur&apos;an.
+          </p>
+        </div>
+
         {footerGroups.map((group) => (
           <div key={group.title}>
             <h4 className="footer-title">{group.title}</h4>

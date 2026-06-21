@@ -622,8 +622,6 @@ function SeerahRegisterContent() {
 
   return (
     <>
-      <Header />
-      <main className="ga-page" style={{ minHeight: "100vh" }}>
       {isModalOpen ? (
         <div
           style={{
@@ -1159,7 +1157,10 @@ function SeerahRegisterContent() {
             </form>
           </div>
         </div>
-      ) : (
+      ) : null}
+      <Header />
+      <main className="ga-page" style={{ minHeight: "100vh" }}>
+      {!isModalOpen ? (
         <section className="ga-section">
           <div className="ga-container" style={{ maxWidth: 720, textAlign: "center" }}>
             <h1 className="ga-heading">Ready to evolve in learning</h1>
@@ -1173,7 +1174,7 @@ function SeerahRegisterContent() {
             </div>
           </div>
         </section>
-      )}
+      ) : null}
       </main>
     </>
   );
