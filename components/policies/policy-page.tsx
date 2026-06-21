@@ -20,15 +20,15 @@ export function PolicyPage({ policy }: { policy: PolicyPageContent }) {
         </section>
 
         <section className="policy-body">
-          <div className="ga-container policy-layout">
-            <aside className="policy-toc" aria-label={`${policy.title} sections`}>
+          <div className="ga-container">
+            <nav className="policy-toc" aria-label={`${policy.title} sections`}>
               <p>On this page</p>
               {policy.sections.map((section) => (
                 <a key={section.title} href={`#${section.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>
                   {section.title}
                 </a>
               ))}
-            </aside>
+            </nav>
 
             <div className="policy-card">
               {policy.sections.map((section) => {

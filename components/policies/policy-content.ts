@@ -237,44 +237,6 @@ export const policies = [
       },
     ],
   },
-  {
-    slug: "privacy-policy",
-    title: "Privacy Policy",
-    eyebrow: "Data Protection",
-    intro:
-      "This page summarises how Global Awakening approaches learner privacy and personal data, based on the data protection and confidentiality standards in the attached terms and code of conduct.",
-    sections: [
-      {
-        title: "Information We Use",
-        body:
-          "We collect and process information needed to run registrations, accounts, payments, learner support, communications, and course access. This may include name, email address, phone number, country, payment status, and course activity.",
-      },
-      {
-        title: "How We Use Information",
-        bullets: [
-          "To create and manage learner accounts and course registrations.",
-          "To process payments and verify payment status through secure providers.",
-          "To communicate about courses, support requests, refunds, account access, and platform updates.",
-          "To protect the platform, learners, teachers, and community spaces.",
-        ],
-      },
-      {
-        title: "Payment Data",
-        body:
-          "Payments are processed securely through third-party payment providers. Global Awakening does not store card details.",
-      },
-      {
-        title: "Confidentiality and Boundaries",
-        body:
-          "Users must not share another person's personal information without permission. Personal, project, and platform information should be handled with care and confidentiality.",
-      },
-      {
-        title: "Contact",
-        body:
-          "For privacy questions or account data concerns, contact Enquiries.awakeningteam@outlook.com.",
-      },
-    ],
-  },
 ] satisfies PolicyPageContent[];
 
 export function getPolicyBySlug(slug: string) {

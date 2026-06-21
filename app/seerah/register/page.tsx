@@ -629,48 +629,49 @@ function SeerahRegisterContent() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(3, 16, 36, 0.72)",
-            zIndex: 5000,
+            background: "rgba(1, 8, 20, 0.86)",
+            backdropFilter: "blur(10px)",
+            zIndex: 2147483647,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            padding: "1rem",
+            padding: "1.25rem",
             overflowY: "auto",
           }}
         >
           <div
             style={{
-              width: "min(100%, 480px)",
-              background: "#f2f7fb",
-              borderRadius: "12px",
-              border: "1px solid #8db3d3",
+              width: "min(96vw, 620px)",
+              background: "#f5f9fc",
+              borderRadius: "18px",
+              border: "1px solid rgba(155, 198, 232, 0.85)",
               overflow: "hidden",
-              boxShadow: "0 24px 42px rgba(0,0,0,0.35)",
-              maxHeight: "calc(100vh - 2rem)",
+              boxShadow: "0 30px 80px rgba(0,0,0,0.55)",
+              maxHeight: "calc(100dvh - 2.5rem)",
               display: "flex",
               flexDirection: "column",
             }}
           >
             <div
               style={{
-                background: "#1f6d9f",
+                background: "linear-gradient(135deg, #0b3154, #1f79aa)",
                 color: "#e8f6ff",
-                padding: "0.85rem 0.95rem",
+                padding: "1rem 1.15rem",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
               }}
             >
               <div>
-                <p style={{ margin: 0, fontWeight: 700, fontSize: "1.08rem" }}>Enroll Now</p>
-                <p style={{ margin: 0, fontSize: "0.76rem", opacity: 0.9 }}>Global Awakening</p>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: "1.16rem" }}>Enroll Now</p>
+                <p style={{ margin: "0.12rem 0 0", fontSize: "0.8rem", opacity: 0.9 }}>Prophetic Seerah and Planning</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 34,
+                  height: 34,
                   borderRadius: "999px",
                   border: "1px solid rgba(255,255,255,0.4)",
                   background: "rgba(255,255,255,0.1)",
@@ -684,7 +685,7 @@ function SeerahRegisterContent() {
 
             <form
               onSubmit={handleSubmit}
-              style={{ padding: "0.9rem", display: "grid", gap: "0.62rem", color: "#2a4058", overflowY: "auto" }}
+              style={{ padding: "1.05rem", display: "grid", gap: "0.7rem", color: "#2a4058", overflowY: "auto" }}
             >
               <label style={{ fontSize: "0.72rem", fontWeight: 700 }}>
                 Full Name*
