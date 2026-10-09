@@ -321,11 +321,43 @@ model MissionSupportDonation {
   rawPayloadJson   Json?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+  frequency        String        @default("ONE_TIME")
+  purpose          String        @default("WHERE_NEEDED")
+  providerCustomerId String?
+  providerSubscriptionId String? @unique
+  subscriptionStatus String?
+  cancelAtPeriodEnd Boolean      @default(false)
+  checkoutKey      String?       @unique
 
   manualSubmission MissionSupportManualSubmission?
+  payments         MissionSupportPayment[]
 
   @@index([email, createdAt])
   @@index([status, paymentMethod])
+}
+
+model MissionSupportPayment {
+  id                String   @id @default(cuid())
+  donationId        String
+  providerReference String   @unique
+  providerPaymentId String?
+  providerInvoiceId String?
+  amount            Int
+  currency          String   @default("GBP")
+  status            String
+  refundedAmount    Int      @default(0)
+  paidAt            DateTime?
+  receiptUrl        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  donation          MissionSupportDonation @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  @@index([donationId, createdAt])
+  @@index([providerPaymentId])
+}
+
+model MissionSupportWebhookEvent {
+  id         String @id
+  createdAt  DateTime @default(now())
 }
 
 model MissionSupportManualSubmission {

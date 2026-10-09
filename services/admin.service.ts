@@ -23,7 +23,7 @@ function isMissingDatabaseStructureError(error: unknown) {
 async function loadMissionSupportForAdmin() {
   try {
     return await prisma.missionSupportDonation.findMany({
-      include: { manualSubmission: true },
+      include: { manualSubmission: true, payments: { orderBy: { createdAt: "desc" } } },
       orderBy: { createdAt: "desc" },
     });
   } catch (error) {
@@ -160,6 +160,10 @@ export type AdminDashboardSnapshot = {
     adminNote: string | null;
     createdAt: string;
     hasManualSubmission: boolean;
+    frequency: string;
+    purpose: string;
+    subscriptionStatus: string | null;
+    payments: Array<{ id: string; amount: number; status: string; refundedAmount: number; providerReference: string; providerPaymentId: string | null; paidAt: string | null }>;
   }>;
   genMumin: {
     status: "CONNECTED" | "UNAVAILABLE" | "NOT_CONFIGURED";
@@ -520,8 +524,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
     studentCount: users.length,
     missionSupportCount: missionSupport.length,
     missionSupportRevenuePence: missionSupport
-      .filter((item) => item.status === PaymentStatus.SUCCEEDED || item.status === PaymentStatus.CONFIRMED)
-      .reduce((sum, item) => sum + item.amount, 0),
+      .reduce((sum, item) => sum + (item.payments.length ? item.payments.filter(payment => ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(payment.status)).reduce((total, payment) => total + payment.amount - payment.refundedAmount, 0) : (item.status === PaymentStatus.SUCCEEDED || item.status === PaymentStatus.CONFIRMED ? item.amount : 0)), 0),
   };
 
   return {
@@ -627,6 +630,10 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       adminNote: item.manualNotes ?? item.manualSubmission?.reviewNote ?? null,
       createdAt: item.createdAt.toISOString(),
       hasManualSubmission: Boolean(item.manualSubmission),
+      frequency: item.frequency,
+      purpose: item.purpose,
+      subscriptionStatus: item.subscriptionStatus,
+      payments: item.payments.map(payment => ({ id: payment.id, amount: payment.amount, status: payment.status, refundedAmount: payment.refundedAmount, providerReference: payment.providerReference, providerPaymentId: payment.providerPaymentId, paidAt: payment.paidAt?.toISOString() ?? null })),
     })),
     genMumin,
   };

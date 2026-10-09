@@ -432,6 +432,9 @@ export async function adminUpdateMissionSupportDonation({
 
   if (!donation) throw new Error("Mission support donation not found.");
 
+  if (donation.paymentMethod !== PaymentMethod.BANK_TRANSFER && donation.paymentMethod !== PaymentMethod.JAZZCASH) {
+    throw new Error("Online contributions are managed through the payment provider.");
+  }
   if (action === "CONFIRM") {
     await prisma.$transaction(async (tx) => {
       await tx.missionSupportDonation.update({

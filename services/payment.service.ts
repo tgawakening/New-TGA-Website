@@ -19,6 +19,7 @@ import {
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
 import { handleMissionSupportStripeSessionCompleted } from "@/services/mission-support.service";
+import { handleMissionSupportStripeEvent } from "@/services/mission-support-stripe.service";
 
 type RegistrationWithPayment = Registration & {
   payment: Payment;
@@ -805,6 +806,7 @@ export async function handleStripeWebhook({
   if (!signature) throw new Error("Missing Stripe signature.");
 
   const event = stripe.webhooks.constructEvent(payloadText, signature, stripeWebhookSecret);
+  if (await handleMissionSupportStripeEvent(event, stripe)) return { received: true };
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;

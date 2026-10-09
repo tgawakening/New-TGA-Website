@@ -1,10 +1,22 @@
 import { PaymentMethod } from "@prisma/client";
 import { z } from "zod";
+import { missionPurposeIds } from "@/lib/mission-support";
 
 const amountSchema = z
   .number()
+  .finite()
   .min(1, "Amount must be at least £1.")
-  .max(10000, "Amount is too large.");
+  .max(10000, "Amount is too large.")
+  .refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 0.000001, "Use no more than two decimal places.");
+
+export const missionSupportStripeCheckoutSchema = z.object({
+  fullName: z.string().trim().min(2, "Please enter your name.").max(120),
+  email: z.string().trim().email("Please enter a valid email.").max(254),
+  amountGbp: amountSchema,
+  frequency: z.enum(["ONE_TIME", "MONTHLY"]),
+  purpose: z.enum(missionPurposeIds),
+  requestId: z.uuid(),
+});
 
 export const missionSupportCheckoutSchema = z.object({
   fullName: z.string().trim().min(2, "Full name is required."),

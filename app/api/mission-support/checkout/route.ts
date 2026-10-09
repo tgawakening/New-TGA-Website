@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { missionSupportCheckoutSchema } from "@/lib/validations/mission-support";
+import { getMissionSupportConfig } from "@/lib/mission-support-config";
 import {
   createMissionSupportDonation,
   createMissionSupportPaypalOrder,
@@ -7,6 +8,7 @@ import {
 } from "@/services/mission-support.service";
 
 export async function POST(request: Request) {
+  if (!getMissionSupportConfig().checkoutAvailable) return NextResponse.json({ error: "Online mission contributions are temporarily unavailable. Please contact TGA." }, { status: 503 });
   try {
     const json = await request.json();
     const parsed = missionSupportCheckoutSchema.safeParse(json);

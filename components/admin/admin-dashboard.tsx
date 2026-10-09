@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
 import type { AdminDashboardSnapshot, AdminNotificationItem } from "@/services/admin.service";
+import { missionPurposeLabel } from "@/lib/mission-support";
 
 type Props = {
   data: AdminDashboardSnapshot;
@@ -261,6 +262,19 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
     } finally {
       setSubmittingRow(null);
     }
+  }
+
+  async function refundMissionPayment(paymentId: string, amount: number) {
+    if (!window.confirm(`Request a refund of ${currencyFormatter.format(amount / 100)} to the original payment method?`)) return;
+    setSubmittingRow(paymentId); setMessage(null); setError(null);
+    try {
+      const response = await fetch("/api/admin/mission-support/refund", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paymentId, requestId: crypto.randomUUID(), amountPence: amount }) });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Could not request refund.");
+      setMessage(`Refund requested (${payload.status}). Provider confirmation will update the payment record.`);
+      router.refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not request refund."); }
+    finally { setSubmittingRow(null); }
   }
 
   const recentOrders = orderRows.slice(0, 5);
@@ -1024,6 +1038,9 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                   </div>
                   <div>
                     <strong>{row.amountLabel}</strong>
+                    <p>{row.frequency === "MONTHLY" ? "Monthly" : "One-time"} · {missionPurposeLabel(row.purpose)}</p>
+                    {row.subscriptionStatus ? <p>Subscription: {prettify(row.subscriptionStatus)}</p> : null}
+                    {row.payments.length ? <details><summary>Payment history ({row.payments.length})</summary>{row.payments.map(payment => <div key={payment.id}><p>{currencyFormatter.format(payment.amount / 100)} · {prettify(payment.status)} · {payment.providerReference}{payment.refundedAmount ? ` · refunded ${currencyFormatter.format(payment.refundedAmount / 100)}` : ""}</p>{payment.providerPaymentId && ["SUCCEEDED", "PARTIALLY_REFUNDED"].includes(payment.status) ? <button className="ga-admin-outline-btn is-danger" disabled={submittingRow !== null} onClick={() => void refundMissionPayment(payment.id, payment.amount - payment.refundedAmount)}>Refund remaining balance</button> : null}</div>)}</details> : null}
                     {row.donorMessage ? <p>{row.donorMessage}</p> : null}
                   </div>
                   <div>
@@ -1041,7 +1058,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                     <button
                       type="button"
                       className="ga-admin-primary-btn"
-                      disabled={submittingRow === row.id}
+                      disabled={submittingRow === row.id || !row.hasManualSubmission}
                       onClick={() => void updateMissionDonation(row.id, "CONFIRM")}
                     >
                       {submittingRow === row.id ? "Saving..." : "Confirm"}
@@ -1049,7 +1066,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                     <button
                       type="button"
                       className="ga-admin-outline-btn"
-                      disabled={submittingRow === row.id}
+                      disabled={submittingRow === row.id || !row.hasManualSubmission}
                       onClick={() => void updateMissionDonation(row.id, "PENDING")}
                     >
                       Pending
@@ -1057,7 +1074,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                     <button
                       type="button"
                       className="ga-admin-outline-btn is-danger"
-                      disabled={submittingRow === row.id}
+                      disabled={submittingRow === row.id || !row.hasManualSubmission}
                       onClick={() => void updateMissionDonation(row.id, "CANCEL")}
                     >
                       Cancel
