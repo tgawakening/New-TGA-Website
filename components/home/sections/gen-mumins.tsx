@@ -1,106 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useState, type CSSProperties } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
+import { genMuminPrograms, type GenMuminProgramId } from "@/components/gen-mumin/programs";
+import { ProgramIcon } from "@/components/gen-mumin/program-icon";
 import { fadeInUp } from "@/components/home/sections/shared";
 
-const GM_PHASES = [
-  {
-    id: "seerah",
-    tab: "Seerah",
-    icon: "☾",
-    course: "COURSE 1",
-    status: "Active",
-    title: "The Prophet's Seerah",
-    subtitle: "Stories of Our Beloved Prophet",
-    arabic: "السيرة النبوية",
-    description:
-      "Journey through the blessed life of Prophet Muhammad (peace be upon him). Learn about his birth, prophethood, migration, and the beautiful lessons from his life that guide us today.",
-    points: ["Birth & Early Life", "Prophethood & Revelation", "Hijrah to Madinah", "Key Events & Battles"],
-    cta: "Start Learning",
-    leadsTo: "Arabic",
-    stats: [
-      { value: "24+", label: "Lessons" },
-      { value: "50+", label: "Activities" },
-      { value: "4.9", label: "Rating" },
-    ],
-    tone: "seerah",
-  },
-  {
-    id: "arabic",
-    tab: "Arabic",
-    icon: "⌘",
-    course: "COURSE 2",
-    status: "Active",
-    title: "Arabic for Understanding Qur'an",
-    subtitle: "Read & Understand the Quran",
-    arabic: "اللغة العربية",
-    description:
-      "Build a strong foundation in Arabic to understand Allah's words directly. Learn reading, writing, vocabulary, and basic grammar through fun, interactive lessons designed for children.",
-    points: ["Arabic Alphabet & Reading", "Writing & Handwriting", "Quranic Vocabulary", "Basic Grammar Rules"],
-    cta: "Start Learning",
-    leadsTo: "Tajweed",
-    stats: [
-      { value: "500+", label: "Words" },
-      { value: "100+", label: "Exercises" },
-      { value: "4.8", label: "Rating" },
-    ],
-    tone: "arabic",
-  },
-  {
-    id: "tajweed",
-    tab: "Tajweed",
-    icon: "◉",
-    course: "COURSE 3",
-    status: "Active",
-    title: "Quranic Tajweed Track",
-    subtitle: "Beautiful Quran Recitation",
-    arabic: "التجويد",
-    description:
-      "Perfect your Quran recitation with proper pronunciation and tajweed rules. Learn the articulation points, characteristics of letters, and rules that make recitation beautiful.",
-    points: ["Proper Pronunciation", "Makharij (Articulation)", "Tajweed Rules", "Fluency Building"],
-    cta: "Start Learning",
-    leadsTo: "Leadership",
-    stats: [
-      { value: "30+", label: "Rules" },
-      { value: "Daily", label: "Practice" },
-      { value: "4.9", label: "Rating" },
-    ],
-    tone: "tajweed",
-  },
-  {
-    id: "leadership",
-    tab: "Leadership",
-    icon: "◎",
-    course: "COURSE 4",
-    status: "Active",
-    title: "Life Lessons & Leadership",
-    subtitle: "Building Future Muslim Leaders",
-    arabic: "القيادة",
-    description:
-      "Build confidence, character, and Islamic leadership skills. Learn public speaking, teamwork, problem-solving, and life skills grounded in Islamic values and prophetic examples.",
-    points: ["Confidence Building", "Islamic Character", "Public Speaking", "Teamwork & Collaboration"],
-    cta: "Start Learning",
-    leadsTo: "Advanced Tracks",
-    stats: [
-      { value: "20+", label: "Skills" },
-      { value: "10+", label: "Projects" },
-      { value: "4.9", label: "Rating" },
-    ],
-    tone: "leadership",
-  },
-] as const;
-
-type GenMuminPhaseId = (typeof GM_PHASES)[number]["id"];
-
 export function GenMuminsTimeline() {
-  const phases = GM_PHASES;
-  const [activeId, setActiveId] = useState<GenMuminPhaseId>(phases[0].id);
+  const phases = genMuminPrograms;
+  const [activeId, setActiveId] = useState<GenMuminProgramId>(phases[0].id);
   const [pauseLoop, setPauseLoop] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (pauseLoop) return;
+    if (pauseLoop || reducedMotion) return;
     const timer = window.setInterval(() => {
       setActiveId((prev) => {
         const currentIndex = phases.findIndex((phase) => phase.id === prev);
@@ -109,7 +23,7 @@ export function GenMuminsTimeline() {
       });
     }, 6200);
     return () => window.clearInterval(timer);
-  }, [pauseLoop, phases]);
+  }, [pauseLoop, phases, reducedMotion]);
 
   const active = phases.find((phase) => phase.id === activeId) ?? phases[0];
 
@@ -117,7 +31,7 @@ export function GenMuminsTimeline() {
     <section className="ga-section ga-gm-section">
       <div className="ga-container">
         <motion.h2 {...fadeInUp} className="ga-gm-title">
-          Project <span className={`ga-gm-title-accent ga-gm-title-accent-${active.tone}`}>Gen-Mu&apos;mins</span>
+          Project <span className={`ga-gm-title-accent ga-gm-title-accent-${active.id}`}>Gen-Mu&apos;mins</span>
         </motion.h2>
 
         <motion.div
@@ -125,6 +39,10 @@ export function GenMuminsTimeline() {
           className="ga-gm-timeline"
           onMouseEnter={() => setPauseLoop(true)}
           onMouseLeave={() => setPauseLoop(false)}
+          onFocus={() => setPauseLoop(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setPauseLoop(false);
+          }}
         >
           <span className="ga-gm-track" />
           <div className="ga-gm-steps">
@@ -132,10 +50,11 @@ export function GenMuminsTimeline() {
               <button
                 type="button"
                 key={phase.id}
-                onClick={() => setActiveId(phase.id)}
-                className={`ga-gm-step ga-gm-step-${phase.tone} ${phase.id === active.id ? "ga-gm-step-active" : ""}`}
+                onClick={() => { setActiveId(phase.id); setPauseLoop(true); }}
+                aria-pressed={phase.id === active.id}
+                className={`ga-gm-step ga-gm-step-${phase.id} ${phase.id === active.id ? "ga-gm-step-active" : ""}`}
               >
-                <span className="ga-gm-step-icon">{phase.icon}</span>
+                <span className="ga-gm-step-icon"><ProgramIcon program={phase.id} /></span>
                 <span className="ga-gm-step-label">{phase.tab}</span>
               </button>
             ))}
@@ -147,12 +66,13 @@ export function GenMuminsTimeline() {
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.42, ease: "easeOut" }}
-          className={`ga-gm-card ga-gm-card-${active.tone}`}
+          className={`ga-gm-card ga-gm-card-${active.id}`}
+          style={{ "--ga-gm-accent": active.accent } as CSSProperties}
         >
           <div className="ga-gm-copy">
             <div className="ga-gm-top">
-              <span className="ga-gm-course">{active.course}</span>
-              <span className="ga-gm-active">{active.status}</span>
+              <span className="ga-gm-course">PROGRAM {phases.findIndex((phase) => phase.id === active.id) + 1}</span>
+              <span className="ga-gm-active">Active</span>
             </div>
             <h3 className="ga-gm-card-title">{active.title}</h3>
             <p className="ga-gm-subtitle">{active.subtitle}</p>
@@ -164,7 +84,7 @@ export function GenMuminsTimeline() {
               ))}
             </div>
 
-            <Link href="/projects/gen-mumin" className={`ga-gm-cta ga-gm-cta-${active.tone}`}>
+            <Link href="/projects/gen-mumin" className={`ga-gm-cta ga-gm-cta-${active.id}`}>
               Explore More
             </Link>
           </div>
@@ -173,8 +93,8 @@ export function GenMuminsTimeline() {
             <p className="ga-gm-arabic" dir="rtl" lang="ar">
               {active.arabic}
             </p>
-            <div className={`ga-gm-icon-wrap ga-gm-icon-wrap-${active.tone}`}>
-              <span className="ga-gm-icon">{active.icon}</span>
+            <div className={`ga-gm-icon-wrap ga-gm-icon-wrap-${active.id}`}>
+              <ProgramIcon program={active.id} animated />
             </div>
 
             <div className="ga-gm-stats">

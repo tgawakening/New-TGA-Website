@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { genMuminPrograms } from "@/components/gen-mumin/programs";
+import { ProgramIcon } from "@/components/gen-mumin/program-icon";
 import { Footer } from "@/components/home/sections";
 
 const registrationHref = "https://genmumin.com/registration";
@@ -14,12 +16,7 @@ const orientationVideoAutoplay =
 
 const heroPills = ["Strong in faith", "Kind in character", "Courageous in leadership"];
 
-const posterFeatures = [
-  "Arabic spoken language",
-  "Tajweed with ijazah",
-  "Seerah Tun Nabawiyah",
-  "Life skills",
-];
+const posterFeatures = genMuminPrograms.map((program) => program.title);
 
 const transformationCards = [
   { from: "Hollow", to: "Nurturing" },
@@ -27,33 +24,13 @@ const transformationCards = [
   { from: "Following", to: "Guiding" },
 ];
 
-const programs = [
-  {
-    title: "Arabic Spoken Language",
-    copy: "Build confident reading, speaking, and Qur'an-connected vocabulary.",
-    points: ["Foundations", "Expression", "Qur'an connection"],
-    tone: "light",
-  },
-  {
-    title: "Tajweed With Ijazah",
-    copy: "Learn recitation beauty, pronunciation, and rule-based fluency.",
-    points: ["Makharij", "Rules", "Practice"],
-    tone: "carrot",
-  },
-  {
-    title: "Seerah Tun Nabawiyah",
-    copy: "Grow love for the Prophet through stories, reflection, and identity.",
-    points: ["Stories", "Values", "Prophetic love"],
-    tone: "purple",
-  },
-  {
-    title: "Life Skills",
-    copy: "Shape purposeful habits, leadership, confidence, and stronger values.",
-    points: ["Leadership", "Character", "Purpose"],
-    tone: "blue",
-  },
-];
-
+const programs = genMuminPrograms.map((program, index) => ({
+  id: program.id,
+  title: program.title,
+  copy: program.description,
+  points: program.points,
+  tone: ["light", "purple", "blue", "light", "carrot"][index],
+}));
 function PlayIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -245,13 +222,14 @@ export default function GenMuminPage() {
         <section id="gen-mumin-programs" className="ga-section ga-gen-program-lite-section">
           <div className="ga-container ga-gen-section-head ga-gen-section-head-centered">
             <span className="ga-gen-section-kicker">Programme Path</span>
-            <h2>Four focused areas for stronger values and purposeful living.</h2>
+            <h2>Five connected areas for stronger values and purposeful living.</h2>
             <p>Clear, child-friendly learning areas summarized for parents who want quick understanding.</p>
           </div>
 
           <div className="ga-container ga-gen-program-lite-grid">
             {programs.map((program) => (
               <article key={program.title} className={`ga-gen-lite-card is-${program.tone}`}>
+                <ProgramIcon program={program.id} />
                 <h3>{program.title}</h3>
                 <p>{program.copy}</p>
                 <div>

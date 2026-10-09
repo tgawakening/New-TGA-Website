@@ -1,3 +1,5 @@
+import { genMuminPrograms } from "@/components/gen-mumin/programs";
+
 export type StatItem = {
   label: string;
   value: string;
@@ -246,69 +248,16 @@ export const akhiraPhases: AkhiraPhase[] = [
   },
 ];
 
-export const muminsSteps: MuminsStep[] = [
-  {
-    id: "seerah",
-    tab: "Seerah",
-    title: "The Prophet's Seerah",
-    subtitle: "Stories of Our Beloved Prophet",
-    color: "rgb(106 173 255)",
-    points: [
-      "Birth & early life",
-      "Hijrah to Madinah",
-      "Prophethood and revelation",
-      "Key events and battles",
-    ],
-    next: "Arabic",
-    stats: ["24+ Lessons", "50+ Activities", "4.9 Rating"],
-  },
-  {
-    id: "arabic",
-    tab: "Arabic",
-    title: "Arabic in 40 Days",
-    subtitle: "From Foundation to Fluency",
-    color: "rgb(88 160 245)",
-    points: [
-      "Letter and sound mastery",
-      "Grammar and sentence structure",
-      "Conversation drills",
-      "Quranic vocabulary",
-    ],
-    next: "Tajweed",
-    stats: ["40 Days", "90+ Activities", "4.8 Rating"],
-  },
-  {
-    id: "tajweed",
-    tab: "Tajweed",
-    title: "Quran Recitation Mastery",
-    subtitle: "Beauty, Rules and Precision",
-    color: "rgb(126 190 255)",
-    points: [
-      "Makharij and sifaat",
-      "Rules of noon and meem",
-      "Rhythm and flow training",
-      "Live recitation feedback",
-    ],
-    next: "Leadership",
-    stats: ["30 Lessons", "70+ Practices", "4.9 Rating"],
-  },
-  {
-    id: "leadership",
-    tab: "Leadership",
-    title: "Character-Centered Leadership",
-    subtitle: "Build the Servant-Leader Mindset",
-    color: "rgb(78 146 230)",
-    points: [
-      "Leadership in prophetic lens",
-      "Public communication",
-      "Teamwork and responsibility",
-      "Service and impact projects",
-    ],
-    next: "Real-world Projects",
-    stats: ["20 Lessons", "12 Projects", "4.9 Rating"],
-  },
-];
-
+export const muminsSteps: MuminsStep[] = genMuminPrograms.map((program) => ({
+  id: program.id,
+  tab: program.tab,
+  title: program.title,
+  subtitle: program.subtitle,
+  color: program.accent,
+  points: [...program.points],
+  next: program.leadsTo,
+  stats: program.stats.map((stat) => `${stat.value} ${stat.label}`),
+}));
 export const courses: CourseItem[] = [
   {
     id: "arabic-40-b3",
