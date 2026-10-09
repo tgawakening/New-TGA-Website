@@ -59,47 +59,43 @@ const CONNECT_PHASES = [
       { value: "100+", label: "Milestones" },
       { value: "200+", label: "Resources" },
     ],
-    leadsTo: "Nashrah Universe",
+    leadsTo: "Homeschooling",
     ayahArabic: "يَا أَيُّهَا الَّذِينَ آمَنُوا قُوا أَنفُسَكُمْ وَأَهْلِيكُمْ نَارًا",
     ayahRef: "At-Tahrim 66:6",
   },
   {
-    id: "nashrah",
-    tab: "Nashrah",
+    id: "homeschooling",
+    tab: "Homeschooling",
     icon: "✦",
     phase: "PHASE 3",
     status: "Active",
     statusTone: "active",
-    title: "Nashrah Universe",
-    subtitle: "5-Year Islamic STEM Curriculum - Ages 6-13",
-    arabic: "علم المعرفة",
+    title: "Homeschooling",
+    subtitle: "Faith-Grounded Learning at Home",
+    arabic: "التعليم المنزلي",
     description:
-      "A comprehensive 5-year curriculum with 8 subjects and 475 meticulously crafted lessons per subject spanning five cognitive levels. Every lesson bridges Quranic wisdom with scientific discovery.",
+      "Support your child's learning at home with Islamic values, core academic subjects, and practical life skills. Build flexible learning routines that nurture curiosity, character, and confidence at each child's own pace.",
     points: [
-      "Interactive Science Labs",
-      "500+ Interactive Math Worlds",
-      "20+ Game Templates",
-      "Quran-Centered Knowledge Framework",
+      "Parent-Guided Learning Routines",
+      "Quran, Islamic Studies & Character",
+      "Core Subjects & Hands-On Projects",
+      "Life Skills & Independent Learning",
     ],
-    cta: "Explore Curriculum",
+    cta: "Explore Homeschooling",
     ctaTone: "gold",
     stats: [
-      { value: "8", label: "Subjects" },
-      { value: "3,800", label: "Lessons" },
-      { value: "5", label: "Levels" },
+      { value: "Family", label: "Guided Learning" },
+      { value: "Flexible", label: "Learning Pace" },
+      { value: "Faith", label: "At the Core" },
     ],
     leadsTo: "Muslim LinkedIn",
     curriculum: [
-      "IGCSE",
-      "A-Level",
-      "AQA",
-      "Physics",
+      "Quran & Islamic Studies",
       "Mathematics",
-      "Chemistry",
-      "Biology",
+      "Science",
       "English",
-      "Computer Science",
-      "Quran Studies",
+      "Arabic",
+      "Life Skills",
     ],
     ayahArabic: "وَقُل رَّبِّ زِدْنِي عِلْمًا",
     ayahRef: "Taha 20:114",
@@ -202,7 +198,7 @@ export function ConnectAkhiraTimeline() {
             <p className="ga-cfa-card-subtitle">{active.subtitle}</p>
             <p className="ga-cfa-card-desc">{active.description}</p>
 
-            {active.id === "nashrah" ? (
+            {active.id === "homeschooling" ? (
               <div className="ga-cfa-curriculum">
                 {active.curriculum?.map((item) => (
                   <span key={item} className="ga-cfa-chip">
@@ -264,18 +260,12 @@ export function ConnectAkhiraTimeline() {
                 </div>
               ) : null}
 
-              {active.id === "nashrah" ? (
-                <div className="ga-cfa-v-nashrah">
-                  <span className="ga-cfa-n-ring ga-cfa-n-ring-a" />
-                  <span className="ga-cfa-n-ring ga-cfa-n-ring-b" />
-                  <span className="ga-cfa-n-center">
-                    <span className="ga-cfa-n-book" />
-                    <span className="ga-cfa-n-title" dir="rtl" lang="ar">القرآن الكريم</span>
-                  </span>
-                  <span className="ga-cfa-n-orbit ga-cfa-n-orbit-a">Biology</span>
-                  <span className="ga-cfa-n-orbit ga-cfa-n-orbit-b">Chemistry</span>
-                  <span className="ga-cfa-n-orbit ga-cfa-n-orbit-c">Physics</span>
-                  <span className="ga-cfa-n-orbit ga-cfa-n-orbit-d">Math</span>
+              {active.id === "homeschooling" ? (
+                <div className="ga-cfa-v-homeschooling" aria-hidden="true">
+                  <span className="ga-cfa-h-roof" />
+                  <span className="ga-cfa-h-home" />
+                  <span className="ga-cfa-h-book" />
+                  <span className="ga-cfa-h-label">Learning at Home</span>
                 </div>
               ) : null}
 
