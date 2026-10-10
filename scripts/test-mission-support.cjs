@@ -93,6 +93,15 @@ test('monthly checkout retains purpose in subscription metadata and charges exac
   assert.equal(params.line_items[0].price_data.recurring.interval, 'month'); assert.equal(params.subscription_data.metadata.purpose, 'LEARNING_ACCESS');
   assert.match(params.success_url, /session_id=\{CHECKOUT_SESSION_ID\}/);
 });
+test('new mission funding preferences retain their exact meaning through checkout', () => {
+  for (const purpose of ['SEERAH_LEADERSHIP', 'LEARNING_RESOURCES']) {
+    assert.equal(missionSupportStripeCheckoutSchema.safeParse({ ...input, purpose }).success, true);
+    const params = buildMissionCheckoutParams({ ...baseDonation, purpose, frequency: 'MONTHLY' }, 'https://test.example');
+    assert.equal(params.metadata.purpose, purpose);
+    assert.equal(params.subscription_data.metadata.purpose, purpose);
+    assert.match(params.line_items[0].price_data.product_data.description, purpose === 'SEERAH_LEADERSHIP' ? /Seerah & Leadership/ : /Learning Resources & Delivery/);
+  }
+});
 test('one-time checkout creates payment-intent metadata and a provider receipt invoice', () => {
   const params = buildMissionCheckoutParams(baseDonation, 'https://test.example');
   assert.equal(params.mode, 'payment'); assert.equal(params.invoice_creation.enabled, true); assert.equal(params.payment_intent_data.metadata.purpose, 'LEARNING_ACCESS');

@@ -1,12 +1,12 @@
 # Support Our Mission: staging and launch
 
-This site is Next.js, so the contribution flow uses the existing Stripe SDK rather than a WordPress/GiveWP plugin. The page and checkout support GBP, one-time and monthly contributions, five preset amounts plus a custom amount, and four funding purposes. The funding purpose is stored in the database and Stripe metadata, shown in acknowledgments, and visible in the admin dashboard.
+This site is Next.js, so the contribution flow uses the existing Stripe SDK rather than a WordPress/GiveWP plugin. The page and checkout support GBP, one-time and monthly contributions, five preset amounts plus a custom amount, and three funding preferences plus general support. The preference is stored in the database and Stripe metadata, shown in acknowledgments, and visible in the admin dashboard. A selected preference does not establish a legally restricted fund; the page directs donors to agree specific restrictions with TGA. Existing purpose identifiers remain supported for previous records and saved selections.
 
 ## Content and approval
 
 The donor-facing entity is **GLOBAL AWAKENING CIC**, company **15523255**, registered in England and Wales. Its registered office is 128 City Road, London, EC1V 2NX. Verify changes against the [official company record](https://find-and-update.company-information.service.gov.uk/company/15523255). This page does not claim registered-charity status or offer Gift Aid.
 
-Existing TGA programme illustrations are clearly identified as artwork. No classroom photographs, beneficiary quotations, funding targets, cost-per-child figures, impact totals or independently audited claims have been invented. Add approved photographs to `public/`, then set `MISSION_SUPPORT_HERO_IMAGE` to their local path and `MISSION_SUPPORT_HERO_CAPTION` to an accurate caption. Obtain the necessary permissions before publishing images of children.
+The page uses five original SVG illustrations in `public/images/mission/`, generated reproducibly by `node scripts/create-mission-art.mjs`. They are conceptual learning illustrations, not evidence of programme delivery. No classroom photographs, beneficiary quotations, funding targets, cost-per-child figures, impact totals or independently audited claims have been invented. The earlier hero-image environment settings remain reserved; this refinement uses the dedicated SVG assets. Obtain approval and necessary permissions before replacing them with photographs of children.
 
 Before enabling checkout, TGA must approve and publish contribution terms covering purpose restrictions, use of surplus, operational costs, refunds and recurring cancellation. Set `MISSION_SUPPORT_POLICY_URL` to that HTTPS page and `MISSION_SUPPORT_ALLOCATION_NOTICE` to its approved, concise allocation explanation. Do not use an existing course purchase policy as a substitute. An approved HTTPS impact report can be added with `MISSION_SUPPORT_IMPACT_REPORT_URL`.
 

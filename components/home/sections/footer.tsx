@@ -39,7 +39,7 @@ const socialLinks = [
   { label: "Instagram", href: "https://www.instagram.com/global_awakening_channel/" },
 ];
 
-export function Footer() {
+export function Footer({ legalName = "Global Awakening Ltd" }: { legalName?: string } = {}) {
   return (
     <footer className="border-t border-white/10 bg-[#060c1f]">
       <div className="ga-container footer-main-grid">
@@ -73,7 +73,7 @@ export function Footer() {
 
       <div className="border-t border-white/10 bg-[#050919] py-4">
         <div className="ga-container footer-bottom">
-          <p>Copyright © {new Date().getFullYear()} Global Awakening Ltd. All rights reserved.</p>
+          <p>Copyright © {new Date().getFullYear()} {legalName}. All rights reserved.</p>
           <div className="footer-contact">
             <Link href="tel:+447886398150">+44 7886 398150</Link>
             <Link href="mailto:admin@tgaawakening.com">admin@tgaawakening.com</Link>
