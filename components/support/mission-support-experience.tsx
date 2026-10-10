@@ -9,6 +9,7 @@ import { companyRegisterUrl, missionContactEmail, missionPurposes, missionPurpos
 import type { MissionSupportConfig } from "@/lib/mission-support-config";
 import { fundingAreas, learningPrinciples, contributionStages } from "./mission-support-content";
 import "./mission-support.css";
+import { missionAllocationNotice, missionContributionPolicyPath } from "@/lib/mission-contribution-policy";
 
 const amounts = [10, 25, 50, 100, 200] as const;
 const storageKey = "tga-mission-giving-selection";
@@ -49,6 +50,8 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
   const [managementToken, setManagementToken] = useState("");
   const activeAmount = amount === "other" ? Number(customAmount) : amount;
   const formattedAmount = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(Number.isFinite(activeAmount) ? activeAmount : 0);
+  const contributionTermsUrl = config.policyUrl || missionContributionPolicyPath;
+  const allocationSummary = config.allocationNotice || missionAllocationNotice;
 
   useEffect(() => {
     try {
@@ -172,7 +175,7 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
     ...fundingAreas.map(area => ({ id: area.id, label: area.title })),
   ];
   const faqs = [
-    ["What does my contribution support?", config.allocationNotice || "Contributions support learning access, Seerah and leadership education, and learning resources. Preferences do not establish restricted funds; contact TGA to agree specific restrictions."],
+    ["What does my contribution support?", "Educational work and related TGA costs. Your preference guides allocation; if funds are redirected, TGA will notify you by email. Specific restrictions must be agreed in writing before payment."],
     ["Is my contribution one-time or monthly?", "You choose in the form. Monthly support renews through Stripe until cancelled; use the secure management link in your acknowledgment or contact TGA for help."],
     ["Is the payment process secure?", "Payment details are entered on Stripe’s hosted checkout. TGA does not store your card details. A confirmation is shown only after the payment provider verifies your contribution."],
     ["How do I contact TGA about a donation?", "Email " + missionContactEmail + " with your payment reference. The team can help with funding questions, cancellation or refund requests under the applicable contribution terms."],
@@ -213,14 +216,14 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
             </fieldset>
             {amount === "other" && <label className="ms-field" htmlFor="mission-custom">Your amount in GBP<input id="mission-custom" name="amount" inputMode="decimal" type="number" min="1" max="10000" step="0.01" placeholder="e.g. 35.00" value={customAmount} onChange={event => setCustomAmount(event.target.value)} required aria-describedby="mission-amount-help" /><small id="mission-amount-help">£1–£10,000. Up to two decimal places.</small></label>}
             <label className="ms-field" htmlFor="mission-purpose">Funding preference<select ref={purposeRef} id="mission-purpose" value={purpose} onChange={event => setPurpose(event.target.value as MissionPurpose)}>{givingPurposes.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}{!givingPurposes.some(item => item.id === purpose) && <option value={purpose}>{missionPurposeLabel(purpose)}</option>}</select></label>
-            <p className="ms-preference-note">Preferences help us understand your interests. Contact TGA before giving if you require a specific restriction.</p>
+            <p className="ms-preference-note">Your preference guides allocation. Funds may also support related TGA costs or be redirected with an email notice. Agree specific restrictions in writing before giving.</p>
             <div className="ms-donor-fields"><label className="ms-field" htmlFor="mission-name">Your name<input id="mission-name" name="name" autoComplete="name" minLength={2} maxLength={120} value={name} onChange={event => setName(event.target.value)} required /></label><label className="ms-field" htmlFor="mission-email">Email for your acknowledgment<input id="mission-email" name="email" type="email" autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} required /></label></div>
             <p className="ms-selection" aria-live="polite"><strong>{formattedAmount}</strong> {frequency === "MONTHLY" ? "each month" : "one-time"}<span>{missionPurposeLabel(purpose)}</span></p>
             {error && !managementToken && <p className="ms-error" role="alert">{error}</p>}
             <button className="ms-button ms-button-dark ms-submit" type="submit" disabled={loading || !config.checkoutAvailable}>{loading ? "Opening secure checkout…" : "Continue to secure donation"}<Icon name="arrow" /></button>
             {config.checkoutAvailable ? <p className="ms-payment-note"><Icon name="lock" /> Payment details are entered securely on Stripe.</p> : <p className="ms-payment-note ms-unavailable">Online contributions are temporarily unavailable. <a href={`mailto:${missionContactEmail}?subject=Supporting%20TGA`}>Contact our team</a> to discuss supporting the mission.</p>}
             {frequency === "MONTHLY" && <p className="ms-small-note">Monthly giving renews until cancelled. Manage future payments using the link in your acknowledgment.</p>}
-            {config.policyUrl && <p className="ms-small-note">By continuing, you agree to the <a href={config.policyUrl} target="_blank" rel="noopener noreferrer">contribution terms</a>.</p>}
+            <p className="ms-small-note">By continuing, you agree to the <a href={contributionTermsUrl} target="_blank" rel="noopener noreferrer">Contribution & Donation Policy</a>.</p>
           </form>
         </aside>
 
@@ -237,7 +240,7 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
       <section id="mission-purposes" className="ms-section ms-container" aria-labelledby="purposes-title">
         <div className="ms-section-heading ms-reveal"><p className="ms-eyebrow">Three ways to support purposeful education</p><h2 id="purposes-title">Choose where your support matters.</h2></div>
         <div className="ms-causes">{fundingAreas.map((item, index) => <article className={"ms-cause ms-reveal " + (purpose === item.id ? "ms-cause-selected" : "")} key={item.id}><div className="ms-cause-art"><Image src={"/images/mission/" + item.image + ".svg"} alt={item.alt} width={600} height={400} /></div><div className="ms-cause-copy"><span className="ms-number">0{index + 1}</span><h3>{item.title}</h3><p>{item.copy}</p><button className="ms-text-link" aria-pressed={purpose === item.id} onClick={() => scrollToGiving(item.id)}>{purpose === item.id ? "Preference selected" : "Support this area"}<Icon name="arrow" /></button></div></article>)}</div>
-        <p className="ms-allocation-note"><Icon name="book" />{config.allocationNotice || "Choose an area that matters to you. Specific funding restrictions must be agreed with TGA before giving."}</p>
+        <p className="ms-allocation-note"><Icon name="book" />Funding preferences guide allocation under the Contribution & Donation Policy. Specific restrictions must be agreed in writing before payment.</p>
       </section>
 
       <section className="ms-impact ms-section" aria-labelledby="impact-title"><div className="ms-container">
@@ -247,7 +250,7 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
       </div></section>
 
       <section className="ms-accountability ms-section" aria-labelledby="accountability-title"><div className="ms-container ms-accountability-layout">
-        <div className="ms-reveal"><p className="ms-eyebrow">Trust & transparency</p><h2 id="accountability-title">Know where your contribution goes.</h2><p>{config.allocationNotice || "Ask our team about current educational priorities, delivery costs and allocation arrangements. Specific funding restrictions should be agreed before you contribute."}</p><div className="ms-accountability-links">{config.policyUrl && <a href={config.policyUrl} target="_blank" rel="noopener noreferrer">Contribution terms <Icon name="arrow" /></a>}<a href={companyRegisterUrl + "/filing-history"} target="_blank" rel="noopener noreferrer">Public company filings <Icon name="arrow" /></a>{config.impactReportUrl && <a href={config.impactReportUrl} target="_blank" rel="noopener noreferrer">Verified impact report <Icon name="arrow" /></a>}<a href={"mailto:" + missionContactEmail}>Ask about funding <Icon name="arrow" /></a></div></div>
+        <div className="ms-reveal"><p className="ms-eyebrow">Trust & transparency</p><h2 id="accountability-title">Know where your contribution goes.</h2><p>{allocationSummary}</p><div className="ms-accountability-links"><a href={contributionTermsUrl} target="_blank" rel="noopener noreferrer">Contribution & Donation Policy <Icon name="arrow" /></a><a href={companyRegisterUrl + "/filing-history"} target="_blank" rel="noopener noreferrer">Public company filings <Icon name="arrow" /></a>{config.impactReportUrl && <a href={config.impactReportUrl} target="_blank" rel="noopener noreferrer">Verified impact report <Icon name="arrow" /></a>}<a href={"mailto:" + missionContactEmail}>Ask about funding <Icon name="arrow" /></a></div></div>
         <aside className="ms-company ms-reveal" aria-label="Organisation details"><div className="ms-company-mark"><Icon name="book" /><span>Organisation record</span></div><h3>GLOBAL AWAKENING CIC</h3><p>Community Interest Company<br />Registered in England and Wales<br />Company number <strong>15523255</strong></p><p>Registered office<br />128 City Road, London, EC1V 2NX</p><a href={companyRegisterUrl} target="_blank" rel="noopener noreferrer">View company record <Icon name="arrow" /></a><small>Gift Aid is not offered on this page.</small></aside>
       </div></section>
 

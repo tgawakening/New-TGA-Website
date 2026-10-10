@@ -51,7 +51,7 @@ export function PolicyPage({ policy }: { policy: PolicyPageContent }) {
           </div>
         </section>
       </main>
-      <Footer />
+      <Footer legalName={policy.slug === "contribution-terms" ? "GLOBAL AWAKENING CIC" : undefined} />
     </div>
   );
 }

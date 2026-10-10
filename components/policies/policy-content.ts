@@ -1,3 +1,5 @@
+import { missionContributionPolicy } from "@/lib/mission-contribution-policy";
+
 export type PolicySection = {
   title: string;
   body?: string;
@@ -14,6 +16,7 @@ export type PolicyPageContent = {
 };
 
 export const policies = [
+  missionContributionPolicy,
   {
     slug: "terms-and-conditions",
     title: "Terms & Conditions",
