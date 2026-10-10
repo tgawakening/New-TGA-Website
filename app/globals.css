@@ -387,6 +387,15 @@ body {
   transform: translateY(-2px);
 }
 
+@media (max-width: 767px) {
+  .ga-header-support {
+    min-height: 44px;
+    padding-inline: 10px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+}
+
 .ga-btn-primary {
   color: #eaffff;
   background: linear-gradient(90deg, #2e7de2, #3b95f2);

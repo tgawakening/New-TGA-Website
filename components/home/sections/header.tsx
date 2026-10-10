@@ -54,7 +54,7 @@ export function Header() {
               alt="Global Awakening"
               width={220}
               height={74}
-              className="ga-header-logo h-auto w-[150px] md:w-[182px]"
+              className="ga-header-logo h-auto w-[110px] md:w-[182px]"
               priority
             />
           </Link>
@@ -88,13 +88,13 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
-          <Link href="/support-our-mission" className="ga-btn ga-header-cta ga-cta-signin">
+        <div className="flex items-center gap-3">
+          <Link href="/support-our-mission" className="ga-btn ga-header-cta ga-cta-signin ga-header-support">
             Support Our Mission
           </Link>
-          <Link href={hasSession ? "/dashboard" : "/seerah/register"} className="ga-btn ga-header-cta ga-cta-register">
+          <span className="hidden md:inline-flex"><Link href={hasSession ? "/dashboard" : "/seerah/register"} className="ga-btn ga-header-cta ga-cta-register">
             {hasSession ? "Your Dashboard" : "Enroll Now"}
-          </Link>
+          </Link></span>
         </div>
 
         {SHOW_AUTH_BUTTONS ? (
