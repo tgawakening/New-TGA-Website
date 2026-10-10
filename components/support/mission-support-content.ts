@@ -1,7 +1,7 @@
 export const fundingAreas = [
-  { id: "LEARNING_ACCESS", title: "Educational Access", copy: "Help make structured learning more accessible to students facing financial barriers.", image: "educational-access", alt: "An open book connecting a learning doorway and an online classroom" },
-  { id: "SEERAH_LEADERSHIP", title: "Seerah & Leadership Education", copy: "Support educational programmes connecting Prophetic guidance with character and responsible leadership.", image: "seerah-leadership", alt: "A study manuscript, route map and compass representing reflection and principled decisions" },
-  { id: "LEARNING_RESOURCES", title: "Learning Resources & Delivery", copy: "Help develop teaching materials, support programme delivery, and improve educational experiences.", image: "learning-resources", alt: "Books, a lesson plan and a pencil representing teaching preparation" },
+  { id: "LEARNING_ACCESS", title: "Educational Access", copy: "Help make structured learning more accessible to students facing financial barriers.", image: "learning-access", alt: "A young learner studying at home with a laptop and notebook; representative photograph" },
+  { id: "SEERAH_LEADERSHIP", title: "Seerah & Leadership Education", copy: "Support educational programmes connecting Prophetic guidance with character and responsible leadership.", image: "remote-preparation", alt: "An adult working with a laptop and books at home; representative photograph" },
+  { id: "LEARNING_RESOURCES", title: "Learning Resources & Delivery", copy: "Help develop teaching materials, support programme delivery, and improve educational experiences.", image: "digital-resources", alt: "A home workspace with a laptop, notebooks and planning materials" },
 ] as const;
 
 export const learningPrinciples = [

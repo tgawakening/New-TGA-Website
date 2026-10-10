@@ -197,3 +197,78 @@
   .ms-motion-ready .ms-reveal:not(.ms-visible) { opacity: 1; transform: none; }
   .ms-impact-path { --journey-progress: 1 !important; }
 }
+/* Phase 2: photography, online-learning storytelling and restrained motion. */
+.ms-hero { gap: 26px 54px; padding-top: 44px; }
+.ms-hero-copy { align-self: start; }
+.ms-hero-art img { height: 330px; max-height: none; object-fit: cover; object-position: 58% 50%; border-radius: 8px 8px 42px 8px; }
+.ms-hero-art figcaption a { text-decoration: underline; }
+.ms-giving { box-shadow: 0 12px 36px #14253608; }
+.ms-frequency button[aria-pressed="true"] { background: #193747; color: #fff; border-color: #193747; }
+.ms-field input:focus, .ms-field select:focus { border-color: #42675a; box-shadow: 0 0 0 2px #42675a12; }
+.ms-purpose-art img { height: 440px; object-fit: cover; object-position: 70% center; border-radius: 7px 38px 7px 7px; }
+.ms-purpose-layout { grid-template-columns: 1fr 1fr; }
+.ms-principle-number { color: #42675a; font-size: .76rem; padding-top: 3px; min-width: 24px; }
+.ms-cause { display: flex; flex-direction: column; }
+.ms-cause-art img { height: 228px; object-fit: cover; }
+.ms-cause-copy { flex: 1; }
+.ms-cause.ms-reveal { transition: opacity 500ms ease, transform 500ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.ms-cause-selected { box-shadow: 0 0 0 1px #42675a; }
+.ms-image-note { font-size: .73rem !important; color: var(--ms-muted); margin-top: 15px; }
+.ms-impact { position: relative; isolation: isolate; background: #eee8dc; }
+.ms-impact-background { object-fit: cover; opacity: .10; filter: blur(3px); z-index: -2; }
+.ms-impact::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(100deg,#eee8dcf5,#eee8dc95 60%,#eee8dce8); pointer-events: none; }
+.ms-path-stage:hover .ms-path-symbol { border-color: #537b65; }
+.ms-programmes { scroll-margin-top: 110px; }
+.ms-programme-story { display: grid; grid-template-columns: .92fr 1.08fr; align-items: center; gap: 70px; }
+.ms-programme-story figure { margin: 0; }
+.ms-programme-story img { width: 100%; height: 510px; object-fit: cover; object-position: center 55%; border-radius: 7px; }
+.ms-programme-copy h3 { font-size: 1.9rem; margin: 10px 0 14px; }
+.ms-programme-copy p:not(.ms-eyebrow) { color: var(--ms-muted); }
+.ms-programme-secondary { border-top: 1px solid var(--ms-line); margin-top: 24px; padding-top: 24px; }
+.ms-programme-copy > .ms-small-note { margin-top: 24px; }
+.ms-accountability { background: #fff; }
+.ms-monthly { background: radial-gradient(ellipse at 90% 0%,#d9e2d3 0%,transparent 65%),linear-gradient(120deg,#eee8dc,#eaf0e8); }
+.ms-monthly-layout { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 64px; }
+.ms-monthly p:not(.ms-eyebrow) { max-width: 690px; color: var(--ms-muted); }
+.ms-closing { position: relative; isolation: isolate; padding-block: 96px 64px; }
+.ms-closing-photo { object-fit: cover; object-position: center 46%; z-index: -2; }
+.ms-closing::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg,#112d3bf7 0%,#112d3be3 40%,#112d3b85 100%); z-index: -1; pointer-events: none; }
+.ms-final { border: 0; padding: 0; gap: 36px 60px; }
+.ms-final h2 { max-width: 600px; }
+.ms-closing-caption { grid-column: 1 / -1; font-size: .72rem !important; color: #d1dce0; margin-top: 30px; }
+.ms-faq-section { background: #f7f5ef; }
+.ms-faq { padding: 0; }
+.ms-faq details { border-color: #cbd5cc; }
+.ms-faq-answer p { color: var(--ms-muted); }
+.ms-photo-credits { margin-top: 34px; padding-top: 20px; border-top: 1px solid var(--ms-line); color: var(--ms-muted); scroll-margin-top: 110px; }
+.ms-photo-credits summary { cursor: pointer; font-size: .75rem; min-height: 44px; display: flex; align-items: center; text-decoration: underline; }
+.ms-photo-credits p { font-size: .75rem; max-width: 880px; margin-block: 8px; }
+.ms-photo-credits a { text-decoration: underline; }
+.ms-hero-enter { animation: msHeroEnter 550ms ease both; }
+.ms-hero-copy h1 { animation-delay: 70ms; }
+.ms-hero-copy .ms-lead { animation-delay: 140ms; }
+.ms-hero-art { animation-delay: 200ms; }
+.ms-giving.ms-hero-enter { animation-delay: 120ms; }
+@keyframes msHeroEnter { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (max-width: 1023px) {
+  .ms-hero { gap: 24px 30px; }
+  .ms-hero-art img { height: 310px; }
+  .ms-purpose-art img { height: 420px; }
+  .ms-cause-art img { height: 190px; }
+  .ms-programme-story { gap: 36px; }
+  .ms-monthly-layout { gap: 32px; }
+}
+@media (max-width: 767px) {
+  .ms-hero { gap: 24px; padding-top: 30px; }
+  .ms-hero-art img { height: 240px; max-height: none; object-position: center; }
+  .ms-purpose-layout, .ms-programme-story, .ms-monthly-layout { grid-template-columns: 1fr; gap: 28px; }
+  .ms-purpose-art img { height: 270px; max-height: none; object-fit: cover; }
+  .ms-cause-art img { height: 230px; max-height: none; object-fit: cover; }
+  .ms-programme-story img { height: 340px; object-position: center 58%; }
+  .ms-monthly-layout .ms-button { justify-self: start; }
+  .ms-closing { padding-block: 62px 40px; }
+  .ms-closing::before { background: linear-gradient(90deg,#112d3bee,#112d3bbb); }
+  .ms-closing-photo { object-position: 65% center; }
+  .ms-closing-caption { margin-top: 12px; }
+  .ms-photo-credits { margin-top: 28px; }
+}
