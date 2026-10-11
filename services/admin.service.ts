@@ -167,6 +167,7 @@ export type AdminDashboardSnapshot = {
     paidAt: string | null;
     providerSubscriptionId: string | null;
     cancelAtPeriodEnd: boolean;
+    manualSubmission: { senderName: string; senderNumber: string; referenceKey: string; notes: string | null; reviewedAt: string | null; reviewNote: string | null } | null;
     payments: Array<{ id: string; amount: number; currency: string; status: string; refundedAmount: number; providerReference: string; providerPaymentId: string | null; paidAt: string | null; receiptUrl: string | null }>;
   }>;
   genMumin: {
@@ -528,6 +529,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
     studentCount: users.length,
     missionSupportCount: missionSupport.length,
     missionSupportRevenuePence: missionSupport
+      .filter(item => item.currency === "GBP")
       .reduce((sum, item) => sum + (item.payments.length ? item.payments.filter(payment => ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(payment.status)).reduce((total, payment) => total + payment.amount - payment.refundedAmount, 0) : (item.status === PaymentStatus.SUCCEEDED || item.status === PaymentStatus.CONFIRMED ? item.amount : 0)), 0),
   };
 
@@ -624,7 +626,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       fullName: item.fullName,
       email: item.email,
       phone: [item.phoneCountryCode, item.phoneNumber].filter(Boolean).join(" ").trim() || "N/A",
-      amountLabel: formatAmount(item.amount, item.currency),
+      amountLabel: new Intl.NumberFormat("en-GB", { style: "currency", currency: item.currency, minimumFractionDigits: 2 }).format(item.amount / 100),
       rawAmount: item.amount,
       paymentMethod: item.paymentMethod,
       status: item.status,
@@ -641,6 +643,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       paidAt: item.paidAt?.toISOString() ?? null,
       providerSubscriptionId: item.providerSubscriptionId,
       cancelAtPeriodEnd: item.cancelAtPeriodEnd,
+      manualSubmission: item.manualSubmission ? { senderName: item.manualSubmission.senderName, senderNumber: item.manualSubmission.senderNumber, referenceKey: item.manualSubmission.referenceKey, notes: item.manualSubmission.notes, reviewedAt: item.manualSubmission.reviewedAt?.toISOString() ?? null, reviewNote: item.manualSubmission.reviewNote } : null,
       payments: item.payments.map(payment => ({ id: payment.id, amount: payment.amount, currency: payment.currency, status: payment.status, refundedAmount: payment.refundedAmount, providerReference: payment.providerReference, providerPaymentId: payment.providerPaymentId, paidAt: payment.paidAt?.toISOString() ?? null, receiptUrl: payment.receiptUrl })),
     })),
     genMumin,

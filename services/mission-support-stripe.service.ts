@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { Prisma, type MissionSupportDonation } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
+import { donationCountry } from "@/lib/mission-payment-options";
 import { missionPurposeLabel, type GivingFrequency, type MissionPurpose } from "@/lib/mission-support";
 import { buildMissionCheckoutParams, paidSessionMatches } from "@/lib/mission-support-checkout";
 
@@ -41,20 +42,20 @@ export function verifyMissionManagementToken(token: string, now = Date.now()): s
   return data.donationId;
 }
 
-export async function startMissionStripeCheckout(input: { fullName: string; email: string; amountGbp: number; frequency: GivingFrequency; purpose: MissionPurpose; requestId: string }) {
+export async function startMissionStripeCheckout(input: { fullName: string; email: string; amountGbp: number; frequency: GivingFrequency; purpose: MissionPurpose; requestId: string; countryCode?: string; phoneCountryCode?: string; phoneNumber?: string }) {
   const stripe = stripeClient();
   const amount = Math.round(input.amountGbp * 100);
   let donation = await prisma.missionSupportDonation.findUnique({ where: { checkoutKey: input.requestId } });
   if (!donation) {
     try {
-      donation = await prisma.missionSupportDonation.create({ data: { fullName: input.fullName, email: input.email.toLowerCase(), amount, paymentMethod: "STRIPE", frequency: input.frequency, purpose: input.purpose, checkoutKey: input.requestId, paymentReference: `TGA-${randomUUID().slice(0, 8).toUpperCase()}` } });
+      donation = await prisma.missionSupportDonation.create({ data: { fullName: input.fullName, email: input.email.toLowerCase(), phoneCountryCode: input.phoneCountryCode ?? null, phoneNumber: input.phoneNumber ?? null, countryName: input.countryCode ? donationCountry(input.countryCode)?.name : null, amount, paymentMethod: "STRIPE", frequency: input.frequency, purpose: input.purpose, checkoutKey: input.requestId, paymentReference: `TGA-${randomUUID().slice(0, 8).toUpperCase()}` } });
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
       donation = await prisma.missionSupportDonation.findUnique({ where: { checkoutKey: input.requestId } });
       if (!donation) throw error;
     }
   }
-  if (donation.email !== input.email.toLowerCase() || donation.amount !== amount || donation.purpose !== input.purpose || donation.frequency !== input.frequency || donation.fullName !== input.fullName) throw new Error("This checkout attempt has changed. Refresh the form and try again.");
+  if (donation.paymentMethod !== "STRIPE" || donation.email !== input.email.toLowerCase() || donation.amount !== amount || donation.purpose !== input.purpose || donation.frequency !== input.frequency || donation.fullName !== input.fullName || (input.phoneCountryCode && donation.phoneCountryCode !== input.phoneCountryCode) || (input.phoneNumber && donation.phoneNumber !== input.phoneNumber) || (input.countryCode && donation.countryName !== donationCountry(input.countryCode)?.name)) throw new Error("This checkout attempt has changed. Refresh the form and try again.");
   if (donation.providerOrderId) {
     const existing = await stripe.checkout.sessions.retrieve(donation.providerOrderId);
     if (existing.status === "open" && existing.url) return { checkoutUrl: existing.url };

@@ -17,18 +17,20 @@ let createdSessions;
 const duplicate = () => new Prisma.PrismaClientKnownRequestError('Duplicate event', { code: 'P2002', clientVersion: '6.19.2' });
 const matches = (item, where) => Object.entries(where).every(([key, value]) => value && typeof value === 'object' && 'in' in value ? value.in.includes(item[key]) : item[key] === value);
 const store = {
+  missionSupportManualSubmission: { async findUnique({ where }) { return structuredClone(state.manual.get(where.donationId) ?? null); }, async update({ where, data }) { const item = state.manual.get(where.donationId); Object.assign(item, data); return item; } },
   missionSupportDonation: {
     async findUnique({ where, include }) {
       const item = [...state.donations.values()].find(d => matches(d, where));
       if (!item) return null;
       const result = structuredClone(item);
+      if (include?.manualSubmission) result.manualSubmission = state.manual.get(item.id) ?? null;
       if (include?.payments) result.payments = [...state.payments.values()].filter(p => p.donationId === item.id && (!include.payments.where || matches(p, include.payments.where)));
       return result;
     },
     async create({ data }) {
       if ([...state.donations.values()].some(d => d.checkoutKey === data.checkoutKey)) throw duplicate();
       const item = { id: 'donation-1', status: 'INITIATED', currency: 'GBP', paidAt: null, providerOrderId: null, providerSubscriptionId: null, providerCustomerId: null, createdAt: new Date(), ...data };
-      state.donations.set(item.id, item); return structuredClone(item);
+      state.donations.set(item.id, item); if (data.manualSubmission?.create) state.manual.set(item.id, { donationId: item.id, ...data.manualSubmission.create }); return structuredClone(item);
     },
     async update({ where, data }) { const item = state.donations.get(where.id); Object.assign(item, data); return structuredClone(item); },
     async updateMany({ where, data }) { let count = 0; for (const item of state.donations.values()) if (matches(item, where)) { Object.assign(item, data); count++; } return { count }; },
@@ -78,7 +80,7 @@ const event = (type, object, id = 'evt_1') => ({ id, type, created: 1760000000, 
 const session = (extra = {}) => ({ id: 'cs_test_example', metadata: { paymentKind: 'MISSION_SUPPORT', donationId: 'donation-1' }, amount_total: 2500, currency: 'gbp', payment_status: 'paid', payment_intent: 'pi_test', customer: 'cus_test', subscription: null, ...extra });
 const invoice = (extra = {}) => ({ id: 'in_test', amount_paid: 2500, amount_due: 2500, currency: 'gbp', status: 'paid', hosted_invoice_url: 'https://invoice.stripe.com/test', customer: 'cus_test', parent: { subscription_details: { subscription: 'sub_test', metadata: { paymentKind: 'MISSION_SUPPORT', donationId: 'donation-1' } } }, ...extra });
 beforeEach(() => {
-  state = { donations: new Map([['donation-1', structuredClone(baseDonation)]]), payments: new Map(), events: new Set(), session: session(), subscription: { id: 'sub_test', customer: 'cus_test', status: 'canceled', cancel_at_period_end: true }, charge: { amount_refunded: 2500, refunded: true } };
+  state = { manual: new Map(), donations: new Map([['donation-1', structuredClone(baseDonation)]]), payments: new Map(), events: new Set(), session: session(), subscription: { id: 'sub_test', customer: 'cus_test', status: 'canceled', cancel_at_period_end: true }, charge: { amount_refunded: 2500, refunded: true } };
   emails = []; createdSessions = [];
   Object.assign(process.env, { STRIPE_SECRET_KEY: 'sk_test_local_only', STRIPE_WEBHOOK_SECRET: 'whsec_local_only', MISSION_SUPPORT_MANAGEMENT_SECRET: 'local-unit-test-secret-at-least-32-characters', NEXT_PUBLIC_APP_URL: 'http://localhost:3000', MISSION_SUPPORT_PAYMENTS_ENABLED: 'false', MISSION_SUPPORT_LIVE_APPROVED: 'false' });
 });
@@ -234,4 +236,87 @@ test('checkout route accepts proxied public requests and rejects foreign request
   assert.equal(blocked.status,403); assert.equal(createdSessions.length,0);
   const accepted = await POST(request('https://www.tga-awakening.com'));
   assert.equal(accepted.status,200); assert.equal(createdSessions.length,1);
+});
+
+const { missionSupportPaymentSchema } = require('../lib/validations/mission-support.ts');
+const alternatives = require('../services/mission-support-payments.service.ts');
+const contactInput = { ...input, countryCode:'PK', phoneCountryCode:'+92', phoneNumber:'3244517741', paymentMethod:'PAYPAL', frequency:'ONE_TIME' };
+const manualInput = { ...contactInput, paymentMethod:'BANK_TRANSFER', frequency:'MONTHLY', manualAmountPkr:5000, senderName:'Demo Sender', referenceKey:'LOCAL-TRANSFER-001' };
+
+test('manual payment requires matching Pakistan country/code and complete transfer evidence', () => {
+  assert.equal(missionSupportPaymentSchema.safeParse(manualInput).success,true);
+  for (const patch of [{countryCode:'GB',phoneCountryCode:'+44'}, {countryCode:'GB',phoneCountryCode:'+92'}, {phoneCountryCode:'+44'}, {referenceKey:''}, {senderName:''}, {manualAmountPkr:0}, {manualAmountPkr:1.001}, {phoneNumber:'bad'}, {frequency:'WEEKLY'}]) assert.equal(missionSupportPaymentSchema.safeParse({...manualInput,...patch}).success,false);
+  assert.equal(missionSupportPaymentSchema.safeParse({...contactInput,frequency:'MONTHLY'}).success,false);
+  assert.equal(missionSupportPaymentSchema.safeParse({...contactInput,countryCode:'GB',phoneCountryCode:'+44'}).success,true);
+});
+
+test('Stripe stores donor country and phone without changing amount or purpose', async () => {
+  const result = await service.startMissionStripeCheckout({ ...input, countryCode:'PK',phoneCountryCode:'+92',phoneNumber:'3244517741' });
+  assert.ok(result.checkoutUrl);const row=[...state.donations.values()][0];assert.equal(row.countryName,'Pakistan');assert.equal(row.phoneCountryCode,'+92');assert.equal(row.phoneNumber,'3244517741');assert.equal(row.amount,2500);assert.equal(row.purpose,input.purpose);
+});
+
+test('manual submission stores PKR under review, retains monthly pledge and does not create paid income', async () => {
+  state.donations.clear(); const result=await alternatives.startAlternativeMissionPayment(manualInput);
+  assert.equal(result.mode,'MANUAL');const row=state.donations.get('donation-1');assert.equal(row.status,'UNDER_REVIEW');assert.equal(row.currency,'PKR');assert.equal(row.amount,500000);assert.equal(row.subscriptionStatus,'manual_pledge');assert.equal(row.countryName,'Pakistan');assert.equal(state.payments.size,0);assert.equal(state.manual.get(row.id).referenceKey,'LOCAL-TRANSFER-001');
+  await alternatives.startAlternativeMissionPayment(manualInput);assert.equal(emails.length,1);assert.equal(state.donations.size,1);
+  await assert.rejects(()=>alternatives.startAlternativeMissionPayment({...manualInput,referenceKey:'CHANGED'}));
+});
+
+test('manual transfer is confirmed only by admin and repeated approval does not send duplicate donor acknowledgments', async () => {
+  state.donations.clear();await alternatives.startAlternativeMissionPayment({...manualInput,frequency:'ONE_TIME'});
+  const { adminUpdateMissionSupportDonation }=require('../services/mission-support.service.ts');
+  const result=await adminUpdateMissionSupportDonation({donationId:'donation-1',action:'CONFIRM'});assert.equal(result.status,'CONFIRMED');assert.ok(state.donations.get('donation-1').paidAt);assert.ok(state.manual.get('donation-1').reviewedAt);
+  const count=emails.length;await adminUpdateMissionSupportDonation({donationId:'donation-1',action:'CONFIRM'});assert.equal(emails.length,count);assert.match(emails[count-1].text,/5,000/);assert.match(emails[count-1].text,/PKR/);
+});
+
+const completedPaypalOrder = () => ({id:'ORDER-DEMO',status:'COMPLETED',purchase_units:[{custom_id:'donation-1',reference_id:'donation-1',payments:{captures:[{id:'CAPTURE-DEMO',status:'COMPLETED',amount:{currency_code:'GBP',value:'25.00'}}]}}]});
+async function withPaypalMock(order, task) {
+  const previous=global.fetch;let calls=0;
+  global.fetch=async url=>{calls++;return new Response(JSON.stringify(String(url).endsWith('/oauth2/token') ? {access_token:'mock-token'} : order),{status:200,headers:{'Content-Type':'application/json'}});};
+  try{return await task(()=>calls);}finally{global.fetch=previous;}
+}
+
+test('PayPal binds capture to the recorded donation before contacting the provider', async () => {
+  Object.assign(state.donations.get('donation-1'),{paymentMethod:'PAYPAL',providerOrderId:'ORDER-DEMO'});
+  await withPaypalMock(completedPaypalOrder(),async calls=>{await assert.rejects(()=>alternatives.confirmMissionPaypalPayment('donation-1','OTHER-ORDER'));assert.equal(calls(),0);assert.equal(state.payments.size,0);});
+});
+
+test('PayPal pending, declined, mismatched amount/currency/reference never counts as confirmed', async () => {
+  Object.assign(state.donations.get('donation-1'),{paymentMethod:'PAYPAL',providerOrderId:'ORDER-DEMO'});
+  for(const modify of [o=>o.status='APPROVED',o=>o.purchase_units[0].payments.captures[0].status='PENDING',o=>o.purchase_units[0].payments.captures[0].status='DECLINED',o=>o.purchase_units[0].payments.captures[0].amount.value='24.00',o=>o.purchase_units[0].payments.captures[0].amount.currency_code='USD',o=>{o.purchase_units[0].custom_id='another';o.purchase_units[0].reference_id='another';}]){
+    const order=completedPaypalOrder();modify(order);await withPaypalMock(order,()=>assert.rejects(()=>alternatives.confirmMissionPaypalPayment('donation-1','ORDER-DEMO')));assert.equal(state.payments.size,0);assert.equal(emails.length,0);
+  }
+});
+
+test('completed PayPal capture records one ledger payment and acknowledgment across retries', async () => {
+  Object.assign(state.donations.get('donation-1'),{paymentMethod:'PAYPAL',providerOrderId:'ORDER-DEMO'});
+  await withPaypalMock(completedPaypalOrder(),async()=>{const receipt=await alternatives.confirmMissionPaypalPayment('donation-1','ORDER-DEMO');assert.equal(receipt.status,'confirmed');await alternatives.confirmMissionPaypalPayment('donation-1','ORDER-DEMO');});
+  assert.equal(state.donations.get('donation-1').status,'SUCCEEDED');assert.equal(state.payments.size,1);assert.equal(emails.length,1);assert.equal([...state.payments.values()][0].amount,2500);
+});
+
+
+test('PayPal checkout uses exact purpose and GBP amount and reuses the provider order on retry', async () => {
+  state.donations.clear(); const previous=global.fetch;let created=0;let requestBody;let idempotency;
+  global.fetch=async (url, options={})=>{
+    const endpoint=String(url);let body;
+    if(endpoint.endsWith('/oauth2/token')) body={access_token:'test-token'};
+    else if(endpoint.endsWith('/v2/checkout/orders') && options.method==='POST') {created++;requestBody=JSON.parse(options.body);idempotency=options.headers['PayPal-Request-Id'];body={id:'ORDER-DEMO',status:'CREATED',links:[{rel:'approve',href:'https://www.sandbox.paypal.com/checkoutnow?token=ORDER-DEMO'}]};}
+    else body={id:'ORDER-DEMO',status:'CREATED',links:[{rel:'approve',href:'https://www.sandbox.paypal.com/checkoutnow?token=ORDER-DEMO'}]};
+    return new Response(JSON.stringify(body),{status:200,headers:{'Content-Type':'application/json'}});
+  };
+  try { const first=await alternatives.startAlternativeMissionPayment(contactInput);const second=await alternatives.startAlternativeMissionPayment(contactInput);assert.equal(first.checkoutUrl,second.checkoutUrl);assert.equal(created,1);assert.equal(requestBody.purchase_units[0].amount.value,'25.00');assert.equal(requestBody.purchase_units[0].custom_id,'donation-1');assert.ok(requestBody.purchase_units[0].description.includes('Sponsor Learning Access'));assert.ok(idempotency.endsWith(input.requestId));assert.equal(state.payments.size,0);assert.equal(emails.length,0); } finally { global.fetch=previous; }
+});
+
+test('online and manual payment availability are independent of Stripe credentials', () => {
+  Object.assign(process.env,{MISSION_SUPPORT_PAYMENTS_ENABLED:'true',MISSION_SUPPORT_LIVE_APPROVED:'true',MISSION_SUPPORT_POLICY_URL:'https://www.tga-awakening.com/policies/contribution-terms',MISSION_SUPPORT_ALLOCATION_NOTICE:'Approved notice',DATABASE_URL:'mysql://test:test@localhost/test',RESEND_API_KEY:'re_local_test',EMAIL_FROM:'test@example.com',PAYPAL_CLIENT_ID:'test-client',PAYPAL_CLIENT_SECRET:'test-secret',PAYPAL_ENV:'sandbox',STRIPE_SECRET_KEY:''});
+  const config=getMissionSupportConfig();assert.equal(config.checkoutAvailable,false);assert.equal(config.paypalAvailable,true);assert.equal(config.manualAvailable,true);
+  process.env.MISSION_SUPPORT_PAYMENTS_ENABLED='false';assert.equal(getMissionSupportConfig().manualAvailable,false);assert.equal(getMissionSupportConfig().paypalAvailable,false);
+});
+
+
+test('manual confirmation endpoint rejects unauthorized callers and accepts authenticated admin review', async () => {
+  state.donations.clear();await alternatives.startAlternativeMissionPayment(manualInput);const previous=process.env.ADMIN_API_TOKEN;process.env.ADMIN_API_TOKEN='synthetic-admin-token';
+  try { const {POST}=require('../app/api/admin/mission-support/status/route.ts');const request=authorized=>new Request('http://localhost:3000/api/admin/mission-support/status',{method:'POST',headers:{'Content-Type':'application/json',...(authorized?{'x-admin-token':'synthetic-admin-token'}:{})},body:JSON.stringify({donationId:'donation-1',action:'CONFIRM'})});
+    assert.equal((await POST(request(false))).status,401);assert.equal(state.donations.get('donation-1').status,'UNDER_REVIEW');assert.equal((await POST(request(true))).status,200);assert.equal(state.donations.get('donation-1').status,'CONFIRMED');
+  } finally { if(previous===undefined) delete process.env.ADMIN_API_TOKEN;else process.env.ADMIN_API_TOKEN=previous; }
 });

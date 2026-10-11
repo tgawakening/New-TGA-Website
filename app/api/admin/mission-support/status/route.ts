@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { isAllowedRequestOrigin } from "@/lib/request-origin";
 import { requireAdminAccess } from "@/lib/auth/admin";
 import { missionSupportAdminStatusSchema } from "@/lib/validations/mission-support";
 import { adminUpdateMissionSupportDonation } from "@/services/mission-support.service";
 
 export async function POST(request: Request) {
+  if (!isAllowedRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   const unauthorized = requireAdminAccess(request);
   if (unauthorized) return unauthorized;
 

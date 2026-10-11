@@ -1,21 +1,14 @@
 import { NextResponse } from "next/server";
+import { isAllowedRequestOrigin } from "@/lib/request-origin";
 import { missionSupportPaypalCaptureSchema } from "@/lib/validations/mission-support";
-import { captureMissionSupportPaypalOrder } from "@/services/mission-support.service";
-
+import { confirmMissionPaypalPayment } from "@/services/mission-support-payments.service";
 export async function POST(request: Request) {
+  if (!isAllowedRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const json = await request.json();
-    const parsed = missionSupportPaypalCaptureSchema.safeParse(json);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid payload.", details: parsed.error.flatten() }, { status: 400 });
-    }
-
-    const result = await captureMissionSupportPaypalOrder(parsed.data);
-    return NextResponse.json(result);
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "PayPal mission support capture error." },
-      { status: 500 },
-    );
+    const parsed = missionSupportPaypalCaptureSchema.safeParse(await request.json());
+    if (!parsed.success) return NextResponse.json({ error: "Invalid PayPal confirmation." }, { status: 400 });
+    return NextResponse.json(await confirmMissionPaypalPayment(parsed.data.donationId, parsed.data.orderId), { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return NextResponse.json({ error: "PayPal has not confirmed this contribution. Keep your provider receipt and contact TGA if needed." }, { status: 400 });
   }
 }

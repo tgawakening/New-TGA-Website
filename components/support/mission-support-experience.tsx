@@ -7,6 +7,7 @@ import { Header } from "@/components/home/sections/header";
 import { Footer } from "@/components/home/sections/footer";
 import { companyRegisterUrl, missionContactEmail, missionPurposes, missionPurposeLabel, type GivingFrequency, type MissionPurpose } from "@/lib/mission-support";
 import type { MissionSupportConfig } from "@/lib/mission-support-config";
+import { donationCountries, donationCountry, manualDonationAccounts } from "@/lib/mission-payment-options";
 import { fundingAreas, learningPrinciples, contributionStages } from "./mission-support-content";
 import "./mission-support.css";
 import { missionAllocationNotice, missionContributionPolicyPath } from "@/lib/mission-contribution-policy";
@@ -41,6 +42,17 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
   const [purpose, setPurpose] = useState<MissionPurpose>("WHERE_NEEDED");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [countryCode, setCountryCode] = useState("GB");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"STRIPE" | "PAYPAL" | "BANK_TRANSFER" | "JAZZCASH">("STRIPE");
+  const [manualAmountPkr, setManualAmountPkr] = useState("");
+  const [senderName, setSenderName] = useState("");
+  const [referenceKey, setReferenceKey] = useState("");
+  const [manualNotes, setManualNotes] = useState("");
+  const [manualReference, setManualReference] = useState("");
+  const country = donationCountry(countryCode)!;
+  const isManual = paymentMethod === "BANK_TRANSFER" || paymentMethod === "JAZZCASH";
+  const paymentAvailable = paymentMethod === "STRIPE" ? config.checkoutAvailable : paymentMethod === "PAYPAL" ? config.paypalAvailable : config.manualAvailable;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -81,6 +93,14 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
     const token = searchParams.get("manage");
     if (token) setManagementToken(token);
     if (searchParams.get("payment") !== "success") return;
+    if (searchParams.get("provider") === "paypal") {
+      const orderId = searchParams.get("token"); const donationId = searchParams.get("donationId");
+      if (!orderId || !donationId) { setConfirmationMessage("A return URL alone cannot confirm a contribution. Please contact TGA."); return; }
+      let cancelled = false;
+      setConfirmationMessage("We are checking your PayPal payment. Please keep this page open.");
+      void fetch("/api/mission-support/paypal/capture-order", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, donationId }) }).then(async response => { const result = await response.json(); if (cancelled) return; if (!response.ok || result.status !== "confirmed") throw new Error(result.error || "PayPal has not confirmed this contribution."); setReceipt(result); setConfirmationMessage("JazakAllahu khair. Your PayPal contribution is confirmed. Thank you for supporting meaningful learning."); }).catch(cause => { if (!cancelled) setConfirmationMessage(cause instanceof Error ? cause.message : "Payment confirmation is unavailable."); });
+      return () => { cancelled = true; };
+    }
     const sessionId = searchParams.get("session_id");
     if (!sessionId) { setConfirmationMessage("A return URL alone cannot confirm a contribution. Please check your provider receipt or contact TGA."); return; }
     let cancelled = false;
@@ -132,7 +152,7 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
 
   function scrollToGiving(nextPurpose?: MissionPurpose, monthly = false) {
     if (nextPurpose) setPurpose(nextPurpose);
-    if (monthly) setFrequency("MONTHLY");
+    if (monthly) { setFrequency("MONTHLY"); if (paymentMethod === "PAYPAL") setPaymentMethod("STRIPE"); }
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     formRef.current?.scrollIntoView({ behavior: reduced ? "instant" : "smooth", block: "start" });
     purposeRef.current?.focus({ preventScroll: true });
@@ -153,18 +173,19 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
-    if (!Number.isFinite(activeAmount) || activeAmount < 1 || activeAmount > 10000 || Math.abs(activeAmount * 100 - Math.round(activeAmount * 100)) > 0.000001) { setError("Please enter an amount between £1 and £10,000, using no more than two decimal places."); return; }
-    if (!config.checkoutAvailable) { setError("Online contributions are temporarily unavailable. Please contact our team."); return; }
+    if (!isManual && (!Number.isFinite(activeAmount) || activeAmount < 1 || activeAmount > 10000 || Math.abs(activeAmount * 100 - Math.round(activeAmount * 100)) > 0.000001)) { setError("Please enter an amount between £1 and £10,000, using no more than two decimal places."); return; }
+    if (!paymentAvailable) { setError("This payment method is temporarily unavailable. Please choose another or contact TGA."); return; }
     if (loading) return;
     setLoading(true);
-    const fingerprint = JSON.stringify({ name: name.trim(), email: email.trim(), frequency, purpose, activeAmount });
+    const fingerprint = JSON.stringify({ name: name.trim(), email: email.trim(), frequency, purpose, activeAmount, countryCode, phoneNumber, paymentMethod, manualAmountPkr, senderName, referenceKey, manualNotes });
     if (requestRef.current?.fingerprint !== fingerprint) requestRef.current = { fingerprint, id: crypto.randomUUID() };
     try {
-      const response = await fetch("/api/mission-support/stripe-checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fullName: name.trim(), email: email.trim(), amountGbp: activeAmount, frequency, purpose, requestId: requestRef.current!.id }) });
+      const response = await fetch("/api/mission-support/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fullName: name.trim(), email: email.trim(), amountGbp: isManual ? undefined : activeAmount, frequency, purpose, requestId: requestRef.current!.id, countryCode, phoneCountryCode: country.dialCode, phoneNumber: phoneNumber.trim(), paymentMethod, ...(isManual ? { manualAmountPkr: Number(manualAmountPkr), senderName: senderName.trim(), referenceKey: referenceKey.trim(), notes: manualNotes.trim() } : {}) }) });
       const data = await response.json();
+      if (response.ok && data.mode === "MANUAL") { setManualReference(data.paymentReference); setConfirmationMessage("Your transfer details have been submitted. TGA will confirm your contribution after reviewing the payment."); return; }
       if (!response.ok || !data.checkoutUrl) throw new Error(data.error || "We couldn't open secure checkout. Please try again.");
       const url = new URL(data.checkoutUrl);
-      if (url.protocol !== "https:" || url.hostname !== "checkout.stripe.com") throw new Error("Invalid checkout destination.");
+      if (url.protocol !== "https:" || !(paymentMethod === "STRIPE" ? url.hostname === "checkout.stripe.com" : ["www.paypal.com", "www.sandbox.paypal.com"].includes(url.hostname))) throw new Error("Invalid checkout destination.");
       window.location.assign(url.toString());
     } catch (cause) { setError(cause instanceof Error ? cause.message : "We couldn't open secure checkout. Please try again."); }
     finally { setLoading(false); }
@@ -177,7 +198,7 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
   const faqs = [
     ["What does my contribution support?", "Educational work and related TGA costs. Your preference guides allocation; if funds are redirected, TGA will notify you by email. Specific restrictions must be agreed in writing before payment."],
     ["Is my contribution one-time or monthly?", "You choose in the form. Monthly support renews through Stripe until cancelled; use the secure management link in your acknowledgment or contact TGA for help."],
-    ["Is the payment process secure?", "Payment details are entered on Stripe’s hosted checkout. TGA does not store your card details. A confirmation is shown only after the payment provider verifies your contribution."],
+    ["Is the payment process secure?", "Online payment details are entered securely on Stripe or PayPal. TGA does not store your card details. Manual transfers are confirmed only after admin verification."],
     ["How do I contact TGA about a donation?", "Email " + missionContactEmail + " with your payment reference. The team can help with funding questions, cancellation or refund requests under the applicable contribution terms."],
     ["Is Gift Aid available?", "Gift Aid is not offered. TGA operates as GLOBAL AWAKENING CIC, a Community Interest Company; this page does not claim registered-charity status."],
   ];
@@ -210,25 +231,30 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
           <div className="ms-giving-heading"><span className="ms-giving-symbol"><Icon name="heart" /></span><span>Education. Character. Community.</span></div>
           <h2 id="giving-title">Make a meaningful contribution.</h2>
           <p>Choose how you would like to support the mission.</p>
-          {config.testMode && config.checkoutAvailable && <p className="ms-test-notice">Test checkout · no real contribution will be collected.</p>}
+          {((paymentMethod === "STRIPE" && config.testMode && config.checkoutAvailable) || (paymentMethod === "PAYPAL" && config.paypalTestMode && config.paypalAvailable)) && <p className="ms-test-notice">Test checkout · no real contribution will be collected.</p>}
           <form onSubmit={submit}>
             <fieldset className="ms-frequency"><legend className="ms-sr-only">Giving frequency</legend>
-              <button type="button" aria-pressed={frequency === "MONTHLY"} onClick={() => setFrequency("MONTHLY")}>Monthly</button>
+              <button type="button" aria-pressed={frequency === "MONTHLY"} onClick={() => { setFrequency("MONTHLY"); if (paymentMethod === "PAYPAL") setPaymentMethod("STRIPE"); }}>Monthly</button>
               <button type="button" aria-pressed={frequency === "ONE_TIME"} onClick={() => setFrequency("ONE_TIME")}>One-time</button>
             </fieldset>
-            <fieldset className="ms-amounts"><legend>Choose your amount <span>GBP</span></legend>
+            {!isManual && <fieldset className="ms-amounts"><legend>Choose your amount <span>GBP</span></legend>
               <div>{amounts.map(value => <button key={value} type="button" aria-pressed={amount === value} onClick={() => setAmount(value)}>£{value}</button>)}<button type="button" aria-pressed={amount === "other"} onClick={() => setAmount("other")}>Other</button></div>
-            </fieldset>
-            {amount === "other" && <label className="ms-field" htmlFor="mission-custom">Your amount in GBP<input id="mission-custom" name="amount" inputMode="decimal" type="number" min="1" max="10000" step="0.01" placeholder="e.g. 35.00" value={customAmount} onChange={event => setCustomAmount(event.target.value)} required aria-describedby="mission-amount-help" /><small id="mission-amount-help">£1–£10,000. Up to two decimal places.</small></label>}
+            </fieldset>}
+            {!isManual && amount === "other" && <label className="ms-field" htmlFor="mission-custom">Your amount in GBP<input id="mission-custom" name="amount" inputMode="decimal" type="number" min="1" max="10000" step="0.01" placeholder="e.g. 35.00" value={customAmount} onChange={event => setCustomAmount(event.target.value)} required aria-describedby="mission-amount-help" /><small id="mission-amount-help">£1–£10,000. Up to two decimal places.</small></label>}
             <label className="ms-field" htmlFor="mission-purpose">Funding preference<select ref={purposeRef} id="mission-purpose" value={purpose} onChange={event => setPurpose(event.target.value as MissionPurpose)}>{givingPurposes.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}{!givingPurposes.some(item => item.id === purpose) && <option value={purpose}>{missionPurposeLabel(purpose)}</option>}</select></label>
             <p className="ms-preference-note">Your preference guides allocation. Funds may also support related TGA costs or be redirected with an email notice. Agree specific restrictions in writing before giving.</p>
             <div className="ms-donor-fields"><label className="ms-field" htmlFor="mission-name">Your name<input id="mission-name" name="name" autoComplete="name" minLength={2} maxLength={120} value={name} onChange={event => setName(event.target.value)} required /></label><label className="ms-field" htmlFor="mission-email">Email for your acknowledgment<input id="mission-email" name="email" type="email" autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} required /></label></div>
-            <p className="ms-selection" aria-live="polite"><strong>{formattedAmount}</strong> {frequency === "MONTHLY" ? "each month" : "one-time"}<span>{missionPurposeLabel(purpose)}</span></p>
+
+            <div className="ms-donor-fields"><label className="ms-field" htmlFor="mission-country">Country & phone code<select id="mission-country" autoComplete="country" value={countryCode} onChange={event => { setCountryCode(event.target.value); if (event.target.value !== "PK" && isManual) setPaymentMethod("STRIPE"); }}>{donationCountries.map(item => <option key={item.code} value={item.code}>{item.name} ({item.dialCode})</option>)}</select></label><label className="ms-field" htmlFor="mission-phone">Phone number<input id="mission-phone" type="tel" autoComplete="tel-national" inputMode="tel" pattern="[0-9 ()-]{6,20}" minLength={6} maxLength={20} value={phoneNumber} onChange={event => setPhoneNumber(event.target.value)} required placeholder="Without country code" /></label></div>
+            <fieldset className="ms-methods"><legend>Choose your payment method</legend><div><label><input type="radio" name="mission-method" value="STRIPE" checked={paymentMethod === "STRIPE"} onChange={() => setPaymentMethod("STRIPE")} /><span><strong>Stripe / Card</strong><small>One-time or automatic monthly giving</small></span></label><label><input type="radio" name="mission-method" value="PAYPAL" checked={paymentMethod === "PAYPAL"} onChange={() => { setPaymentMethod("PAYPAL"); setFrequency("ONE_TIME"); }} /><span><strong>PayPal</strong><small>Secure one-time contribution</small></span></label>{countryCode === "PK" && <label><input type="radio" name="mission-method" value="BANK_TRANSFER" checked={isManual} onChange={() => setPaymentMethod("BANK_TRANSFER")} /><span><strong>Manual payment (Pakistan)</strong><small>Meezan Bank or JazzCash; admin verification</small></span></label>}</div></fieldset>
+            {isManual && <div className="ms-manual-panel"><h3>Transfer, then submit your details.</h3><p>For a local transfer, enter the actual amount sent in PKR below. TGA verifies the transfer before recording it as confirmed.</p><label className="ms-field" htmlFor="mission-transfer-method">Transfer destination<select id="mission-transfer-method" value={paymentMethod} onChange={event => setPaymentMethod(event.target.value as "BANK_TRANSFER" | "JAZZCASH")}><option value="BANK_TRANSFER">Meezan Bank</option><option value="JAZZCASH">JazzCash</option></select></label>{paymentMethod === "BANK_TRANSFER" ? <div className="ms-bank-details"><strong>{manualDonationAccounts.bank.name}</strong><p>Account title: {manualDonationAccounts.bank.title}</p><p>Account number: {manualDonationAccounts.bank.number}</p><p>IBAN: {manualDonationAccounts.bank.iban}</p></div> : <div className="ms-bank-details"><strong>{manualDonationAccounts.jazzcash.name}</strong><p>Account title: {manualDonationAccounts.jazzcash.title}</p><p>Account number: {manualDonationAccounts.jazzcash.number}</p></div>}<label className="ms-field" htmlFor="mission-pkr">Amount transferred (PKR)<input id="mission-pkr" type="number" inputMode="decimal" min="1" max="10000000" step="0.01" value={manualAmountPkr} onChange={event => setManualAmountPkr(event.target.value)} required /></label><label className="ms-field" htmlFor="mission-sender">Sender account name<input id="mission-sender" minLength={2} maxLength={120} value={senderName} onChange={event => setSenderName(event.target.value)} required /></label><label className="ms-field" htmlFor="mission-transfer-reference">Transaction reference / ID<input id="mission-transfer-reference" maxLength={120} value={referenceKey} onChange={event => setReferenceKey(event.target.value)} required /></label><label className="ms-field" htmlFor="mission-transfer-notes">Transfer notes (optional)<textarea id="mission-transfer-notes" maxLength={500} value={manualNotes} onChange={event => setManualNotes(event.target.value)} /></label>{frequency === "MONTHLY" && <p>This is a monthly giving pledge, not an automatic subscription. Submit each future transfer for verification.</p>}</div>}
+            <p className="ms-selection" aria-live="polite"><strong>{isManual ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "PKR" }).format(Number(manualAmountPkr) || 0) : formattedAmount}</strong> {frequency === "MONTHLY" ? (isManual ? "monthly pledge" : "each month") : "one-time"}<span>{missionPurposeLabel(purpose)}</span></p>
             {error && !managementToken && <p className="ms-error" role="alert">{error}</p>}
-            <button className="ms-button ms-button-dark ms-submit" type="submit" disabled={loading || !config.checkoutAvailable}>{loading ? "Opening secure checkout…" : "Continue to secure donation"}<Icon name="arrow" /></button>
-            {config.checkoutAvailable ? <p className="ms-payment-note"><Icon name="lock" /> Payment details are entered securely on Stripe.</p> : <p className="ms-payment-note ms-unavailable">Online contributions are temporarily unavailable. <a href={`mailto:${missionContactEmail}?subject=Supporting%20TGA`}>Contact our team</a> to discuss supporting the mission.</p>}
-            {frequency === "MONTHLY" && <p className="ms-small-note">Monthly giving renews until cancelled. Manage future payments using the link in your acknowledgment.</p>}
+            <button className="ms-button ms-button-dark ms-submit" type="submit" disabled={loading || !paymentAvailable}>{loading ? (isManual ? "Submitting transfer details…" : "Opening secure checkout…") : isManual ? "Submit transfer for verification" : paymentMethod === "PAYPAL" ? "Continue to PayPal" : "Continue to secure donation"}<Icon name="arrow" /></button>
+            {paymentAvailable ? <p className="ms-payment-note"><Icon name="lock" />{isManual ? "Your transfer will be reviewed by TGA before confirmation." : "Payment details are entered securely on " + (paymentMethod === "PAYPAL" ? "PayPal." : "Stripe.")}</p> : <p className="ms-payment-note ms-unavailable">Online contributions are temporarily unavailable. <a href={`mailto:${missionContactEmail}?subject=Supporting%20TGA`}>Contact our team</a> to discuss supporting the mission.</p>}
+            {frequency === "MONTHLY" && !isManual && <p className="ms-small-note">Monthly giving renews until cancelled. Manage future payments using the link in your acknowledgment.</p>}
             <p className="ms-small-note">By continuing, you agree to the <a href={contributionTermsUrl} target="_blank" rel="noopener noreferrer">Contribution & Donation Policy</a>.</p>
+            {manualReference && <p className="ms-manual-confirmation" role="status">Transfer submitted for admin review. Reference: <strong>{manualReference}</strong>. It is not yet confirmed as received.</p>}
           </form>
         </aside>
 

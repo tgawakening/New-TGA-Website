@@ -1,50 +1,22 @@
 import { NextResponse } from "next/server";
-import { missionSupportCheckoutSchema } from "@/lib/validations/mission-support";
-import {
-  createMissionSupportDonation,
-  createMissionSupportPaypalOrder,
-  createMissionSupportStripeCheckout,
-} from "@/services/mission-support.service";
+import { isAllowedRequestOrigin } from "@/lib/request-origin";
+import { getMissionSupportConfig } from "@/lib/mission-support-config";
+import { missionSupportPaymentSchema } from "@/lib/validations/mission-support";
+import { startMissionStripeCheckout } from "@/services/mission-support-stripe.service";
+import { startAlternativeMissionPayment } from "@/services/mission-support-payments.service";
 
 export async function POST(request: Request) {
+  if (!isAllowedRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const json = await request.json();
-    const parsed = missionSupportCheckoutSchema.safeParse(json);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid mission support payload.", details: parsed.error.flatten() }, { status: 400 });
-    }
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const donation = await createMissionSupportDonation(parsed.data);
-
-    if (parsed.data.paymentMethod === "STRIPE") {
-      const result = await createMissionSupportStripeCheckout({
-        donationId: donation.donationId,
-        successUrl: `${appUrl}/support-our-mission?payment=success&provider=stripe`,
-        cancelUrl: `${appUrl}/support-our-mission?payment=cancelled`,
-      });
-      return NextResponse.json({ mode: "STRIPE", donationId: donation.donationId, paymentReference: donation.paymentReference, ...result });
-    }
-
-    if (parsed.data.paymentMethod === "PAYPAL") {
-      const result = await createMissionSupportPaypalOrder({
-        donationId: donation.donationId,
-        returnUrl: `${appUrl}/support-our-mission?payment=success&provider=paypal&donationId=${donation.donationId}`,
-        cancelUrl: `${appUrl}/support-our-mission?payment=cancelled`,
-      });
-      return NextResponse.json({ mode: "PAYPAL", donationId: donation.donationId, paymentReference: donation.paymentReference, ...result });
-    }
-
-    return NextResponse.json({
-      mode: "MANUAL",
-      donationId: donation.donationId,
-      paymentReference: donation.paymentReference,
-      message: "Manual support submission received. It will remain pending until admin verification.",
-    });
+    const parsed = missionSupportPaymentSchema.safeParse(await request.json());
+    if (!parsed.success) return NextResponse.json({ error: "Please check your contact, country and payment details.", details: parsed.error.flatten() }, { status: 400 });
+    const config = getMissionSupportConfig();
+    const available = parsed.data.paymentMethod === "STRIPE" ? config.checkoutAvailable : parsed.data.paymentMethod === "PAYPAL" ? config.paypalAvailable : config.manualAvailable;
+    if (!available) return NextResponse.json({ error: "This payment method is temporarily unavailable. Please choose another method or contact TGA." }, { status: 503 });
+    const result = parsed.data.paymentMethod === "STRIPE" ? { mode: "STRIPE", ...await startMissionStripeCheckout({ ...parsed.data, amountGbp: parsed.data.amountGbp! }) } : await startAlternativeMissionPayment(parsed.data);
+    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Mission support checkout failed." },
-      { status: 500 },
-    );
+    console.error("Mission payment failed", error instanceof Error ? error.name : "Unknown error");
+    return NextResponse.json({ error: "We could not process this contribution. No payment has been confirmed. Retry with the same details or contact TGA." }, { status: 502 });
   }
 }

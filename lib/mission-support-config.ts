@@ -2,6 +2,9 @@ import "server-only";
 
 export type MissionSupportConfig = {
   checkoutAvailable: boolean;
+  paypalAvailable: boolean;
+  manualAvailable: boolean;
+  paypalTestMode: boolean;
   testMode: boolean;
   allocationNotice: string;
   policyUrl: string | null;
@@ -23,10 +26,16 @@ export function getMissionSupportConfig(): MissionSupportConfig {
   const demo = /xxx|replace|password@|db-host/i;
   const configured = [key, process.env.STRIPE_WEBHOOK_SECRET, process.env.DATABASE_URL, process.env.MISSION_SUPPORT_MANAGEMENT_SECRET, process.env.RESEND_API_KEY, process.env.EMAIL_FROM].every(value => Boolean(value && !demo.test(value))) && (process.env.MISSION_SUPPORT_MANAGEMENT_SECRET?.length ?? 0) >= 32;
   const liveApproved = process.env.MISSION_SUPPORT_LIVE_APPROVED === "true";
+  const sharedReady = process.env.MISSION_SUPPORT_PAYMENTS_ENABLED === "true" && Boolean(policyUrl && allocationNotice) && [process.env.DATABASE_URL, process.env.RESEND_API_KEY, process.env.EMAIL_FROM].every(value => Boolean(value && !demo.test(value)));
+  const paypalReady = [process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_CLIENT_SECRET].every(value => Boolean(value && !demo.test(value)));
+  const paypalTestMode = process.env.PAYPAL_ENV !== "live";
   const heroImage = process.env.MISSION_SUPPORT_HERO_IMAGE?.trim();
   const localHero = heroImage?.startsWith("/") && !heroImage.startsWith("//") && !heroImage.includes("..");
   return {
     checkoutAvailable: process.env.MISSION_SUPPORT_PAYMENTS_ENABLED === "true" && configured && Boolean(policyUrl && allocationNotice) && (testMode || (key.startsWith("sk_live_") && liveApproved)),
+    paypalAvailable: sharedReady && paypalReady && (paypalTestMode || liveApproved),
+    manualAvailable: sharedReady && liveApproved,
+    paypalTestMode,
     testMode,
     allocationNotice,
     policyUrl,

@@ -55,6 +55,12 @@ function formatGbp(amountPence: number) {
   }).format(amountPence / 100);
 }
 
+function escapeDonorName(value: string) { return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]!)); }
+
+function formatDonationAmount(amount: number, currency: string) {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(amount / 100);
+}
+
 async function getPaypalAccessToken() {
   const clientId = getRequiredEnv("PAYPAL_CLIENT_ID");
   const clientSecret = getRequiredEnv("PAYPAL_CLIENT_SECRET");
@@ -311,16 +317,16 @@ export async function markMissionSupportSuccessful({
       subject: "Your support is making an impact",
       emailType: "MISSION_SUPPORT_CONFIRMED",
       html: `
-        <p>Assalam-u-Alaikum ${donation.fullName},</p>
+        <p>Assalam-u-Alaikum ${escapeDonorName(donation.fullName)},</p>
         <p>Thank you for supporting TGA through our Support Our Mission initiative.</p>
-        <p>Amount received: <strong>${formatGbp(donation.amount)}</strong></p>
+        <p>Amount received: <strong>${formatDonationAmount(donation.amount, donation.currency)}</strong></p>
         <p>Reference: <strong>${donation.paymentReference ?? "N/A"}</strong></p>
         <p>Your support helps children access education, mentoring, and leadership development.</p>
       `,
       text: [
         `Assalam-u-Alaikum ${donation.fullName},`,
         "Thank you for supporting TGA through our Support Our Mission initiative.",
-        `Amount received: ${formatGbp(donation.amount)}`,
+        `Amount received: ${formatDonationAmount(donation.amount, donation.currency)}`,
         `Reference: ${donation.paymentReference ?? "N/A"}`,
         "Your support helps children access education, mentoring, and leadership development.",
       ].join("\n"),
@@ -330,16 +336,16 @@ export async function markMissionSupportSuccessful({
       emailType: "ADMIN_MISSION_SUPPORT_CONFIRMED",
       html: `
         <p>A mission support contribution has been confirmed.</p>
-        <p>Name: <strong>${donation.fullName}</strong></p>
+        <p>Name: <strong>${escapeDonorName(donation.fullName)}</strong></p>
         <p>Email: ${donation.email}</p>
-        <p>Amount: ${formatGbp(donation.amount)}</p>
+        <p>Amount: ${formatDonationAmount(donation.amount, donation.currency)}</p>
         <p>Reference: ${donation.paymentReference ?? "N/A"}</p>
       `,
       text: [
         "A mission support contribution has been confirmed.",
         `Name: ${donation.fullName}`,
         `Email: ${donation.email}`,
-        `Amount: ${formatGbp(donation.amount)}`,
+        `Amount: ${formatDonationAmount(donation.amount, donation.currency)}`,
         `Reference: ${donation.paymentReference ?? "N/A"}`,
       ].join("\n"),
     }),
@@ -348,44 +354,9 @@ export async function markMissionSupportSuccessful({
   return donation;
 }
 
-export async function captureMissionSupportPaypalOrder({
-  donationId,
-  orderId,
-}: {
-  donationId: string;
-  orderId: string;
-}) {
-  const donation = await prisma.missionSupportDonation.findUnique({
-    where: { id: donationId },
-  });
-
-  if (!donation) throw new Error("Mission support donation not found.");
-  if (donation.paymentMethod !== PaymentMethod.PAYPAL) throw new Error("This donation is not set for PayPal.");
-
-  const token = await getPaypalAccessToken();
-  const base = getPaypalApiBase();
-  const captureResponse = await fetch(`${base}/v2/checkout/orders/${orderId}/capture`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!captureResponse.ok) {
-    throw new Error("PayPal capture failed.");
-  }
-
-  const capture = await captureResponse.json();
-  const providerPaymentId = capture?.purchase_units?.[0]?.payments?.captures?.[0]?.id ?? undefined;
-  await markMissionSupportSuccessful({
-    donationId,
-    providerOrderId: orderId,
-    providerPaymentId,
-    payload: capture,
-  });
-
-  return { success: true };
+export async function captureMissionSupportPaypalOrder(input: { donationId: string; orderId: string }) {
+  const { confirmMissionPaypalPayment } = await import("@/services/mission-support-payments.service");
+  return confirmMissionPaypalPayment(input.donationId, input.orderId);
 }
 
 export async function handleMissionSupportStripeSessionCompleted(session: {
@@ -436,6 +407,7 @@ export async function adminUpdateMissionSupportDonation({
     throw new Error("Online contributions are managed through the payment provider.");
   }
   if (action === "CONFIRM") {
+    if (donation.status === PaymentStatus.CONFIRMED) return { status: "CONFIRMED" as const };
     await prisma.$transaction(async (tx) => {
       await tx.missionSupportDonation.update({
         where: { id: donation.id },
