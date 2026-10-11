@@ -22,7 +22,7 @@
 .mission-support :is(button, a, input, select, summary):focus-visible, .ms-mobile-action button:focus-visible { outline: 3px solid #27789b; outline-offset: 4px; }
 .mission-support button:disabled { cursor: not-allowed; opacity: .58; }
 .ms-eyebrow { font-size: .73rem !important; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #516a73; }
-.ms-section { padding-block: 72px; }
+.ms-section { padding-block: 56px; }
 .ms-text-link { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; font-size: .85rem; font-weight: 600; text-decoration: none; border-bottom: 1px solid currentColor; padding-block: 8px; transition: gap 180ms ease; }
 .ms-text-link:hover { gap: 18px; }
 .ms-button { min-height: 48px; padding: 13px 20px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; gap: 16px; font-size: .88rem; font-weight: 600; border: 1px solid transparent; transition: background 180ms ease, transform 180ms ease; }
@@ -378,3 +378,27 @@
 .ms-bank-details p { margin-block: 5px; }
 .ms-manual-panel textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid #cbd6c9; border-radius: 5px; font: inherit; resize: vertical; }
 .ms-manual-confirmation { border: 1px solid #b9d0b6; background: #eff4eb; padding: 14px; margin-top: 18px; border-radius: 8px; font-size: .85rem !important; }
+/* Purpose-specific funding artwork keeps the choices distinct and compact. */
+.ms-funding-visual { margin: 10px 10px 0; border-radius: 14px 14px 4px 4px; overflow: hidden; color: #36594b; background: #eef0e6; }
+.ms-funding-seerah { background: #f0e9da; color: #4f604c; }
+.ms-funding-resources { background: #e9eef0; color: #375966; }
+.ms-funding-visual > svg { display: block; width: 100%; height: auto; max-height: 180px; }
+.ms-cause-copy { min-height: 218px; padding: 20px 24px; }
+.ms-cause-copy h3 { min-height: 2.5em; margin-top: 10px; }
+.ms-cause-copy p { min-height: 3.4em; line-height: 1.6; }
+.ms-graphic-float { transform-box: fill-box; transform-origin: center; }
+.ms-motion-ready .ms-visible .ms-graphic-float { animation: ms-funding-float 5s ease-in-out infinite; }
+.ms-motion-ready .ms-visible .ms-graphic-orbit { transform-origin: 180px 87px; animation: ms-funding-orbit 36s linear infinite; }
+.ms-motion-ready .ms-visible .ms-graphic-trail { animation: ms-funding-trail 18s linear infinite; }
+@keyframes ms-funding-float { 50% { transform: translateY(-4px); } }
+@keyframes ms-funding-orbit { to { transform: rotate(360deg); } }
+@keyframes ms-funding-trail { to { stroke-dashoffset: -66; } }
+@media (max-width: 767px) {
+  .ms-section { padding-block: 38px; }
+  .ms-cause-copy { min-height: 0; padding: 18px 22px; }
+  .ms-cause-copy h3, .ms-cause-copy p { min-height: 0; }
+  .ms-funding-visual > svg { max-height: 166px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ms-graphic-float, .ms-graphic-orbit, .ms-graphic-trail { animation: none !important; }
+}
