@@ -212,7 +212,7 @@
 .ms-cause { display: flex; flex-direction: column; }
 .ms-cause-art img { height: 228px; object-fit: cover; }
 .ms-cause-copy { flex: 1; }
-.ms-cause.ms-reveal { transition: opacity 500ms ease, transform 500ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.ms-cause { transition: border-color 180ms ease, box-shadow 180ms ease; }
 .ms-cause-selected { box-shadow: 0 0 0 1px #42675a; }
 .ms-image-note { font-size: .73rem !important; color: var(--ms-muted); margin-top: 15px; }
 .ms-impact { position: relative; isolation: isolate; background: #eee8dc; }

@@ -272,7 +272,7 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
 
       <section id="mission-purposes" className="ms-section ms-container" aria-labelledby="purposes-title">
         <div className="ms-section-heading ms-reveal"><p className="ms-eyebrow">Three ways to support purposeful education</p><h2 id="purposes-title">Choose where your support matters.</h2></div>
-        <div className="ms-causes">{fundingAreas.map((item, index) => <article className={"ms-cause ms-reveal " + (purpose === item.id ? "ms-cause-selected" : "")} key={item.id} style={{ transitionDelay: `${index * 70}ms` }}><MissionFundingGraphic kind={item.graphic} /><div className="ms-cause-copy"><span className="ms-number">0{index + 1}</span><h3>{item.title}</h3><p>{item.copy}</p><button className="ms-text-link" aria-pressed={purpose === item.id} onClick={() => scrollToGiving(item.id)}>{purpose === item.id ? "Preference selected" : "Support this area"}<Icon name="arrow" /></button></div></article>)}</div>
+        <div className="ms-causes">{fundingAreas.map((item, index) => <article className={"ms-cause ms-visible " + (purpose === item.id ? "ms-cause-selected" : "")} key={item.id}><MissionFundingGraphic kind={item.graphic} /><div className="ms-cause-copy"><span className="ms-number">0{index + 1}</span><h3>{item.title}</h3><p>{item.copy}</p><button className="ms-text-link" aria-pressed={purpose === item.id} onClick={() => scrollToGiving(item.id)}>{purpose === item.id ? "Preference selected" : "Support this area"}<Icon name="arrow" /></button></div></article>)}</div>
 
       </section>
 
