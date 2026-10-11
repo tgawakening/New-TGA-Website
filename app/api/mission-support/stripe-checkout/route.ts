@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
+import { isAllowedRequestOrigin } from "@/lib/request-origin";
 import { missionSupportStripeCheckoutSchema } from "@/lib/validations/mission-support";
 import { getMissionSupportConfig } from "@/lib/mission-support-config";
 import { startMissionStripeCheckout } from "@/services/mission-support-stripe.service";
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+  if (!isAllowedRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   if (!getMissionSupportConfig().checkoutAvailable) return NextResponse.json({ error: "Online contributions are not available yet. Please contact TGA to discuss supporting the mission." }, { status: 503 });
   try {
     const parsed = missionSupportStripeCheckoutSchema.safeParse(await request.json());

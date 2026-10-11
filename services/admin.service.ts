@@ -163,7 +163,11 @@ export type AdminDashboardSnapshot = {
     frequency: string;
     purpose: string;
     subscriptionStatus: string | null;
-    payments: Array<{ id: string; amount: number; status: string; refundedAmount: number; providerReference: string; providerPaymentId: string | null; paidAt: string | null }>;
+    currency: string;
+    paidAt: string | null;
+    providerSubscriptionId: string | null;
+    cancelAtPeriodEnd: boolean;
+    payments: Array<{ id: string; amount: number; currency: string; status: string; refundedAmount: number; providerReference: string; providerPaymentId: string | null; paidAt: string | null; receiptUrl: string | null }>;
   }>;
   genMumin: {
     status: "CONNECTED" | "UNAVAILABLE" | "NOT_CONFIGURED";
@@ -633,7 +637,11 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       frequency: item.frequency,
       purpose: item.purpose,
       subscriptionStatus: item.subscriptionStatus,
-      payments: item.payments.map(payment => ({ id: payment.id, amount: payment.amount, status: payment.status, refundedAmount: payment.refundedAmount, providerReference: payment.providerReference, providerPaymentId: payment.providerPaymentId, paidAt: payment.paidAt?.toISOString() ?? null })),
+      currency: item.currency,
+      paidAt: item.paidAt?.toISOString() ?? null,
+      providerSubscriptionId: item.providerSubscriptionId,
+      cancelAtPeriodEnd: item.cancelAtPeriodEnd,
+      payments: item.payments.map(payment => ({ id: payment.id, amount: payment.amount, currency: payment.currency, status: payment.status, refundedAmount: payment.refundedAmount, providerReference: payment.providerReference, providerPaymentId: payment.providerPaymentId, paidAt: payment.paidAt?.toISOString() ?? null, receiptUrl: payment.receiptUrl })),
     })),
     genMumin,
   };

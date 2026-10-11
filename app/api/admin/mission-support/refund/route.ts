@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
+import { isAllowedRequestOrigin } from "@/lib/request-origin";
 import { z } from "zod";
 import { requireAdminAccess } from "@/lib/auth/admin";
 import { refundMissionPayment } from "@/services/mission-support-stripe.service";
 
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+  if (!isAllowedRequestOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   const unauthorized = requireAdminAccess(request);
   if (unauthorized) return unauthorized;
   try {

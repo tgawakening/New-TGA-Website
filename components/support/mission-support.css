@@ -9,6 +9,7 @@
   font-family: Arial, Helvetica, sans-serif;
   overflow: clip;
 }
+
 .ms-container { width: min(1180px, calc(100% - 64px)); margin-inline: auto; }
 .mission-support h1, .mission-support h2, .mission-support h3 { font-family: var(--font-poltawski), Georgia, serif; font-weight: 400; letter-spacing: -.035em; }
 .mission-support h1 { font-size: clamp(2.9rem, 5vw, 4.4rem); line-height: 1.06; margin: 18px 0 22px; }
@@ -334,4 +335,30 @@
   .ms-purpose-art img { border-radius: 65px 65px 7px 7px; }
   .ms-programme-story img { border-radius: 65px 7px 7px 7px; }
   .ms-closing { padding-block: 66px 40px; }
+}
+
+/* Balanced editorial funding cards and uncropped programme imagery. */
+.ms-cause { border-radius: 22px 22px 8px 8px; background: #fffcf6; border-color: #dcd6c9; box-shadow: 0 12px 32px #173b2e07; }
+.ms-cause-art { padding: 10px 10px 0; background: transparent; }
+.ms-cause-art img { display: block; width: 100%; height: auto; max-height: none; aspect-ratio: 3 / 2; object-fit: contain; border-radius: 14px 14px 4px 4px; transform: none; }
+.ms-cause:hover img { transform: none; }
+.ms-cause-copy { min-height: 266px; padding: 24px; }
+.ms-cause-copy h3 { font-size: clamp(1.25rem, 1.7vw, 1.55rem); line-height: 1.25; min-height: 2.5em; margin-bottom: 10px; }
+.ms-cause-copy p { min-height: 4.5em; }
+.ms-cause-copy button { padding-block: 12px; border-bottom-color: #9c8250; }
+.ms-number { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: #eee8d8; color: #52684e; }
+.ms-purpose-layout { align-items: stretch; }
+.ms-purpose-art { display: flex; align-items: center; background: #dce4d6; border-radius: 100px 100px 8px 8px; overflow: hidden; }
+.ms-purpose-art img { height: 100%; min-height: 420px; max-height: none; object-fit: cover; object-position: center; }
+.ms-closing-visual { position: absolute; inset: 0 0 0 40%; z-index: -2; opacity: .6; mask-image: linear-gradient(90deg, transparent, #000 45%); }
+.ms-closing .ms-closing-photo { object-fit: cover; object-position: center 58%; }
+.ms-closing::before { background: linear-gradient(90deg, #102e38 36%, #102e38d9 53%, #102e3855 85%), linear-gradient(0deg, #102e3880, transparent); }
+@media (max-width: 767px) {
+  .ms-cause-copy h3 { min-height: 0; font-size: 1.55rem; }
+  .ms-cause-copy p { min-height: 0; }
+  .ms-cause-copy { min-height: 240px; }
+  .ms-purpose-art img { height: auto; min-height: 0; aspect-ratio: 3 / 2; object-fit: contain; }
+  .ms-closing-visual { inset: 0; opacity: .23; mask-image: none; }
+  .ms-closing .ms-closing-photo { object-position: center; }
+  .ms-closing::before { background: linear-gradient(90deg, #102e38ed, #102e38a8); }
 }

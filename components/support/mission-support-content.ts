@@ -1,7 +1,7 @@
 export const fundingAreas = [
-  { id: "LEARNING_ACCESS", title: "Educational Access", copy: "Help make structured learning more accessible to students facing financial barriers.", image: "islamic-learning-access", alt: "A young learner taking notes during an online lesson with a teacher on screen" },
-  { id: "SEERAH_LEADERSHIP", title: "Seerah & Leadership Education", copy: "Support educational programmes connecting Prophetic guidance with character and responsible leadership.", image: "islamic-remote-teacher", alt: "A male Islamic educator delivering a lesson from a home teaching workspace" },
-  { id: "LEARNING_RESOURCES", title: "Learning Resources & Delivery", copy: "Help develop teaching materials, support programme delivery, and improve educational experiences.", image: "islamic-digital-resources", alt: "Study books, lesson notes, a laptop and microphone for online teaching" },
+  { id: "LEARNING_ACCESS", title: "Access to Education", copy: "Help students facing financial barriers access purposeful lessons, supportive teachers and a structured learning journey.", image: "islamic-learning-access", alt: "A young learner taking notes during an online lesson with a teacher on screen" },
+  { id: "SEERAH_LEADERSHIP", title: "Seerah & Leadership", copy: "Help learners explore Prophetic guidance through purposeful lessons that nurture strong character and responsible leadership.", image: "islamic-remote-teacher", alt: "A male Islamic educator delivering a lesson from a home teaching workspace" },
+  { id: "LEARNING_RESOURCES", title: "Resources for Learning", copy: "Help teachers prepare thoughtful learning materials, deliver engaging online lessons and create meaningful educational experiences.", image: "islamic-digital-resources", alt: "Study books, lesson notes, a laptop and microphone for online teaching" },
 ] as const;
 
 export const learningPrinciples = [

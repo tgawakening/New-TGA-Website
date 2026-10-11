@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
 import type { AdminDashboardSnapshot, AdminNotificationItem } from "@/services/admin.service";
-import { missionPurposeLabel } from "@/lib/mission-support";
+import { missionPurposeLabel, missionPurposes } from "@/lib/mission-support";
 
 type Props = {
   data: AdminDashboardSnapshot;
@@ -16,7 +16,12 @@ type TabKey = "home" | "orders" | "students" | "scholarships" | "mission" | "gen
 type RegistrationRow = AdminDashboardSnapshot["registrations"][number];
 type StudentRow = AdminDashboardSnapshot["students"][number];
 type FeeWaiverRow = AdminDashboardSnapshot["freeWarriorApplications"][number];
-type GenMuminRow = AdminDashboardSnapshot["genMumin"]["recentRegistrations"][number];
+type DonationRow = AdminDashboardSnapshot["missionSupportDonations"][number];
+
+function donationReceived(row: DonationRow) {
+  if (row.payments.length) return row.payments.filter(p => ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(p.status)).reduce((sum, p) => sum + p.amount - p.refundedAmount, 0);
+  return ["SUCCEEDED", "CONFIRMED"].includes(row.status) ? row.rawAmount : 0;
+}
 
 const currencyFormatter = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -110,6 +115,14 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedFeeWaiverId, setSelectedFeeWaiverId] = useState<string | null>(null);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
+  const [missionPurposeFilter, setMissionPurposeFilter] = useState("ALL");
+  const [missionFrequencyFilter, setMissionFrequencyFilter] = useState("ALL");
+  const [selectedDonationId, setSelectedDonationId] = useState<string | null>(null);
+  const donationDialogRef = useRef<HTMLDialogElement | null>(null);
+  const selectedDonation = data.missionSupportDonations.find(row => row.id === selectedDonationId);
+  useEffect(() => {
+    if (selectedDonationId) donationDialogRef.current?.showModal();
+  }, [selectedDonationId]);
 
   const orderRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -158,10 +171,12 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
     const term = search.trim().toLowerCase();
     return data.missionSupportDonations.filter((row) => {
       if (missionStatusFilter !== "ALL" && row.status !== missionStatusFilter) return false;
+      if (missionPurposeFilter !== "ALL" && row.purpose !== missionPurposeFilter) return false;
+      if (missionFrequencyFilter !== "ALL" && row.frequency !== missionFrequencyFilter) return false;
       if (!term) return true;
-      return [row.fullName, row.email, row.paymentReference ?? "", row.countryName ?? ""].join(" ").toLowerCase().includes(term);
+      return [row.fullName, row.email, row.paymentReference ?? "", row.countryName ?? "", missionPurposeLabel(row.purpose), row.frequency].join(" ").toLowerCase().includes(term);
     });
-  }, [data.missionSupportDonations, missionStatusFilter, search]);
+  }, [data.missionSupportDonations, missionStatusFilter, missionPurposeFilter, missionFrequencyFilter, search]);
 
   const genMuminRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -1003,86 +1018,26 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
 
         {activeTab === "mission" ? (
           <>
-            <div className="ga-admin-filter-row ga-admin-filter-row-single">
-              <select value={missionStatusFilter} onChange={(event) => setMissionStatusFilter(event.target.value)}>
-                <option value="ALL">All support statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="UNDER_REVIEW">Under review</option>
-                <option value="SUCCEEDED">Succeeded</option>
-                <option value="CONFIRMED">Confirmed</option>
-                <option value="FAILED">Failed</option>
-              </select>
+            <section className="ga-admin-donation-summary" aria-label="Donation overview">
+              <article className="ga-admin-card"><span>Supporter contacts</span><strong>{new Set(data.missionSupportDonations.map(row => row.email.toLowerCase())).size}</strong><small>{data.missionSupportDonations.length} donation entries, including unfinished checkouts</small></article>
+              <article className="ga-admin-card"><span>Received after refunds (GBP)</span><strong>{currencyFormatter.format(data.missionSupportDonations.filter(row => row.currency === "GBP").reduce((sum, row) => sum + donationReceived(row), 0) / 100)}</strong><small>Confirmed payments only</small></article>
+              <article className="ga-admin-card"><span>Active monthly giving (GBP)</span><strong>{currencyFormatter.format(data.missionSupportDonations.filter(row => row.currency === "GBP" && row.frequency === "MONTHLY" && row.subscriptionStatus === "active" && !row.cancelAtPeriodEnd).reduce((sum, row) => sum + row.rawAmount, 0) / 100)}</strong><small>Per month; excludes subscriptions scheduled to cancel</small></article>
+              <article className="ga-admin-card"><span>Awaiting payment / review</span><strong>{data.missionSupportDonations.filter(row => ["INITIATED", "PENDING", "UNDER_REVIEW"].includes(row.status)).length}</strong><small>These entries are not confirmed donations</small></article>
+            </section>
+            <div className="ga-admin-card ga-admin-donation-breakdown"><h2>Giving by funding preference</h2><div className="ga-admin-donation-purpose-grid">{missionPurposes.map(purpose => {
+              const rows = data.missionSupportDonations.filter(row => row.purpose === purpose.id);
+              return <div key={purpose.id}><strong>{purpose.label}</strong><p>{rows.length} entries / {rows.filter(row => row.frequency === "MONTHLY").length} monthly</p><span>{currencyFormatter.format(rows.filter(row => row.currency === "GBP").reduce((sum, row) => sum + donationReceived(row), 0) / 100)} received (GBP)</span></div>;
+            })}</div></div>
+            <div className="ga-admin-filter-row">
+              <select aria-label="Donation status" value={missionStatusFilter} onChange={event => setMissionStatusFilter(event.target.value)}><option value="ALL">All payment statuses</option>{["INITIATED", "PENDING", "UNDER_REVIEW", "SUCCEEDED", "CONFIRMED", "FAILED"].map(status => <option key={status} value={status}>{prettify(status)}</option>)}</select>
+              <select aria-label="Funding preference" value={missionPurposeFilter} onChange={event => setMissionPurposeFilter(event.target.value)}><option value="ALL">All funding preferences</option>{missionPurposes.map(purpose => <option key={purpose.id} value={purpose.id}>{purpose.label}</option>)}</select>
+              <select aria-label="Giving frequency" value={missionFrequencyFilter} onChange={event => setMissionFrequencyFilter(event.target.value)}><option value="ALL">All frequencies</option><option value="MONTHLY">Monthly</option><option value="ONE_TIME">One-time</option></select>
             </div>
-
-            <div className="ga-admin-data-table">
-              <div className="ga-admin-table-head">
-                <span>Reference</span>
-                <span>Donor</span>
-                <span>Amount</span>
-                <span>Payment</span>
-                <span>Status</span>
-                <span>Date</span>
-                <span>Actions</span>
-              </div>
-              {missionRows.map((row) => (
-                <article key={row.id} className="ga-admin-table-row">
-                  <div>
-                    <span className="ga-admin-pill">Support</span>
-                    <strong>{row.paymentReference ?? row.id}</strong>
-                    {row.countryName ? <p>{row.countryName}</p> : null}
-                  </div>
-                  <div>
-                    <strong>{row.fullName}</strong>
-                    <p>{row.email}</p>
-                    <p>{row.phone}</p>
-                  </div>
-                  <div>
-                    <strong>{row.amountLabel}</strong>
-                    <p>{row.frequency === "MONTHLY" ? "Monthly" : "One-time"} · {missionPurposeLabel(row.purpose)}</p>
-                    {row.subscriptionStatus ? <p>Subscription: {prettify(row.subscriptionStatus)}</p> : null}
-                    {row.payments.length ? <details><summary>Payment history ({row.payments.length})</summary>{row.payments.map(payment => <div key={payment.id}><p>{currencyFormatter.format(payment.amount / 100)} · {prettify(payment.status)} · {payment.providerReference}{payment.refundedAmount ? ` · refunded ${currencyFormatter.format(payment.refundedAmount / 100)}` : ""}</p>{payment.providerPaymentId && ["SUCCEEDED", "PARTIALLY_REFUNDED"].includes(payment.status) ? <button className="ga-admin-outline-btn is-danger" disabled={submittingRow !== null} onClick={() => void refundMissionPayment(payment.id, payment.amount - payment.refundedAmount)}>Refund remaining balance</button> : null}</div>)}</details> : null}
-                    {row.donorMessage ? <p>{row.donorMessage}</p> : null}
-                  </div>
-                  <div>
-                    <strong>{prettify(row.paymentMethod)}</strong>
-                    {row.hasManualSubmission ? <p>Manual submission attached</p> : <p>Auto confirmation flow</p>}
-                  </div>
-                  <div>
-                    <span className={`ga-admin-status is-${row.status.toLowerCase()}`}>{prettify(row.status)}</span>
-                    {row.adminNote ? <p>{row.adminNote}</p> : null}
-                  </div>
-                  <div>
-                    <strong>{formatDate(row.createdAt)}</strong>
-                  </div>
-                  <div className="ga-admin-actions">
-                    <button
-                      type="button"
-                      className="ga-admin-primary-btn"
-                      disabled={submittingRow === row.id || !row.hasManualSubmission}
-                      onClick={() => void updateMissionDonation(row.id, "CONFIRM")}
-                    >
-                      {submittingRow === row.id ? "Saving..." : "Confirm"}
-                    </button>
-                    <button
-                      type="button"
-                      className="ga-admin-outline-btn"
-                      disabled={submittingRow === row.id || !row.hasManualSubmission}
-                      onClick={() => void updateMissionDonation(row.id, "PENDING")}
-                    >
-                      Pending
-                    </button>
-                    <button
-                      type="button"
-                      className="ga-admin-outline-btn is-danger"
-                      disabled={submittingRow === row.id || !row.hasManualSubmission}
-                      onClick={() => void updateMissionDonation(row.id, "CANCEL")}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <p>{missionRows.length} matching donation entries. Open details for payment history, notes and review actions.</p>
+            <div className="ga-admin-donation-table-wrap"><table className="ga-admin-donation-table"><thead><tr><th>Donor</th><th>Funding preference</th><th>Chosen amount</th><th>Frequency</th><th>Received (net)</th><th>Payment</th><th>Status</th><th>Subscription</th><th>Date / reference</th><th>Details</th></tr></thead><tbody>
+              {missionRows.map(row => <tr key={row.id}><td><strong>{row.fullName}</strong><p>{row.email}</p></td><td>{missionPurposeLabel(row.purpose)}</td><td>{row.amountLabel}</td><td>{row.frequency === "MONTHLY" ? "Monthly" : "One-time"}</td><td>{formatFlexibleCurrency(donationReceived(row) / 100, row.currency)}</td><td>{prettify(row.paymentMethod)}</td><td><span className={"ga-admin-status is-" + row.status.toLowerCase()}>{prettify(row.status)}</span></td><td>{row.subscriptionStatus ? prettify(row.subscriptionStatus) : "Not applicable"}{row.cancelAtPeriodEnd && <p>Cancellation scheduled</p>}</td><td>{formatDate(row.createdAt)}<p>{row.paymentReference ?? row.id}</p></td><td><DetailsButton onClick={() => setSelectedDonationId(row.id)} /></td></tr>)}
+              {!missionRows.length && <tr><td colSpan={10}>No donations match these filters.</td></tr>}
+            </tbody></table></div>
           </>
         ) : null}
 
@@ -1187,6 +1142,24 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
         {message ? <p className="ga-admin-success-banner">{message}</p> : null}
         {error ? <p className="ga-admin-error-banner">{error}</p> : null}
       </section>
+      ) : null}
+
+      {selectedDonation ? (
+        <dialog ref={donationDialogRef} className="ga-admin-donation-dialog" aria-labelledby="donation-detail-title" onClose={() => setSelectedDonationId(null)} onClick={event => { if (event.target === event.currentTarget) donationDialogRef.current?.close(); }}>
+          <section className="ga-admin-modal">
+            <div className="ga-admin-modal-head"><div><p className="ga-admin-kicker">Donation details</p><h3 id="donation-detail-title">{selectedDonation.fullName}</h3></div><button type="button" className="ga-admin-notification-close" onClick={() => donationDialogRef.current?.close()}>Close</button></div>
+            <div className="ga-admin-modal-grid">
+              <p><strong>Email:</strong> {selectedDonation.email}</p><p><strong>Phone:</strong> {selectedDonation.phone}</p><p><strong>Country:</strong> {selectedDonation.countryName ?? "Not provided"}</p><p><strong>Funding preference:</strong> {missionPurposeLabel(selectedDonation.purpose)}</p>
+              <p><strong>Chosen amount:</strong> {selectedDonation.amountLabel}{selectedDonation.frequency === "MONTHLY" ? " each month" : " one-time"}</p><p><strong>Received after refunds:</strong> {formatFlexibleCurrency(donationReceived(selectedDonation) / 100, selectedDonation.currency)}</p>
+              <p><strong>Payment method:</strong> {prettify(selectedDonation.paymentMethod)}</p><p><strong>Status:</strong> {prettify(selectedDonation.status)}</p><p><strong>Reference:</strong> {selectedDonation.paymentReference ?? selectedDonation.id}</p><p><strong>Created:</strong> {formatDate(selectedDonation.createdAt)}</p><p><strong>Paid:</strong> {formatDate(selectedDonation.paidAt)}</p><p><strong>Subscription:</strong> {selectedDonation.subscriptionStatus ? prettify(selectedDonation.subscriptionStatus) : "Not applicable"}</p>
+              {selectedDonation.providerSubscriptionId && <p><strong>Stripe subscription:</strong> {selectedDonation.providerSubscriptionId}</p>}{selectedDonation.cancelAtPeriodEnd && <p><strong>Cancellation:</strong> Scheduled for the end of the billing period</p>}
+            </div>
+            {selectedDonation.donorMessage && <div className="ga-admin-modal-section"><h4>Donor message</h4><p>{selectedDonation.donorMessage}</p></div>}
+            {selectedDonation.adminNote && <div className="ga-admin-modal-section"><h4>Admin note</h4><p>{selectedDonation.adminNote}</p></div>}
+            <div className="ga-admin-modal-section"><h4>Payment history ({selectedDonation.payments.length})</h4>{!selectedDonation.payments.length && <p>No verified payment history recorded.</p>}{selectedDonation.payments.map(payment => <article key={payment.id} className="ga-admin-donation-payment"><strong>{formatFlexibleCurrency(payment.amount / 100, payment.currency)} / {prettify(payment.status)}</strong><p>{payment.providerReference}</p><p>Paid: {formatDate(payment.paidAt)} / Refunded: {formatFlexibleCurrency(payment.refundedAmount / 100, payment.currency)}</p>{payment.receiptUrl?.startsWith("https://") && <a href={payment.receiptUrl} target="_blank" rel="noopener noreferrer">View provider receipt</a>}{payment.providerPaymentId && ["SUCCEEDED", "PARTIALLY_REFUNDED"].includes(payment.status) && <button type="button" className="ga-admin-outline-btn is-danger" disabled={submittingRow !== null} onClick={() => void refundMissionPayment(payment.id, payment.amount - payment.refundedAmount)}>Refund remaining balance</button>}</article>)}</div>
+            {selectedDonation.hasManualSubmission && <div className="ga-admin-actions ga-admin-modal-actions">{(["CONFIRM", "PENDING", "CANCEL"] as const).map(action => <button key={action} type="button" className="ga-admin-outline-btn" disabled={submittingRow !== null} onClick={() => void updateMissionDonation(selectedDonation.id, action)}>{submittingRow === selectedDonation.id ? "Saving..." : prettify(action)}</button>)}</div>}
+          </section>
+        </dialog>
       ) : null}
 
       {selectedStudent ? (

@@ -205,3 +205,33 @@ test('provider webhook signatures reject forged payloads', () => {
   assert.equal(realStripe.webhooks.constructEvent(body, header, 'whsec_local_only').id, 'evt_1');
   assert.throws(() => realStripe.webhooks.constructEvent(body.replace('2500', '5000'), header, 'whsec_local_only'));
 });
+
+
+test('public origin is accepted behind an internal proxy while foreign origins remain blocked', () => {
+  const { isAllowedRequestOrigin } = require('../lib/request-origin.ts');
+  process.env.NEXT_PUBLIC_APP_URL = 'https://www.tga-awakening.com/';
+  const request = origin => new Request('http://internal-app:8080/api/mission-support/stripe-checkout', {headers: {origin}});
+  assert.equal(isAllowedRequestOrigin(request('https://www.tga-awakening.com')), true);
+  assert.equal(isAllowedRequestOrigin(request('https://tga-awakening.com')), true);
+  for (const origin of ['https://evil.example', 'https://www.tga-awakening.com.evil.example', 'http://www.tga-awakening.com', 'null', 'https://www.tga-awakening.com/path']) assert.equal(isAllowedRequestOrigin(request(origin)), false);
+  const forged = new Request('http://internal-app:8080/api/mission-support/stripe-checkout', {headers: {origin:'https://evil.example', 'x-forwarded-host':'evil.example', 'x-forwarded-proto':'https'}});
+  assert.equal(isAllowedRequestOrigin(forged), false);
+  assert.equal(isAllowedRequestOrigin(new Request('http://internal-app:8080/api', {headers:{'sec-fetch-site':'cross-site'}})), false);
+});
+
+test('local same-origin requests work without a configured public URL', () => {
+  const { isAllowedRequestOrigin } = require('../lib/request-origin.ts');
+  delete process.env.NEXT_PUBLIC_APP_URL;
+  assert.equal(isAllowedRequestOrigin(new Request('http://localhost:3000/api', {headers:{origin:'http://localhost:3000'}})), true);
+  assert.equal(isAllowedRequestOrigin(new Request('http://localhost:3000/api', {headers:{origin:'http://localhost:3001'}})), false);
+});
+
+test('checkout route accepts proxied public requests and rejects foreign requests before Stripe', async () => {
+  const { POST } = require('../app/api/mission-support/stripe-checkout/route.ts');
+  Object.assign(process.env, { NEXT_PUBLIC_APP_URL:'https://www.tga-awakening.com/', MISSION_SUPPORT_PAYMENTS_ENABLED:'true', MISSION_SUPPORT_POLICY_URL:'https://www.tga-awakening.com/policies/contribution-terms', MISSION_SUPPORT_ALLOCATION_NOTICE:'Approved allocation notice', DATABASE_URL:'mysql://test:test@localhost/test', RESEND_API_KEY:'re_local_test', EMAIL_FROM:'TGA <test@example.com>' });
+  const request = origin => new Request('http://internal-app:8080/api/mission-support/stripe-checkout', {method:'POST',headers:{origin,'Content-Type':'application/json'},body:JSON.stringify(input)});
+  const blocked = await POST(request('https://evil.example'));
+  assert.equal(blocked.status,403); assert.equal(createdSessions.length,0);
+  const accepted = await POST(request('https://www.tga-awakening.com'));
+  assert.equal(accepted.status,200); assert.equal(createdSessions.length,1);
+});
