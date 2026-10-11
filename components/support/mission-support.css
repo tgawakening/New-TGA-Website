@@ -402,3 +402,30 @@
 @media (prefers-reduced-motion: reduce) {
   .ms-graphic-float, .ms-graphic-orbit, .ms-graphic-trail { animation: none !important; }
 }
+/* Compact giving panel: paired contact fields and horizontal payment choices. */
+.ms-hero-banner .ms-giving { padding: 24px; }
+.ms-giving h2 { font-size: 1.65rem; margin: 8px 0 5px; }
+.ms-giving form { margin-top: 12px; }
+.ms-giving .ms-frequency, .ms-giving .ms-amounts { margin-bottom: 12px; }
+.ms-giving .ms-amounts legend { margin-bottom: 7px; }
+.ms-giving .ms-field { gap: 5px; margin-bottom: 10px; }
+.ms-giving .ms-preference-note { margin-top: -2px; margin-bottom: 12px; }
+.ms-methods { margin: 4px 0 12px; }
+.ms-methods legend { margin-bottom: 7px; font-size: .8rem; }
+.ms-methods > div { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ms-methods label { min-width: 0; min-height: 58px; gap: 8px; padding: 9px; }
+.ms-methods label > span { min-width: 0; }
+.ms-methods label:last-child:nth-child(3) { grid-column: 1 / -1; }
+.ms-methods strong { font-size: .79rem; }
+.ms-methods small { font-size: .7rem; line-height: 1.4; }
+.ms-giving .ms-selection { padding-top: 10px; }
+.ms-giving .ms-submit, .ms-giving .ms-payment-note { margin-top: 9px; }
+.ms-giving .ms-small-note { margin-top: 7px; }
+@media (min-width: 1100px) {
+  .ms-giving .ms-amounts > div { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+  .ms-methods > div:has(> label:nth-child(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ms-methods label:last-child:nth-child(3) { grid-column: auto; }
+}
+@media (max-width: 767px) {
+  .ms-hero-banner .ms-giving { padding: 20px 16px; }
+}
