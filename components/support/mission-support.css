@@ -429,3 +429,22 @@
 @media (max-width: 767px) {
   .ms-hero-banner .ms-giving { padding: 20px 16px; }
 }
+/* Comfortable separation between page sections, independent of form spacing. */
+.mission-support .ms-section { padding-block: 76px; }
+.mission-support .ms-purpose { padding-block: 88px 76px; }
+.ms-country-picker { position: relative; min-width: 0; font-weight: 400; }
+.ms-country-trigger { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 44px; padding: 10px; border: 1px solid #d6deda; border-radius: 4px; background: white; color: #142536; font-size: .88rem; text-align: left; }
+.ms-country-trigger > span:first-of-type { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-country-trigger .ms-country-dial { flex-shrink: 0; font-size: .78rem; }
+.ms-country-picker img { width: 24px; height: 16px; object-fit: cover; border-radius: 2px; flex-shrink: 0; }
+.ms-country-menu { position: absolute; z-index: 30; top: calc(100% + 5px); left: 0; width: min(320px, calc(100vw - 68px)); border: 1px solid #c6d3cb; border-radius: 7px; background: white; box-shadow: 0 12px 30px #14253624; overflow: hidden; }
+.ms-country-search { padding: 8px; border-bottom: 1px solid #e1e7e1; }
+.ms-country-options { max-height: 220px; overflow-y: auto; overscroll-behavior: contain; }
+.ms-country-option { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; padding: 9px 10px; text-align: left; font-size: .82rem; color: #142536; background: white; border-bottom: 1px solid #edf0eb; }
+.ms-country-option:hover, .ms-country-option[aria-pressed="true"] { background: #eff4eb; }
+.ms-country-options > p { padding: 12px; font-size: .8rem; }
+.ms-giving .ms-country-picker > select.ms-sr-only { min-height: 0; padding: 0; border: 0; }
+@media (max-width: 767px) {
+  .mission-support .ms-section { padding-block: 52px; }
+  .mission-support .ms-purpose { padding-block: 62px 52px; }
+}
