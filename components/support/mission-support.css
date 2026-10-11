@@ -431,7 +431,7 @@
 }
 /* Comfortable separation between page sections, independent of form spacing. */
 .mission-support .ms-section { padding-block: 76px; }
-.mission-support .ms-purpose { padding-block: 88px 76px; }
+.mission-support .ms-purpose { margin-top: 48px; padding-block: 88px 76px; }
 .ms-country-picker { position: relative; min-width: 0; font-weight: 400; }
 .ms-country-trigger { display: flex; align-items: center; gap: 7px; width: 100%; min-height: 44px; padding: 10px; border: 1px solid #d6deda; border-radius: 4px; background: white; color: #142536; font-size: .88rem; text-align: left; }
 .ms-country-trigger > span:first-of-type { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -446,5 +446,5 @@
 .ms-giving .ms-country-picker > select.ms-sr-only { min-height: 0; padding: 0; border: 0; }
 @media (max-width: 767px) {
   .mission-support .ms-section { padding-block: 52px; }
-  .mission-support .ms-purpose { padding-block: 62px 52px; }
+  .mission-support .ms-purpose { margin-top: 32px; padding-block: 62px 52px; }
 }
