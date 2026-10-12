@@ -1,0 +1,20 @@
+.ga-waitlist { width: min(590px, calc(100% - 32px)); max-height: calc(100dvh - 40px); margin: auto; padding: 30px; border: 1px solid #d4c49c; border-radius: 16px; color: #142536; background: #fffdf7; box-shadow: 0 24px 80px #0006; overflow: auto; font-family: Arial, sans-serif; }
+.ga-waitlist::backdrop { background: #071224b8; backdrop-filter: blur(4px); }
+.ga-waitlist-close { position: absolute; top: 8px; right: 10px; width: 40px; height: 40px; font-size: 26px; border-radius: 6px; }
+.ga-waitlist h2 { font-family: Georgia, serif; font-size: 1.8rem; line-height: 1.2; margin: 10px 24px 12px 0; }
+.ga-waitlist p { font-size: .88rem; line-height: 1.6; margin-bottom: 16px; }
+.ga-waitlist .ga-waitlist-eyebrow { font-size: .73rem; color: #876925; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 0; }
+.ga-waitlist-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ga-waitlist form > label, .ga-waitlist-row > label, .ga-waitlist-country { display: grid; gap: 6px; margin-bottom: 14px; min-width: 0; font-size: .8rem; font-weight: 600; }
+.ga-waitlist input:not([type=checkbox]), .ga-waitlist select, .ga-waitlist textarea { min-width: 0; width: 100%; min-height: 44px; border: 1px solid #d6deda; border-radius: 5px; padding: 10px; font-size: .88rem; font-weight: 400; background: white; }
+.ga-waitlist textarea { resize: vertical; }
+.ga-waitlist-country { align-content: start; }
+.ga-waitlist .ga-waitlist-consent { display: flex; align-items: flex-start; gap: 10px; font-weight: 400; line-height: 1.6; }
+.ga-waitlist-consent input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 3px; }
+.ga-waitlist-submit { width: 100%; min-height: 46px; background: #173748; color: white; border-radius: 6px; padding: 12px; font-weight: 700; }
+.ga-waitlist-submit:disabled { opacity: .65; cursor: wait; }
+.ga-waitlist :is(button, input, select, textarea):focus-visible { outline: 3px solid #287b91; outline-offset: 2px; }
+.ga-waitlist .ga-waitlist-error { color: #912e28; background: #fff0ed; padding: 10px; border-radius: 5px; }
+.ga-waitlist .ga-waitlist-note { color: #536271; font-size: .75rem; overflow-wrap: anywhere; }
+.ga-cfa-cta:disabled { cursor: default; box-shadow: none; }
+@media (max-width: 479px) { .ga-waitlist { padding: 24px 18px; } .ga-waitlist-row { grid-template-columns: 1fr; gap: 0; } }

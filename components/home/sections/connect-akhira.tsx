@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { DivineBondsWaitlist } from "@/components/home/divine-bonds-waitlist";
 import { fadeInUp } from "@/components/home/sections/shared";
 
 const CONNECT_PHASES = [
@@ -10,8 +11,8 @@ const CONNECT_PHASES = [
     tab: "Divine Bonds",
     icon: "♡",
     phase: "PHASE 1",
-    status: "Active",
-    statusTone: "active",
+    status: "Coming Soon",
+    statusTone: "soon",
     title: "Divine Bonds",
     subtitle: "Marriage & Nikah",
     arabic: "الروابط الإلهية",
@@ -23,7 +24,7 @@ const CONNECT_PHASES = [
       "Marriage Preparation Courses",
       "Family-Involved Process",
     ],
-    cta: "Find Your Soulmate",
+    cta: "Join Waitlist",
     ctaTone: "gold",
     stats: [
       { value: "4", label: "Phases" },
@@ -52,7 +53,7 @@ const CONNECT_PHASES = [
       "Child Development Milestones",
       "Islamic Tarbiyah Methods",
     ],
-    cta: "Join Waitlist",
+    cta: "Coming Soon",
     ctaTone: "muted",
     stats: [
       { value: "40+", label: "Curriculum" },
@@ -68,8 +69,8 @@ const CONNECT_PHASES = [
     tab: "Homeschooling",
     icon: "✦",
     phase: "PHASE 3",
-    status: "Active",
-    statusTone: "active",
+    status: "Coming Soon",
+    statusTone: "soon",
     title: "Homeschooling",
     subtitle: "Faith-Grounded Learning at Home",
     arabic: "التعليم المنزلي",
@@ -81,8 +82,8 @@ const CONNECT_PHASES = [
       "Core Subjects & Hands-On Projects",
       "Life Skills & Independent Learning",
     ],
-    cta: "Explore Homeschooling",
-    ctaTone: "gold",
+    cta: "Coming Soon",
+    ctaTone: "muted",
     stats: [
       { value: "Family", label: "Guided Learning" },
       { value: "Flexible", label: "Learning Pace" },
@@ -121,9 +122,9 @@ const CONNECT_PHASES = [
     cta: "Coming Soon",
     ctaTone: "muted",
     stats: [
-      { value: "2025", label: "Planned" },
+      { value: "Soon", label: "Planned" },
       { value: "20+", label: "Features" },
-      { value: "Q2 2025", label: "Beta" },
+      { value: "To come", label: "Launch" },
     ],
     leadsTo: "Global Ummah Network",
     ayahArabic: "وَاعْتَصِمُوا بِحَبْلِ اللَّهِ جَمِيعًا وَلَا تَفَرَّقُوا",
@@ -136,9 +137,10 @@ type ConnectPhaseId = (typeof CONNECT_PHASES)[number]["id"];
 export function ConnectAkhiraTimeline() {
   const [activeId, setActiveId] = useState<ConnectPhaseId>(CONNECT_PHASES[0].id);
   const [pauseLoop, setPauseLoop] = useState(false);
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
 
   useEffect(() => {
-    if (pauseLoop) return;
+    if (pauseLoop || waitlistOpen) return;
     const timer = window.setInterval(() => {
       setActiveId((prev) => {
         const currentIndex = CONNECT_PHASES.findIndex((phase) => phase.id === prev);
@@ -147,7 +149,7 @@ export function ConnectAkhiraTimeline() {
       });
     }, 6200);
     return () => window.clearInterval(timer);
-  }, [pauseLoop]);
+  }, [pauseLoop, waitlistOpen]);
 
   const activeIndex = CONNECT_PHASES.findIndex((phase) => phase.id === activeId);
   const active = CONNECT_PHASES[activeIndex] ?? CONNECT_PHASES[0];
@@ -216,6 +218,8 @@ export function ConnectAkhiraTimeline() {
 
             <button
               type="button"
+              disabled={active.id !== "divine-bonds"}
+              onClick={() => setWaitlistOpen(true)}
               className={`ga-cfa-cta ${active.ctaTone === "muted" ? "ga-cfa-cta-muted" : "ga-cfa-cta-gold"}`}
             >
               {active.cta}
@@ -311,6 +315,7 @@ export function ConnectAkhiraTimeline() {
           </div>
         </motion.article>
       </div>
+      {waitlistOpen && <DivineBondsWaitlist onClose={() => setWaitlistOpen(false)} />}
     </section>
   );
 }
