@@ -43,10 +43,15 @@ export function CoursePreview({ country }: { country: string }) {
   }
   return (
     <div className={styles.previewColumn}>
-      <h3 className={styles.previewHeading}>Watch the course introduction</h3>
-      <p className={styles.languageHelp}>
-        Choose English or Urdu to hear what the course explores.
-      </p>
+      <div className={styles.reelHeading}>
+        <span className={styles.reelMarker} aria-hidden>
+          ▶
+        </span>
+        <div>
+          <p className={styles.eyebrow}>Inside the course</p>
+          <h3 className={styles.previewHeading}>A different lens.</h3>
+        </div>
+      </div>
       <div
         className={styles.languageSelector}
         role="group"
@@ -64,83 +69,161 @@ export function CoursePreview({ country }: { country: string }) {
           </button>
         ))}
       </div>
-      <figure className={styles.video}>
-        <div style={{ aspectRatio: "9 / 16" }}>
-          {playingLanguage === language ? (
-            <video
-              ref={player}
-              key={language}
-              controls
-              autoPlay
-              playsInline
-              preload="none"
-              width={720}
-              height={1280}
-              poster={video.poster.src}
-              aria-label={video.title}
-            >
-              <source src={video.src} type="video/mp4" />
-              Your browser does not support video.{" "}
-              <a href={video.src}>Download the overview</a>.
-            </video>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setPlayingLanguage(language)}
-              aria-label={`Play ${video.title}`}
-            >
-              <Image
-                src={video.poster.src}
-                alt={video.poster.alt}
-                fill
-                sizes="(max-width: 760px) 80vw, 340px"
-              />
-              <span className={styles.play} aria-hidden>
-                ▶
-              </span>
-              <span className={styles.videoLabel}>Watch the overview</span>
-            </button>
-          )}
-        </div>
-        <figcaption>{video.title}</figcaption>
-      </figure>
+      <div className={styles.reelStage}>
+        <figure className={styles.video}>
+          <div style={{ aspectRatio: "9 / 16" }}>
+            {playingLanguage === language ? (
+              <video
+                ref={player}
+                key={language}
+                controls
+                autoPlay
+                playsInline
+                preload="none"
+                width={720}
+                height={1280}
+                poster={video.poster.src}
+                aria-label={video.title}
+              >
+                <source src={video.src} type="video/mp4" />
+                Your browser does not support video.{" "}
+                <a href={video.src}>Download the overview</a>.
+              </video>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPlayingLanguage(language)}
+                aria-label={`Play ${video.title}`}
+              >
+                <Image
+                  src={video.poster.src}
+                  alt={video.poster.alt}
+                  fill
+                  sizes="(max-width: 760px) 80vw, 340px"
+                />
+                <span className={styles.play} aria-hidden>
+                  ▶
+                </span>
+                <span className={styles.videoLabel}>
+                  Discover the course <span aria-hidden>↗</span>
+                </span>
+              </button>
+            )}
+          </div>
+          <figcaption>
+            <span>{language === "en" ? "English" : "اردو"}</span>
+            <span>COURSE FILM · {language === "en" ? "00:50" : "00:51"}</span>
+          </figcaption>
+        </figure>
+      </div>
+      <p className={styles.srOnly}>
+        Video language is independent of your fee country.
+      </p>
     </div>
   );
 }
 
-const explanations = [
-  "Begin with the precise question and identify the report and its source. Separate the account from claims made about it.",
-  "Examine how the report was transmitted and compare its wording. Ask what the evidence can and cannot establish.",
-  "Read the account in its geographical, social and historical setting before considering present-day comparisons.",
-  "Compare scholarly interpretations and the reasons offered for them. Keep differences of interpretation visible.",
-  "Discuss conclusions alongside uncertainty and the limits of comparison. A modern reflection does not establish historical equivalence.",
+const methodSteps = [
+  {
+    label: "Report",
+    title: "The report",
+    icon: "M4 5h7a3 3 0 0 1 3 3v13a4 4 0 0 0-4-2H4z M14 8a3 3 0 0 1 3-3h7v14h-6a4 4 0 0 0-4 2",
+    text: "Every account begins with a source. The precise report stays distinct from later claims about it.",
+  },
+  {
+    label: "Transmission",
+    title: "Transmission & wording",
+    icon: "M8 8h8v8H8z M3 3h4v4H3z M17 17h4v4h-4z M7 7l2 2 M16 16l2 2 M17 3h4v4h-4z M16 8l2-2",
+    text: "Transmission and variations in wording shape how a report is assessed.",
+  },
+  {
+    label: "Context",
+    title: "Historical context",
+    icon: "M12 22s8-7 8-13a8 8 0 1 0-16 0c0 6 8 13 8 13z M12 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6",
+    text: "Geography, community and circumstances form the setting of an account.",
+  },
+  {
+    label: "Perspectives",
+    title: "Scholarly interpretations",
+    icon: "M3 5h8v10H7l-4 4z M14 8h8v10h-4l-4 4z",
+    text: "Scholarly readings can differ. Their reasoning belongs alongside their conclusions.",
+  },
+  {
+    label: "Conclusions",
+    title: "Conclusions & limits",
+    icon: "M4 4h16v17H4z M8 9l2 2 5-5 M8 16h8",
+    text: "Evidence, uncertainty and the limits of modern comparisons remain visible together.",
+  },
 ];
 export function TeachingApproach() {
   const [selected, setSelected] = useState(0);
+  const step = methodSteps[selected];
   return (
-    <div className={styles.teachingStepper}>
-      <ol className={styles.approach}>
-        {approach.map((step, i) => (
-          <li key={step}>
-            <button
-              type="button"
-              aria-expanded={selected === i}
-              aria-controls={`method-step-${i}`}
-              onClick={() => setSelected(i)}
-            >
-              <span>0{i + 1}</span>
-              {step}
-            </button>
-            <div
-              id={`method-step-${i}`}
-              hidden={selected !== i}
-              className={styles.stepExplanation}
-            >
-              {explanations[i]}
-            </div>
-          </li>
+    <div className={styles.methodExperience}>
+      <div
+        className={styles.methodRail}
+        role="group"
+        aria-label="Source-reading method"
+      >
+        {methodSteps.map((item, i) => (
+          <button
+            key={item.label}
+            type="button"
+            aria-pressed={selected === i}
+            aria-controls="method-panel"
+            aria-label={approach[i]}
+            onClick={() => setSelected(i)}
+          >
+            <span className={styles.methodIcon} aria-hidden>
+              <svg
+                viewBox="0 0 28 28"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d={item.icon} />
+              </svg>
+            </span>
+            <span className={styles.methodNumber}>0{i + 1}</span>
+            <span>{item.label}</span>
+          </button>
         ))}
-      </ol>
+      </div>
+      <div
+        id="method-panel"
+        className={styles.methodPanel}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span className={styles.methodWatermark} aria-hidden>
+          0{selected + 1}
+        </span>
+        <div>
+          <p className={styles.eyebrow}>
+            A closer reading · 0{selected + 1} / 05
+          </p>
+          <h3>{step.title}</h3>
+          <p>{step.text}</p>
+        </div>
+        <div className={styles.methodNavigation}>
+          <button
+            type="button"
+            aria-label="Previous reading step"
+            onClick={() => setSelected((selected + 4) % 5)}
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            aria-label="Next reading step"
+            onClick={() => setSelected((selected + 1) % 5)}
+          >
+            →
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1735,6 +1735,382 @@
 .plan h3 small {
   font-size: 16px;
 }
-.page .readMore { font-size:14px !important; }
-.topic .readMore { font-size:15px !important; }
-.plan .readMore { margin-top:0; padding-top:8px; }
+.page .readMore {
+  font-size: 14px !important;
+}
+.topic .readMore {
+  font-size: 15px !important;
+}
+.plan .readMore {
+  margin-top: 0;
+  padding-top: 8px;
+}
+
+/* Spacious visual rhythm and complementary olive pricing. */
+.section {
+  padding-block: 104px;
+}
+.page :global(#course-details) {
+  padding-bottom: 88px;
+}
+.page :global(#fees) {
+  padding-block: 100px;
+  background: #e4e5d5;
+}
+.closing {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  padding: 100px 0;
+}
+.closing::before {
+  background-position: center;
+  background-size: cover;
+}
+.closing .container {
+  position: relative;
+}
+.page :global(#fees) .plan {
+  background: #f8f5e9;
+  border-color: #a1a48b;
+}
+.page :global(#fees) .annual {
+  background: #f0ead7;
+  border-top-color: #866319;
+}
+.loopGallery {
+  overflow: hidden;
+  padding-bottom: 4px;
+}
+.loopGallery :global(.swiper-wrapper) {
+  align-items: stretch;
+}
+.loopGallery :global(.swiper-slide) {
+  height: auto;
+  display: flex;
+}
+.loopGallery .topic {
+  width: 100%;
+}
+.topicExperience {
+  min-width: 0;
+}
+.galleryControls button {
+  min-width: 44px;
+}
+.previewColumn {
+  max-width: 348px;
+  position: relative;
+}
+.reelHeading {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.reelHeading .eyebrow {
+  margin-bottom: 5px !important;
+  font-size: 10px;
+}
+.reelMarker {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #958453;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #735719;
+}
+.reelHeading .previewHeading {
+  text-align: left;
+  font:
+    italic 34px/1.1 Georgia,
+    serif;
+  margin: 0 !important;
+}
+.reelStage {
+  padding: 13px;
+  background: #20271c;
+  border: 1px solid #8a9078;
+  box-shadow: 14px 14px 0 #c8cbb640;
+}
+.reelStage .video > div {
+  border: 0;
+  box-shadow: none;
+}
+.reelStage .video button img {
+  object-fit: contain;
+}
+.reelStage .play {
+  width: 76px;
+  height: 76px;
+  background: #e0b64e;
+  box-shadow: 0 0 0 12px #14161135;
+  transition:
+    transform 220ms,
+    box-shadow 220ms;
+}
+.reelStage .video button:hover .play,
+.reelStage .video button:focus-visible .play {
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 0 0 18px #14161140;
+}
+.reelStage .videoLabel {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 15px;
+  font-size: 13px;
+  background: #141611df;
+}
+.reelStage .video figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #e7e9dc;
+  padding-top: 10px;
+  margin: 0;
+  font-size: 12px;
+}
+.reelStage .video figcaption > span:last-child {
+  font-size: 9px;
+  letter-spacing: 1.1px;
+}
+.previewColumn .languageSelector {
+  display: flex;
+  margin: 24px 0 0;
+  padding: 5px;
+  background: #e2ddca;
+  border: 1px solid #a9ab97;
+  border-radius: 32px;
+}
+.previewColumn .languageSelector button {
+  border: 0;
+  border-radius: 28px;
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  background: transparent;
+  color: #34382e;
+}
+.previewColumn .languageSelector button[aria-pressed="true"] {
+  background: #20271c;
+  color: #f5efdf;
+  box-shadow: 0 2px 8px #14161125;
+}
+.methodExperience {
+  margin-top: 40px;
+}
+.methodRail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  position: relative;
+}
+.methodRail::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 33px;
+  height: 1px;
+  background: #a5aa91;
+}
+.methodRail button {
+  position: relative;
+  border: 0;
+  background: transparent;
+  padding: 0 8px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #41463a;
+  font-size: 15px;
+  min-height: 130px;
+}
+.methodIcon {
+  width: 66px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #a5aa91;
+  border-radius: 50%;
+  background: var(--ivory);
+  transition:
+    background 220ms,
+    transform 220ms;
+}
+.methodIcon svg {
+  width: 29px;
+  height: 29px;
+}
+.methodNumber {
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+.methodRail button[aria-pressed="true"] {
+  color: #59400d;
+  font-weight: 700;
+}
+.methodRail button[aria-pressed="true"] .methodIcon {
+  background: #293020;
+  color: #e5bd60;
+  border-color: #293020;
+  box-shadow: 0 0 0 5px #d9ad4a35;
+}
+.methodRail button:hover .methodIcon {
+  transform: translateY(-3px);
+}
+.methodPanel {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 38px 42px;
+  background: #e4e5d5;
+  border: 1px solid #b5b8a2;
+  min-height: 226px;
+}
+.methodPanel > div:first-of-type {
+  position: relative;
+  max-width: 760px;
+  padding-right: 70px;
+}
+.methodPanel h3 {
+  font:
+    32px/1.2 Georgia,
+    serif;
+  margin-bottom: 16px;
+}
+.methodPanel p:not(.eyebrow) {
+  font-size: 17px;
+  line-height: 1.8;
+  color: #41463a;
+}
+.methodWatermark {
+  position: absolute;
+  right: 36px;
+  top: -30px;
+  font:
+    italic 220px/1 Georgia,
+    serif;
+  color: #c8cbb1;
+  opacity: 0.48;
+  pointer-events: none;
+}
+.methodNavigation {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  z-index: 1;
+}
+.methodNavigation button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #8e957b;
+  background: var(--ivory);
+  color: #20271c;
+}
+@media (max-width: 1050px) and (min-width: 761px) {
+  .section {
+    padding-block: 80px;
+  }
+  .page :global(#course-details) {
+    padding-bottom: 72px;
+  }
+  .page :global(#fees) {
+    padding-block: 80px;
+  }
+  .closing {
+    padding-block: 80px;
+  }
+  .methodRail button {
+    font-size: 13px;
+  }
+}
+@media (max-width: 760px) {
+  .section {
+    padding-block: 64px;
+  }
+  .page :global(#course-details) {
+    padding-bottom: 60px;
+  }
+  .page :global(#fees) {
+    padding-block: 64px;
+  }
+  .closing {
+    padding: 72px 0;
+    margin: 0;
+  }
+  .previewColumn {
+    max-width: 320px;
+  }
+  .reelHeading {
+    margin-bottom: 20px;
+  }
+  .reelStage {
+    padding: 10px;
+    box-shadow: 9px 9px 0 #c8cbb640;
+  }
+  .methodRail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 6px;
+  }
+  .methodRail::before {
+    display: none;
+  }
+  .methodRail button {
+    min-height: 110px;
+    font-size: 13px;
+    padding-inline: 0;
+  }
+  .methodIcon {
+    width: 54px;
+    height: 54px;
+  }
+  .methodPanel {
+    display: block;
+    padding: 28px 24px;
+    min-height: 270px;
+    margin-top: 12px;
+  }
+  .methodPanel > div:first-of-type {
+    padding-right: 0;
+  }
+  .methodPanel h3 {
+    font-size: 29px;
+  }
+  .methodPanel p:not(.eyebrow) {
+    font-size: 16px;
+  }
+  .methodWatermark {
+    right: 10px;
+    top: 0;
+    font-size: 170px;
+  }
+  .methodNavigation {
+    margin-top: 24px;
+    justify-content: flex-end;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reelStage .play,
+  .methodIcon {
+    transition: none;
+  }
+  .methodRail button:hover .methodIcon {
+    transform: none;
+  }
+}
+.previewColumn .languageSelector {
+  margin: 0 0 20px;
+}
+.page :global(#fees) {
+  background: #dfe3cf;
+  border-block: 1px solid #b9c0a4;
+}
