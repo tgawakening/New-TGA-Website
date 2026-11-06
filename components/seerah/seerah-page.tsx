@@ -161,11 +161,12 @@ function TopicGallery() {
             >
               {topic.artwork ? (
                 <Image
-                  src={topic.artwork.src}
+                  src={topic.artwork.src.includes(",") ? encodeURI(topic.artwork.src).replaceAll(",", "%2C") : topic.artwork.src}
                   alt={topic.artwork.alt}
                   width={topic.artwork.width}
                   height={topic.artwork.height}
                   style={{ objectPosition: topic.artwork.position || "center" }}
+                  unoptimized={topic.artwork.src.includes(",")}
                   loading="lazy"
                   sizes="(max-width: 760px) 85vw, 33vw"
                 />

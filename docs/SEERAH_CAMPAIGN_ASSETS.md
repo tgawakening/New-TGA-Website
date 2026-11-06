@@ -13,7 +13,7 @@ Both original Git LFS objects were retrieved and probed as real playable H.264/A
 | `public/Seerah new/Comp 1.mp4` | English | 50.25 seconds | 284,857,208 bytes | `/videos/sirah-preview-en.mp4` — 8,348,385 bytes |
 | `public/Seerah new/Comp 1r2.mp4` | Urdu | 51.32 seconds | 290,110,980 bytes | `/videos/sirah-preview-ur.mp4` — 8,137,804 bytes |
 
-The delivery copies retain the complete 9:16 frame at 720×1280, H.264/AAC, with fast-start MP4 metadata. They are ordinary Git files, so hosting does not depend on downloading LFS objects during the build. The original LFS assets remain untouched. Separate extracted JPEG thumbnails are used; no made-up captions are attached. Playback uses native controls and click-to-play, and no video is downloaded before play. Changing language pauses/removes the previous player. Pakistan suggests Urdu; other countries suggest English. An explicit language choice is remembered independently from country.
+The delivery copies retain the complete 9:16 frame at 720×1280, H.264/AAC, with fast-start MP4 metadata. They are ordinary Git files, so hosting does not depend on downloading LFS objects during the build. The original LFS assets remain untouched and their SHA-256 hashes match their committed pointers. Separate extracted JPEG thumbnails are used; no made-up captions are attached. Playback uses native controls and click-to-play, and no video is downloaded before play. Changing language pauses/removes the previous player. Pakistan suggests Urdu; other countries suggest English. An explicit language choice is remembered independently from country.
 
 Recreate a delivery copy with installed FFmpeg (English example):
 
@@ -32,6 +32,7 @@ All primary course registration actions link to the existing `/seerah/register` 
 - Browser checks passed at 360, 390, 768, 1024 and 1440 px: no page overflow, keyboard-accessible exploration/stepper, registration preferences, independent/persistent language, and WCAG A/AA checks in the main content.
 - Both delivery videos reached `canplay` in Chromium and preserved their portrait dimensions. All ten topic images decoded successfully; hero, thumbnails and homepage artwork were checked in the browser.
 - Five campaign/asset tests and 24 database workflow tests passed. The latter include pre-migration readiness without changing legacy records.
+- Production-mode local HTTP checks returned `206 video/mp4` with correct content ranges for both delivery copies. All supplied images decoded in the production-mode browser; the comma-named council PNG uses a percent-encoded direct URL because Next’s image optimizer/static URL handling rejects an unescaped comma.
 - Public-host verification must separately confirm an MP4 response (`ftyp`, video content type), byte-range support and playback after deployment. A GitHub push alone is not proof that DigitalOcean finished deploying.
 
 Screenshots: [desktop](sirah-registration/campaign-1440.png), [mobile](sirah-registration/campaign-390.png).

@@ -1,3 +1,5 @@
+> Historical initial review notes. The current campaign artwork and registration behaviour are documented in [SEERAH_CAMPAIGN_ASSETS.md](SEERAH_CAMPAIGN_ASSETS.md) and [SIRAH_REGISTRATION_WORKFLOW.md](SIRAH_REGISTRATION_WORKFLOW.md). Asset-related pending items below have since been resolved.
+
 # Sīrah | Beyond Chronology — review version
 
 The `/seerah` route replaces the previous campaign content while reusing the shared Header and Footer. It has six sections, scoped charcoal/ivory/gold styling, locally hosted Montserrat (OFL licence included), a manual/swipe/keyboard topic gallery, inline topic details, native curriculum/FAQ expanders, editable country selection and a mobile action bar.
