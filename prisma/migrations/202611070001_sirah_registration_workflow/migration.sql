@@ -133,4 +133,3 @@ ALTER TABLE `SirahPaymentEvent` ADD CONSTRAINT `SirahPaymentEvent_orderId_fkey` 
 
 -- AddForeignKey
 ALTER TABLE `SirahNotification` ADD CONSTRAINT `SirahNotification_orderId_fkey` FOREIGN KEY (`orderId`) REFERENCES `SirahOrder`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
