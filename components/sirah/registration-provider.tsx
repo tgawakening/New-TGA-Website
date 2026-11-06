@@ -7,9 +7,28 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { SirahRegistrationForm } from "./registration-form";
+import dynamic from "next/dynamic";
+import type { RegistrationControls } from "./registration-form";
+const SirahRegistrationForm = dynamic(
+  () =>
+    import("./registration-form").then(
+      (module) => module.SirahRegistrationForm,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p style={{ padding: 28 }} role="status">
+        Loading registration…
+      </p>
+    ),
+  },
+);
 import styles from "./registration.module.css";
-type Selection = { country?: string; plan?: "MONTHLY" | "ANNUAL" };
+type Selection = {
+  country?: string;
+  plan?: "MONTHLY" | "ANNUAL";
+  replacePreferences?: boolean;
+};
 const RegistrationContext = createContext<(selection?: Selection) => void>(
   () => {},
 );
@@ -20,16 +39,43 @@ export function SirahRegistrationProvider({
   children: ReactNode;
 }) {
   const [selection, setSelection] = useState<Selection>({});
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+  const lastSelection = useRef<Selection>({});
   const dialog = useRef<HTMLDialogElement>(null);
   const previous = useRef<HTMLElement | null>(null);
+  const controls = useRef<RegistrationControls>(null);
   useEffect(() => {
     if (!open) return;
     previous.current = document.activeElement as HTMLElement;
     const old = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const viewport = window.visualViewport;
+    const measure = () => {
+      dialog.current?.style.setProperty(
+        "--sirah-viewport-height",
+        `${viewport?.height || window.innerHeight}px`,
+      );
+      dialog.current?.style.setProperty(
+        "--sirah-viewport-top",
+        `${viewport?.offsetTop || 0}px`,
+      );
+    };
+    const resize = () => {
+      measure();
+      requestAnimationFrame(() => {
+        const target = document.activeElement;
+        if (target instanceof HTMLElement && dialog.current?.contains(target))
+          target.scrollIntoView({ block: "nearest" });
+      });
+    };
+    measure();
     dialog.current?.showModal();
+    viewport?.addEventListener("resize", resize);
+    viewport?.addEventListener("scroll", measure);
     return () => {
+      viewport?.removeEventListener("resize", resize);
+      viewport?.removeEventListener("scroll", measure);
       document.body.style.overflow = old;
       previous.current?.focus();
     };
@@ -37,12 +83,27 @@ export function SirahRegistrationProvider({
   return (
     <RegistrationContext.Provider
       value={(choice) => {
-        setSelection(choice || {});
+        const next = choice || {};
+        const changes: Selection = {};
+        if (
+          next.replacePreferences ||
+          next.country !== lastSelection.current.country
+        )
+          changes.country = next.country;
+        if (
+          next.plan &&
+          (next.replacePreferences || next.plan !== lastSelection.current.plan)
+        )
+          changes.plan = next.plan;
+        controls.current?.setPreferences(changes);
+        lastSelection.current = next;
+        setSelection(next);
+        setMounted(true);
         setOpen(true);
       }}
     >
       {children}
-      {open && (
+      {mounted && (
         <dialog
           ref={dialog}
           className={styles.dialog}
@@ -62,8 +123,12 @@ export function SirahRegistrationProvider({
               ×
             </button>
             <SirahRegistrationForm
+              controlRef={controls}
               initialCountry={selection.country}
               initialPlan={selection.plan}
+              requireBillingCountry={Boolean(
+                selection.country && !/^[A-Z]{2}$/.test(selection.country),
+              )}
             />
           </div>
         </dialog>

@@ -285,3 +285,264 @@
     transition: none !important;
   }
 }
+/* Shared compact registration surface. Password fields stay in memory only. */
+.experience {
+  max-width: 680px;
+  padding: 28px;
+  line-height: 1.6;
+}
+.experience h2 {
+  font:
+    400 28px/1.2 Georgia,
+    serif;
+  margin: 0 0 8px;
+  padding-right: 24px;
+}
+.experience .eyebrow {
+  margin: 0 0 12px;
+  font-size: 10px;
+}
+.experience .introduction {
+  margin: 0;
+  color: #4b5142;
+  font-size: 14px;
+}
+.experience .signIn {
+  margin: 10px 0 22px;
+  font-size: 13px;
+}
+.compactForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.experience .compactForm label {
+  margin: 0;
+  font-size: 13px;
+  gap: 6px;
+  min-width: 0;
+}
+.experience input,
+.experience select {
+  min-height: 46px;
+  font-size: 16px;
+  padding: 10px 11px;
+}
+.experience input:focus,
+.experience select:focus {
+  border-color: #735719;
+}
+.experience .fieldError {
+  margin: 2px 0 0;
+  color: #8c2721;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+.planChoice {
+  grid-column: 1/-1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 16px;
+  padding-top: 4px;
+  align-items: end;
+}
+.pricePreview {
+  padding: 10px 13px;
+  border: 1px solid #b8ae8a;
+  background: #e9e3cf;
+  min-height: 66px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.pricePreview strong {
+  font:
+    400 22px/1.3 Georgia,
+    serif;
+}
+.pricePreview span {
+  font-size: 12px;
+  color: #414639;
+}
+.experience .submitRegistration {
+  grid-column: 1/-1;
+  min-height: 48px;
+  font-size: 14px;
+  margin-top: 4px;
+}
+.phoneField {
+  position: relative;
+  min-width: 0;
+}
+.phoneControl {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #8b8c7b;
+  background: #fffdf5;
+  border-radius: 3px;
+  min-width: 0;
+}
+.phoneControl:focus-within {
+  outline: 2px solid #735719;
+  outline-offset: 2px;
+}
+.phoneControl[data-invalid="true"] {
+  border-color: #922f2a;
+}
+.experience .phoneControl input {
+  border: 0;
+  min-width: 0;
+  flex: 1;
+  padding-left: 8px;
+  background: transparent;
+  outline: none;
+}
+.experience .phoneControl .callingSelector {
+  border: 0;
+  border-right: 1px solid #c1c0ac;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.callingSelector > span:first-child {
+  font-size: 18px;
+}
+.phonePicker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: min(340px, calc(100vw - 64px));
+  margin-top: 6px;
+  z-index: 30;
+  border: 1px solid #8a8d76;
+  padding: 10px;
+  background: #fffdf5;
+  box-shadow: 0 12px 35px #14161130;
+}
+.phonePicker > input {
+  position: sticky;
+  top: 0;
+  margin-bottom: 8px;
+}
+.phoneOptions {
+  max-height: 210px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.experience .phoneOptions button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  text-align: left;
+  padding: 9px 8px;
+  font-size: 13px;
+  min-height: 44px;
+}
+.phoneOptions button > span:nth-child(2) {
+  flex: 1;
+}
+.phoneOptions button[data-highlighted="true"],
+.phoneOptions button[aria-selected="true"] {
+  background: #e9e3cf;
+}
+.dialog {
+  width: min(670px, calc(100vw - 32px));
+  max-height: 90dvh;
+  border-radius: 8px;
+  overflow: auto;
+}
+.dialogInner {
+  padding: 0;
+}
+.dialog .experience {
+  padding: 28px;
+}
+.close {
+  position: sticky;
+  top: 10px;
+  margin: 10px 10px -46px auto;
+  display: block;
+  z-index: 40;
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 24px;
+  border-color: transparent;
+  border-radius: 50%;
+}
+.dialog input,
+.dialog select {
+  scroll-margin-block: 72px;
+}
+.page > a {
+  max-width: 680px;
+}
+@media (max-width: 600px) {
+  .dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+  .experience,
+  .dialog .experience {
+    padding: 24px 20px;
+  }
+  .experience h2 {
+    font-size: 26px;
+    padding-right: 24px;
+  }
+  .compactForm {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .planChoice {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .pricePreview {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+  }
+  .phonePicker {
+    width: 100%;
+  }
+  .experience input,
+  .experience select {
+    font-size: 16px;
+  }
+}
+.dialog {
+  position: fixed;
+  top: calc(
+    var(--sirah-viewport-top, 0px) + var(--sirah-viewport-height, 100dvh) * 0.5
+  );
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-height: min(90dvh, calc(var(--sirah-viewport-height, 100dvh) - 16px));
+}
+@media (max-width: 600px) {
+  .dialog {
+    max-height: calc(
+      var(--sirah-viewport-height, 100dvh) - 16px - env(safe-area-inset-bottom)
+    );
+  }
+}
+.phoneField > label {
+  margin-bottom: 6px !important;
+}
+.experience .phoneControl input {
+  min-height: 44px;
+}
