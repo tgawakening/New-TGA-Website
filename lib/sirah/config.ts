@@ -2,10 +2,16 @@ import "server-only";
 import { currencyScale, type SirahMethod, type SirahPlan } from "./catalog";
 export const PAYMENT_SUPPORT_URL = "https://wa.me/923262055614";
 
+export function courseGroupAudience(country: string) {
+  const pakistan = process.env.SIRAH_PAKISTAN_COUNTRY_CODE || "PK";
+  return country.toUpperCase() === pakistan.toUpperCase()
+    ? "PAKISTAN"
+    : "INTERNATIONAL";
+}
 export function getGroupInvitation(country: string) {
   const suppliedAudience = process.env.SIRAH_SUPPLIED_GROUP_AUDIENCE;
   const value =
-    country === "PK"
+    courseGroupAudience(country) === "PAKISTAN"
       ? process.env.SIRAH_PAKISTAN_GROUP_URL ||
         (suppliedAudience === "PAKISTAN"
           ? process.env.SIRAH_SUPPLIED_GROUP_URL || ""

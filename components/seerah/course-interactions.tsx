@@ -43,6 +43,10 @@ export function CoursePreview({ country }: { country: string }) {
   }
   return (
     <div className={styles.previewColumn}>
+      <h3 className={styles.previewHeading}>Watch the course introduction</h3>
+      <p className={styles.languageHelp}>
+        Choose English or Urdu to hear what the course explores.
+      </p>
       <div
         className={styles.languageSelector}
         role="group"
@@ -60,9 +64,6 @@ export function CoursePreview({ country }: { country: string }) {
           </button>
         ))}
       </div>
-      <p className={styles.languageHelp}>
-        Choose your video language independently of your fee country.
-      </p>
       <figure className={styles.video}>
         <div style={{ aspectRatio: "9 / 16" }}>
           {playingLanguage === language ? (

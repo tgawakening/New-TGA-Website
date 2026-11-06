@@ -1203,3 +1203,59 @@ test("rollout readiness detects an unmigrated schema without changing existing r
   }
   assert.equal(await sirahSchemaAvailable(), true);
 });
+
+test("paid international invitations stay separate from public groups and use the stored country after first monthly or full upfront settlement", async () => {
+  const { courseGroupAudience } = await import("../lib/sirah/config");
+  process.env.SIRAH_INTERNATIONAL_GROUP_URL =
+    "https://chat.whatsapp.com/SyntheticPaidInternational";
+  assert.equal(courseGroupAudience("PK"), "PAKISTAN");
+  for (const code of ["GB", "US", "IN", "AE", "DE"])
+    assert.equal(courseGroupAudience(code), "INTERNATIONAL");
+  assert.equal(
+    getGroupInvitation("PK"),
+    null,
+    "a public Pakistan enquiry group is not a paid course destination",
+  );
+  for (const plan of ["MONTHLY", "ANNUAL"] as const) {
+    const result = await stripeOrder(plan);
+    const order = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: result.orderId },
+    });
+    assert.equal(canAccessSirah(order), false);
+    assert.equal(
+      JSON.stringify(await publicSirahOrder(order.id, result.userId)).includes(
+        "SyntheticPaidInternational",
+      ),
+      false,
+    );
+    await verifySirahStripeSession(
+      order.id,
+      "cs_synthetic",
+      fakeStripe(order).client,
+    );
+    const paid = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    assert.equal(paid.paidCount, 1);
+    assert.equal(canAccessSirah(paid), true);
+    assert.equal(
+      getGroupInvitation(paid.countryCode),
+      "https://chat.whatsapp.com/SyntheticPaidInternational",
+    );
+    assert.equal(
+      JSON.stringify(await publicSirahOrder(order.id, result.userId)).includes(
+        "SyntheticPaidInternational",
+      ),
+      false,
+    );
+    // Keep the second fixture's provider identities distinct without changing settled financial rows.
+    await prisma.sirahOrder.update({
+      where: { id: order.id },
+      data: {
+        providerOrderId: null,
+        checkoutToken: null,
+        providerSubscriptionId: null,
+      },
+    });
+  }
+});

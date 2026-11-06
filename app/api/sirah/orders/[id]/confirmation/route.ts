@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { sirahUser, sirahResponseError, privateJson } from "@/lib/sirah/http";
-import { getGroupInvitation } from "@/lib/sirah/config";
+import { getGroupInvitation, PAYMENT_SUPPORT_URL } from "@/lib/sirah/config";
 import { canAccessSirah } from "@/services/sirah-confirmation.service";
 import {
   ownedSirahOrder,
@@ -29,8 +29,9 @@ export async function GET(
       courseTitle: SIRAH_TITLE,
       reference: order.reference,
       groupUrl,
+      contactUrl: groupUrl ? null : PAYMENT_SUPPORT_URL,
       message: groupUrl
-        ? "Your enrolment is confirmed. You may join your assigned course group."
+        ? "Join your course WhatsApp group for class updates."
         : "Your enrolment is confirmed. Your course group invitation will follow.",
     });
   } catch (error) {

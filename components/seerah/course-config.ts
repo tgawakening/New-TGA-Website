@@ -365,3 +365,15 @@ export function activeCampaign(now = Date.now()) {
     ? "orientation"
     : "enrolment";
 }
+
+// Public enquiry/update groups: visitors may join before registering.
+// These are independent of the protected, post-payment course invitations.
+export const publicCourseGroups = {
+  pakistan: "https://chat.whatsapp.com/Hhs5PieBzen7YvYnkLF9Fo",
+  overseas: "https://chat.whatsapp.com/Ghr9XgXpncIIFYuWcs45oI",
+};
+export function publicCourseGroup(country: string) {
+  return country === "PK"
+    ? publicCourseGroups.pakistan
+    : publicCourseGroups.overseas;
+}
