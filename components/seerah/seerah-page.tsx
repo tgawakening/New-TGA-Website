@@ -1,6 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, A11y } from "swiper/modules";
+import type { Swiper as SwiperInstance } from "swiper";
+import { useReducedMotion } from "framer-motion";
+import "swiper/css";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Header, Footer } from "@/components/home/sections";
 import {
@@ -56,23 +61,53 @@ function PrimaryAction({
 function TopicGallery() {
   const gallery = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(0);
-  const [atEnd, setAtEnd] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [swiper, setSwiper] = useState<SwiperInstance | null>(null);
+  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    const node = gallery.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { threshold: 0.15 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!swiper || swiper.destroyed) return;
+    if (
+      reduced !== false ||
+      paused ||
+      hovered ||
+      focused ||
+      !visible ||
+      expanded !== null
+    )
+      swiper.autoplay.stop();
+    else swiper.autoplay.start();
+  }, [swiper, reduced, paused, hovered, focused, visible, expanded]);
   function move(direction: number) {
-    const container = gallery.current;
-    if (!container) return;
-    const cards = container.querySelectorAll<HTMLElement>("article");
-    const next = Math.max(0, Math.min(topics.length - 1, current + direction));
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    container.scrollTo({
-      left: cards[next].offsetLeft - cards[0].offsetLeft,
-      behavior: reduced ? "instant" : "smooth",
-    });
+    if (!swiper) return;
+    if (direction > 0) swiper.slideNext(reduced ? 0 : 320);
+    else swiper.slidePrev(reduced ? 0 : 320);
   }
   return (
-    <>
+    <div
+      ref={gallery}
+      className={styles.topicExperience}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget))
+          setFocused(false);
+      }}
+    >
       <div className={styles.galleryHeading}>
         <div>
           <p className={styles.eyebrow}>03 / Questions you’ll study</p>
@@ -83,15 +118,39 @@ function TopicGallery() {
           </h2>
         </div>
         <div className={styles.galleryControls}>
-          <span aria-live="polite" aria-atomic="true">
+          <span aria-live={focused ? "polite" : "off"} aria-atomic="true">
             {String(current + 1).padStart(2, "0")} /{" "}
             {String(topics.length).padStart(2, "0")}
           </span>
           <button
             type="button"
+            disabled={reduced === true}
+            title={reduced ? "Autoplay is off with reduced motion" : undefined}
+            aria-label={paused ? "Play topic carousel" : "Pause topic carousel"}
+            aria-pressed={paused}
+            onClick={() => setPaused(!paused)}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden
+            >
+              {paused ? (
+                <path d="M4 2l9 6-9 6z" />
+              ) : (
+                <>
+                  <rect x="4" y="2" width="3" height="12" />
+                  <rect x="10" y="2" width="3" height="12" />
+                </>
+              )}
+            </svg>
+          </button>
+          <button
+            type="button"
             aria-label="Previous topic"
             aria-controls="topic-gallery"
-            disabled={current === 0}
             onClick={() => move(-1)}
           >
             ←
@@ -100,7 +159,6 @@ function TopicGallery() {
             type="button"
             aria-label="Next topic"
             aria-controls="topic-gallery"
-            disabled={atEnd}
             onClick={() => move(1)}
           >
             →
@@ -113,95 +171,91 @@ function TopicGallery() {
       </p>
       <div
         id="topic-gallery"
-        ref={gallery}
-        className={styles.gallery}
         role="region"
         aria-label="Course topic gallery"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (event.target !== event.currentTarget) return;
-          if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+          if (
+            event.target === event.currentTarget &&
+            ["ArrowRight", "ArrowLeft"].includes(event.key)
+          ) {
             event.preventDefault();
             move(event.key === "ArrowRight" ? 1 : -1);
           }
         }}
-        onScroll={() => {
-          const container = gallery.current;
-          if (!container) return;
-          const cards = Array.from(
-            container.querySelectorAll<HTMLElement>("article"),
-          );
-          const nearest = cards.reduce(
-            (best, card, i) =>
-              Math.abs(
-                card.offsetLeft - cards[0].offsetLeft - container.scrollLeft,
-              ) <
-              Math.abs(
-                cards[best].offsetLeft -
-                  cards[0].offsetLeft -
-                  container.scrollLeft,
-              )
-                ? i
-                : best,
-            0,
-          );
-          setCurrent(nearest);
-          setAtEnd(
-            container.scrollLeft + container.clientWidth >=
-              container.scrollWidth - 4,
-          );
-        }}
       >
-        {topics.map((topic, i) => (
-          <article
-            key={topic.title}
-            className={styles.topic}
-            aria-label={`Topic ${i + 1} of ${topics.length}`}
-          >
-            <div
-              className={`${styles.topicArt} ${topic.artwork?.clean ? styles.cleanArt : ""}`}
-            >
-              {topic.artwork ? (
-                <Image
-                  src={
-                    topic.artwork.src.includes(",")
-                      ? encodeURI(topic.artwork.src).replaceAll(",", "%2C")
-                      : topic.artwork.src
-                  }
-                  alt={topic.artwork.alt}
-                  width={topic.artwork.width}
-                  height={topic.artwork.height}
-                  style={{ objectPosition: topic.artwork.position || "center" }}
-                  unoptimized={topic.artwork.src.includes(",")}
-                  loading="lazy"
-                  sizes="(max-width: 760px) 85vw, 33vw"
-                />
-              ) : (
-                <div className={styles.topicType} aria-hidden="true">
-                  <span>SĪRAH / BEYOND CHRONOLOGY</span>
-                  <strong>{String(i + 1).padStart(2, "0")}</strong>
-                  <span>LAW · POWER · LEADERSHIP · MOVEMENT</span>
-                </div>
-              )}
-            </div>
-            <div className={styles.topicBody}>
-              <p className={styles.topicTheme}>{topic.theme}</p>
-              <h3>{topic.title}</h3>
-              <p className={styles.question}>{topic.question}</p>
-              <p>{topic.focus}</p>
-              <button
-                className={styles.readMore}
-                type="button"
-                aria-expanded={expanded === i}
-                aria-controls={`topic-detail-${i}`}
-                onClick={() => setExpanded(expanded === i ? null : i)}
+        <Swiper
+          className={styles.loopGallery}
+          modules={[Autoplay, A11y]}
+          loop
+          speed={320}
+          slidesPerView={1.13}
+          spaceBetween={18}
+          breakpoints={{
+            761: { slidesPerView: 2, spaceBetween: 20 },
+            1100: { slidesPerView: 3, spaceBetween: 22 },
+          }}
+          autoplay={{ delay: 4600, disableOnInteraction: false }}
+          onSwiper={setSwiper}
+          onSlideChange={(instance) => setCurrent(instance.realIndex)}
+        >
+          {topics.map((topic, i) => (
+            <SwiperSlide key={topic.title}>
+              <article
+                data-topic={i}
+                className={styles.topic}
+                aria-label={`Topic ${i + 1} of ${topics.length}`}
               >
-                {expanded === i ? "Close question −" : "Explore this question"}
-                <span className={styles.srOnly}> about {topic.title}</span>
-              </button>
-            </div>
-          </article>
-        ))}
+                <div
+                  className={`${styles.topicArt} ${topic.artwork?.clean ? styles.cleanArt : ""}`}
+                >
+                  {topic.artwork ? (
+                    <Image
+                      src={
+                        topic.artwork.src.includes(",")
+                          ? encodeURI(topic.artwork.src).replaceAll(",", "%2C")
+                          : topic.artwork.src
+                      }
+                      alt={topic.artwork.alt}
+                      width={topic.artwork.width}
+                      height={topic.artwork.height}
+                      style={{
+                        objectPosition: topic.artwork.position || "center",
+                      }}
+                      unoptimized={topic.artwork.src.includes(",")}
+                      loading="lazy"
+                      sizes="(max-width: 760px) 85vw, 33vw"
+                    />
+                  ) : (
+                    <div className={styles.topicType} aria-hidden="true">
+                      <span>SĪRAH / BEYOND CHRONOLOGY</span>
+                      <strong>{String(i + 1).padStart(2, "0")}</strong>
+                      <span>LAW · POWER · LEADERSHIP · MOVEMENT</span>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.topicBody}>
+                  <p className={styles.topicTheme}>{topic.theme}</p>
+                  <h3>{topic.title}</h3>
+                  <p className={styles.question}>{topic.question}</p>
+                  <p>{topic.focus}</p>
+                  <button
+                    className={styles.readMore}
+                    type="button"
+                    aria-expanded={expanded === i}
+                    aria-controls={`topic-detail-${i}`}
+                    onClick={() => setExpanded(expanded === i ? null : i)}
+                  >
+                    {expanded === i
+                      ? "Close question −"
+                      : "Explore this question"}
+                    <span className={styles.srOnly}> about {topic.title}</span>
+                  </button>
+                </div>
+              </article>
+            </SwiperSlide>
+          ))}
+        </Swiper>
       </div>
       {topics.map((topic, i) => (
         <div
@@ -224,15 +278,15 @@ function TopicGallery() {
             onClick={() => {
               setExpanded(null);
               gallery.current
-                ?.querySelectorAll<HTMLButtonElement>("article button")
-                [i]?.focus();
+                ?.querySelector<HTMLButtonElement>(`[data-topic="${i}"] button`)
+                ?.focus();
             }}
           >
             Close detail −
           </button>
         </div>
       ))}
-    </>
+    </div>
   );
 }
 
@@ -831,15 +885,17 @@ function SeerahContent({
                   </details>
                 </div>
               </div>
-              <div className={styles.closing}>
-                <p className={styles.eyebrow}>Study with purpose</p>
-                <h2>
-                  Learn from the life.
-                  <br />
-                  <em>Reflect on your responsibility.</em>
-                </h2>
-                <PrimaryAction placement="closing" country={country} />
-              </div>
+            </div>
+          </section>
+          <section className={styles.closing} aria-labelledby="closing-heading">
+            <div className={styles.container}>
+              <p className={styles.eyebrow}>Study with purpose</p>
+              <h2 id="closing-heading">
+                Learn from the life.
+                <br />
+                <em>Reflect on your responsibility.</em>
+              </h2>
+              <PrimaryAction placement="closing" country={country} />
             </div>
           </section>
         </main>
