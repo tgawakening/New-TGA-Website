@@ -128,3 +128,34 @@ test("checkout clicks are distinct from confirmations; old, duplicate and invali
     false,
   );
 });
+
+test("campaign artwork and both self-contained portrait web videos are available", () => {
+  const { courseConfig, topics } = fixture().load("course-config");
+  const root = path.resolve(scriptDirectory, "..");
+  assert.equal(courseConfig.hero.src, "/Seerah new/hero banner page.png");
+  assert.equal(
+    courseConfig.socialImage.src,
+    "/Seerah new/hero banner home.png",
+  );
+  assert.equal(topics.length, 10);
+  assert.equal(new Set(topics.map((topic) => topic.artwork.src)).size, 10);
+  for (const topic of topics) {
+    assert.ok(fs.existsSync(path.join(root, "public", topic.artwork.src)));
+    assert.ok(topic.reflection.length > 20);
+  }
+  assert.deepEqual(
+    Array.from(courseConfig.videos, (video) => video.language),
+    ["en", "ur"],
+  );
+  for (const video of courseConfig.videos) {
+    const data = fs.readFileSync(path.join(root, "public", video.src));
+    assert.equal(
+      data.toString("ascii", 4, 8),
+      "ftyp",
+      "must be real MP4, not an LFS pointer",
+    );
+    assert.ok(data.length > 1000000 && data.length < 20000000);
+    assert.equal(video.width / video.height, 9 / 16);
+    assert.ok(fs.existsSync(path.join(root, "public", video.poster.src)));
+  }
+});

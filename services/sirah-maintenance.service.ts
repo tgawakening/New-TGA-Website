@@ -1,3 +1,4 @@
+import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import "server-only";
 import { type SirahTerms } from "@/lib/sirah/config";
 import { prisma } from "@/lib/prisma";
@@ -9,6 +10,8 @@ import {
 } from "./sirah-notifications.service";
 import { auditSirah } from "./sirah-registration.service";
 export async function maintainSirahOrders() {
+  if (!(await sirahSchemaAvailable()))
+    return { available: false, reason: "Database migration pending" };
   const now = new Date();
   const ended = await prisma.sirahOrder.findMany({
     where: {

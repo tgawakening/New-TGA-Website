@@ -1,3 +1,5 @@
+import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
+import { countries } from "countries-list";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -15,9 +17,14 @@ export const metadata: Metadata = {
 export default async function SirahRegisterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ resume?: string }>;
+  searchParams: Promise<{ resume?: string; country?: string; plan?: string }>;
 }) {
-  const resume = (await searchParams).resume;
+  const params = await searchParams;
+  const resume = params.resume;
+  const country = params.country?.toUpperCase();
+  const initialCountry =
+    country && Object.hasOwn(countries, country) ? country : undefined;
+  const initialPlan = params.plan === "ANNUAL" ? "ANNUAL" : "MONTHLY";
   if (resume) {
     const user = await getCurrentUser();
     if (!user || user.status !== "ACTIVE") redirect("/login");
@@ -26,7 +33,7 @@ export default async function SirahRegisterPage({
         id: resume,
         userId: user.id,
         course: { slug: "seerah-course" },
-        sirahOrder: null,
+        ...((await sirahSchemaAvailable()) ? { sirahOrder: null } : {}),
       },
       select: { id: true },
     });
@@ -36,7 +43,11 @@ export default async function SirahRegisterPage({
   return (
     <main className={`${styles.page} ${sirahFont.variable}`}>
       <Link href="/seerah">← Back to the course</Link>
-      <SirahRegistrationForm />
+      <SirahRegistrationForm
+        initialCountry={initialCountry}
+        initialPlan={initialPlan}
+        requireBillingCountry={Boolean(params.country && !initialCountry)}
+      />
     </main>
   );
 }

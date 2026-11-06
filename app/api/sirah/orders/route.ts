@@ -1,3 +1,4 @@
+import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser, attachSessionCookie } from "@/lib/auth/session";
@@ -18,6 +19,11 @@ import {
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
+    if (!(await sirahSchemaAvailable()))
+      throw new SirahError(
+        "Registration setup is being completed. Please enquire on WhatsApp while registration is unavailable.",
+        503,
+      );
     const parsed = sirahRegistrationSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(
@@ -57,6 +63,7 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     const user = await sirahUser();
+    if (!(await sirahSchemaAvailable())) return privateJson({ orders: [] });
     const rows = await prisma.sirahOrder.findMany({
       where: { userId: user.id, course: { slug: SIRAH_SLUG } },
       select: {

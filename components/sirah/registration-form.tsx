@@ -98,7 +98,12 @@ function Terms({
 export function SirahRegistrationForm({
   initialCountry,
   initialPlan,
-}: { initialCountry?: string; initialPlan?: SirahPlan } = {}) {
+  requireBillingCountry = false,
+}: {
+  initialCountry?: string;
+  initialPlan?: SirahPlan;
+  requireBillingCountry?: boolean;
+} = {}) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
@@ -115,13 +120,20 @@ export function SirahRegistrationForm({
   const [phoneCountry, setPhoneCountry] = useState<CountryCode>("GB");
   const [phone, setPhone] = useState("");
   const [billing, setBilling] = useState(
-    initialCountry && initialCountry in countries ? initialCountry : "GB",
+    requireBillingCountry
+      ? ""
+      : initialCountry && initialCountry in countries
+        ? initialCountry
+        : "GB",
   );
   const [billingEdited, setBillingEdited] = useState(
-    Boolean(initialCountry && initialCountry in countries),
+    Boolean(
+      requireBillingCountry || (initialCountry && initialCountry in countries),
+    ),
   );
   const [search, setSearch] = useState("");
   const [plan, setPlan] = useState<SirahPlan>(initialPlan || "MONTHLY");
+  const [available, setAvailable] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -138,6 +150,10 @@ export function SirahRegistrationForm({
     void api("/api/sirah/session")
       .then(async (result) => {
         if (!active) return;
+        if (result.available === false) {
+          setAvailable(false);
+          return;
+        }
         setUser(result.user);
         if (result.user) {
           setName(result.user.fullName);
@@ -387,6 +403,20 @@ export function SirahRegistrationForm({
       </p>
       {!ready ? (
         <p role="status">Loading registration…</p>
+      ) : !available ? (
+        <div className={styles.notice} role="status">
+          <p>
+            Registration setup is being completed. You can enquire with the team
+            while registration is unavailable.
+          </p>
+          <a
+            href="https://wa.me/923262055614"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Enquire on WhatsApp ↗
+          </a>
+        </div>
       ) : !order ? (
         <>
           {orders.length > 0 && (
@@ -528,12 +558,16 @@ export function SirahRegistrationForm({
               Country of residence / billing country
               <select
                 aria-label="Country of residence / billing country"
+                required
                 value={billing}
                 onChange={(event) => {
                   setBilling(event.target.value);
                   setBillingEdited(true);
                 }}
               >
+                <option value="" disabled>
+                  Select your billing country
+                </option>
                 {residenceCountries.map((c) => (
                   <option value={c.code} key={c.code}>
                     {c.name}
@@ -613,6 +647,9 @@ export function SirahRegistrationForm({
                   )
                 }
               >
+                <option value="" disabled>
+                  Select your billing country
+                </option>
                 {residenceCountries.map((c) => (
                   <option value={c.code} key={c.code}>
                     {c.name}

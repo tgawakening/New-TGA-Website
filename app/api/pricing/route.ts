@@ -1,3 +1,4 @@
+import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
           id: input.data.legacyRegistrationId,
           userId: user.id,
           course: { slug: SIRAH_SLUG },
-          sirahOrder: null,
+          ...((await sirahSchemaAvailable()) ? { sirahOrder: null } : {}),
         },
         include: { payment: true },
       });

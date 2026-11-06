@@ -1186,3 +1186,20 @@ test("a queued invitation is not delivered to a student after their payment is r
     1,
   );
 });
+
+test("rollout readiness detects an unmigrated schema without changing existing records", async () => {
+  const { sirahSchemaAvailable } = await import("../lib/sirah/readiness");
+  assert.equal(await sirahSchemaAvailable(), true);
+  await prisma.$executeRawUnsafe(
+    "RENAME TABLE `SirahOrder` TO `SirahOrder_rollout_test`",
+  );
+  try {
+    assert.equal(await sirahSchemaAvailable(), false);
+    assert.equal(await prisma.user.count(), 0);
+  } finally {
+    await prisma.$executeRawUnsafe(
+      "RENAME TABLE `SirahOrder_rollout_test` TO `SirahOrder`",
+    );
+  }
+  assert.equal(await sirahSchemaAvailable(), true);
+});

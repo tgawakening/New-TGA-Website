@@ -4,7 +4,7 @@ This update adds the current 12-month programme alongside the existing student, 
 
 ## Student experience
 
-- The hero, fee cards, closing section and mobile action open an accessible native registration dialog. `/seerah/register` uses the same form and endpoints. The old inline popup is retained only for an authenticated, owned historical `?resume=` order.
+- The hero, fee cards, closing section and mobile action link to `/seerah/register`, carrying validated country/plan preferences. The shared registration form and endpoints are retained. The old inline popup is retained only for an authenticated, owned historical `?resume=` order.
 - New registration creates an account through the existing bcrypt/session system, or reuses the signed-in account. An existing anonymous email is directed to sign in. No passwords are persisted in browser storage, notification payloads, receipts, exports or payment metadata. The historical form also strips passwords from saved browser state.
 - Registration records an unpaid application. It does not claim payment, confirmed enrolment, or phone/WhatsApp ownership verification. A normalized phone is validated on both client and server using `libphonenumber-js/max`; phone country and editable billing country are separate. Shared `+1` countries require explicit selection.
 - Billing country, plan and method are repriced on the server before checkout. The browser cannot supply payable amounts, currency or payment status. Locked current orders contain integer minor units, market, plan, method, pricing version, batch and approved terms snapshot. In-flight or settled amounts cannot be edited.
@@ -77,8 +77,8 @@ New settings are documented as empty/disabled fields in `.env.example`:
 ## Validation and changed-file summary
 
 - Additive migrations applied successfully to a fresh, isolated MySQL 8.4 test database.
-- `npm run test:seerah`: all 4 existing campaign/currency/analytics regression tests passed.
-- `npm run test:sirah-workflow`: all 23 real-MySQL workflow tests passed on Node 22, with controlled Stripe/PayPal protocol responses and real Stripe signature verification. They cover phone mismatch/shared-prefix validation, catalogue precision/fallbacks, browser tampering, signed-in reuse, concurrent manual approval, private receipt validation and replacement, provider success/pending/duplicates, twelve-payment boundaries, cancellation/refund, missing invitations, failed-email retry, historical price preservation and out-of-order settlement/refund handling.
+- `npm run test:seerah`: all 5 campaign/assets/currency/analytics regression tests passed.
+- `npm run test:sirah-workflow`: all 24 real-MySQL workflow tests passed on Node 22, with controlled Stripe/PayPal protocol responses and real Stripe signature verification. They cover phone mismatch/shared-prefix validation, catalogue precision/fallbacks, browser tampering, signed-in reuse, concurrent manual approval, private receipt validation and replacement, provider success/pending/duplicates, twelve-payment boundaries, cancellation/refund, missing invitations, failed-email retry, historical price preservation and out-of-order settlement/refund handling.
 - Browser checks cover 360, 390, 768, 1024 and 1440 px, modal focus restoration, scroll/overflow, accessible controls, actual HTTP registration/manual submission/admin approval, protected download, pending invitation, dashboard and existing-account sign-in.
 - Actual gateway sandbox charges, recurring second charges for every enabled currency and live Resend delivery have not been performed because corresponding credentials/configuration were unavailable. Controlled protocol tests are not represented as real sandbox transactions.
 - `npm run lint`, TypeScript checking (`npx tsc --noEmit`) and `npm run build` passed. Production migrations, payment activation and deployment are separate from the repository implementation.
@@ -86,3 +86,17 @@ New settings are documented as empty/disabled fields in `.env.example`:
 Main changes: `lib/sirah/*` (catalogue, phone, terms/route configuration, validators and auth helpers); `services/sirah-*` (registration, financial verification, receipts, notifications, admin and maintenance); `/api/sirah/*` and `/api/admin/sirah/*`; shared `components/sirah/*`; standalone `/seerah/register`; landing-page registration actions; admin/student dashboard links; legacy compatibility guards; Resend idempotency support; additive Prisma schema/migration; configuration template and workflow tests.
 
 Registration previews: [mobile](sirah-registration/registration-390.png) and [desktop](sirah-registration/registration-1440.png). These show the initial empty form, with no customer data.
+
+
+## DigitalOcean activation steps (tga-app)
+
+The code push triggers the existing main-branch auto-deployment. That does **not** apply Prisma migrations or approve payment routes. No automatic migration is added to build/start: the existing deployment guide notes that a database created by `db push` may need a verified baseline.
+
+1. Open **tga-app → new-tga-website → Console** for the component connected to this repository. Keep the existing production `DATABASE_URL` and TLS certificate settings. Confirm the attached database is the intended cluster `db-ro-mysql-lon1-65163`; its name alone does not establish write access. Migration credentials need CREATE/ALTER/INDEX/REFERENCES privileges; regular runtime credentials need the app's normal read/write privileges.
+2. Run `npm run sirah:database:status`. This is read-only and prints missing registration tables and migration-history status, without credentials or customer records. Take the normal database backup/snapshot before a production migration.
+3. If migration history is present with no unresolved migration, run `npm run prisma:migrate:deploy`. This applies **all pending repository migrations**, including the five additive Sīrah tables. If history is absent on an existing database, stop and compare/baseline its actual schema first. Never reset production or mark an unmatched migration as applied.
+4. Run `npm run sirah:database:status` again; expect all five tables present and the Sīrah migration completed. Reload `/seerah/register`. Before migration the route shows a setup/enquiry message, while the campaign page and legacy dashboard paths remain usable.
+5. In **Settings → new-tga-website → Environment Variables**, add the approved values from the configuration table above as **runtime** variables. Store secrets encrypted. Leave pending terms unset, live payments false and Pakistan recurring verification false until confirmed. Config changes must be deployed/restarted to take effect.
+6. Confirm regional WhatsApp mapping separately. No supplied private group is assigned to a region by assumption. Verify receipts, admin review, notification delivery and actual provider sandbox flows on the deployed host before enabling live routes. Configure the authenticated daily maintenance call.
+
+Current session: production DigitalOcean credentials and database connection have not been exposed to the execution environment, so the production migration has not been run. Repository deployment and database/payment activation must be reported separately.

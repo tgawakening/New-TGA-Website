@@ -50,3 +50,6 @@ GitHub write access was restored on 7 November 2026. The implementation is pushe
 ## Current registration update
 
 The registration workflow supersedes the initial WhatsApp-only primary action. Hero, fees, closing and mobile actions now open the shared current-course registration form, with the orientation remaining separate while current. See [SIRAH_REGISTRATION_WORKFLOW.md](SIRAH_REGISTRATION_WORKFLOW.md) for authoritative server pricing, private receipts, admin review, historical-order compatibility, configuration gates and migration requirements. Campaign artwork/video work remains pending separately.
+
+
+The supplied campaign assets are now integrated; see [campaign artwork and delivery verification](SEERAH_CAMPAIGN_ASSETS.md). Registration actions now link to the shared registration route, as requested in the latest asset brief.

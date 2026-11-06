@@ -7,12 +7,14 @@ export type Artwork = {
   width: number;
   height: number;
   clean?: boolean;
+  position?: string;
 };
 export type CourseVideo = {
   title: string;
   src: string;
   poster: Artwork;
-  captions: string;
+  captions?: string;
+  language: "en" | "ur";
   width: number;
   height: number;
 };
@@ -39,6 +41,7 @@ export type Topic = {
   question: string;
   focus: string;
   detail: string;
+  reflection: string;
   artwork: Artwork | null;
 };
 
@@ -82,11 +85,47 @@ export const courseConfig: {
       { time: "8 PM", region: "Pakistan" },
     ],
   },
-  // Insert the supplied SECOND banner here once its original file is available.
-  hero: null,
-  socialImage: null,
-  // The existing video promotes the previous course. Do not publish it for this campaign.
-  videos: [],
+  hero: {
+    src: "/Seerah new/hero banner page.png",
+    alt: "A learner entering a stone doorway in warm evening light",
+    width: 1672,
+    height: 941,
+  },
+  socialImage: {
+    src: "/Seerah new/hero banner home.png",
+    alt: "A learner approaching an ancient doorway",
+    width: 1942,
+    height: 809,
+  },
+  // Web copies derived from the verified 4K Git LFS originals; full vertical frame retained.
+  videos: [
+    {
+      language: "en",
+      title: "Course overview · English",
+      src: "/videos/sirah-preview-en.mp4",
+      poster: {
+        src: "/videos/sirah-preview-en.jpg",
+        alt: "English course overview",
+        width: 720,
+        height: 1280,
+      },
+      width: 720,
+      height: 1280,
+    },
+    {
+      language: "ur",
+      title: "Course overview · اردو",
+      src: "/videos/sirah-preview-ur.mp4",
+      poster: {
+        src: "/videos/sirah-preview-ur.jpg",
+        alt: "Urdu course overview",
+        width: 720,
+        height: 1280,
+      },
+      width: 720,
+      height: 1280,
+    },
+  ],
   essentials: ["12-month programme", "Live teaching", "Discussion & Q&A"],
   curriculum: [],
   instructor: null,
@@ -143,7 +182,16 @@ export const topics: Topic[] = [
     focus: "Explore education, character and community formation.",
     detail:
       "Examine accounts of early gatherings and consider the relationship between learning, personal formation and a growing community. Read reports in their historical setting before drawing comparisons with today.",
-    artwork: null,
+    reflection:
+      "How might learning shape the responsibilities you carry in your community?",
+    artwork: {
+      src: "/Seerah new/Learner at the ancient doorway-2.png",
+      alt: "A learner at an ancient stone doorway",
+      width: 1586,
+      height: 992,
+      clean: true,
+      position: "center",
+    },
   },
   {
     title: "Ṣafwān ibn Umayyah",
@@ -153,7 +201,16 @@ export const topics: Topic[] = [
       "Examine generosity, trust and influence in their historical context.",
     detail:
       "Compare the wording and context of reports about generosity and changing relationships. Discuss what a report supports, what remains uncertain and how scholarly interpretations differ.",
-    artwork: null,
+    reflection:
+      "What helps trust develop when people have different starting points?",
+    artwork: {
+      src: "/Seerah new/Desert caravan at golden hour-8.png",
+      alt: "A desert caravan in golden light",
+      width: 1586,
+      height: 992,
+      clean: true,
+      position: "center",
+    },
   },
   {
     title: "Al-Aḥzāb",
@@ -162,7 +219,16 @@ export const topics: Topic[] = [
     focus: "Consider preparation, geography and collective effort.",
     detail:
       "Read accounts of preparation alongside their geographical and historical context. Consider coordination, shared responsibility and the limits of applying a past event to a different situation.",
-    artwork: null,
+    reflection:
+      "How do you prepare and share responsibility under pressure today?",
+    artwork: {
+      src: "/Seerah new/Dusty Trench Preparations-6.png",
+      alt: "People preparing a trench together",
+      width: 1586,
+      height: 992,
+      clean: true,
+      position: "center",
+    },
   },
   {
     title: "Mercy and accountability",
@@ -171,7 +237,16 @@ export const topics: Topic[] = [
     focus: "Examine how context shapes the interpretation of a decision.",
     detail:
       "Identify the report, examine its transmission and wording, and compare scholarly interpretations. Distinguish what the source says from conclusions drawn about it.",
-    artwork: null,
+    reflection:
+      "What context would you need before judging a difficult decision?",
+    artwork: {
+      src: "/Seerah new/Backlit cloaked figure on rocky ridge-5.png",
+      alt: "A backlit cloaked figure on a rocky ridge",
+      width: 1586,
+      height: 992,
+      clean: true,
+      position: "center",
+    },
   },
   {
     title: "Tribal alliances",
@@ -181,7 +256,16 @@ export const topics: Topic[] = [
       "Explore relationships and obligations within their historical setting.",
     detail:
       "Study reports about alliances in the social setting of their time. Consider the obligations described by the sources and the limits of comparisons with present-day institutions.",
-    artwork: null,
+    reflection:
+      "What obligations should you consider before entering a partnership?",
+    artwork: {
+      src: "/Seerah new/Golden Caravan Crossing Dusty Horizons-1.png",
+      alt: "A caravan crossing dusty horizons",
+      width: 1586,
+      height: 992,
+      clean: true,
+      position: "center",
+    },
   },
   {
     title: "Dār al-Nadwa",
@@ -189,8 +273,17 @@ export const topics: Topic[] = [
     question: "How did influence shape collective decisions?",
     focus: "Examine reports about influence and public decision-making.",
     detail:
-      "Ask which sources describe an event, how the accounts differ and what historical context helps explain them. Treat disputed accounts as questions for examination.",
-    artwork: null,
+      "Ask which sources describe an event, how the accounts differ and what historical context helps explain them. The smartphone is a modern comparison about public influence, not a historical object or a claim that today’s platforms directly match Dār al-Nadwa.",
+    reflection:
+      "How do today’s communication platforms influence public discussion, and where does the comparison stop?",
+    artwork: {
+      src: "/Seerah new/Robed Council by Lamplight, Modern Smartphone-10.png",
+      alt: "A council scene juxtaposed with a modern smartphone",
+      width: 1586,
+      height: 992,
+      clean: true,
+      position: "center",
+    },
   },
   {
     title: "The flock between two mountains",
@@ -199,25 +292,70 @@ export const topics: Topic[] = [
     focus: "Read the account with attention to wording and interpretation.",
     detail:
       "Keep the report, its reference and explanatory context together during study. Compare interpretations before drawing conclusions about its meaning or contemporary application.",
-    artwork: null,
+    reflection:
+      "What questions should guide how resources are offered and received?",
+    artwork: {
+      src: "/Seerah new/Flock and camels at sunrise-4.png",
+      alt: "A flock and camels at sunrise",
+      width: 1586,
+      height: 992,
+      clean: true,
+      position: "center",
+    },
   },
   {
-    title: "Seerah Doubts · I",
+    title: "The first-revelation report",
     theme: "Questions · Sources · Context",
     question: "How do we investigate a disputed report?",
     focus: "Practise separating a claim from its supporting evidence.",
     detail:
       "Begin with the precise claim and its source. Examine transmission, wording and historical context, then compare scholarly interpretations and discuss the limits of the available evidence.",
-    artwork: null,
+    reflection:
+      "How would you separate a repeated claim from the evidence supporting it?",
+    artwork: {
+      src: "/Seerah new/Ancient Makkah from rocky heights-7.png",
+      alt: "Ancient Makkah viewed from rocky heights",
+      width: 1586,
+      height: 992,
+      clean: true,
+      position: "center",
+    },
   },
   {
-    title: "Seerah Doubts · II",
+    title: "Women, children and warfare ethics",
     theme: "Interpretation · Evidence · Limits",
-    question: "What changes when we read an account in context?",
+    question:
+      "How do we examine reports about women, children and warfare ethics?",
     focus: "Consider how evidence and context inform a careful conclusion.",
     detail:
-      "Compare the question being asked with what the evidence can establish. Avoid treating a disputed report as a settled fact.",
-    artwork: null,
+      "Examine wording, historical context and scholarly interpretation before drawing conclusions about warfare ethics. The image is a thematic illustration, not a depiction of a documented event.",
+    reflection:
+      "How can careful source reading inform a discussion of responsibility toward vulnerable people?",
+    artwork: {
+      src: "/Seerah new/Mothers and Children in Golden Light-9.png",
+      alt: "A thematic illustration of mothers and children in warm light",
+      width: 1942,
+      height: 809,
+      clean: true,
+      position: "60% center",
+    },
+  },
+  {
+    title: "Skills and responsibility",
+    theme: "Contemporary reflection · Practical skills",
+    question: "How can practical skills serve a responsibility?",
+    focus: "Reflect on learning, useful skills and responsible choices today.",
+    detail:
+      "This contemporary illustration opens a reflection on skills and responsibility. It does not depict a Sīrah event or establish a direct historical equivalence. Consider the evidence and limits of any comparison.",
+    reflection:
+      "Which skills could you develop, and what responsibilities come with using them?",
+    artwork: {
+      src: "/Seerah new/Student prepares a drone for repair-3.png",
+      alt: "A student preparing a drone for repair, a contemporary illustration",
+      width: 1586,
+      height: 992,
+      clean: true,
+    },
   },
 ];
 

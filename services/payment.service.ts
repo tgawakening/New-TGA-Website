@@ -1,3 +1,4 @@
+import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import {
   EnrollmentStatus,
   PaymentStatus,
@@ -61,7 +62,7 @@ const PAYPAL_SOUTH_ASIA_COUNTRIES = new Set(["PK", "IN", "AF", "BD"]);
 function normalizeEnvValue(value: string) {
   const trimmed = value.trim();
   if (
-    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
     (trimmed.startsWith("'") && trimmed.endsWith("'"))
   ) {
     return trimmed.slice(1, -1).trim();
@@ -85,8 +86,17 @@ function getPaypalApiBase() {
     : "https://api-m.sandbox.paypal.com";
 }
 
-async function loadRegistrationForUser(registrationId: string, userId: string): Promise<RegistrationWithPayment> {
-  if (await prisma.sirahOrder.findFirst({ where: { registrationId, userId } })) throw new Error("Use the current Sīrah registration and verified payment flow for this batch.");
+async function loadRegistrationForUser(
+  registrationId: string,
+  userId: string,
+): Promise<RegistrationWithPayment> {
+  if (
+    (await sirahSchemaAvailable()) &&
+    (await prisma.sirahOrder.findFirst({ where: { registrationId, userId } }))
+  )
+    throw new Error(
+      "Use the current Sīrah registration and verified payment flow for this batch.",
+    );
   const registration = await prisma.registration.findFirst({
     where: { id: registrationId, userId },
     include: { payment: true, user: true },
@@ -102,11 +112,17 @@ function toJsonValue(input: unknown): Prisma.InputJsonValue {
 }
 
 function isFullCoursePayment(registration: Registration) {
-  return getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) === "FULL_COURSE";
+  return (
+    getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) ===
+    "FULL_COURSE"
+  );
 }
 
 function isSubscriptionPayment(registration: Registration) {
-  return getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) !== "FULL_COURSE";
+  return (
+    getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) !==
+    "FULL_COURSE"
+  );
 }
 
 function getOnlinePaymentAmount(registration: RegistrationWithPayment) {
@@ -177,9 +193,12 @@ function buildResumePaymentLink(registrationId: string) {
 }
 
 function mapStripeSubscriptionStatus(status?: string | null) {
-  if (status === "active" || status === "trialing") return SubscriptionStatus.ACTIVE;
-  if (status === "past_due" || status === "unpaid") return SubscriptionStatus.PAST_DUE;
-  if (status === "canceled" || status === "incomplete_expired") return SubscriptionStatus.CANCELED;
+  if (status === "active" || status === "trialing")
+    return SubscriptionStatus.ACTIVE;
+  if (status === "past_due" || status === "unpaid")
+    return SubscriptionStatus.PAST_DUE;
+  if (status === "canceled" || status === "incomplete_expired")
+    return SubscriptionStatus.CANCELED;
   if (status === "paused") return SubscriptionStatus.PAUSED;
   return SubscriptionStatus.INCOMPLETE;
 }
@@ -193,7 +212,8 @@ function addOneMonth(date: Date) {
 function mapPaypalSubscriptionStatus(status?: string | null) {
   if (status === "ACTIVE") return SubscriptionStatus.ACTIVE;
   if (status === "SUSPENDED") return SubscriptionStatus.PAUSED;
-  if (status === "CANCELLED" || status === "EXPIRED") return SubscriptionStatus.CANCELED;
+  if (status === "CANCELLED" || status === "EXPIRED")
+    return SubscriptionStatus.CANCELED;
   return SubscriptionStatus.INCOMPLETE;
 }
 
@@ -213,7 +233,9 @@ async function syncPaypalSubscription({
   userId: string;
   subscription: PaypalSubscription;
 }) {
-  const currentPeriodStart = subscription.start_time ? new Date(subscription.start_time) : null;
+  const currentPeriodStart = subscription.start_time
+    ? new Date(subscription.start_time)
+    : null;
   const currentPeriodEnd = subscription.billing_info?.next_billing_time
     ? new Date(subscription.billing_info.next_billing_time)
     : currentPeriodStart
@@ -232,7 +254,9 @@ async function syncPaypalSubscription({
       currentPeriodStart,
       currentPeriodEnd,
       cancelAtPeriodEnd: isCanceled,
-      canceledAt: isCanceled ? new Date(subscription.status_update_time ?? Date.now()) : null,
+      canceledAt: isCanceled
+        ? new Date(subscription.status_update_time ?? Date.now())
+        : null,
     },
     create: {
       userId,
@@ -244,12 +268,16 @@ async function syncPaypalSubscription({
       currentPeriodStart,
       currentPeriodEnd,
       cancelAtPeriodEnd: isCanceled,
-      canceledAt: isCanceled ? new Date(subscription.status_update_time ?? Date.now()) : null,
+      canceledAt: isCanceled
+        ? new Date(subscription.status_update_time ?? Date.now())
+        : null,
     },
   });
 }
 
-async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPayment) {
+async function sendPendingOnlinePaymentEmails(
+  registration: RegistrationWithPayment,
+) {
   const course = await prisma.course.findUnique({
     where: { id: registration.courseId },
     select: { title: true },
@@ -257,14 +285,20 @@ async function sendPendingOnlinePaymentEmails(registration: RegistrationWithPaym
 
   const resumeLink = buildResumePaymentLink(registration.id);
   const onlinePaymentAmount = getRegistrationChargeAmount(registration);
-  const orderAmount = formatAmount(onlinePaymentAmount.amount, onlinePaymentAmount.currency);
-  const paymentPlanLabel = prettifyPaymentPlanType(getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot));
+  const orderAmount = formatAmount(
+    onlinePaymentAmount.amount,
+    onlinePaymentAmount.currency,
+  );
+  const paymentPlanLabel = prettifyPaymentPlanType(
+    getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot),
+  );
 
   await Promise.allSettled([
     sendTransactionalEmail({
       userId: registration.userId,
       to: registration.user.email,
-      subject: "Your payment is pending. Complete payment to finish your enrollment.",
+      subject:
+        "Your payment is pending. Complete payment to finish your enrollment.",
       emailType: "ONLINE_PAYMENT_PENDING",
       html: `
         <p>Assalam-u-Alaikum ${registration.user.fullName},</p>
@@ -332,7 +366,10 @@ function prettifyPaymentMethod(method: string) {
 }
 
 function prettifyPaymentPlanType(paymentPlanType: PaymentPlanType) {
-  return paymentPlanTypeLabels[paymentPlanType] ?? paymentPlanType.replaceAll("_", " ");
+  return (
+    paymentPlanTypeLabels[paymentPlanType] ??
+    paymentPlanType.replaceAll("_", " ")
+  );
 }
 
 async function markSuccessfulPayment({
@@ -359,7 +396,10 @@ async function markSuccessfulPayment({
       },
     });
     if (!payment) throw new Error("Payment not found.");
-    if (payment.status === PaymentStatus.SUCCEEDED || payment.status === PaymentStatus.CONFIRMED) {
+    if (
+      payment.status === PaymentStatus.SUCCEEDED ||
+      payment.status === PaymentStatus.CONFIRMED
+    ) {
       return {
         registrationId: payment.registrationId,
         userId: payment.registration.userId,
@@ -367,7 +407,9 @@ async function markSuccessfulPayment({
         email: payment.registration.user.email,
         phone: `${payment.registration.user.phoneCountryCode} ${payment.registration.user.phoneNumber}`,
         courseTitle: payment.registration.course.title,
-        paymentPlanType: getPaymentPlanTypeFromSnapshot(payment.registration.pricingSnapshot),
+        paymentPlanType: getPaymentPlanTypeFromSnapshot(
+          payment.registration.pricingSnapshot,
+        ),
         paymentReference: payment.registration.paymentReference,
         paymentMethod: payment.provider,
         amount: payment.amount,
@@ -409,7 +451,9 @@ async function markSuccessfulPayment({
       email: payment.registration.user.email,
       phone: `${payment.registration.user.phoneCountryCode} ${payment.registration.user.phoneNumber}`,
       courseTitle: payment.registration.course.title,
-      paymentPlanType: getPaymentPlanTypeFromSnapshot(payment.registration.pricingSnapshot),
+      paymentPlanType: getPaymentPlanTypeFromSnapshot(
+        payment.registration.pricingSnapshot,
+      ),
       paymentReference: payment.registration.paymentReference,
       paymentMethod: payment.provider,
       amount: payment.amount,
@@ -420,7 +464,8 @@ async function markSuccessfulPayment({
 
   if (
     result.paymentPlanType === "SUBSCRIPTION" &&
-    (result.paymentMethod === "BANK_TRANSFER" || result.paymentMethod === "JAZZCASH")
+    (result.paymentMethod === "BANK_TRANSFER" ||
+      result.paymentMethod === "JAZZCASH")
   ) {
     await syncManualRecurringSubscription({
       registrationId: result.registrationId,
@@ -523,7 +568,10 @@ export async function adminActivateManualRecurringPayment({
 
   await markSuccessfulPayment({
     paymentId,
-    payload: { source: "admin-manual-recurring-complete", adminNote: note ?? null },
+    payload: {
+      source: "admin-manual-recurring-complete",
+      adminNote: note ?? null,
+    },
   });
 
   return { status: "CONFIRMED" as const };
@@ -642,7 +690,9 @@ async function syncStripeSubscriptionFromSession({
     return;
   }
 
-  const stripeSubscription = (await stripe.subscriptions.retrieve(session.subscription)) as unknown as {
+  const stripeSubscription = (await stripe.subscriptions.retrieve(
+    session.subscription,
+  )) as unknown as {
     status?: string | null;
     current_period_start?: number;
     current_period_end?: number;
@@ -656,7 +706,8 @@ async function syncStripeSubscriptionFromSession({
       provider: SubscriptionProvider.STRIPE,
       status: mapStripeSubscriptionStatus(stripeSubscription.status),
       providerSubscriptionId: session.subscription,
-      providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+      providerCustomerId:
+        typeof session.customer === "string" ? session.customer : undefined,
       currentPeriodStart:
         typeof stripeSubscription.current_period_start === "number"
           ? new Date(stripeSubscription.current_period_start * 1000)
@@ -677,7 +728,8 @@ async function syncStripeSubscriptionFromSession({
       provider: SubscriptionProvider.STRIPE,
       status: mapStripeSubscriptionStatus(stripeSubscription.status),
       providerSubscriptionId: session.subscription,
-      providerCustomerId: typeof session.customer === "string" ? session.customer : undefined,
+      providerCustomerId:
+        typeof session.customer === "string" ? session.customer : undefined,
       currentPeriodStart:
         typeof stripeSubscription.current_period_start === "number"
           ? new Date(stripeSubscription.current_period_start * 1000)
@@ -765,7 +817,9 @@ export async function confirmStripeCheckoutSession({
 
   const session = await stripe.checkout.sessions.retrieve(sessionId);
   if (session.metadata?.paymentKind === "MISSION_SUPPORT") {
-    throw new Error("This confirmation endpoint is only for course registrations.");
+    throw new Error(
+      "This confirmation endpoint is only for course registrations.",
+    );
   }
 
   if (session.metadata?.paymentId !== payment.id) {
@@ -779,7 +833,10 @@ export async function confirmStripeCheckoutSession({
   await markSuccessfulPayment({
     paymentId: payment.id,
     providerOrderId: session.id,
-    providerPaymentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+    providerPaymentId:
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : undefined,
     payload: session,
   });
 
@@ -793,13 +850,16 @@ export async function confirmStripeCheckoutSession({
   return { success: true };
 }
 
-export async function handleStripeWebhook({
-  signature,
-  payloadText,
-}: {
-  signature: string | null;
-  payloadText: string;
-}, stripeOverride?: import("stripe").default) {
+export async function handleStripeWebhook(
+  {
+    signature,
+    payloadText,
+  }: {
+    signature: string | null;
+    payloadText: string;
+  },
+  stripeOverride?: import("stripe").default,
+) {
   const stripeSecretKey = getRequiredEnv("STRIPE_SECRET_KEY");
   const stripeWebhookSecret = getRequiredEnv("STRIPE_WEBHOOK_SECRET");
   const stripeModule = await import("stripe");
@@ -807,8 +867,13 @@ export async function handleStripeWebhook({
   const stripe = stripeOverride ?? new Stripe(stripeSecretKey);
   if (!signature) throw new Error("Missing Stripe signature.");
 
-  const event = stripe.webhooks.constructEvent(payloadText, signature, stripeWebhookSecret);
-  if (await handleMissionSupportStripeEvent(event, stripe)) return { received: true };
+  const event = stripe.webhooks.constructEvent(
+    payloadText,
+    signature,
+    stripeWebhookSecret,
+  );
+  if (await handleMissionSupportStripeEvent(event, stripe))
+    return { received: true };
   if (await handleSirahStripeEvent(event, stripe)) return { received: true };
 
   if (event.type === "checkout.session.completed") {
@@ -819,20 +884,32 @@ export async function handleStripeWebhook({
     }
 
     const paymentId = session.metadata?.paymentId;
-    if (!paymentId) throw new Error("Missing paymentId in Stripe session metadata.");
+    if (!paymentId)
+      throw new Error("Missing paymentId in Stripe session metadata.");
     await markSuccessfulPayment({
       paymentId,
       providerOrderId: session.id,
-      providerPaymentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+      providerPaymentId:
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : undefined,
       payload: session,
     });
 
     const registrationId = session.metadata?.registrationId;
     const userId = session.metadata?.userId;
-    await syncStripeSubscriptionFromSession({ stripe, session, registrationId, userId });
+    await syncStripeSubscriptionFromSession({
+      stripe,
+      session,
+      registrationId,
+      userId,
+    });
   }
 
-  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
+  if (
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.created"
+  ) {
     const subscription = event.data.object as unknown as {
       id?: string;
       status?: string;
@@ -845,8 +922,7 @@ export async function handleStripeWebhook({
       await prisma.subscription.updateMany({
         where: { providerSubscriptionId: subscription.id },
         data: {
-          status:
-            mapStripeSubscriptionStatus(subscription.status),
+          status: mapStripeSubscriptionStatus(subscription.status),
           currentPeriodStart:
             typeof subscription.current_period_start === "number"
               ? new Date(subscription.current_period_start * 1000)
@@ -919,11 +995,16 @@ export async function reconcileMissingStripeSubscriptions({
   for (const registration of registrations) {
     const sessionId = registration.payment?.providerOrderId;
     if (!sessionId) continue;
-    if (getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) !== 'SUBSCRIPTION') continue;
+    if (
+      getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) !==
+      "SUBSCRIPTION"
+    )
+      continue;
 
     try {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      if (!session.subscription || typeof session.subscription !== "string") continue;
+      if (!session.subscription || typeof session.subscription !== "string")
+        continue;
 
       await syncStripeSubscriptionFromSession({
         stripe,
@@ -1082,7 +1163,9 @@ async function getPaypalAccessToken() {
   const clientSecret = getRequiredEnv("PAYPAL_CLIENT_SECRET");
   const base = getPaypalApiBase();
 
-  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
+    "base64",
+  );
   const tokenResponse = await fetch(`${base}/v1/oauth2/token`, {
     method: "POST",
     headers: {
@@ -1119,31 +1202,35 @@ export async function createPaypalOrder({
     const token = await getPaypalAccessToken();
     const base = getPaypalApiBase();
     const planId = getPaypalSubscriptionPlanId(registration);
-    const subscriptionResponse = await fetch(`${base}/v1/billing/subscriptions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify({
-        plan_id: planId,
-        custom_id: payment.id,
-        application_context: {
-          brand_name: "Global Awakening",
-          user_action: "SUBSCRIBE_NOW",
-          shipping_preference: "NO_SHIPPING",
-          return_url: returnUrl,
-          cancel_url: cancelUrl,
+    const subscriptionResponse = await fetch(
+      `${base}/v1/billing/subscriptions`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
         },
-      }),
-    });
+        body: JSON.stringify({
+          plan_id: planId,
+          custom_id: payment.id,
+          application_context: {
+            brand_name: "Global Awakening",
+            user_action: "SUBSCRIBE_NOW",
+            shipping_preference: "NO_SHIPPING",
+            return_url: returnUrl,
+            cancel_url: cancelUrl,
+          },
+        }),
+      },
+    );
 
     if (!subscriptionResponse.ok) {
       throw new Error("Failed to create PayPal subscription.");
     }
 
-    const subscription = (await subscriptionResponse.json()) as PaypalSubscription;
+    const subscription =
+      (await subscriptionResponse.json()) as PaypalSubscription;
     const shouldSendPendingEmails = payment.status === PaymentStatus.INITIATED;
 
     await prisma.payment.update({
@@ -1161,7 +1248,9 @@ export async function createPaypalOrder({
 
     return {
       orderId: subscription.id,
-      approveUrl: subscription.links?.find((item) => item.rel === "approve")?.href ?? null,
+      approveUrl:
+        subscription.links?.find((item) => item.rel === "approve")?.href ??
+        null,
     };
   }
 
@@ -1218,7 +1307,8 @@ export async function createPaypalOrder({
 
   return {
     orderId: order.id,
-    approveUrl: order.links?.find((item) => item.rel === "approve")?.href ?? null,
+    approveUrl:
+      order.links?.find((item) => item.rel === "approve")?.href ?? null,
   };
 }
 
@@ -1256,7 +1346,9 @@ export async function getPendingRegistrationForResume({
     registrationId: registration.id,
     paymentReference: registration.paymentReference,
     paymentMethod: registration.payment.provider,
-    paymentPlanType: getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot),
+    paymentPlanType: getPaymentPlanTypeFromSnapshot(
+      registration.pricingSnapshot,
+    ),
     fullName: registration.user.fullName,
     email: registration.user.email,
     phoneCountryCode: registration.user.phoneCountryCode,
@@ -1285,13 +1377,16 @@ export async function capturePaypalOrder({
 
   const token = await getPaypalAccessToken();
   const base = getPaypalApiBase();
-  const captureResponse = await fetch(`${base}/v2/checkout/orders/${orderId}/capture`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+  const captureResponse = await fetch(
+    `${base}/v2/checkout/orders/${orderId}/capture`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
 
   if (!captureResponse.ok) {
     throw new Error("PayPal capture failed.");
@@ -1326,29 +1421,39 @@ export async function confirmPaypalSubscription({
     throw new Error("This registration is not set for PayPal.");
   }
   if (!isSubscriptionPayment(registration)) {
-    throw new Error("This PayPal payment is a one-time order, not a subscription.");
+    throw new Error(
+      "This PayPal payment is a one-time order, not a subscription.",
+    );
   }
 
   const token = await getPaypalAccessToken();
   const base = getPaypalApiBase();
-  const subscriptionResponse = await fetch(`${base}/v1/billing/subscriptions/${subscriptionId}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+  const subscriptionResponse = await fetch(
+    `${base}/v1/billing/subscriptions/${subscriptionId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
 
   if (!subscriptionResponse.ok) {
     throw new Error("Failed to confirm PayPal subscription.");
   }
 
-  const subscription = (await subscriptionResponse.json()) as PaypalSubscription;
+  const subscription =
+    (await subscriptionResponse.json()) as PaypalSubscription;
   if (subscription.custom_id && subscription.custom_id !== payment.id) {
-    throw new Error("PayPal subscription does not belong to this registration.");
+    throw new Error(
+      "PayPal subscription does not belong to this registration.",
+    );
   }
   if (subscription.status !== "ACTIVE") {
-    throw new Error(`PayPal subscription is not active yet. Current status: ${subscription.status ?? "UNKNOWN"}.`);
+    throw new Error(
+      `PayPal subscription is not active yet. Current status: ${subscription.status ?? "UNKNOWN"}.`,
+    );
   }
 
   await markSuccessfulPayment({
@@ -1450,7 +1555,9 @@ export async function submitManualPayment({
     const appUrl = getAppUrl();
     const adminDashboardUrl = `${appUrl}/admin`;
     const orderAmount = formatAmount(payment.amount, payment.currency);
-    const paymentPlanLabel = prettifyPaymentPlanType(getPaymentPlanTypeFromSnapshot(registrationDetails.pricingSnapshot));
+    const paymentPlanLabel = prettifyPaymentPlanType(
+      getPaymentPlanTypeFromSnapshot(registrationDetails.pricingSnapshot),
+    );
 
     await Promise.allSettled([
       sendTransactionalEmail({
@@ -1652,12 +1759,3 @@ export async function adminConfirmManualPayment({
 
   return { status: "REJECTED" as const };
 }
-
-
-
-
-
-
-
-
-

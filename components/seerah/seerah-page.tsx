@@ -1,24 +1,23 @@
 "use client";
 
-import {
-  SirahRegistrationProvider,
-  useSirahRegistration,
-} from "@/components/sirah/registration-provider";
 import Image from "next/image";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Header, Footer } from "@/components/home/sections";
 import {
   activeCampaign,
-  approach,
   courseConfig as config,
   learningOutcomes,
   topics,
-  type CourseVideo,
   type FeePlan,
 } from "./course-config";
 import { trackSeerah } from "./analytics";
 import { formatFee } from "./regional-fees";
 import styles from "./seerah.module.css";
+import {
+  CoursePreview,
+  TeachingApproach,
+  useSectionExperience,
+} from "./course-interactions";
 
 const sectionLinks = [
   ["overview", "Overview"],
@@ -37,68 +36,18 @@ function PrimaryAction({
   country?: string;
   plan?: "MONTHLY" | "ANNUAL";
 }) {
-  const open = useSirahRegistration();
+  const params = new URLSearchParams();
+  if (country) params.set("country", country);
+  if (plan) params.set("plan", plan);
+  const query = params.toString();
   return (
-    <button
-      type="button"
+    <a
       className={styles.primary}
-      onClick={() => {
-        trackSeerah("seerah_registration_open", { placement });
-        open({ country, plan });
-      }}
+      href={`/seerah/register${query ? `?${query}` : ""}`}
+      onClick={() => trackSeerah("seerah_registration_open", { placement })}
     >
       Register for the Course <span aria-hidden>↗</span>
-    </button>
-  );
-}
-
-function PreviewVideo({ video }: { video: CourseVideo }) {
-  const [playing, setPlaying] = useState(false);
-  return (
-    <figure className={styles.video}>
-      <div style={{ aspectRatio: `${video.width} / ${video.height}` }}>
-        {playing ? (
-          <video
-            controls
-            autoPlay
-            playsInline
-            preload="metadata"
-            width={video.width}
-            height={video.height}
-            poster={video.poster.src}
-          >
-            <source src={video.src} type="video/mp4" />
-            <track
-              kind="captions"
-              src={video.captions}
-              srcLang="en"
-              label="English"
-              default
-            />
-            Your browser does not support video.{" "}
-            <a href={video.src}>Download the preview</a>.
-          </video>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setPlaying(true)}
-            aria-label={`Play ${video.title}`}
-          >
-            <Image
-              src={video.poster.src}
-              alt={video.poster.alt}
-              fill
-              sizes="(max-width: 760px) 100vw, 50vw"
-            />
-            <span className={styles.play} aria-hidden>
-              ▶
-            </span>
-            <span className={styles.videoLabel}>Watch the preview</span>
-          </button>
-        )}
-      </div>
-      <figcaption>{video.title}</figcaption>
-    </figure>
+    </a>
   );
 }
 
@@ -216,6 +165,8 @@ function TopicGallery() {
                   alt={topic.artwork.alt}
                   width={topic.artwork.width}
                   height={topic.artwork.height}
+                  style={{ objectPosition: topic.artwork.position || "center" }}
+                  loading="lazy"
                   sizes="(max-width: 760px) 85vw, 33vw"
                 />
               ) : (
@@ -238,7 +189,7 @@ function TopicGallery() {
                 aria-controls={`topic-detail-${i}`}
                 onClick={() => setExpanded(expanded === i ? null : i)}
               >
-                {expanded === i ? "Read less −" : "Read more +"}
+                {expanded === i ? "Close question −" : "Explore this question"}
                 <span className={styles.srOnly}> about {topic.title}</span>
               </button>
             </div>
@@ -254,7 +205,12 @@ function TopicGallery() {
         >
           <p className={styles.eyebrow}>A closer look</p>
           <h3>{topic.title}</h3>
+          <h4>The historical question</h4>
+          <p>{topic.question}</p>
+          <h4>What students will examine</h4>
           <p>{topic.detail}</p>
+          <h4>A present-day reflection</h4>
+          <p>{topic.reflection}</p>
           <button
             type="button"
             className={styles.readMore}
@@ -356,7 +312,7 @@ function detectMarket() {
     "SI",
     "SK",
   ]);
-  return region && eurozone.has(region) ? "EURO" : "PK";
+  return region && eurozone.has(region) ? "EURO" : "OTHER";
 }
 function subscribeLocaleChange(callback: () => void) {
   window.addEventListener("languagechange", callback);
@@ -364,23 +320,20 @@ function subscribeLocaleChange(callback: () => void) {
 }
 function Fees({
   pakistanOnlineAvailable = false,
+  country,
+  onCountryChange,
 }: {
   pakistanOnlineAvailable?: boolean;
+  country: string;
+  onCountryChange: (value: string) => void;
 }) {
-  const [chosenCountry, setCountry] = useState<string | null>(null);
-  const suggestedCountry = useSyncExternalStore(
-    subscribeLocaleChange,
-    detectMarket,
-    () => "PK",
-  );
-  const country = chosenCountry || suggestedCountry;
   const market = config.markets.find((m) => m.code === country)!;
   const monthly =
     market.code === "PK" && !pakistanOnlineAvailable
       ? market.manualMonthly || null
       : market.monthly;
   function select(value: string) {
-    setCountry(value);
+    onCountryChange(value);
     trackSeerah("seerah_country_select", { country: value });
   }
   return (
@@ -423,7 +376,11 @@ function Fees({
         </div>
         <label className={styles.countrySelect}>
           Your country
-          <select value={country} onChange={(e) => select(e.target.value)}>
+          <select
+            aria-label="Your country"
+            value={country}
+            onChange={(e) => select(e.target.value)}
+          >
             {config.markets.map((m) => (
               <option value={m.code} key={m.code}>
                 {m.name}
@@ -488,6 +445,15 @@ function SeerahContent({
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
 }) {
+  const root = useRef<HTMLDivElement>(null);
+  const activeSection = useSectionExperience(root);
+  const [chosenCountry, setCountry] = useState<string | null>(null);
+  const suggestedCountry = useSyncExternalStore(
+    subscribeLocaleChange,
+    detectMarket,
+    () => "PK",
+  );
+  const country = chosenCountry || suggestedCountry;
   const [orientation, setOrientation] = useState(
     initialCampaign === "orientation",
   );
@@ -499,7 +465,7 @@ function SeerahContent({
   }, []);
   return (
     <>
-      <div className={styles.page}>
+      <div className={styles.page} ref={root}>
         <a className={styles.skip} href="#overview">
           Skip to course content
         </a>
@@ -516,7 +482,11 @@ function SeerahContent({
             </a>
             <div>
               {sectionLinks.map(([id, label]) => (
-                <a href={`#${id}`} key={id}>
+                <a
+                  href={`#${id}`}
+                  key={id}
+                  aria-current={activeSection === id ? "location" : undefined}
+                >
                   {label}
                 </a>
               ))}
@@ -564,7 +534,7 @@ function SeerahContent({
                   responsibilities in your own life.
                 </p>
                 <div className={styles.heroActions}>
-                  <PrimaryAction placement="hero" />
+                  <PrimaryAction placement="hero" country={country} />
                   {orientation ? (
                     <a
                       className={styles.secondary}
@@ -647,26 +617,7 @@ function SeerahContent({
             <div className={styles.container}>
               <div className={styles.benefitGrid}>
                 <div>
-                  {config.videos.length ? (
-                    config.videos.map((video) => (
-                      <PreviewVideo key={video.src} video={video} />
-                    ))
-                  ) : (
-                    <div className={styles.previewPending}>
-                      <span className={styles.previewMark} aria-hidden>
-                        سيرة
-                      </span>
-                      <p className={styles.eyebrow}>
-                        Sīrah | Beyond Chronology
-                      </p>
-                      <h3>
-                        From the account
-                        <br />
-                        to the understanding.
-                      </h3>
-                      <p>The new course preview will be available here.</p>
-                    </div>
-                  )}
+                  <CoursePreview country={country} />
                 </div>
                 <div>
                   <p className={styles.eyebrow}>02 / The learning</p>
@@ -684,16 +635,16 @@ function SeerahContent({
                     law, power, leadership and movement. Explore what the
                     evidence tells us and where careful interpretation begins.
                   </p>
+                  <div className={styles.outcomes}>
+                    {learningOutcomes.map((outcome, i) => (
+                      <article key={outcome.title}>
+                        <span className={styles.outcomeNumber}>0{i + 1}</span>
+                        <h3>{outcome.title}</h3>
+                        <p>{outcome.text}</p>
+                      </article>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className={styles.outcomes}>
-                {learningOutcomes.map((outcome, i) => (
-                  <article key={outcome.title}>
-                    <span className={styles.outcomeNumber}>0{i + 1}</span>
-                    <h3>{outcome.title}</h3>
-                    <p>{outcome.text}</p>
-                  </article>
-                ))}
               </div>
             </div>
           </section>
@@ -726,14 +677,7 @@ function SeerahContent({
                   conclusions. Keep the evidence and its limits in view.
                 </p>
               </div>
-              <ol className={styles.approach}>
-                {approach.map((step, i) => (
-                  <li key={step}>
-                    <span>0{i + 1}</span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
+              <TeachingApproach />
               {config.curriculum.length > 0 && (
                 <div className={styles.curriculum}>
                   <h3>The curriculum</h3>
@@ -773,7 +717,11 @@ function SeerahContent({
               )}
             </div>
           </section>
-          <Fees pakistanOnlineAvailable={pakistanOnlineAvailable} />
+          <Fees
+            pakistanOnlineAvailable={pakistanOnlineAvailable}
+            country={country}
+            onCountryChange={setCountry}
+          />
           <section
             id="faqs"
             className={`${styles.section} ${styles.dark}`}
@@ -844,14 +792,14 @@ function SeerahContent({
                   <br />
                   <em>Reflect on your responsibility.</em>
                 </h2>
-                <PrimaryAction placement="closing" />
+                <PrimaryAction placement="closing" country={country} />
               </div>
             </div>
           </section>
         </main>
         <Footer />
         <div className={styles.mobileAction}>
-          <PrimaryAction placement="mobile-sticky" />
+          <PrimaryAction placement="mobile-sticky" country={country} />
         </div>
       </div>
     </>
@@ -862,9 +810,5 @@ export default function SeerahPage(props: {
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
 }) {
-  return (
-    <SirahRegistrationProvider>
-      <SeerahContent {...props} />
-    </SirahRegistrationProvider>
-  );
+  return <SeerahContent {...props} />;
 }

@@ -1,3 +1,4 @@
+import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import {
   PaymentStatus,
   Prisma,
@@ -311,9 +312,10 @@ export async function updatePendingRegistration(
 
   if (registration.course.slug === "seerah-course") {
     if (
-      await prisma.sirahOrder.findFirst({
+      (await sirahSchemaAvailable()) &&
+      (await prisma.sirahOrder.findFirst({
         where: { registrationId: registration.id },
-      })
+      }))
     )
       throw new Error(
         "Use the current Sīrah registration workflow for this batch.",
