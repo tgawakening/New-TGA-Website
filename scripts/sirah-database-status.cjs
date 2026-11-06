@@ -1,6 +1,5 @@
 /* Read-only production preflight. Never creates tables, baselines, or changes data. */
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient({ log: [] });
+let prisma;
 const required = [
   "SirahOrder",
   "SirahReceipt",
@@ -9,6 +8,8 @@ const required = [
   "SirahNotification",
 ];
 (async () => {
+  const { PrismaClient } = await import("@prisma/client");
+  prisma = new PrismaClient({ log: [] });
   const tables =
     await prisma.$queryRaw`SELECT TABLE_NAME AS name FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()`;
   const names = new Set(tables.map((row) => row.name));
@@ -58,4 +59,4 @@ const required = [
     );
     process.exitCode = 1;
   })
-  .finally(() => prisma.$disconnect());
+  .finally(() => prisma?.$disconnect());

@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Header, Footer } from "@/components/home/sections";
 import {
   activeCampaign,
+  publicCourseGroup,
+  publicCourseGroups,
   courseConfig as config,
   learningOutcomes,
   topics,
@@ -161,7 +163,11 @@ function TopicGallery() {
             >
               {topic.artwork ? (
                 <Image
-                  src={topic.artwork.src.includes(",") ? encodeURI(topic.artwork.src).replaceAll(",", "%2C") : topic.artwork.src}
+                  src={
+                    topic.artwork.src.includes(",")
+                      ? encodeURI(topic.artwork.src).replaceAll(",", "%2C")
+                      : topic.artwork.src
+                  }
                   alt={topic.artwork.alt}
                   width={topic.artwork.width}
                   height={topic.artwork.height}
@@ -270,7 +276,7 @@ function Plan({
       />
       <a
         className={styles.readMore}
-        href={config.campaign.whatsappUrl}
+        href={publicCourseGroup(country)}
         target="_blank"
         rel="noopener noreferrer"
         onClick={() =>
@@ -284,6 +290,39 @@ function Plan({
         Enquire on WhatsApp ↗
       </a>
     </article>
+  );
+}
+
+function PublicCourseGroups() {
+  return (
+    <div id="course-enquiries" className={styles.publicGroups}>
+      <div>
+        <h3>Join the conversation</h3>
+        <p>
+          Join your regional WhatsApp group for course enquiries and updates,
+          even before registering. Complete course registration separately to
+          enrol.
+        </p>
+      </div>
+      <div className={styles.groupActions}>
+        <a
+          className={styles.secondary}
+          href={publicCourseGroups.pakistan}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Join Pakistan Group <span aria-hidden>↗</span>
+        </a>
+        <a
+          className={styles.secondary}
+          href={publicCourseGroups.overseas}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Join Overseas Group <span aria-hidden>↗</span>
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -434,6 +473,7 @@ function Fees({
         <div className={styles.feeFoot}>
           <a href={config.feeSupportUrl}>Request confidential fee support ↗</a>
         </div>
+        <PublicCourseGroups />
       </div>
     </section>
   );
@@ -557,6 +597,11 @@ function SeerahContent({
                     </a>
                   )}
                 </div>
+                <p className={styles.supporting}>
+                  <a href="#course-enquiries">
+                    Join a regional WhatsApp group before registering ↗
+                  </a>
+                </p>
                 {orientation && (
                   <p className={styles.supporting}>
                     Join the WhatsApp group for orientation details.

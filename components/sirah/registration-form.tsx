@@ -143,6 +143,7 @@ export function SirahRegistrationForm({
   const [invitation, setInvitation] = useState<{
     message: string;
     groupUrl: string | null;
+    contactUrl?: string | null;
   } | null>(null);
   const requestKey = useRef("");
   useEffect(() => {
@@ -195,6 +196,38 @@ export function SirahRegistrationForm({
       active = false;
     };
   }, [order?.id, order?.paymentState, order?.enrolmentState]);
+  const processingOrderId =
+    order?.paymentState === "PROCESSING" &&
+    ["STRIPE", "PAYPAL"].includes(order.method || "")
+      ? order.id
+      : null;
+  useEffect(() => {
+    if (!processingOrderId) return;
+    let active = true;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const id = processingOrderId;
+    async function recheck() {
+      attempts++;
+      try {
+        const result = await api(`/api/sirah/orders/${id}/verify`, {
+          method: "POST",
+          body: "{}",
+        });
+        if (!active) return;
+        setOrder(result.order);
+        if (result.order.paymentState !== "PROCESSING") return;
+      } catch {
+        /* Leave the manual check available if a provider is delayed. */
+      }
+      if (active && attempts < 5) timer = setTimeout(recheck, 5000);
+    }
+    timer = setTimeout(recheck, 1500);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [processingOrderId]);
   async function run(work: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -612,10 +645,17 @@ export function SirahRegistrationForm({
               Enrolment: <strong>{order.enrolmentState}</strong>
             </p>
           </div>
+          {order.paymentState === "PROCESSING" && (
+            <p role="status">
+              Confirming your payment with the provider. This page will recheck
+              safely; you can also check the verified payment status below.
+            </p>
+          )}
           {invitation &&
             order.paymentState === "PAID" &&
             ["ACTIVE", "COMPLETED"].includes(order.enrolmentState) && (
               <div className={styles.notice} role="status">
+                <h3>Payment confirmed.</h3>
                 <p>{invitation.message}</p>
                 {invitation.groupUrl && (
                   <a
@@ -624,7 +664,16 @@ export function SirahRegistrationForm({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    Join your assigned course group
+                    Join the Course Group
+                  </a>
+                )}
+                {!invitation.groupUrl && invitation.contactUrl && (
+                  <a
+                    href={invitation.contactUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Contact the course team ↗
                   </a>
                 )}
               </div>

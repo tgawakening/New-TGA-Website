@@ -1437,3 +1437,304 @@
   color: var(--charcoal);
   font-family: var(--font-montserrat), Arial, sans-serif;
 }
+
+/* Readability and spacing refinement, scoped to this course page. */
+.page {
+  font-size: 16px;
+}
+.section {
+  padding-block: 80px;
+}
+.page :global(#course-details) {
+  padding-bottom: 40px;
+}
+.page :global(#fees) {
+  padding-top: 40px;
+}
+.sectionIntro,
+.heroIntro,
+.benefitGrid p:not(.eyebrow),
+.outcomes p,
+.topic p,
+.plan p:not(.eyebrow),
+.feeFoot,
+.paymentNotice,
+.stepExplanation,
+.faqGrid > div > p:last-child,
+.faqGrid details p,
+.sectionHeading > p {
+  font-size: 16px;
+  line-height: 1.8;
+}
+.ivory .sectionHeading > p,
+.benefitGrid p:not(.eyebrow),
+.outcomes p,
+.plan p:not(.eyebrow),
+.feeFoot,
+.paymentNotice {
+  color: #41463a;
+}
+.outcomes h3 {
+  font-size: 17px;
+}
+.hero .supporting,
+.essentials,
+.plan h3 small {
+  font-size: 14px;
+}
+.topicBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 26px;
+}
+.topic h3 {
+  font-size: 24px;
+  margin-block: 12px;
+}
+.topic .topicTheme {
+  font-size: 13px;
+  letter-spacing: 1.1px;
+  color: #e0bd74;
+  min-height: 0;
+}
+.topic .question {
+  font-size: 18px;
+  min-height: 0;
+  color: var(--ivory);
+}
+.topic p {
+  color: #d4d7c9;
+  min-height: 0;
+}
+.topic .readMore {
+  margin-top: auto;
+  padding-top: 24px;
+  text-align: left;
+  font-size: 15px;
+}
+.previewColumn {
+  max-width: 300px;
+}
+.previewHeading {
+  font-size: 22px;
+  text-align: center;
+  margin-bottom: 12px !important;
+}
+.languageHelp {
+  font-size: 16px;
+  color: #41463a;
+  margin-bottom: 20px !important;
+}
+.languageSelector {
+  margin-bottom: 16px;
+}
+.languageSelector button[aria-pressed="true"] {
+  box-shadow: inset 0 -4px 0 var(--gold);
+}
+.video > div {
+  border: 1px solid #616650;
+  box-shadow: 0 8px 24px #14161118;
+}
+.video figcaption {
+  font-size: 14px;
+}
+.benefitGrid {
+  align-items: start;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.3fr);
+  gap: 60px;
+}
+.approach button {
+  min-height: 64px;
+  font-size: 15px;
+  padding-bottom: 10px;
+}
+.approach button[aria-expanded="true"] {
+  border-bottom: 3px solid #866319;
+  font-weight: 700;
+}
+.approach button[aria-expanded="true"]::after {
+  content: "Selected";
+  display: block;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.plan h3 {
+  min-height: 88px;
+}
+.plan h3 small {
+  line-height: 1.6;
+}
+.plan .primary,
+.primary,
+.secondary {
+  font-size: 14px;
+  min-height: 48px;
+}
+.publicGroups {
+  margin-top: 36px;
+  padding-top: 30px;
+  border-top: 1px solid #b9b69f;
+  scroll-margin-top: 170px;
+}
+.publicGroups h3 {
+  font-size: 23px;
+  margin-bottom: 10px;
+}
+.publicGroups p {
+  max-width: 750px;
+  color: #41463a;
+  font-size: 16px;
+}
+.groupActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 20px;
+}
+.groupActions .secondary {
+  color: #141611;
+  border: 1px solid #80714c;
+  padding: 12px 18px;
+}
+.groupActions .secondary:hover {
+  background: #e7dfca;
+}
+.closing {
+  padding: 48px 28px;
+  margin-top: 48px;
+  background: #191c15;
+  position: relative;
+  isolation: isolate;
+}
+.closing > * {
+  position: relative;
+}
+.page > footer {
+  background: #11140f;
+}
+.page :global(.ga-header) {
+  background: #11140ff5;
+}
+.page :global(.ga-header-cta) {
+  font-family: var(--font-montserrat), Arial, sans-serif;
+}
+@media (min-width: 761px) and (max-width: 1050px) {
+  .section {
+    padding-block: 60px;
+  }
+  .page :global(#course-details) {
+    padding-bottom: 32px;
+  }
+  .page :global(#fees) {
+    padding-top: 32px;
+  }
+  .benefitGrid {
+    gap: 32px;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.2fr);
+  }
+  .benefitGrid .outcomes {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .page {
+    font-size: 16px;
+  }
+  .section {
+    padding-block: 44px;
+  }
+  .page :global(#course-details) {
+    padding-bottom: 24px;
+  }
+  .page :global(#fees) {
+    padding-top: 24px;
+  }
+  .benefitGrid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .heroIntro,
+  .topic p,
+  .sectionIntro,
+  .outcomes p,
+  .sectionHeading > p,
+  .plan p:not(.eyebrow),
+  .stepExplanation {
+    font-size: 16px;
+  }
+  .heroActions .primary,
+  .heroActions .secondary {
+    font-size: 13px;
+  }
+  .heroActions {
+    flex-wrap: wrap;
+  }
+  .approach li {
+    padding-block: 18px;
+  }
+  .approach button {
+    font-size: 16px;
+    flex-wrap: wrap;
+  }
+  .approach button[aria-expanded="true"]::after {
+    margin: 0;
+  }
+  .groupActions {
+    flex-direction: column;
+  }
+  .groupActions a {
+    justify-content: space-between;
+  }
+  .closing {
+    padding: 36px 20px;
+    margin-top: 36px;
+  }
+  .hero .supporting {
+    font-size: 14px;
+  }
+}
+/* Supplied closing texture: exact filename from asset commit 4bb37c9. */
+.closing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(#14161140, #14161155),
+    url("/Seerah new/Ancient desert glow in charcoal.png") center center/cover
+      no-repeat;
+}
+.page :global(.ga-header .ga-container) {
+  height: 80px;
+}
+.sectionNav {
+  top: 80px;
+}
+.page > footer > div:last-child {
+  background: #0d100c;
+}
+.page :global(.footer-list a),
+.page :global(.footer-brand-column p) {
+  font-size: 16px;
+  color: #d4d7c9;
+}
+.page :global(.footer-bottom p) {
+  font-size: 14px;
+  color: #c7cabc;
+}
+.page :global(.footer-contact a) {
+  font-size: 16px;
+}
+.sectionNav a {
+  font-size: 12px;
+}
+.countrySelect {
+  font-size: 14px;
+}
+.plan h3 small {
+  font-size: 16px;
+}
+.page .readMore { font-size:14px !important; }
+.topic .readMore { font-size:15px !important; }
+.plan .readMore { margin-top:0; padding-top:8px; }
