@@ -12,22 +12,14 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 
 export function PropheticStrategiesSlider() {
-  const regularPrice = "\u00A320";
-
-  const getStatPair = (value: string) => {
-    const parts = value.trim().split(/\s+/);
-    if (parts.length === 1) {
-      return { value: parts[0], label: "" };
-    }
-    return { value: parts[0], label: parts.slice(1).join(" ") };
-  };
+  const regularPrice = "View regional fees";
 
   return (
     <section className="ga-section ga-seerah-section">
       <div className="ga-container">
         <motion.div {...fadeInUp} className="text-center ga-seerah-heading">
           <h2 className="ga-seerah-title">
-            <span className="ga-seerah-green">Prophetic</span> Strategies &amp; Planning
+            <span className="ga-seerah-green">SĪRAH</span> | BEYOND CHRONOLOGY
           </h2>
         </motion.div>
 
@@ -59,8 +51,12 @@ export function PropheticStrategiesSlider() {
                       <div className="ga-seerah-kicker-wrap">
                         <span className="ga-seerah-icon">{"\u2318"}</span>
                         <div>
-                          <p className="ga-seerah-kicker">{`${getStatPair(slide.duration).value}-Month Journey`}</p>
-                          <p className="ga-seerah-green-text">{slide.subtitle}</p>
+                          <p className="ga-seerah-kicker">
+                            {"12-Month Programme"}
+                          </p>
+                          <p className="ga-seerah-green-text">
+                            {slide.subtitle}
+                          </p>
                         </div>
                       </div>
                       <span className="ga-seerah-pill">Live Course</span>
@@ -81,27 +77,24 @@ export function PropheticStrategiesSlider() {
 
                     <div className="ga-seerah-metrics">
                       <div className="ga-seerah-metric">
-                        <p className="ga-seerah-metric-value">{getStatPair(slide.duration).value}</p>
+                        <p className="ga-seerah-metric-value">12</p>
                         <p className="ga-seerah-metric-label">Months</p>
                       </div>
                       <div className="ga-seerah-metric">
-                        <p className="ga-seerah-metric-value">{getStatPair(slide.sessions).value}</p>
-                        <p className="ga-seerah-metric-label">Sessions</p>
+                        <p className="ga-seerah-metric-value">Live</p>
+                        <p className="ga-seerah-metric-label">Online</p>
                       </div>
                       <div className="ga-seerah-metric">
-                        <p className="ga-seerah-metric-value">1.5hr</p>
-                        <p className="ga-seerah-metric-label">Per Session</p>
+                        <p className="ga-seerah-metric-value">Q&amp;A</p>
+                        <p className="ga-seerah-metric-label">Included</p>
                       </div>
                     </div>
 
                     <div className="ga-seerah-cta-row">
-                      <Link href="/seerah/register" className="ga-seerah-btn">
-                        Enroll Now
+                      <Link href="/seerah" className="ga-seerah-btn">
+                        Explore the Course
                       </Link>
-                      <p className="ga-seerah-price">
-                        {regularPrice}
-                        <span>/month</span>
-                      </p>
+                      <p className="ga-seerah-price">{regularPrice}</p>
                     </div>
                   </div>
                 </article>

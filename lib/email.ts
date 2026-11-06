@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 type EmailPayload = {
+  idempotencyKey?: string;
   userId?: string;
   to: string;
   subject: string;
@@ -81,6 +82,7 @@ export async function sendTransactionalEmail(payload: EmailPayload) {
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
+        ...(payload.idempotencyKey ? { "Idempotency-Key": payload.idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from: emailFrom,

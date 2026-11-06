@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/prisma";
+import { SIRAH_PRICING_VERSION } from "@/lib/sirah/catalog";
 import { redirect } from "next/navigation";
 import StudentDashboard from "@/components/dashboard/student-dashboard";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -17,10 +19,14 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const currentRegistrationIds = new Set(refreshedUser.registrations.filter(item => (item.pricingSnapshot as { pricingVersion?: string } | null)?.pricingVersion === SIRAH_PRICING_VERSION).map(item => item.id));
+  const legacyRegistrations = refreshedUser.registrations.filter(item => !currentRegistrationIds.has(item.id));
+  const hasCurrent = await prisma.sirahOrder.count({where:{userId:refreshedUser.id}}) > 0;
   return (
     <StudentDashboard
       user={{
         id: refreshedUser.id,
+        currentSirahOnly: hasCurrent && !legacyRegistrations.some(item => item.course.slug === "seerah-course"),
         fullName: refreshedUser.fullName,
         email: refreshedUser.email,
         phoneCountryCode: refreshedUser.phoneCountryCode,
@@ -35,7 +41,7 @@ export default async function DashboardPage() {
               timezone: refreshedUser.studentProfile.timezone,
             }
           : null,
-        enrollments: refreshedUser.enrollments.map((item) => ({
+        enrollments: refreshedUser.enrollments.filter(item => !currentRegistrationIds.has(item.registrationId)).map((item) => ({
           status: item.status,
           activatedAt: item.activatedAt ? item.activatedAt.toISOString() : null,
           course: {
@@ -43,7 +49,7 @@ export default async function DashboardPage() {
             title: item.course.title,
           },
         })),
-        registrations: refreshedUser.registrations.map((item) => ({
+        registrations: legacyRegistrations.map((item) => ({
           id: item.id,
           selectedCurrency: item.selectedCurrency,
           finalAmount: item.finalAmount,

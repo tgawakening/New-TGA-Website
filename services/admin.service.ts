@@ -427,6 +427,7 @@ async function getGenMuminOverview() {
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
   const [registrations, users, applications, missionSupport, genMumin] = await Promise.all([
     prisma.registration.findMany({
+      where: { sirahOrder: null },
       include: {
         user: true,
         course: true,
@@ -445,6 +446,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       include: {
         studentProfile: true,
         registrations: {
+          where: { sirahOrder: null },
           include: { payment: true, course: true },
           orderBy: { createdAt: "desc" },
         },
@@ -692,6 +694,7 @@ export async function getAdminNotifications(limit = 20): Promise<AdminNotificati
 }
 
 export async function adminUpdateRegistrationRecord(input: AdminRegistrationActionInput) {
+  if (await prisma.sirahOrder.findFirst({ where: { registrationId: input.registrationId } })) throw new Error("Use the Sīrah Beyond Chronology audit and payment-review actions for this batch.");
   const registration = await prisma.registration.findUnique({
     where: { id: input.registrationId },
     include: {

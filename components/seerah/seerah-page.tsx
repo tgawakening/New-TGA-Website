@@ -1,14 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+  SirahRegistrationProvider,
+  useSirahRegistration,
+} from "@/components/sirah/registration-provider";
+import Image from "next/image";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Header, Footer } from "@/components/home/sections";
 import {
   activeCampaign,
@@ -31,43 +28,27 @@ const sectionLinks = [
   ["faqs", "FAQs"],
 ];
 
-const CampaignContext = createContext(true);
-
-function PrimaryAction({ placement }: { placement: string }) {
-  const orientation = useContext(CampaignContext);
-  const enquiry =
-    !orientation && !(config.checkoutEnabled && config.campaign.enrolmentUrl);
-  const whatsapp = orientation || enquiry;
-  const href = whatsapp
-    ? config.campaign.whatsappUrl
-    : config.campaign.enrolmentUrl!;
+function PrimaryAction({
+  placement,
+  country,
+  plan,
+}: {
+  placement: string;
+  country?: string;
+  plan?: "MONTHLY" | "ANNUAL";
+}) {
+  const open = useSirahRegistration();
   return (
-    <a
+    <button
+      type="button"
       className={styles.primary}
-      href={href}
-      target={whatsapp ? "_blank" : undefined}
-      rel={whatsapp ? "noopener noreferrer" : undefined}
-      onClick={() =>
-        trackSeerah(
-          whatsapp ? "seerah_whatsapp_click" : "seerah_checkout_start",
-          {
-            placement,
-            intent: orientation
-              ? "orientation"
-              : enquiry
-                ? "course_enquiry"
-                : "enrolment",
-          },
-        )
-      }
+      onClick={() => {
+        trackSeerah("seerah_registration_open", { placement });
+        open({ country, plan });
+      }}
     >
-      {orientation
-        ? "Join the Free Orientation"
-        : enquiry
-          ? "Enquire on WhatsApp"
-          : "Enrol in the Course"}
-      <span aria-hidden>↗</span>
-    </a>
+      Register for the Course <span aria-hidden>↗</span>
+    </button>
   );
 }
 
@@ -301,11 +282,6 @@ function Plan({
   annual: boolean;
   country: string;
 }) {
-  const available = Boolean(
-    config.checkoutEnabled &&
-    plan?.checkoutUrl &&
-    config.markets.find((m) => m.code === country)?.terms,
-  );
   return (
     <article className={`${styles.plan} ${annual ? styles.annual : ""}`}>
       <p className={styles.eyebrow}>
@@ -330,38 +306,26 @@ function Plan({
         </>
       )}
       {annual && <p className={styles.planNote}>One payment for 12 months.</p>}
-      {available && plan?.checkoutUrl ? (
-        <a
-          href={plan.checkoutUrl}
-          className={styles.primary}
-          onClick={() =>
-            trackSeerah("seerah_checkout_start", {
-              country,
-              plan: annual ? "annual" : "monthly",
-            })
-          }
-        >
-          Choose {annual ? "Annual" : "Monthly"} <span aria-hidden>↗</span>
-        </a>
-      ) : (
-        <a
-          className={styles.primary}
-          href={config.campaign.whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Enquire on WhatsApp about ${annual ? "annual" : "monthly"} fees in ${config.markets.find((m) => m.code === country)?.name}`}
-          onClick={() =>
-            trackSeerah("seerah_whatsapp_click", {
-              placement: "fees",
-              intent: "fee_enquiry",
-              country,
-              plan: annual ? "annual" : "monthly",
-            })
-          }
-        >
-          Enquire on WhatsApp <span aria-hidden>↗</span>
-        </a>
-      )}
+      <PrimaryAction
+        placement={`fees-${country}-${annual ? "annual" : "monthly"}`}
+        country={country}
+        plan={annual ? "ANNUAL" : "MONTHLY"}
+      />
+      <a
+        className={styles.readMore}
+        href={config.campaign.whatsappUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() =>
+          trackSeerah("seerah_whatsapp_click", {
+            placement: "fees",
+            intent: "fee_enquiry",
+            country,
+          })
+        }
+      >
+        Enquire on WhatsApp ↗
+      </a>
     </article>
   );
 }
@@ -398,7 +362,11 @@ function subscribeLocaleChange(callback: () => void) {
   window.addEventListener("languagechange", callback);
   return () => window.removeEventListener("languagechange", callback);
 }
-function Fees() {
+function Fees({
+  pakistanOnlineAvailable = false,
+}: {
+  pakistanOnlineAvailable?: boolean;
+}) {
   const [chosenCountry, setCountry] = useState<string | null>(null);
   const suggestedCountry = useSyncExternalStore(
     subscribeLocaleChange,
@@ -408,7 +376,7 @@ function Fees() {
   const country = chosenCountry || suggestedCountry;
   const market = config.markets.find((m) => m.code === country)!;
   const monthly =
-    market.code === "PK" && !market.onlineRecurringVerified
+    market.code === "PK" && !pakistanOnlineAvailable
       ? market.manualMonthly || null
       : market.monthly;
   function select(value: string) {
@@ -470,7 +438,7 @@ function Fees() {
             <Plan plan={market.annual} annual country={country} />
           </div>
           {market.code === "PK" &&
-            market.onlineRecurringVerified &&
+            pakistanOnlineAvailable &&
             market.manualMonthly && (
               <>
                 <h3 className={styles.marketTitle}>Manual monthly payment</h3>
@@ -483,7 +451,7 @@ function Fees() {
                 </div>
               </>
             )}
-          {market.code === "PK" && !market.onlineRecurringVerified && (
+          {market.code === "PK" && !pakistanOnlineAvailable && (
             <p className={styles.paymentNotice}>
               The manual monthly rate is shown. Online recurring payment
               availability is being confirmed.
@@ -491,8 +459,8 @@ function Fees() {
           )}
           {market.code === "OTHER" && (
             <p className={styles.paymentNotice}>
-              Fees are shown in GBP. Any conversion by your bank may vary;
-              no fixed local-currency amount is offered.
+              Fees are shown in GBP. Any conversion by your bank may vary; no
+              fixed local-currency amount is offered.
             </p>
           )}
           {!market.terms && (
@@ -513,10 +481,12 @@ function Fees() {
   );
 }
 
-export default function SeerahPage({
+function SeerahContent({
   initialCampaign,
+  pakistanOnlineAvailable,
 }: {
   initialCampaign: "orientation" | "enrolment";
+  pakistanOnlineAvailable?: boolean;
 }) {
   const [orientation, setOrientation] = useState(
     initialCampaign === "orientation",
@@ -528,25 +498,16 @@ export default function SeerahPage({
     return () => window.clearInterval(timer);
   }, []);
   return (
-    <CampaignContext.Provider value={orientation}>
+    <>
       <div className={styles.page}>
         <a className={styles.skip} href="#overview">
           Skip to course content
         </a>
         <Header
-          enrolmentAction={
-            !config.checkoutEnabled
-              ? {
-                  href: config.campaign.whatsappUrl,
-                  label: "Enquire on WhatsApp",
-                  onClick: () =>
-                    trackSeerah("seerah_whatsapp_click", {
-                      placement: "shared-header",
-                      intent: "course_enquiry",
-                    }),
-                }
-              : undefined
-          }
+          enrolmentAction={{
+            href: "/seerah/register",
+            label: "Register for the Course",
+          }}
         />
         <nav className={styles.sectionNav} aria-label="Course sections">
           <div className={styles.container}>
@@ -604,9 +565,26 @@ export default function SeerahPage({
                 </p>
                 <div className={styles.heroActions}>
                   <PrimaryAction placement="hero" />
-                  <a className={styles.secondary} href="#course-details">
-                    Explore the Course <span aria-hidden>↓</span>
-                  </a>
+                  {orientation ? (
+                    <a
+                      className={styles.secondary}
+                      href={config.campaign.whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() =>
+                        trackSeerah("seerah_whatsapp_click", {
+                          placement: "hero-orientation",
+                          intent: "orientation",
+                        })
+                      }
+                    >
+                      Join Free Orientation <span aria-hidden>↗</span>
+                    </a>
+                  ) : (
+                    <a className={styles.secondary} href="#course-details">
+                      Explore the Course <span aria-hidden>↓</span>
+                    </a>
+                  )}
                 </div>
                 {orientation && (
                   <p className={styles.supporting}>
@@ -795,7 +773,7 @@ export default function SeerahPage({
               )}
             </div>
           </section>
-          <Fees />
+          <Fees pakistanOnlineAvailable={pakistanOnlineAvailable} />
           <section
             id="faqs"
             className={`${styles.section} ${styles.dark}`}
@@ -876,6 +854,17 @@ export default function SeerahPage({
           <PrimaryAction placement="mobile-sticky" />
         </div>
       </div>
-    </CampaignContext.Provider>
+    </>
+  );
+}
+
+export default function SeerahPage(props: {
+  initialCampaign: "orientation" | "enrolment";
+  pakistanOnlineAvailable?: boolean;
+}) {
+  return (
+    <SirahRegistrationProvider>
+      <SeerahContent {...props} />
+    </SirahRegistrationProvider>
   );
 }

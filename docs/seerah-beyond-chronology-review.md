@@ -46,3 +46,7 @@ Use `npm ci`, `npm run lint`, `npm run test:seerah`, `npm run typecheck`, `npm r
 Browser verification covers 1440 px desktop, 820 px tablet and 390 px mobile: no page overflow; three desktop topic cards and a peek of the next mobile card; gallery forward/backward boundary navigation; inline expansion; FAQ expansion; country buttons/selector synchronization; WhatsApp fee-enquiry links with no active checkout; unpublished pending policies; fixed price display and currency precision; orientation expiry; reduced motion and runtime errors. Accessibility scans cover the rebuilt main content. Visual checks inspect the generated screenshots. Actual campaign artwork cropping, new video playback and real gateway destinations remain untestable until the missing files/destinations arrive.
 
 GitHub write access was restored on 7 November 2026. The implementation is pushed to `codex/seerah-beyond-chronology` for review. Artwork, content and payment launch requirements above remain pending.
+
+## Current registration update
+
+The registration workflow supersedes the initial WhatsApp-only primary action. Hero, fees, closing and mobile actions now open the shared current-course registration form, with the orientation remaining separate while current. See [SIRAH_REGISTRATION_WORKFLOW.md](SIRAH_REGISTRATION_WORKFLOW.md) for authoritative server pricing, private receipts, admin review, historical-order compatibility, configuration gates and migration requirements. Campaign artwork/video work remains pending separately.

@@ -1,14 +1,26 @@
-import { PaymentStatus, Prisma, RegistrationStatus, type PaymentMethod } from "@prisma/client";
+import {
+  PaymentStatus,
+  Prisma,
+  RegistrationStatus,
+  type PaymentMethod,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import {
   COURSE_DURATION_MONTHS,
+  getPaymentPlanTypeFromSnapshot,
   getPaymentMethodsForPlan,
   paymentPlanTypeLabels,
 } from "@/lib/course-payment";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
-import { calculatePricing, SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
-import type { PendingRegistrationUpdateInput, RegistrationInput } from "@/lib/validations/registration";
+import {
+  calculatePricing,
+  SOUTH_ASIA_ONLINE_AMOUNT_PENCE,
+} from "@/lib/pricing";
+import type {
+  PendingRegistrationUpdateInput,
+  RegistrationInput,
+} from "@/lib/validations/registration";
 
 function buildPaymentReference() {
   const now = new Date();
@@ -40,7 +52,8 @@ function getPaymentRecordAmount(
   paymentPlanType: RegistrationInput["paymentPlanType"],
   paymentMethod: RegistrationInput["paymentMethod"],
 ) {
-  const isOnlinePayment = paymentMethod === "STRIPE" || paymentMethod === "PAYPAL";
+  const isOnlinePayment =
+    paymentMethod === "STRIPE" || paymentMethod === "PAYPAL";
   const isFullCoursePayment = paymentPlanType === "FULL_COURSE";
 
   if (isOnlinePayment && pricing.autoDiscountApplied) {
@@ -53,7 +66,9 @@ function getPaymentRecordAmount(
   }
 
   return {
-    amount: isFullCoursePayment ? pricing.fullCourseAmount : pricing.finalAmount,
+    amount: isFullCoursePayment
+      ? pricing.fullCourseAmount
+      : pricing.finalAmount,
     currency: pricing.currency,
   };
 }
@@ -73,10 +88,15 @@ export async function registerStudent(input: RegistrationInput) {
     countryCode: input.countryCode,
     couponCode: input.couponCode,
   });
-  const allowedPaymentMethods = getPaymentMethodsForPlan(pricing.allowedPaymentMethodsByPlan, input.paymentPlanType);
+  const allowedPaymentMethods = getPaymentMethodsForPlan(
+    pricing.allowedPaymentMethodsByPlan,
+    input.paymentPlanType,
+  );
 
   if (!allowedPaymentMethods.includes(input.paymentMethod)) {
-    throw new Error("Selected payment method is not available for this country.");
+    throw new Error(
+      "Selected payment method is not available for this country.",
+    );
   }
 
   const coupon = pricing.couponCode
@@ -88,7 +108,11 @@ export async function registerStudent(input: RegistrationInput) {
 
   const passwordHash = await bcrypt.hash(input.password, 12);
   const paymentReference = buildPaymentReference();
-  const paymentRecord = getPaymentRecordAmount(pricing, input.paymentPlanType, input.paymentMethod);
+  const paymentRecord = getPaymentRecordAmount(
+    pricing,
+    input.paymentPlanType,
+    input.paymentMethod,
+  );
 
   const result = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -163,12 +187,16 @@ export async function registerStudent(input: RegistrationInput) {
   });
 
   const isManualPayment =
-    input.paymentMethod === "BANK_TRANSFER" || input.paymentMethod === "JAZZCASH";
+    input.paymentMethod === "BANK_TRANSFER" ||
+    input.paymentMethod === "JAZZCASH";
 
   if (isManualPayment) {
     const appUrl = getAppUrl();
     const adminDashboardUrl = `${appUrl}/admin`;
-    const orderAmount = formatAmount(result.paymentRecord.amount, result.paymentRecord.currency);
+    const orderAmount = formatAmount(
+      result.paymentRecord.amount,
+      result.paymentRecord.currency,
+    );
     const paymentPlanLabel = paymentPlanTypeLabels[input.paymentPlanType];
 
     await Promise.allSettled([
@@ -241,7 +269,9 @@ export async function registerStudent(input: RegistrationInput) {
 
   return result;
 }
-export async function updatePendingRegistration(input: PendingRegistrationUpdateInput & { userId: string }) {
+export async function updatePendingRegistration(
+  input: PendingRegistrationUpdateInput & { userId: string },
+) {
   const registration = await prisma.registration.findFirst({
     where: {
       id: input.registrationId,
@@ -250,6 +280,8 @@ export async function updatePendingRegistration(input: PendingRegistrationUpdate
     include: {
       payment: true,
       subscription: true,
+      user: true,
+      course: true,
     },
   });
 
@@ -272,18 +304,57 @@ export async function updatePendingRegistration(input: PendingRegistrationUpdate
     registration.payment.status === PaymentStatus.UNDER_REVIEW ||
     registration.status === RegistrationStatus.MANUAL_REVIEW
   ) {
-    throw new Error("This payment is already under manual review and cannot be changed now.");
+    throw new Error(
+      "This payment is already under manual review and cannot be changed now.",
+    );
   }
 
+  if (registration.course.slug === "seerah-course") {
+    if (
+      await prisma.sirahOrder.findFirst({
+        where: { registrationId: registration.id },
+      })
+    )
+      throw new Error(
+        "Use the current Sīrah registration workflow for this batch.",
+      );
+    if (
+      input.courseSlug !== registration.course.slug ||
+      input.countryCode !== registration.selectedCountryCode ||
+      input.paymentMethod !== registration.paymentMethod ||
+      input.paymentPlanType !==
+        getPaymentPlanTypeFromSnapshot(registration.pricingSnapshot) ||
+      input.fullName !== registration.user.fullName ||
+      input.phoneCountryCode !== registration.user.phoneCountryCode ||
+      input.phoneNumber !== registration.user.phoneNumber ||
+      (input.couponCode && input.couponCode !== registration.couponCode)
+    )
+      throw new Error(
+        "Your historical order details and agreed fees are locked. Resume without changing them, or contact support.",
+      );
+    return {
+      registrationId: registration.id,
+      paymentReference: registration.paymentReference,
+      pricing: registration.pricingSnapshot as unknown as Awaited<
+        ReturnType<typeof calculatePricing>
+      >,
+      paymentRecord: { amount: payment.amount, currency: payment.currency },
+    };
+  }
   const pricing = await calculatePricing({
     courseSlug: input.courseSlug,
     countryCode: input.countryCode,
     couponCode: input.couponCode,
   });
-  const allowedPaymentMethods = getPaymentMethodsForPlan(pricing.allowedPaymentMethodsByPlan, input.paymentPlanType);
+  const allowedPaymentMethods = getPaymentMethodsForPlan(
+    pricing.allowedPaymentMethodsByPlan,
+    input.paymentPlanType,
+  );
 
   if (!allowedPaymentMethods.includes(input.paymentMethod)) {
-    throw new Error("Selected payment method is not available for this country.");
+    throw new Error(
+      "Selected payment method is not available for this country.",
+    );
   }
 
   const coupon = pricing.couponCode
@@ -293,7 +364,11 @@ export async function updatePendingRegistration(input: PendingRegistrationUpdate
       })
     : null;
 
-  const paymentRecord = getPaymentRecordAmount(pricing, input.paymentPlanType, input.paymentMethod);
+  const paymentRecord = getPaymentRecordAmount(
+    pricing,
+    input.paymentPlanType,
+    input.paymentMethod,
+  );
 
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
@@ -370,4 +445,3 @@ export async function updatePendingRegistration(input: PendingRegistrationUpdate
     paymentRecord,
   };
 }
-

@@ -17,14 +17,20 @@ function fixture() {
     },
     dispatchEvent: () => {},
   };
-  function load(name) {
-    if (cache[name]) return cache[name];
+  function load(
+    name,
+    parent = path.join(scriptDirectory, "../components/seerah"),
+  ) {
+    const filepath =
+      path.resolve(
+        name.startsWith("@/")
+          ? path.join(scriptDirectory, "..", name.slice(2))
+          : path.join(parent, name),
+      ) + ".ts";
+    if (cache[filepath]) return cache[filepath];
     const exports = {};
-    cache[name] = exports;
-    const source = fs.readFileSync(
-      path.join(scriptDirectory, "../components/seerah", `${name}.ts`),
-      "utf8",
-    );
+    cache[filepath] = exports;
+    const source = fs.readFileSync(filepath, "utf8");
     const code = ts.transpileModule(source, {
       compilerOptions: {
         module: ts.ModuleKind.CommonJS,
@@ -33,7 +39,7 @@ function fixture() {
     }).outputText;
     vm.runInNewContext(code, {
       exports,
-      require: (name) => load(name.replace("./", "")),
+      require: (spec) => load(spec, path.dirname(filepath)),
       window,
       CustomEvent: class {},
       Date,

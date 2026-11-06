@@ -1,5 +1,6 @@
 "use client";
 
+import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { Header } from "@/components/home/sections/header";
@@ -109,8 +110,8 @@ export default function FeeWaiverPage() {
           ...form,
           age: Number(form.age),
           courseSlug: "seerah-course",
-          courseTitle: "Prophetic Strategies (Seerah)",
-          listedPrice: "£20/mo",
+          courseTitle: SIRAH_TITLE,
+          listedPrice: "Approved regional fees — see /seerah",
         }),
       });
 
@@ -155,11 +156,11 @@ export default function FeeWaiverPage() {
               <div style={topRibbonStyle}>
                 <div>
                   <p style={ribbonLabelStyle}>Course</p>
-                  <p style={ribbonValueStyle}>Prophetic Strategies (Seerah)</p>
+                  <p style={ribbonValueStyle}>{SIRAH_TITLE}</p>
                 </div>
                 <div>
                   <p style={ribbonLabelStyle}>Listed Price</p>
-                  <p style={ribbonValueStyle}>£20/mo</p>
+                  <p style={ribbonValueStyle}>Regional fees apply</p>
                 </div>
                 <div>
                   <p style={ribbonLabelStyle}>Review Mode</p>

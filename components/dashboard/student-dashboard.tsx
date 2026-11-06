@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { countries } from "countries-list";
 import { trackConfirmedSeerahEnrolment } from "@/components/seerah/analytics";
+import { SirahDashboardRegistration } from "@/components/sirah/dashboard-registration";
 import LogoutButton from "@/components/dashboard/logout-button";
 import { paymentPlanTypeLabels } from "@/lib/course-payment";
 
 type DashboardProps = {
   user: {
     id: string;
+    currentSirahOnly?: boolean;
     fullName: string;
     email: string;
     phoneCountryCode: string;
@@ -65,7 +67,7 @@ const seerahLessons = [
 ];
 
 const supportLinks = [
-  { label: "WhatsApp Community", href: "https://chat.whatsapp.com/EXcZmIOG9c8LOSdjK7KMko" },
+  { label: "Course registration & invitation", href: "/seerah/register" },
   { label: "Course Registration", href: "/seerah/register" },
   { label: "Admin Panel", href: "/admin" },
 ];
@@ -308,6 +310,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
     <main className="ga-page">
       <section className="ga-section">
         <div className="ga-container" style={{ display: "grid", gap: "1.4rem" }}>
+          <SirahDashboardRegistration />
           <div className="ga-dashboard-hero">
             <div>
               <p className="ga-dashboard-kicker">Student dashboard</p>
@@ -440,14 +443,15 @@ export default function StudentDashboard({ user }: DashboardProps) {
             </article>
           </section>
 
+          {!user.currentSirahOnly && <>
           <section className="ga-dashboard-split">
             <article className="ga-dashboard-card">
               <p className="ga-dashboard-card-title">My LMS</p>
               <p className="ga-dashboard-muted">
-                Recorded lessons, weekly live links, and batch support appear here after activation.
+                {user.currentSirahOnly ? "Open your Sīrah Beyond Chronology registration above for verified payment status, private evidence and your course invitation." : "Recorded lessons, weekly live links, and batch support appear here after activation."}
               </p>
               <div className="ga-dashboard-list" style={{ marginTop: "1rem" }}>
-                {seerahLessons.map((lesson) => (
+                {(user.currentSirahOnly ? [] : seerahLessons).map((lesson) => (
                   <div key={lesson.title} className="ga-dashboard-list-item">
                     <div>
                       <strong>{lesson.title}</strong>
@@ -458,7 +462,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
                 ))}
               </div>
               <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
-                {hasActiveLmsAccess ? (
+                {user.currentSirahOnly ? <Link href="/seerah/register" className="ga-btn ga-btn-primary">Manage your Sīrah registration</Link> : hasActiveLmsAccess ? (
                   <Link href="/seerah/lms" className="ga-btn ga-btn-primary">
                     Open Seerah LMS
                   </Link>
@@ -467,7 +471,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
                     Complete Payment First
                   </Link>
                 )}
-                <Link href="https://chat.whatsapp.com/EXcZmIOG9c8LOSdjK7KMko" className="ga-btn ga-btn-outline" target="_blank">
+                <Link href="/seerah/register" className="ga-btn ga-btn-outline" target="_blank">
                   Join Batch Community
                 </Link>
               </div>
@@ -525,6 +529,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
               </form>
             </article>
           </section>
+          </>}
 
           <section className="ga-dashboard-split">
             <article className="ga-dashboard-card">

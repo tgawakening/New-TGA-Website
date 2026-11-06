@@ -82,50 +82,52 @@ enum CouponType {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  fullName        String
-  email           String    @unique
+  id               String     @id @default(cuid())
+  fullName         String
+  email            String     @unique
   phoneCountryCode String
-  phoneNumber     String
-  passwordHash    String
-  role            UserRole  @default(STUDENT)
-  status          UserStatus @default(ACTIVE)
-  emailVerifiedAt DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  phoneNumber      String
+  passwordHash     String
+  role             UserRole   @default(STUDENT)
+  status           UserStatus @default(ACTIVE)
+  emailVerifiedAt  DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
-  studentProfile  StudentProfile?
-  registrations   Registration[]
-  enrollments     Enrollment[]
-  sessions        Session[]
-  subscriptions   Subscription[]
-  emailLogs       EmailLog[]
+  sirahOrders             SirahOrder[]
+  studentProfile          StudentProfile?
+  registrations           Registration[]
+  enrollments             Enrollment[]
+  sessions                Session[]
+  subscriptions           Subscription[]
+  emailLogs               EmailLog[]
   freeWarriorApplications FreeWarriorApplication[]
 }
 
 model StudentProfile {
-  id         String   @id @default(cuid())
-  userId     String   @unique
+  id          String   @id @default(cuid())
+  userId      String   @unique
   countryCode String
   countryName String
-  timezone   String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  timezone    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Course {
-  id          String    @id @default(cuid())
-  slug        String    @unique
+  id          String   @id @default(cuid())
+  slug        String   @unique
   title       String
   description String?
   basePrice   Int
   currency    String
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
+  sirahOrders   SirahOrder[]
   pricingRules  PricingRule[]
   coupons       Coupon[]
   registrations Registration[]
@@ -133,17 +135,17 @@ model Course {
 }
 
 model PricingRule {
-  id            String      @id @default(cuid())
-  courseId      String
-  countryCode   String
-  regionGroup   RegionGroup
-  currency      String
-  amount        Int
-  isDiscounted  Boolean     @default(false)
-  activeFrom    DateTime?
-  activeTo      DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id           String      @id @default(cuid())
+  courseId     String
+  countryCode  String
+  regionGroup  RegionGroup
+  currency     String
+  amount       Int
+  isDiscounted Boolean     @default(false)
+  activeFrom   DateTime?
+  activeTo     DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
@@ -151,49 +153,50 @@ model PricingRule {
 }
 
 model Coupon {
-  id                String      @id @default(cuid())
-  code              String      @unique
-  type              CouponType
-  value             Int
-  applicableRegion  RegionGroup?
+  id                 String       @id @default(cuid())
+  code               String       @unique
+  type               CouponType
+  value              Int
+  applicableRegion   RegionGroup?
   applicableCourseId String?
-  maxRedemptions    Int?
-  usedCount         Int         @default(0)
-  startsAt          DateTime?
-  expiresAt         DateTime?
-  isActive          Boolean     @default(true)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  maxRedemptions     Int?
+  usedCount          Int          @default(0)
+  startsAt           DateTime?
+  expiresAt          DateTime?
+  isActive           Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
-  applicableCourse Course? @relation(fields: [applicableCourseId], references: [id], onDelete: SetNull)
+  applicableCourse Course?        @relation(fields: [applicableCourseId], references: [id], onDelete: SetNull)
   registrations    Registration[]
 }
 
 model Registration {
-  id                    String             @id @default(cuid())
-  userId                String
-  courseId              String
-  selectedCountryCode   String
-  selectedCountryName   String
-  selectedCurrency      String
-  baseAmount            Int
-  autoDiscountAmount    Int               @default(0)
-  couponDiscountAmount  Int               @default(0)
-  finalAmount           Int
-  paymentMethod         PaymentMethod
-  paymentReference      String?            @unique
-  status                RegistrationStatus @default(PENDING_PAYMENT)
-  couponId              String?
-  couponCode            String?
-  pricingSnapshot       Json
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  id                   String             @id @default(cuid())
+  userId               String
+  courseId             String
+  selectedCountryCode  String
+  selectedCountryName  String
+  selectedCurrency     String
+  baseAmount           Int
+  autoDiscountAmount   Int                @default(0)
+  couponDiscountAmount Int                @default(0)
+  finalAmount          Int
+  paymentMethod        PaymentMethod
+  paymentReference     String?            @unique
+  status               RegistrationStatus @default(PENDING_PAYMENT)
+  couponId             String?
+  couponCode           String?
+  pricingSnapshot      Json
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course     Course    @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  coupon     Coupon?   @relation(fields: [couponId], references: [id], onDelete: SetNull)
-  payment    Payment?
-  enrollment Enrollment?
+  sirahOrder   SirahOrder?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  coupon       Coupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  payment      Payment?
+  enrollment   Enrollment?
   subscription Subscription?
 }
 
@@ -212,38 +215,38 @@ model Payment {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registration     Registration             @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   manualSubmission ManualPaymentSubmission?
 }
 
 model ManualPaymentSubmission {
-  id               String   @id @default(cuid())
-  paymentId        String   @unique
-  method           PaymentMethod
-  senderName       String
-  senderNumber     String
-  referenceKey     String
-  screenshotUrl    String?
-  notes            String?
-  submittedAt      DateTime @default(now())
+  id                String        @id @default(cuid())
+  paymentId         String        @unique
+  method            PaymentMethod
+  senderName        String
+  senderNumber      String
+  referenceKey      String
+  screenshotUrl     String?
+  notes             String?
+  submittedAt       DateTime      @default(now())
   reviewedByAdminId String?
-  reviewedAt       DateTime?
-  reviewNote       String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  reviewedAt        DateTime?
+  reviewNote        String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 }
 
 model Enrollment {
-  id              String           @id @default(cuid())
-  userId          String
-  courseId        String
-  registrationId  String           @unique
-  status          EnrollmentStatus @default(PENDING)
-  activatedAt     DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id             String           @id @default(cuid())
+  userId         String
+  courseId       String
+  registrationId String           @unique
+  status         EnrollmentStatus @default(PENDING)
+  activatedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   course       Course       @relation(fields: [courseId], references: [id], onDelete: Restrict)
@@ -253,38 +256,38 @@ model Enrollment {
 }
 
 model Session {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Subscription {
-  id                    String               @id @default(cuid())
-  userId                String
-  registrationId        String               @unique
-  provider              SubscriptionProvider
-  status                SubscriptionStatus   @default(INCOMPLETE)
-  providerSubscriptionId String?             @unique
-  providerCustomerId    String?
-  currentPeriodStart    DateTime?
-  currentPeriodEnd      DateTime?
-  cancelAtPeriodEnd     Boolean              @default(false)
-  canceledAt            DateTime?
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
+  id                     String               @id @default(cuid())
+  userId                 String
+  registrationId         String               @unique
+  provider               SubscriptionProvider
+  status                 SubscriptionStatus   @default(INCOMPLETE)
+  providerSubscriptionId String?              @unique
+  providerCustomerId     String?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean              @default(false)
+  canceledAt             DateTime?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
 }
 
 model EmailLog {
-  id         String   @id @default(cuid())
-  userId      String?
+  id         String    @id @default(cuid())
+  userId     String?
   toEmail    String
   emailType  String
   subject    String
@@ -293,8 +296,8 @@ model EmailLog {
   error      String?
   payload    Json?
   sentAt     DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -302,32 +305,32 @@ model EmailLog {
 }
 
 model MissionSupportDonation {
-  id               String        @id @default(cuid())
-  fullName         String
-  email            String
-  phoneCountryCode String?
-  phoneNumber      String?
-  countryName      String?
-  amount           Int
-  currency         String        @default("GBP")
-  paymentMethod    PaymentMethod
-  paymentReference String?       @unique
-  status           PaymentStatus @default(INITIATED)
-  donorMessage     String?
-  providerOrderId  String?
-  providerPaymentId String?
-  manualNotes      String?
-  paidAt           DateTime?
-  rawPayloadJson   Json?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  frequency        String        @default("ONE_TIME")
-  purpose          String        @default("WHERE_NEEDED")
-  providerCustomerId String?
-  providerSubscriptionId String? @unique
-  subscriptionStatus String?
-  cancelAtPeriodEnd Boolean      @default(false)
-  checkoutKey      String?       @unique
+  id                     String        @id @default(cuid())
+  fullName               String
+  email                  String
+  phoneCountryCode       String?
+  phoneNumber            String?
+  countryName            String?
+  amount                 Int
+  currency               String        @default("GBP")
+  paymentMethod          PaymentMethod
+  paymentReference       String?       @unique
+  status                 PaymentStatus @default(INITIATED)
+  donorMessage           String?
+  providerOrderId        String?
+  providerPaymentId      String?
+  manualNotes            String?
+  paidAt                 DateTime?
+  rawPayloadJson         Json?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  frequency              String        @default("ONE_TIME")
+  purpose                String        @default("WHERE_NEEDED")
+  providerCustomerId     String?
+  providerSubscriptionId String?       @unique
+  subscriptionStatus     String?
+  cancelAtPeriodEnd      Boolean       @default(false)
+  checkoutKey            String?       @unique
 
   manualSubmission MissionSupportManualSubmission?
   payments         MissionSupportPayment[]
@@ -337,27 +340,28 @@ model MissionSupportDonation {
 }
 
 model MissionSupportPayment {
-  id                String   @id @default(cuid())
+  id                String                 @id @default(cuid())
   donationId        String
-  providerReference String   @unique
+  providerReference String                 @unique
   providerPaymentId String?
   providerInvoiceId String?
   amount            Int
-  currency          String   @default("GBP")
+  currency          String                 @default("GBP")
   status            String
-  refundedAmount    Int      @default(0)
+  refundedAmount    Int                    @default(0)
   paidAt            DateTime?
   receiptUrl        String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
   donation          MissionSupportDonation @relation(fields: [donationId], references: [id], onDelete: Cascade)
+
   @@index([donationId, createdAt])
   @@index([providerPaymentId])
 }
 
 model MissionSupportWebhookEvent {
-  id         String @id
-  createdAt  DateTime @default(now())
+  id        String   @id
+  createdAt DateTime @default(now())
 }
 
 model MissionSupportManualSubmission {
@@ -379,35 +383,35 @@ model MissionSupportManualSubmission {
 }
 
 model FreeWarriorApplication {
-  id                     String                       @id @default(cuid())
-  fullName               String
-  email                  String
-  whatsapp               String
-  age                    Int?
-  cityCountry            String
-  occupation             String
-  knowledgeLevel         String
-  previousSeerahStudy    String?
-  currentInvolvement     String?
-  whatDrawsYou           String
-  howItBenefits          String
-  mostInterestingTopic   String
-  whyThisTopic           String
-  canAttendRegularly     String
-  attendedOrientation    Boolean
-  reasonForWaiver        String
-  howHeard               String?
-  adabCommitment         Boolean
-  genuineFinancialNeed   Boolean
-  courseSlug             String
-  courseTitle            String
-  listedPrice            String
-  status                 FreeWarriorApplicationStatus @default(PENDING)
-  reviewNote             String?
-  reviewedAt             DateTime?
-  approvedUserId         String?
-  createdAt              DateTime                     @default(now())
-  updatedAt              DateTime                     @updatedAt
+  id                   String                       @id @default(cuid())
+  fullName             String
+  email                String
+  whatsapp             String
+  age                  Int?
+  cityCountry          String
+  occupation           String
+  knowledgeLevel       String
+  previousSeerahStudy  String?
+  currentInvolvement   String?
+  whatDrawsYou         String
+  howItBenefits        String
+  mostInterestingTopic String
+  whyThisTopic         String
+  canAttendRegularly   String
+  attendedOrientation  Boolean
+  reasonForWaiver      String
+  howHeard             String?
+  adabCommitment       Boolean
+  genuineFinancialNeed Boolean
+  courseSlug           String
+  courseTitle          String
+  listedPrice          String
+  status               FreeWarriorApplicationStatus @default(PENDING)
+  reviewNote           String?
+  reviewedAt           DateTime?
+  approvedUserId       String?
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
 
   approvedUser User? @relation(fields: [approvedUserId], references: [id], onDelete: SetNull)
 
@@ -415,6 +419,112 @@ model FreeWarriorApplication {
   @@index([approvedUserId])
 }
 
+// Additive current-campaign records. Historical Registration/Payment amounts are untouched.
+model SirahOrder {
+  id                     String              @id @default(cuid())
+  userId                 String
+  courseId               String
+  batchCode              String
+  reference              String              @unique
+  requestKey             String              @unique
+  registrationId         String?             @unique
+  phoneCountry           String
+  phoneE164              String
+  countryCode            String
+  countryName            String
+  marketCode             String
+  plan                   String
+  method                 String?
+  pricingVersion         String
+  currency               String
+  amountMinor            Int
+  totalMinor             Int
+  paymentState           String              @default("UNPAID")
+  enrolmentState         String              @default("PENDING")
+  revision               Int                 @default(0)
+  terms                  Json?
+  providerOrderId        String?             @unique
+  checkoutToken          String?             @unique
+  providerPlanId         String?
+  cancelledAt            DateTime?
+  accessEndsAt           DateTime?
+  refundedMinor          Int                 @default(0)
+  providerSubscriptionId String?             @unique
+  providerCustomerId     String?
+  programmeStart         DateTime?
+  programmeEnd           DateTime?
+  nextBillingAt          DateTime?
+  paidMinor              Int                 @default(0)
+  paidCount              Int                 @default(0)
+  invitationState        String              @default("PENDING")
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  user                   User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+  course                 Course              @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  registration           Registration?       @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  receipts               SirahReceipt[]
+  audits                 SirahAudit[]
+  events                 SirahPaymentEvent[]
+  notifications          SirahNotification[]
 
+  @@unique([userId, courseId, batchCode])
+  @@index([paymentState, enrolmentState, createdAt])
+}
 
+model SirahReceipt {
+  id        String     @id @default(cuid())
+  orderId   String
+  revision  Int
+  filename  String
+  mime      String
+  sha256    String
+  data      Bytes      @db.LongBlob
+  createdAt DateTime   @default(now())
+  order     SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
+  @@unique([orderId, revision])
+}
+
+model SirahAudit {
+  id        String     @id @default(cuid())
+  orderId   String
+  actor     String
+  action    String
+  detail    Json
+  createdAt DateTime   @default(now())
+  order     SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+}
+
+model SirahPaymentEvent {
+  id          String     @id
+  orderId     String
+  provider    String
+  amountMinor Int
+  currency    String
+  kind        String
+  createdAt   DateTime   @default(now())
+  order       SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+}
+
+model SirahNotification {
+  id          String     @id @default(cuid())
+  key         String     @unique
+  orderId     String
+  toEmail     String
+  kind        String
+  payload     Json
+  state       String     @default("PENDING")
+  attempts    Int        @default(0)
+  lockedUntil DateTime?
+  providerId  String?
+  error       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  order       SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([state, lockedUntil])
+}

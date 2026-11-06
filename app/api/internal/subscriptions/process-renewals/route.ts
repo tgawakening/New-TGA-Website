@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { maintainSirahOrders } from "@/services/sirah-maintenance.service";
 import { processDueManualSubscriptions } from "@/services/payment.service";
 
 export const runtime = "nodejs";
@@ -21,7 +22,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await processDueManualSubscriptions();
-    return NextResponse.json(result);
+    const sirah = await maintainSirahOrders();
+    return NextResponse.json({ ...result, sirah });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not process manual renewals." },

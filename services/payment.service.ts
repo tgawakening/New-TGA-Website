@@ -19,6 +19,7 @@ import {
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { SOUTH_ASIA_ONLINE_AMOUNT_PENCE } from "@/lib/pricing";
 import { handleMissionSupportStripeSessionCompleted } from "@/services/mission-support.service";
+import { handleSirahStripeEvent } from "@/services/sirah-webhooks.service";
 import { handleMissionSupportStripeEvent } from "@/services/mission-support-stripe.service";
 
 type RegistrationWithPayment = Registration & {
@@ -85,6 +86,7 @@ function getPaypalApiBase() {
 }
 
 async function loadRegistrationForUser(registrationId: string, userId: string): Promise<RegistrationWithPayment> {
+  if (await prisma.sirahOrder.findFirst({ where: { registrationId, userId } })) throw new Error("Use the current Sīrah registration and verified payment flow for this batch.");
   const registration = await prisma.registration.findFirst({
     where: { id: registrationId, userId },
     include: { payment: true, user: true },
@@ -797,16 +799,17 @@ export async function handleStripeWebhook({
 }: {
   signature: string | null;
   payloadText: string;
-}) {
+}, stripeOverride?: import("stripe").default) {
   const stripeSecretKey = getRequiredEnv("STRIPE_SECRET_KEY");
   const stripeWebhookSecret = getRequiredEnv("STRIPE_WEBHOOK_SECRET");
   const stripeModule = await import("stripe");
   const Stripe = stripeModule.default;
-  const stripe = new Stripe(stripeSecretKey);
+  const stripe = stripeOverride ?? new Stripe(stripeSecretKey);
   if (!signature) throw new Error("Missing Stripe signature.");
 
   const event = stripe.webhooks.constructEvent(payloadText, signature, stripeWebhookSecret);
   if (await handleMissionSupportStripeEvent(event, stripe)) return { received: true };
+  if (await handleSirahStripeEvent(event, stripe)) return { received: true };
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
@@ -886,6 +889,7 @@ export async function reconcileMissingStripeSubscriptions({
   userId?: string;
   limit?: number;
 } = {}) {
+  if (!process.env.STRIPE_SECRET_KEY?.trim()) return { checked: 0, synced: 0 };
   const stripeSecretKey = getRequiredEnv("STRIPE_SECRET_KEY");
   const stripeModule = await import("stripe");
   const Stripe = stripeModule.default;

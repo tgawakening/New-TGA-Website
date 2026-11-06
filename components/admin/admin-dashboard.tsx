@@ -396,6 +396,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
         </button>
 
         <nav className="ga-admin-nav">
+          <a href="/admin/sirah" className="ga-admin-nav-pill">Sīrah | Beyond Chronology Students</a>
           <button type="button" className={`ga-admin-nav-pill ${activeTab === "home" ? "is-active" : ""}`} onClick={() => setActiveTab("home")}>
             Home
           </button>
