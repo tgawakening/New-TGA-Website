@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { countries } from "countries-list";
+import { trackConfirmedSeerahEnrolment } from "@/components/seerah/analytics";
 import LogoutButton from "@/components/dashboard/logout-button";
 import { paymentPlanTypeLabels } from "@/lib/course-payment";
 
@@ -116,6 +117,19 @@ export default function StudentDashboard({ user }: DashboardProps) {
       latestRegistration.status !== "PAID",
   );
   const pendingPaymentHref = latestRegistration ? `/seerah/register?resume=${encodeURIComponent(latestRegistration.id)}` : "/seerah/register";
+
+  // These props come from the authenticated server dashboard, never payment URL parameters.
+  // Manual transfers count only after verification; unpaid and pending registrations do not count.
+  useEffect(() => {
+    for (const registration of user.registrations) {
+      if (registration.course.slug === "seerah-course" &&
+        ["ACTIVE", "PAID"].includes(registration.status) &&
+        registration.payment &&
+        ["SUCCEEDED", "CONFIRMED"].includes(registration.payment.status)) {
+        trackConfirmedSeerahEnrolment(registration.id, registration.createdAt);
+      }
+    }
+  }, [user.registrations]);
 
   const countryEntries = useMemo(
     () =>
