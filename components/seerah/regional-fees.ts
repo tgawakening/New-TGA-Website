@@ -42,9 +42,7 @@ function plan(
     currency,
     frequency: annual ? "One-time payment" : "Per month",
     method,
-    total: annual
-      ? `${formatFee(amount, currency)} total for 12 months`
-      : `${formatFee(Math.round(amount * 12 * 1000) / 1000, currency)} over 12 months`,
+    total: annual ? `${formatFee(amount, currency)} total for 12 months` : null,
     checkoutUrl: null,
   };
 }

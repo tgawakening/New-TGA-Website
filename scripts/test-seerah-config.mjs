@@ -80,10 +80,12 @@ test("all guide prices stay fixed; unapproved payment routes and Pakistan recurr
     RO: [192, 2073.6],
     OTHER: [29.99, 323.89],
   };
+  assert.equal(courseConfig.checkoutEnabled, false);
   assert.equal(courseConfig.markets.length, Object.keys(expected).length);
   for (const market of courseConfig.markets) {
     assert.equal(market.monthly.amount, expected[market.code][0], market.code);
     assert.equal(market.annual.amount, expected[market.code][1], market.code);
+    assert.equal(market.monthly.total, null);
     assert.equal(market.monthly.checkoutUrl, null);
     assert.equal(market.annual.checkoutUrl, null);
     assert.equal(market.terms, null);

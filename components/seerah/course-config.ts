@@ -21,7 +21,7 @@ export type FeePlan = {
   currency: string;
   frequency: string;
   method: string;
-  total: string;
+  total: string | null;
   checkoutUrl: string | null;
 };
 export type Market = {
@@ -64,11 +64,12 @@ export const courseConfig: {
   faqs: { question: string; answer: string }[];
   markets: Market[];
   feeSupportUrl: string;
+  checkoutEnabled: boolean;
 } = {
   campaign: {
     mode: "orientation",
     orientationEndsAt: "2026-11-07T16:00:00Z",
-    // Retained from the existing /seerah page; confirm it is the new campaign group.
+    // Course WhatsApp destination retained from /seerah for orientation and enquiries.
     whatsappUrl: "https://chat.whatsapp.com/EXcZmIOG9c8LOSdjK7KMko",
     enrolmentUrl: null,
   },
@@ -104,6 +105,8 @@ export const courseConfig: {
   ],
   markets: regionalFees,
   feeSupportUrl: "/seerah/fee-waiver",
+  // Enable only after payment links, terms and provider setup are approved.
+  checkoutEnabled: false,
 };
 
 export const learningOutcomes = [

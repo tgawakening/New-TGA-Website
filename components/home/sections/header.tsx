@@ -26,7 +26,7 @@ function PillButton({
   );
 }
 
-export function Header() {
+export function Header({ enrolmentAction }: { enrolmentAction?: { href: string; label: string; onClick?: () => void } } = {}) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [hasSession, setHasSession] = useState(false);
 
@@ -92,8 +92,8 @@ export function Header() {
           <Link href="/support-our-mission" className="ga-btn ga-header-cta ga-cta-signin ga-header-support">
             Support Our Mission
           </Link>
-          <span className="hidden md:inline-flex"><Link href={hasSession ? "/dashboard" : "/seerah/register"} className="ga-btn ga-header-cta ga-cta-register">
-            {hasSession ? "Your Dashboard" : "Enroll Now"}
+          <span className="hidden md:inline-flex"><Link href={hasSession ? "/dashboard" : enrolmentAction?.href ?? "/seerah/register"} onClick={hasSession ? undefined : enrolmentAction?.onClick} className="ga-btn ga-header-cta ga-cta-register">
+            {hasSession ? "Your Dashboard" : enrolmentAction?.label ?? "Enroll Now"}
           </Link></span>
         </div>
 

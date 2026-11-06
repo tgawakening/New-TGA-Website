@@ -6,7 +6,7 @@ The `/seerah` route replaces the previous campaign content while reusing the sha
 
 - User's supplied rebuild brief, 6 November 2026: campaign copy, orientation, outcomes, topics and teaching approach.
 - Client's `SIRAH_Website_Pricing_Team_Guide.pdf`, dated 2 November 2026: fixed prices, live teaching, discussion/Q&A and a 12-month programme. The private guide is not published in the repository.
-- Existing `/seerah`: WhatsApp orientation group and fee-support route. Confirm that the retained WhatsApp group is the approved new campaign group.
+- Existing `/seerah`: WhatsApp orientation group and fee-support route. The course destination is reused for fee enquiries under the user’s latest instruction.
 
 ## Configuration
 
@@ -14,7 +14,7 @@ Edit `components/seerah/course-config.ts` for campaign mode, orientation, artwor
 
 The five prominent country choices are Pakistan, India, UK, USA and Saudi Arabia. The selector includes every market listed by the guide plus a GBP fallback for other countries. Browser locale may suggest a market, but visitors can always change it; no IP geolocation is claimed.
 
-Orientation ends at `2026-11-07T16:00:00Z` (4 PM UK, after the one-hour session). The server renders the current campaign mode and the client checks every 30 seconds. All campaign primary actions share that mode. After expiry they use the approved enrolment destination, or direct to fees when no destination is configured.
+Orientation ends at `2026-11-07T16:00:00Z` (4 PM UK, after the one-hour session). The server renders the current campaign mode and the client checks every 30 seconds. All campaign primary actions share that mode. After expiry they use WhatsApp enquiries while checkout is disabled. Once checkout is explicitly enabled, the approved enrolment destination can be used. Fee cards link to the same course WhatsApp group with “Enquire on WhatsApp”. Enquiry clicks are recorded as WhatsApp events, never checkout starts.
 
 ## Items still needed before launch
 
@@ -22,11 +22,11 @@ Orientation ends at `2026-11-07T16:00:00Z` (4 PM UK, after the one-hour session)
 2. Approved new promotional video, thumbnail and caption file. The old video refers to the previous course and is deliberately not presented as the new campaign. Each configured player loads its video source only on click and preserves its supplied aspect ratio.
 3. Campaign posters, exact Seerah Doubts subtitles and approved references/quotations. Topic image slots are null, using numbered typographic frames. Portrait posters use `object-fit: contain`; forthcoming clean artwork can set `clean: true` for a 1200 × 750 ratio. No old poster is reassigned to an unrelated topic. Expanded copy uses source-examination questions without invented quotations or citations.
 4. Approved curriculum, instructor name/portrait/biography, language, weekly class schedule, recording/resource/access arrangements and reference books. These are hidden until supplied. The curriculum renderer opens its first approved panel by default. Only confirmed FAQ answers are shown.
-5. Final cancellation/refund/access policy and tax treatment. The guide explicitly flags the existing instalment-versus-cancellable-subscription conflict. No policy decision has been invented. All checkout links remain null and checkout stays disabled until both a destination and market terms are configured.
+5. Final cancellation/refund/access policy and tax treatment. The guide explicitly flags the existing instalment-versus-cancellable-subscription conflict. No policy decision has been invented. All checkout links remain null and `checkoutEnabled` is false. Checkout requires the explicit switch, a destination and market terms. Cancellation and refund terms stay unpublished. Monthly cards show the monthly price without a 12-payment total or claims about cancellability or a binding commitment.
 6. Verified regional payment routes. The existing registration/payment backend still contains the previous course's prices; the landing page does not direct visitors into that checkout. Backend pricing and provider setup must be aligned and tested before enabling payment destinations. Annual buyers must receive one charge and no recurring subscription.
-7. Pakistan recurring verification: the configured online fee is PKR 3,000/month, but `onlineRecurringVerified` is false, so it stays hidden as required by the guide. Visitors see PKR 3,500/month manual (PKR 42,000 over 12 months), alongside PKR 32,400 annual upfront. Once recurring billing is verified, enable the flag to show online monthly plus the separate manual monthly option. No unsupported annual manual price is invented.
+7. Pakistan recurring verification: the configured online fee is PKR 3,000/month, but `onlineRecurringVerified` is false, so it stays hidden as required by the guide. Visitors see PKR 3,500/month manual, alongside PKR 32,400 annual upfront. Once recurring billing is verified, enable the flag to show online monthly plus the separate manual monthly option. No unsupported annual manual price is invented.
 
-No live deployment, payment, subscription or database migration is performed by this change. Shared navigation still links to the existing registration flow, as requested; this is another reason to keep this PR in draft until backend/policy alignment.
+No live deployment, payment, subscription or database migration is performed by this change. The shared header accepts an optional enrolment action. On /seerah its enrolment link becomes the course WhatsApp enquiry while checkout is disabled; other pages keep their existing header behaviour. Shared navigation styling and the footer are preserved.
 
 ## Analytics
 
@@ -43,6 +43,6 @@ Confirmed events require the site's own registration/dashboard return flow; an e
 
 Use `npm ci`, `npm run lint`, `npm run test:seerah`, `npm run typecheck`, `npm run build` and `npm run dev` to review locally. Open `/seerah`.
 
-Browser verification covers 1440 px desktop, 820 px tablet and 390 px mobile: no page overflow; three desktop topic cards and a peek of the next mobile card; gallery forward/backward boundary navigation; inline expansion; FAQ expansion; country buttons/selector synchronization; disabled unconfigured checkout; fixed price display and currency precision; orientation expiry; reduced motion and runtime errors. Accessibility scans cover the rebuilt main content. Visual checks inspect the generated screenshots. Actual campaign artwork cropping, new video playback and real gateway destinations remain untestable until the missing files/destinations arrive.
+Browser verification covers 1440 px desktop, 820 px tablet and 390 px mobile: no page overflow; three desktop topic cards and a peek of the next mobile card; gallery forward/backward boundary navigation; inline expansion; FAQ expansion; country buttons/selector synchronization; WhatsApp fee-enquiry links with no active checkout; unpublished pending policies; fixed price display and currency precision; orientation expiry; reduced motion and runtime errors. Accessibility scans cover the rebuilt main content. Visual checks inspect the generated screenshots. Actual campaign artwork cropping, new video playback and real gateway destinations remain untestable until the missing files/destinations arrive.
 
-GitHub upload is currently blocked: command-line push returned 403 and the connected GitHub app returned “Resource not accessible by integration” when creating the review branch. The implementation is committed locally and supplied as an applyable Git patch. No remote branch or PR was created.
+GitHub upload is currently blocked: command-line push returned 403 and the connected GitHub app returned “Resource not accessible by integration” when creating the review branch. The implementation is committed locally and preserved as an applyable Git patch. No remote branch or PR was created.

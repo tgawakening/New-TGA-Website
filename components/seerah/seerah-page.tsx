@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import {
   createContext,
   useContext,
@@ -36,29 +35,37 @@ const CampaignContext = createContext(true);
 
 function PrimaryAction({ placement }: { placement: string }) {
   const orientation = useContext(CampaignContext);
-  const href = orientation
+  const enquiry =
+    !orientation && !(config.checkoutEnabled && config.campaign.enrolmentUrl);
+  const whatsapp = orientation || enquiry;
+  const href = whatsapp
     ? config.campaign.whatsappUrl
-    : config.campaign.enrolmentUrl;
-  if (!href)
-    return (
-      <a className={styles.primary} href="#fees">
-        Explore Enrolment Options <span aria-hidden>↗</span>
-      </a>
-    );
+    : config.campaign.enrolmentUrl!;
   return (
     <a
       className={styles.primary}
       href={href}
-      target={orientation ? "_blank" : undefined}
-      rel={orientation ? "noopener noreferrer" : undefined}
+      target={whatsapp ? "_blank" : undefined}
+      rel={whatsapp ? "noopener noreferrer" : undefined}
       onClick={() =>
         trackSeerah(
-          orientation ? "seerah_whatsapp_click" : "seerah_checkout_start",
-          { placement },
+          whatsapp ? "seerah_whatsapp_click" : "seerah_checkout_start",
+          {
+            placement,
+            intent: orientation
+              ? "orientation"
+              : enquiry
+                ? "course_enquiry"
+                : "enrolment",
+          },
         )
       }
     >
-      {orientation ? "Join the Free Orientation" : "Enrol in the Course"}
+      {orientation
+        ? "Join the Free Orientation"
+        : enquiry
+          ? "Enquire on WhatsApp"
+          : "Enrol in the Course"}
       <span aria-hidden>↗</span>
     </a>
   );
@@ -295,7 +302,9 @@ function Plan({
   country: string;
 }) {
   const available = Boolean(
-    plan?.checkoutUrl && config.markets.find((m) => m.code === country)?.terms,
+    config.checkoutEnabled &&
+    plan?.checkoutUrl &&
+    config.markets.find((m) => m.code === country)?.terms,
   );
   return (
     <article className={`${styles.plan} ${annual ? styles.annual : ""}`}>
@@ -309,7 +318,7 @@ function Plan({
             <small>{plan.frequency}</small>
           </h3>
           <p>{plan.method}</p>
-          <p>{plan.total}</p>
+          {plan.total && <p>{plan.total}</p>}
         </>
       ) : (
         <>
@@ -335,9 +344,23 @@ function Plan({
           Choose {annual ? "Annual" : "Monthly"} <span aria-hidden>↗</span>
         </a>
       ) : (
-        <button className={styles.disabledAction} type="button" disabled>
-          Enrolment not yet available
-        </button>
+        <a
+          className={styles.primary}
+          href={config.campaign.whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Enquire on WhatsApp about ${annual ? "annual" : "monthly"} fees in ${config.markets.find((m) => m.code === country)?.name}`}
+          onClick={() =>
+            trackSeerah("seerah_whatsapp_click", {
+              placement: "fees",
+              intent: "fee_enquiry",
+              country,
+              plan: annual ? "annual" : "monthly",
+            })
+          }
+        >
+          Enquire on WhatsApp <span aria-hidden>↗</span>
+        </a>
       )}
     </article>
   );
@@ -468,25 +491,21 @@ function Fees() {
           )}
           {market.code === "OTHER" && (
             <p className={styles.paymentNotice}>
-              You will be billed in GBP. Any conversion by your bank may vary;
+              Fees are shown in GBP. Any conversion by your bank may vary;
               no fixed local-currency amount is offered.
             </p>
           )}
           {!market.terms && (
             <p className={styles.paymentNotice}>
-              Enrolment is not yet open. Final cancellation, refund and access
-              terms, payment availability and tax treatment will be shown here
-              before payments are accepted.
+              Online checkout is currently unavailable. Enquire on WhatsApp for
+              course and payment information.
             </p>
           )}
-          {market.terms && <p className={styles.terms}>{market.terms}</p>}
+          {config.checkoutEnabled && market.terms && (
+            <p className={styles.terms}>{market.terms}</p>
+          )}
         </div>
         <div className={styles.feeFoot}>
-          <p>
-            Read the <Link href="/policies/refund-policy">refund policy</Link>{" "}
-            and <Link href="/policies/terms-and-conditions">access terms</Link>{" "}
-            before choosing a plan.
-          </p>
           <a href={config.feeSupportUrl}>Request confidential fee support ↗</a>
         </div>
       </div>
@@ -514,7 +533,21 @@ export default function SeerahPage({
         <a className={styles.skip} href="#overview">
           Skip to course content
         </a>
-        <Header />
+        <Header
+          enrolmentAction={
+            !config.checkoutEnabled
+              ? {
+                  href: config.campaign.whatsappUrl,
+                  label: "Enquire on WhatsApp",
+                  onClick: () =>
+                    trackSeerah("seerah_whatsapp_click", {
+                      placement: "shared-header",
+                      intent: "course_enquiry",
+                    }),
+                }
+              : undefined
+          }
+        />
         <nav className={styles.sectionNav} aria-label="Course sections">
           <div className={styles.container}>
             <a className={styles.navBrand} href="#overview">
