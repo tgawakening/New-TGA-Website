@@ -1,35 +1,133 @@
+import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
+import { getCurrentUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { countries } from "countries-list";
+import { z } from "zod";
 import { calculatePricing } from "@/lib/pricing";
-import { pricingRequestSchema } from "@/lib/validations/pricing";
-
+import { priceFor, SIRAH_SLUG } from "@/lib/sirah/catalog";
+import { methodAvailable, termsFor } from "@/lib/sirah/config";
 export async function POST(request: Request) {
   try {
-    const json = await request.json();
-    const parsed = pricingRequestSchema.safeParse(json);
-
-    if (!parsed.success) {
+    const body = await request.json().catch(() => null);
+    if (body?.legacyRegistrationId) {
+      const input = z
+        .object({
+          legacyRegistrationId: z.string().min(1),
+          courseSlug: z.literal(SIRAH_SLUG).optional(),
+          countryCode: z.string().length(2).optional(),
+          couponCode: z.string().optional(),
+        })
+        .strict()
+        .safeParse(body);
+      if (!input.success)
+        return NextResponse.json(
+          { error: "Invalid saved-order request." },
+          { status: 400 },
+        );
+      const user = await getCurrentUser();
+      if (!user || user.status !== "ACTIVE")
+        return NextResponse.json(
+          { error: "Sign in to resume your saved order." },
+          { status: 401 },
+        );
+      const registration = await prisma.registration.findFirst({
+        where: {
+          id: input.data.legacyRegistrationId,
+          userId: user.id,
+          course: { slug: SIRAH_SLUG },
+          ...((await sirahSchemaAvailable()) ? { sirahOrder: null } : {}),
+        },
+        include: { payment: true },
+      });
+      if (!registration)
+        return NextResponse.json(
+          { error: "Saved order not found." },
+          { status: 404 },
+        );
+      const snapshot = registration.pricingSnapshot as Record<string, unknown>;
+      if (
+        !snapshot ||
+        !snapshot.display ||
+        !snapshot.allowedPaymentMethodsByPlan
+      )
+        return NextResponse.json(
+          {
+            error:
+              "Your historical pricing metadata needs support review. Your recorded amount and currency are preserved.",
+          },
+          { status: 409 },
+        );
+      if (body.couponCode && body.couponCode !== registration.couponCode)
+        return NextResponse.json(
+          { error: "Historical discounts are locked to the saved agreement." },
+          { status: 409 },
+        );
       return NextResponse.json(
         {
-          error: "Invalid pricing request.",
-          details: parsed.error.flatten(),
+          pricing: {
+            ...snapshot,
+            allowedPaymentMethods: [registration.paymentMethod],
+            allowedPaymentMethodsByPlan: {
+              subscription: [registration.paymentMethod],
+              fullCourse: [registration.paymentMethod],
+            },
+          },
+        },
+        { headers: { "Cache-Control": "private,no-store" } },
+      );
+    }
+    const input = z
+      .object({
+        courseSlug: z.string().default(SIRAH_SLUG),
+        countryCode: z.string().length(2).toUpperCase(),
+        plan: z.enum(["MONTHLY", "ANNUAL"]).default("MONTHLY"),
+        method: z
+          .enum(["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"])
+          .nullable()
+          .default(null),
+        couponCode: z.string().optional(),
+      })
+      .strict()
+      .safeParse(body);
+    if (!input.success || !(input.data.countryCode in countries))
+      return NextResponse.json(
+        { error: "Choose a valid billing country and plan." },
+        { status: 400 },
+      );
+    const v = input.data;
+    if (v.courseSlug !== SIRAH_SLUG)
+      return NextResponse.json({
+        pricing: await calculatePricing({
+          courseSlug: v.courseSlug,
+          countryCode: v.countryCode,
+          couponCode: v.couponCode,
+        }),
+      });
+    if (v.couponCode)
+      return NextResponse.json(
+        {
+          error:
+            "Additional discounts cannot be stacked with this course’s approved fees.",
         },
         { status: 400 },
       );
-    }
-
-    const pricing = await calculatePricing({
-      courseSlug: parsed.data.courseSlug,
-      countryCode: parsed.data.countryCode,
-      couponCode: parsed.data.couponCode || undefined,
+    const price = priceFor(
+      v.countryCode,
+      v.plan,
+      v.method || (v.countryCode === "PK" ? "BANK_TRANSFER" : null),
+    );
+    return NextResponse.json({
+      pricing: price,
+      available: v.method
+        ? methodAvailable(v.method, v.countryCode, price.currency, v.plan)
+        : false,
+      terms: termsFor(v.plan),
     });
-
-    return NextResponse.json({ pricing });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Unexpected pricing error.",
-      },
-      { status: 500 },
+      { error: "Pricing is temporarily unavailable." },
+      { status: 503 },
     );
   }
 }

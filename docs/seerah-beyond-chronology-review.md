@@ -1,3 +1,5 @@
+> Historical initial review notes. The current campaign artwork and registration behaviour are documented in [SEERAH_CAMPAIGN_ASSETS.md](SEERAH_CAMPAIGN_ASSETS.md) and [SIRAH_REGISTRATION_WORKFLOW.md](SIRAH_REGISTRATION_WORKFLOW.md). Asset-related pending items below have since been resolved.
+
 # Sīrah | Beyond Chronology — review version
 
 The `/seerah` route replaces the previous campaign content while reusing the shared Header and Footer. It has six sections, scoped charcoal/ivory/gold styling, locally hosted Montserrat (OFL licence included), a manual/swipe/keyboard topic gallery, inline topic details, native curriculum/FAQ expanders, editable country selection and a mobile action bar.
@@ -46,3 +48,10 @@ Use `npm ci`, `npm run lint`, `npm run test:seerah`, `npm run typecheck`, `npm r
 Browser verification covers 1440 px desktop, 820 px tablet and 390 px mobile: no page overflow; three desktop topic cards and a peek of the next mobile card; gallery forward/backward boundary navigation; inline expansion; FAQ expansion; country buttons/selector synchronization; WhatsApp fee-enquiry links with no active checkout; unpublished pending policies; fixed price display and currency precision; orientation expiry; reduced motion and runtime errors. Accessibility scans cover the rebuilt main content. Visual checks inspect the generated screenshots. Actual campaign artwork cropping, new video playback and real gateway destinations remain untestable until the missing files/destinations arrive.
 
 GitHub write access was restored on 7 November 2026. The implementation is pushed to `codex/seerah-beyond-chronology` for review. Artwork, content and payment launch requirements above remain pending.
+
+## Current registration update
+
+The registration workflow supersedes the initial WhatsApp-only primary action. Hero, fees, closing and mobile actions now open the shared current-course registration form, with the orientation remaining separate while current. See [SIRAH_REGISTRATION_WORKFLOW.md](SIRAH_REGISTRATION_WORKFLOW.md) for authoritative server pricing, private receipts, admin review, historical-order compatibility, configuration gates and migration requirements. Campaign artwork/video work remains pending separately.
+
+
+The supplied campaign assets are now integrated; see [campaign artwork and delivery verification](SEERAH_CAMPAIGN_ASSETS.md). Registration actions now link to the shared registration route, as requested in the latest asset brief.

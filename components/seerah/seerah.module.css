@@ -1273,3 +1273,167 @@
   margin-top: 18px !important;
   max-width: 850px;
 }
+
+/* Campaign artwork and restrained course exploration. */
+.heroImage {
+  object-position: 72% center;
+}
+.heroShade {
+  background: linear-gradient(
+    90deg,
+    #14161166 0%,
+    #14161133 42%,
+    transparent 68%
+  );
+}
+.sectionNav a[aria-current="location"] {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 8px;
+}
+.previewColumn {
+  max-width: 340px;
+  margin: 0 auto;
+  width: 100%;
+}
+.languageSelector {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.languageSelector button {
+  min-height: 44px;
+  min-width: 100px;
+  padding: 8px 18px;
+  border: 1px solid #73765f;
+  background: transparent;
+  color: var(--charcoal);
+  font-weight: 600;
+  transition:
+    background 220ms,
+    color 220ms;
+}
+.languageSelector button[aria-pressed="true"] {
+  background: var(--charcoal);
+  color: var(--ivory);
+  border-color: var(--charcoal);
+}
+.languageHelp {
+  font-size: 11px;
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 18px !important;
+  color: #53564c;
+}
+.video {
+  margin: 0;
+}
+.video > div {
+  overflow: hidden;
+}
+.topicArt.cleanArt img {
+  object-fit: cover;
+  transition: transform 260ms ease;
+}
+.topic:hover .topicArt img,
+.topic:focus-within .topicArt img {
+  transform: scale(1.035);
+}
+.topicDetail h4 {
+  font-size: 13px;
+  color: var(--gold);
+  margin: 20px 0 4px;
+}
+.approach {
+  align-items: start;
+}
+.approach li {
+  display: block;
+}
+.approach button {
+  background: none;
+  color: inherit;
+  border: 0;
+  padding: 0;
+  min-height: 84px;
+  width: 100%;
+  text-align: left;
+  font-weight: 600;
+}
+.approach button[aria-expanded="true"] {
+  color: #735719;
+}
+.stepExplanation {
+  font-size: 12px;
+  line-height: 1.8;
+  margin-top: 16px;
+  font-weight: 400;
+}
+@media (max-width: 760px) {
+  .approach li {
+    display: block;
+  }
+  .approach button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .stepExplanation {
+    padding-left: 45px;
+  }
+  .heroShade {
+    background: #141611;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes courseEntrance {
+    from {
+      opacity: 0.65;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .heroCopy h1 {
+    animation: courseEntrance 280ms ease-out both;
+  }
+  .heroIntro {
+    animation: courseEntrance 280ms 70ms ease-out both;
+  }
+  .heroActions {
+    animation: courseEntrance 280ms 120ms ease-out both;
+  }
+  .page main > [data-revealed="true"]:not(.hero) {
+    animation: courseEntrance 320ms ease-out;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topicArt.cleanArt img {
+    transition: none;
+    transform: none;
+  }
+}
+.ivory .readMore {
+  color: #735719;
+}
+.benefitGrid .outcomes {
+  grid-template-columns: 1fr 1fr;
+  margin-top: 28px;
+  gap: 22px;
+}
+.page :global(.ga-header-support) {
+  background: transparent;
+  color: var(--ivory);
+  border: 1px solid #777c48;
+  box-shadow: none;
+  font-size: 11px;
+}
+.page :global(.ga-cta-register) {
+  background: var(--gold);
+  color: var(--charcoal);
+  font-family: var(--font-montserrat), Arial, sans-serif;
+}

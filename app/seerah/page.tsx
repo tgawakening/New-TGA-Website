@@ -1,3 +1,5 @@
+import { methodAvailable } from "@/lib/sirah/config";
+import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import SeerahPage from "@/components/seerah/seerah-page";
@@ -18,7 +20,7 @@ const montserrat = localFont({
   variable: "--font-montserrat",
   display: "swap",
 });
-const title = "Sīrah | Beyond Chronology | The Global Awakening";
+const title = `${SIRAH_TITLE} | The Global Awakening`;
 const description =
   "Study the life of the Prophet ﷺ through sources, decisions and community. Explore law, power, leadership and movement with The Global Awakening.";
 const artwork = courseConfig.socialImage || courseConfig.hero;
@@ -49,7 +51,7 @@ export const metadata: Metadata = {
 export default function SeerahRoute() {
   return (
     <div className={montserrat.variable}>
-      <SeerahPage initialCampaign={activeCampaign()} />
+      <SeerahPage initialCampaign={activeCampaign()} pakistanOnlineAvailable={methodAvailable("STRIPE", "PK", "PKR", "MONTHLY") || methodAvailable("PAYPAL", "PK", "PKR", "MONTHLY")} />
     </div>
   );
 }

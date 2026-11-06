@@ -1,5 +1,6 @@
 /** No personal data. A checkout click is never treated as a confirmed payment. */
 export type SeerahEvent =
+  | "seerah_registration_open"
   | "seerah_whatsapp_click"
   | "seerah_country_select"
   | "seerah_checkout_start"

@@ -1,5 +1,7 @@
 import { PaymentMethod } from "@prisma/client";
 
+// Historical contracts only. New Beyond Chronology quotes use SIRAH_MONTHS
+// and a versioned SirahOrder. Changing this would reprice older pending orders.
 export const COURSE_DURATION_MONTHS = 8;
 
 export const PAYMENT_PLAN_TYPES = ["SUBSCRIPTION", "FULL_COURSE"] as const;

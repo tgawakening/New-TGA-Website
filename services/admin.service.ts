@@ -1,3 +1,4 @@
+import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import {
   EnrollmentStatus,
   PaymentMethod,
@@ -5,11 +6,21 @@ import {
   RegistrationStatus,
   type FreeWarriorApplicationStatus,
 } from "@prisma/client";
-import { getPaymentPlanTypeFromSnapshot, paymentPlanTypeLabels, type PaymentPlanType } from "@/lib/course-payment";
-import { formatApproxScholarshipAmount, parseFreeWarriorContribution } from "@/lib/free-warrior";
+import {
+  getPaymentPlanTypeFromSnapshot,
+  paymentPlanTypeLabels,
+  type PaymentPlanType,
+} from "@/lib/course-payment";
+import {
+  formatApproxScholarshipAmount,
+  parseFreeWarriorContribution,
+} from "@/lib/free-warrior";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
-import { adminActivateManualRecurringPayment, adminConfirmManualPayment } from "@/services/payment.service";
+import {
+  adminActivateManualRecurringPayment,
+  adminConfirmManualPayment,
+} from "@/services/payment.service";
 import type { AdminRegistrationActionInput } from "@/lib/validations/admin";
 
 function isMissingDatabaseStructureError(error: unknown) {
@@ -23,7 +34,10 @@ function isMissingDatabaseStructureError(error: unknown) {
 async function loadMissionSupportForAdmin() {
   try {
     return await prisma.missionSupportDonation.findMany({
-      include: { manualSubmission: true, payments: { orderBy: { createdAt: "desc" } } },
+      include: {
+        manualSubmission: true,
+        payments: { orderBy: { createdAt: "desc" } },
+      },
       orderBy: { createdAt: "desc" },
     });
   } catch (error) {
@@ -167,8 +181,25 @@ export type AdminDashboardSnapshot = {
     paidAt: string | null;
     providerSubscriptionId: string | null;
     cancelAtPeriodEnd: boolean;
-    manualSubmission: { senderName: string; senderNumber: string; referenceKey: string; notes: string | null; reviewedAt: string | null; reviewNote: string | null } | null;
-    payments: Array<{ id: string; amount: number; currency: string; status: string; refundedAmount: number; providerReference: string; providerPaymentId: string | null; paidAt: string | null; receiptUrl: string | null }>;
+    manualSubmission: {
+      senderName: string;
+      senderNumber: string;
+      referenceKey: string;
+      notes: string | null;
+      reviewedAt: string | null;
+      reviewNote: string | null;
+    } | null;
+    payments: Array<{
+      id: string;
+      amount: number;
+      currency: string;
+      status: string;
+      refundedAmount: number;
+      providerReference: string;
+      providerPaymentId: string | null;
+      paidAt: string | null;
+      receiptUrl: string | null;
+    }>;
   }>;
   genMumin: {
     status: "CONNECTED" | "UNAVAILABLE" | "NOT_CONFIGURED";
@@ -298,7 +329,11 @@ function getDiscountLabel(row: {
     labels.push("Fee waived");
   }
 
-  if (labels.length === 0 && typeof row.pricingSnapshot === "object" && row.pricingSnapshot) {
+  if (
+    labels.length === 0 &&
+    typeof row.pricingSnapshot === "object" &&
+    row.pricingSnapshot
+  ) {
     const snapshot = row.pricingSnapshot as Record<string, unknown>;
     if (snapshot.mode === "FREE_WARRIOR_SCHOLARSHIP") {
       labels.push("Fee Waiver scholarship");
@@ -315,10 +350,17 @@ function getScholarshipSnapshotDetails(pricingSnapshot: unknown) {
 
   return {
     contributionPreference:
-      snapshot.contributionPreference === "PARTIAL_CONTRIBUTION" ? "PARTIAL_CONTRIBUTION" : "FULL_SCHOLARSHIP",
+      snapshot.contributionPreference === "PARTIAL_CONTRIBUTION"
+        ? "PARTIAL_CONTRIBUTION"
+        : "FULL_SCHOLARSHIP",
     monthlyContributionPkr:
-      typeof snapshot.monthlyContributionPkr === "number" ? snapshot.monthlyContributionPkr : null,
-    contributionLabel: typeof snapshot.contributionLabel === "string" ? snapshot.contributionLabel : null,
+      typeof snapshot.monthlyContributionPkr === "number"
+        ? snapshot.monthlyContributionPkr
+        : null,
+    contributionLabel:
+      typeof snapshot.contributionLabel === "string"
+        ? snapshot.contributionLabel
+        : null,
   };
 }
 
@@ -330,8 +372,10 @@ function getRegistrationPaymentPresentation(input: {
 }) {
   const scholarship = getScholarshipSnapshotDetails(input.pricingSnapshot);
   const isFullScholarshipOrder =
-    input.finalAmount === 0 && scholarship?.contributionPreference === "FULL_SCHOLARSHIP";
-  const isPartialScholarshipOrder = scholarship?.contributionPreference === "PARTIAL_CONTRIBUTION";
+    input.finalAmount === 0 &&
+    scholarship?.contributionPreference === "FULL_SCHOLARSHIP";
+  const isPartialScholarshipOrder =
+    scholarship?.contributionPreference === "PARTIAL_CONTRIBUTION";
 
   if (isFullScholarshipOrder) {
     return {
@@ -339,14 +383,17 @@ function getRegistrationPaymentPresentation(input: {
       paymentDetail: "Approved fee waiver",
       isFullScholarshipOrder: true,
       isPartialScholarshipOrder: false,
-      contributionLabel: scholarship?.contributionLabel ?? "Needs full scholarship",
+      contributionLabel:
+        scholarship?.contributionLabel ?? "Needs full scholarship",
     };
   }
 
   if (isPartialScholarshipOrder && scholarship?.monthlyContributionPkr) {
     return {
       paymentLabel: "Bank Transfer",
-      paymentDetail: formatApproxScholarshipAmount(scholarship.monthlyContributionPkr),
+      paymentDetail: formatApproxScholarshipAmount(
+        scholarship.monthlyContributionPkr,
+      ),
       isFullScholarshipOrder: false,
       isPartialScholarshipOrder: true,
       contributionLabel: scholarship?.contributionLabel ?? null,
@@ -364,7 +411,7 @@ function getRegistrationPaymentPresentation(input: {
     isFullScholarshipOrder: false,
     isPartialScholarshipOrder: false,
     contributionLabel: null,
-    };
+  };
 }
 
 async function getGenMuminOverview() {
@@ -416,7 +463,10 @@ async function getGenMuminOverview() {
     return {
       status: "UNAVAILABLE" as const,
       endpoint,
-      error: error instanceof Error ? error.message : "Could not reach Gen-Mumin feed.",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not reach Gen-Mumin feed.",
       lastCheckedAt: new Date().toISOString(),
       metrics: null,
       recentRegistrations: [],
@@ -425,39 +475,43 @@ async function getGenMuminOverview() {
 }
 
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
-  const [registrations, users, applications, missionSupport, genMumin] = await Promise.all([
-    prisma.registration.findMany({
-      include: {
-        user: true,
-        course: true,
-        payment: {
-          include: {
-            manualSubmission: true,
+  const currentSchema = await sirahSchemaAvailable();
+  const [registrations, users, applications, missionSupport, genMumin] =
+    await Promise.all([
+      prisma.registration.findMany({
+        where: currentSchema ? { sirahOrder: null } : {},
+        include: {
+          user: true,
+          course: true,
+          payment: {
+            include: {
+              manualSubmission: true,
+            },
           },
+          enrollment: true,
+          subscription: true,
         },
-        enrollment: true,
-        subscription: true,
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.user.findMany({
-      where: { role: "STUDENT" },
-      include: {
-        studentProfile: true,
-        registrations: {
-          include: { payment: true, course: true },
-          orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.user.findMany({
+        where: { role: "STUDENT" },
+        include: {
+          studentProfile: true,
+          registrations: {
+            where: currentSchema ? { sirahOrder: null } : {},
+            include: { payment: true, course: true },
+            orderBy: { createdAt: "desc" },
+          },
+          enrollments: true,
         },
-        enrollments: true,
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.freeWarriorApplication.findMany({
-      orderBy: { createdAt: "desc" },
-    }),
-    loadMissionSupportForAdmin(),
-    getGenMuminOverview(),
-  ]);
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.freeWarriorApplication.findMany({
+        orderBy: { createdAt: "desc" },
+      }),
+      loadMissionSupportForAdmin(),
+      getGenMuminOverview(),
+    ]);
 
   const mappedRegistrations = registrations.map((row) => {
     const paymentPlanType = getPaymentPlanTypeFromSnapshot(row.pricingSnapshot);
@@ -485,7 +539,10 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       countryName: row.selectedCountryName,
       courseTitle: row.course.title,
       courseSlug: row.course.slug,
-      amountLabel: formatAmount(row.payment?.amount ?? row.finalAmount, row.payment?.currency ?? row.selectedCurrency),
+      amountLabel: formatAmount(
+        row.payment?.amount ?? row.finalAmount,
+        row.payment?.currency ?? row.selectedCurrency,
+      ),
       rawAmount: row.payment?.amount ?? row.finalAmount,
       rawCurrency: row.payment?.currency ?? row.selectedCurrency,
       paymentPlanType,
@@ -498,7 +555,10 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       enrollmentStatus: row.enrollment?.status ?? "PENDING",
       enrollmentActivatedAt: row.enrollment?.activatedAt?.toISOString() ?? null,
       subscriptionStatus: row.subscription?.status ?? null,
-      hasDiscount: row.autoDiscountAmount > 0 || row.couponDiscountAmount > 0 || row.finalAmount === 0,
+      hasDiscount:
+        row.autoDiscountAmount > 0 ||
+        row.couponDiscountAmount > 0 ||
+        row.finalAmount === 0,
       discountLabel,
       isFeeWaived: row.finalAmount === 0,
       isFullScholarshipOrder: paymentPresentation.isFullScholarshipOrder,
@@ -506,31 +566,69 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       contributionLabel: paymentPresentation.contributionLabel,
       adminState,
       canManuallyComplete:
-        (row.paymentMethod === PaymentMethod.BANK_TRANSFER || row.paymentMethod === PaymentMethod.JAZZCASH) &&
+        (row.paymentMethod === PaymentMethod.BANK_TRANSFER ||
+          row.paymentMethod === PaymentMethod.JAZZCASH) &&
         !paymentPresentation.isFullScholarshipOrder,
-      adminNote: row.payment?.manualNotes ?? row.payment?.manualSubmission?.reviewNote ?? null,
+      adminNote:
+        row.payment?.manualNotes ??
+        row.payment?.manualSubmission?.reviewNote ??
+        null,
     };
   });
-  const orderRegistrations = mappedRegistrations.filter((item) => !item.isFullScholarshipOrder);
+  const orderRegistrations = mappedRegistrations.filter(
+    (item) => !item.isFullScholarshipOrder,
+  );
 
   const summary = {
     totalOrders: orderRegistrations.length,
-    completedOrders: orderRegistrations.filter((item) => item.adminState === "COMPLETED").length,
-    pendingOrders: orderRegistrations.filter((item) => item.adminState === "PENDING").length,
-    cancelledOrders: orderRegistrations.filter((item) => item.adminState === "CANCELLED").length,
+    completedOrders: orderRegistrations.filter(
+      (item) => item.adminState === "COMPLETED",
+    ).length,
+    pendingOrders: orderRegistrations.filter(
+      (item) => item.adminState === "PENDING",
+    ).length,
+    cancelledOrders: orderRegistrations.filter(
+      (item) => item.adminState === "CANCELLED",
+    ).length,
     revenuePence: orderRegistrations
-      .filter((item) => item.adminState === "COMPLETED" && item.rawCurrency === "GBP")
+      .filter(
+        (item) => item.adminState === "COMPLETED" && item.rawCurrency === "GBP",
+      )
       .reduce((sum, item) => sum + item.rawAmount, 0),
     pendingPence: orderRegistrations
-      .filter((item) => item.adminState === "PENDING" && item.rawCurrency === "GBP")
+      .filter(
+        (item) => item.adminState === "PENDING" && item.rawCurrency === "GBP",
+      )
       .reduce((sum, item) => sum + item.rawAmount, 0),
-    feeWaivers: applications.filter((item) => item.status !== "REJECTED").length,
-    discountedOrders: orderRegistrations.filter((item) => item.hasDiscount).length,
+    feeWaivers: applications.filter((item) => item.status !== "REJECTED")
+      .length,
+    discountedOrders: orderRegistrations.filter((item) => item.hasDiscount)
+      .length,
     studentCount: users.length,
     missionSupportCount: missionSupport.length,
     missionSupportRevenuePence: missionSupport
-      .filter(item => item.currency === "GBP")
-      .reduce((sum, item) => sum + (item.payments.length ? item.payments.filter(payment => ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(payment.status)).reduce((total, payment) => total + payment.amount - payment.refundedAmount, 0) : (item.status === PaymentStatus.SUCCEEDED || item.status === PaymentStatus.CONFIRMED ? item.amount : 0)), 0),
+      .filter((item) => item.currency === "GBP")
+      .reduce(
+        (sum, item) =>
+          sum +
+          (item.payments.length
+            ? item.payments
+                .filter((payment) =>
+                  ["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(
+                    payment.status,
+                  ),
+                )
+                .reduce(
+                  (total, payment) =>
+                    total + payment.amount - payment.refundedAmount,
+                  0,
+                )
+            : item.status === PaymentStatus.SUCCEEDED ||
+                item.status === PaymentStatus.CONFIRMED
+              ? item.amount
+              : 0),
+        0,
+      ),
   };
 
   return {
@@ -538,7 +636,9 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
     registrations: orderRegistrations,
     students: users.map((user) => {
       const registrationSummaries = user.registrations.map((item) => {
-        const paymentPlanType = getPaymentPlanTypeFromSnapshot(item.pricingSnapshot);
+        const paymentPlanType = getPaymentPlanTypeFromSnapshot(
+          item.pricingSnapshot,
+        );
         const paymentPresentation = getRegistrationPaymentPresentation({
           paymentPlanType,
           paymentMethod: item.paymentMethod,
@@ -550,12 +650,17 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
           id: item.id,
           paymentReference: item.paymentReference,
           courseTitle: item.course.title,
-          amountLabel: formatAmount(item.payment?.amount ?? item.finalAmount, item.payment?.currency ?? item.selectedCurrency),
+          amountLabel: formatAmount(
+            item.payment?.amount ?? item.finalAmount,
+            item.payment?.currency ?? item.selectedCurrency,
+          ),
           paymentLabel: paymentPresentation.paymentLabel,
           adminState: getAdminOrderState({
             paymentStatus: item.payment?.status ?? PaymentStatus.INITIATED,
             registrationStatus: item.status,
-            enrollmentStatus: user.enrollments.find((entry) => entry.registrationId === item.id)?.status ?? EnrollmentStatus.PENDING,
+            enrollmentStatus:
+              user.enrollments.find((entry) => entry.registrationId === item.id)
+                ?.status ?? EnrollmentStatus.PENDING,
           }),
           createdAt: item.createdAt.toISOString(),
         };
@@ -568,11 +673,17 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
         phone: `${user.phoneCountryCode} ${user.phoneNumber}`,
         countryName: user.studentProfile?.countryName ?? null,
         totalRegistrations: user.registrations.length,
-        activeEnrollments: user.enrollments.filter((item) => item.status === EnrollmentStatus.ACTIVE).length,
-        completedPayments: user.registrations.filter(
-          (item) => item.payment?.status === PaymentStatus.SUCCEEDED || item.payment?.status === PaymentStatus.CONFIRMED,
+        activeEnrollments: user.enrollments.filter(
+          (item) => item.status === EnrollmentStatus.ACTIVE,
         ).length,
-        scholarshipCount: user.registrations.filter((item) => item.finalAmount === 0).length,
+        completedPayments: user.registrations.filter(
+          (item) =>
+            item.payment?.status === PaymentStatus.SUCCEEDED ||
+            item.payment?.status === PaymentStatus.CONFIRMED,
+        ).length,
+        scholarshipCount: user.registrations.filter(
+          (item) => item.finalAmount === 0,
+        ).length,
         latestOrderDate: user.registrations[0]?.createdAt.toISOString() ?? null,
         latestPaymentLabel: registrationSummaries[0]?.paymentLabel ?? null,
         latestAmountLabel: registrationSummaries[0]?.amountLabel ?? null,
@@ -625,8 +736,16 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       id: item.id,
       fullName: item.fullName,
       email: item.email,
-      phone: [item.phoneCountryCode, item.phoneNumber].filter(Boolean).join(" ").trim() || "N/A",
-      amountLabel: new Intl.NumberFormat("en-GB", { style: "currency", currency: item.currency, minimumFractionDigits: 2 }).format(item.amount / 100),
+      phone:
+        [item.phoneCountryCode, item.phoneNumber]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || "N/A",
+      amountLabel: new Intl.NumberFormat("en-GB", {
+        style: "currency",
+        currency: item.currency,
+        minimumFractionDigits: 2,
+      }).format(item.amount / 100),
       rawAmount: item.amount,
       paymentMethod: item.paymentMethod,
       status: item.status,
@@ -643,14 +762,35 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       paidAt: item.paidAt?.toISOString() ?? null,
       providerSubscriptionId: item.providerSubscriptionId,
       cancelAtPeriodEnd: item.cancelAtPeriodEnd,
-      manualSubmission: item.manualSubmission ? { senderName: item.manualSubmission.senderName, senderNumber: item.manualSubmission.senderNumber, referenceKey: item.manualSubmission.referenceKey, notes: item.manualSubmission.notes, reviewedAt: item.manualSubmission.reviewedAt?.toISOString() ?? null, reviewNote: item.manualSubmission.reviewNote } : null,
-      payments: item.payments.map(payment => ({ id: payment.id, amount: payment.amount, currency: payment.currency, status: payment.status, refundedAmount: payment.refundedAmount, providerReference: payment.providerReference, providerPaymentId: payment.providerPaymentId, paidAt: payment.paidAt?.toISOString() ?? null, receiptUrl: payment.receiptUrl })),
+      manualSubmission: item.manualSubmission
+        ? {
+            senderName: item.manualSubmission.senderName,
+            senderNumber: item.manualSubmission.senderNumber,
+            referenceKey: item.manualSubmission.referenceKey,
+            notes: item.manualSubmission.notes,
+            reviewedAt: item.manualSubmission.reviewedAt?.toISOString() ?? null,
+            reviewNote: item.manualSubmission.reviewNote,
+          }
+        : null,
+      payments: item.payments.map((payment) => ({
+        id: payment.id,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: payment.status,
+        refundedAmount: payment.refundedAmount,
+        providerReference: payment.providerReference,
+        providerPaymentId: payment.providerPaymentId,
+        paidAt: payment.paidAt?.toISOString() ?? null,
+        receiptUrl: payment.receiptUrl,
+      })),
     })),
     genMumin,
   };
 }
 
-export async function getAdminNotifications(limit = 20): Promise<AdminNotificationItem[]> {
+export async function getAdminNotifications(
+  limit = 20,
+): Promise<AdminNotificationItem[]> {
   const snapshot = await getAdminDashboardSnapshot();
 
   const notifications: AdminNotificationItem[] = [
@@ -662,7 +802,9 @@ export async function getAdminNotifications(limit = 20): Promise<AdminNotificati
       createdAt: row.createdAt,
     })),
     ...snapshot.registrations
-      .filter((row) => row.enrollmentStatus === "ACTIVE" && row.enrollmentActivatedAt)
+      .filter(
+        (row) => row.enrollmentStatus === "ACTIVE" && row.enrollmentActivatedAt,
+      )
       .map((row) => ({
         id: `enrollment-${row.id}`,
         kind: "ENROLLMENT" as const,
@@ -687,11 +829,25 @@ export async function getAdminNotifications(limit = 20): Promise<AdminNotificati
   ];
 
   return notifications
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
     .slice(0, limit);
 }
 
-export async function adminUpdateRegistrationRecord(input: AdminRegistrationActionInput) {
+export async function adminUpdateRegistrationRecord(
+  input: AdminRegistrationActionInput,
+) {
+  if (
+    (await sirahSchemaAvailable()) &&
+    (await prisma.sirahOrder.findFirst({
+      where: { registrationId: input.registrationId },
+    }))
+  )
+    throw new Error(
+      "Use the Sīrah Beyond Chronology audit and payment-review actions for this batch.",
+    );
   const registration = await prisma.registration.findUnique({
     where: { id: input.registrationId },
     include: {
@@ -732,7 +888,8 @@ export async function adminUpdateRegistrationRecord(input: AdminRegistrationActi
 
   if (
     input.action === "COMPLETE" &&
-    (payment.provider === PaymentMethod.BANK_TRANSFER || payment.provider === PaymentMethod.JAZZCASH) &&
+    (payment.provider === PaymentMethod.BANK_TRANSFER ||
+      payment.provider === PaymentMethod.JAZZCASH) &&
     payment.status === PaymentStatus.UNDER_REVIEW
   ) {
     return adminConfirmManualPayment({
@@ -744,7 +901,8 @@ export async function adminUpdateRegistrationRecord(input: AdminRegistrationActi
 
   if (
     input.action === "COMPLETE" &&
-    (payment.provider === PaymentMethod.BANK_TRANSFER || payment.provider === PaymentMethod.JAZZCASH)
+    (payment.provider === PaymentMethod.BANK_TRANSFER ||
+      payment.provider === PaymentMethod.JAZZCASH)
   ) {
     return adminActivateManualRecurringPayment({
       paymentId: payment.id,
@@ -759,9 +917,11 @@ export async function adminUpdateRegistrationRecord(input: AdminRegistrationActi
       await tx.payment.update({
         where: { id: payment.id },
         data: {
-          status: payment.provider === PaymentMethod.STRIPE || payment.provider === PaymentMethod.PAYPAL
-            ? PaymentStatus.SUCCEEDED
-            : PaymentStatus.CONFIRMED,
+          status:
+            payment.provider === PaymentMethod.STRIPE ||
+            payment.provider === PaymentMethod.PAYPAL
+              ? PaymentStatus.SUCCEEDED
+              : PaymentStatus.CONFIRMED,
           manualNotes: input.note ?? payment.manualNotes,
           paidAt: payment.paidAt ?? now,
         },
@@ -906,7 +1066,3 @@ export async function adminUpdateRegistrationRecord(input: AdminRegistrationActi
 
   return { status: "CANCELLED" as const };
 }
-
-
-
-

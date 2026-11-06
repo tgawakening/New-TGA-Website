@@ -17,14 +17,20 @@ function fixture() {
     },
     dispatchEvent: () => {},
   };
-  function load(name) {
-    if (cache[name]) return cache[name];
+  function load(
+    name,
+    parent = path.join(scriptDirectory, "../components/seerah"),
+  ) {
+    const filepath =
+      path.resolve(
+        name.startsWith("@/")
+          ? path.join(scriptDirectory, "..", name.slice(2))
+          : path.join(parent, name),
+      ) + ".ts";
+    if (cache[filepath]) return cache[filepath];
     const exports = {};
-    cache[name] = exports;
-    const source = fs.readFileSync(
-      path.join(scriptDirectory, "../components/seerah", `${name}.ts`),
-      "utf8",
-    );
+    cache[filepath] = exports;
+    const source = fs.readFileSync(filepath, "utf8");
     const code = ts.transpileModule(source, {
       compilerOptions: {
         module: ts.ModuleKind.CommonJS,
@@ -33,7 +39,7 @@ function fixture() {
     }).outputText;
     vm.runInNewContext(code, {
       exports,
-      require: (name) => load(name.replace("./", "")),
+      require: (spec) => load(spec, path.dirname(filepath)),
       window,
       CustomEvent: class {},
       Date,
@@ -121,4 +127,35 @@ test("checkout clicks are distinct from confirmations; old, duplicate and invali
     JSON.stringify(window.dataLayer).includes("registrationId"),
     false,
   );
+});
+
+test("campaign artwork and both self-contained portrait web videos are available", () => {
+  const { courseConfig, topics } = fixture().load("course-config");
+  const root = path.resolve(scriptDirectory, "..");
+  assert.equal(courseConfig.hero.src, "/Seerah new/hero banner page.png");
+  assert.equal(
+    courseConfig.socialImage.src,
+    "/Seerah new/hero banner home.png",
+  );
+  assert.equal(topics.length, 10);
+  assert.equal(new Set(topics.map((topic) => topic.artwork.src)).size, 10);
+  for (const topic of topics) {
+    assert.ok(fs.existsSync(path.join(root, "public", topic.artwork.src)));
+    assert.ok(topic.reflection.length > 20);
+  }
+  assert.deepEqual(
+    Array.from(courseConfig.videos, (video) => video.language),
+    ["en", "ur"],
+  );
+  for (const video of courseConfig.videos) {
+    const data = fs.readFileSync(path.join(root, "public", video.src));
+    assert.equal(
+      data.toString("ascii", 4, 8),
+      "ftyp",
+      "must be real MP4, not an LFS pointer",
+    );
+    assert.ok(data.length > 1000000 && data.length < 20000000);
+    assert.equal(video.width / video.height, 9 / 16);
+    assert.ok(fs.existsSync(path.join(root, "public", video.poster.src)));
+  }
 });

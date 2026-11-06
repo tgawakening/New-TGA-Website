@@ -6,6 +6,7 @@ import { registerStudent } from "@/services/registration.service";
 export async function POST(request: Request) {
   try {
     const json = await request.json();
+    if (!json.courseSlug || json.courseSlug === "seerah-course") return NextResponse.json({ error: "Use the updated Sīrah registration at /seerah/register. No payment was started." }, { status: 409 });
     const parsed = registrationSchema.safeParse(json);
 
     if (!parsed.success) {
