@@ -1,94 +1,155 @@
 .promotion {
   position: relative;
   isolation: isolate;
+  display: grid;
+  align-items: center;
+  min-height: 0;
+  overflow: hidden;
   background: #141611;
   color: #f5efdf;
-  overflow: hidden;
 }
+
 .artwork {
-  object-fit: cover;
-  object-position: center;
+  position: absolute;
+  inset: 0 0 0 auto;
+  height: 100%;
+  aspect-ratio: 1672 / 941;
+  mask-image: linear-gradient(90deg, transparent, black 28%);
   z-index: -2;
 }
+
+.image {
+  object-fit: contain;
+  object-position: right center;
+}
+
 .promotion::before {
-  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #141611bd, transparent 75%);
   z-index: -1;
+  background: linear-gradient(90deg, #141611b3 0%, #1416114d 44%, transparent 60%);
+  content: "";
+  pointer-events: none;
 }
+
 .content {
+  box-sizing: border-box;
+  width: 100%;
   max-width: 1240px;
-  margin: auto;
-  padding: 85px 40px;
+  margin-inline: auto;
+  padding: 3rem clamp(1.5rem, 5vw, 4.5rem);
 }
-.content > * {
-  max-width: 550px;
+
+.copy {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+  width: min(49%, 30rem);
 }
+
+.copy h2,
+.copy p {
+  margin: 0;
+}
+
 .eyebrow {
-  font-size: 11px;
+  color: #e2b961;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  color: #d9ad4a;
 }
-.content h2 {
-  margin: 22px 0;
+
+.copy h2 {
   font-family: Georgia, serif;
-  font-size: clamp(40px, 5vw, 70px);
-  line-height: 1.08;
+  display: grid;
+  gap: 0.5rem;
+  font-size: clamp(2rem, 3.4vw, 3rem);
   font-weight: 400;
+  line-height: 1.02;
 }
-.content h2 span {
-  display: block;
-  font-size: 0.57em;
-  margin-top: 12px;
+
+.copy p:not(.eyebrow) {
+  max-width: 36ch;
+  font-size: 1rem;
+  line-height: 1.6;
 }
-.subtitle {
-  color: #d9ad4a;
-  font-size: 20px;
+
+.copy h2 .courseName {
+  color: #e2b961;
+  font: 600 0.875rem/1.4 Arial, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
-.content p {
-  line-height: 1.8;
+
+.copy h2 .subtitle {
+  font: 500 0.875rem/1.5 Arial, sans-serif;
 }
-.essentials {
-  font-size: 13px;
-  margin: 24px 0;
-}
-.content a {
+
+.copy a {
   display: inline-flex;
-  gap: 24px;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 48px;
+  padding: 0.65rem 1.15rem;
+  border-radius: 0.25rem;
   background: #d9ad4a;
   color: #141611;
-  padding: 15px 24px;
-  min-height: 48px;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 700;
   text-decoration: none;
-  transition: background 200ms;
 }
-.content a:hover {
+
+.copy a:hover {
   background: #e9c575;
 }
-.content a:focus-visible {
+
+.copy a:focus-visible {
   outline: 3px solid #f5efdf;
-  outline-offset: 5px;
+  outline-offset: 4px;
 }
-.mobileArtwork {
-  display: none;
-}
-@media (max-width: 760px) {
+
+@media (max-width: 767px) {
+  .promotion {
+    display: flex;
+    flex-direction: column;
+    background: #25251b;
+  }
+
   .artwork {
+    position: relative;
+    inset: auto;
+    order: 1;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1122 / 800;
+    mask-image: linear-gradient(180deg, transparent, black 18%);
+    z-index: 0;
+  }
+
+  .image {
+    object-fit: cover;
+    object-position: center bottom;
+  }
+
+  .promotion::before {
     display: none;
   }
+
   .content {
-    padding: 45px 24px 30px;
+    padding: 1.75rem 1.5rem 0.75rem;
   }
-  .mobileArtwork {
-    display: block;
-    height: 260px;
-    position: relative;
+
+  .copy {
+    gap: 0.85rem;
+    width: 100%;
   }
-  .mobileArtwork img {
-    object-fit: cover;
-    object-position: 80% center;
+
+  .copy h2 {
+    font-size: clamp(2rem, 7vw, 3rem);
+  }
+
+  .copy p:not(.eyebrow) {
+    font-size: 0.9375rem;
   }
 }

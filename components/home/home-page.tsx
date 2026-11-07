@@ -8,7 +8,7 @@ import {
   Header,
   HeroSection,
   MissionVisionSection,
-  PropheticStrategiesSlider,
+  SirahPromotion,
   UpcomingCoursesSection,
 } from "@/components/home/sections";
 
@@ -18,8 +18,8 @@ export default function HomePage() {
       <Header />
       <main>
         <HeroSection />
+        <SirahPromotion />
         <MissionVisionSection />
-        <PropheticStrategiesSlider />
         <ConnectAkhiraTimeline />
         <GenMuminsTimeline />
         <CoursesCarousel />
