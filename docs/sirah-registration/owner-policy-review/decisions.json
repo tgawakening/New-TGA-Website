@@ -55,6 +55,12 @@
     "ownerConfirmedName": "Global Awakening CIC",
     "establishedCountry": "GB",
     "merchantIdentityIndependentlyVerified": false,
-    "companyNumberAndAddressVerified": false
+    "companyNumberAndAddressVerified": true,
+    "companyNumber": "15523255",
+    "registeredOffice": "128 City Road, London, United Kingdom, EC1V 2NX",
+    "registrySource": "https://find-and-update.company-information.service.gov.uk/company/15523255",
+    "formerName": "GLOBAL AWAKENING LTD",
+    "formerNameEnded": "2025-05-28",
+    "stripeLegalNameStillFormerName": true
   }
 }
