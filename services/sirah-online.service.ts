@@ -1,4 +1,5 @@
 import "server-only";
+import { paypalPlanIssue } from "@/lib/sirah/paypal-plan";
 import { sirahOriginAllowed } from "@/lib/sirah/origin";
 import Stripe from "stripe";
 import { randomUUID } from "node:crypto";
@@ -316,12 +317,32 @@ export async function startSirahCheckout(
     };
   }
   let planId = order.providerPlanId;
+  const expectedPlan = {
+    productId: process.env.SIRAH_PAYPAL_PRODUCT_ID || "",
+    currency: order.currency,
+    amountMinor: order.amountMinor,
+  };
+  const preferredPlanId =
+    process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${order.currency}`];
+  let preferredIssue: string | null = null;
+  if (!planId && preferredPlanId) {
+    const preferred = await paypalRequest(
+      `/v1/billing/plans/${encodeURIComponent(preferredPlanId)}`,
+    );
+    preferredIssue = paypalPlanIssue(preferred, expectedPlan);
+    if (!preferredIssue && preferred.id === preferredPlanId)
+      planId = preferredPlanId;
+    else preferredIssue ||= "Preferred plan identity mismatch.";
+  }
+  const reusedPlan = Boolean(planId);
   if (!planId) {
     const plan = await paypalRequest(
       "/v1/billing/plans",
       "POST",
       {
         product_id: process.env.SIRAH_PAYPAL_PRODUCT_ID,
+        status: "ACTIVE",
+        quantity_supported: false,
         name: SIRAH_TITLE.slice(0, 127),
         billing_cycles: [
           {
@@ -345,25 +366,30 @@ export async function startSirahCheckout(
       `plan-${order.checkoutToken}`,
     );
     planId = plan.id;
-    await prisma.sirahOrder.update({
-      where: { id },
-      data: { providerPlanId: planId },
-    });
   }
-  const plan = await paypalRequest(`/v1/billing/plans/${planId}`);
-  const cycle = plan.billing_cycles?.[0];
-  if (
-    plan.billing_cycles?.length !== 1 ||
-    cycle?.total_cycles !== 12 ||
-    cycle.frequency?.interval_unit !== "MONTH" ||
-    cycle.frequency?.interval_count !== 1 ||
-    cycle.pricing_scheme?.fixed_price?.currency_code !== order.currency ||
-    decimalToMinor(cycle.pricing_scheme.fixed_price.value, order.currency) !==
-      order.amountMinor
-  )
-    throw new SirahError(
-      "PayPal plan does not match this order's 12-month fixed price.",
-    );
+  const plan = await paypalRequest(
+    `/v1/billing/plans/${encodeURIComponent(planId!)}`,
+  );
+  const issue = paypalPlanIssue(plan, expectedPlan);
+  if (issue || plan.id !== planId)
+    throw new SirahError(issue || "PayPal plan identity mismatch.");
+  if (!order.providerPlanId)
+    await prisma.$transaction(async (tx) => {
+      const selected = await tx.sirahOrder.updateMany({
+        where: { id, checkoutToken: order.checkoutToken },
+        data: { providerPlanId: planId },
+      });
+      if (selected.count !== 1)
+        throw new SirahError(
+          "Checkout changed before the plan was selected.",
+          409,
+        );
+      await auditSirah(tx, id, `student:${userId}`, "PAYPAL_PLAN_SELECTED", {
+        planId,
+        reused: reusedPlan,
+        preferredIssue,
+      });
+    });
   const subscription = await paypalRequest(
     "/v1/billing/subscriptions",
     "POST",
@@ -541,13 +567,25 @@ export async function verifySirahPaypal(
     if (order.providerOrderId && providerId !== order.providerOrderId)
       throw new SirahError("PayPal order ownership mismatch.");
     let payment = await paypalRequest(`/v2/checkout/orders/${providerId}`);
-    if (payment.status === "APPROVED" && capture)
+    if (payment.status === "APPROVED" && capture) {
+      const quote = payment.purchase_units?.[0];
+      if (
+        payment.purchase_units?.length !== 1 ||
+        quote?.custom_id !== order.id ||
+        quote.payee?.merchant_id !== process.env.SIRAH_PAYPAL_MERCHANT_ID ||
+        quote.amount?.currency_code !== order.currency ||
+        decimalToMinor(quote.amount.value, order.currency) !== order.amountMinor
+      )
+        throw new SirahError(
+          "PayPal approved order merchant, amount or currency differs from the registration quote.",
+        );
       payment = await paypalRequest(
         `/v2/checkout/orders/${providerId}/capture`,
         "POST",
         {},
         `capture-${order.checkoutToken}`,
       );
+    }
     const unit = payment.purchase_units?.[0];
     const settlement = unit?.payments?.captures?.[0];
     if (

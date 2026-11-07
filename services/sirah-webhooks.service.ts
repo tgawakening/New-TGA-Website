@@ -349,7 +349,10 @@ export async function handleSirahPaypalWebhook(request: Request) {
     ].includes(event.event_type)
       ? resource?.id
       : null);
-  const captureOrderId = resource?.supplementary_data?.related_ids?.order_id;
+  const captureOrderId =
+    event.event_type === "CHECKOUT.ORDER.APPROVED"
+      ? resource?.id
+      : resource?.supplementary_data?.related_ids?.order_id;
   const order = await prisma.sirahOrder.findFirst({
     where: {
       method: "PAYPAL",
@@ -361,7 +364,12 @@ export async function handleSirahPaypalWebhook(request: Request) {
     },
   });
   if (!order) return { received: true };
-  if (event.event_type === "PAYMENT.CAPTURE.COMPLETED" && order.providerOrderId)
+  if (event.event_type === "CHECKOUT.ORDER.APPROVED" && order.providerOrderId)
+    await verifySirahPaypal(order.id, order.providerOrderId, true);
+  else if (
+    event.event_type === "PAYMENT.CAPTURE.COMPLETED" &&
+    order.providerOrderId
+  )
     await verifySirahPaypal(order.id, order.providerOrderId);
   else if (
     event.event_type === "PAYMENT.SALE.COMPLETED" &&
@@ -382,6 +390,17 @@ export async function handleSirahPaypalWebhook(request: Request) {
       ) > 0
     )
       await markSirahProviderFailure(order, `paypal:failed:${event.id}`);
+  } else if (
+    event.event_type === "BILLING.SUBSCRIPTION.SUSPENDED" &&
+    order.providerSubscriptionId
+  ) {
+    const current = await paypalRequest(
+      `/v1/billing/subscriptions/${order.providerSubscriptionId}`,
+    );
+    if (current.custom_id !== order.id)
+      throw new SirahError("Subscription identity mismatch.");
+    if (current.status === "SUSPENDED")
+      await markSirahProviderFailure(order, `paypal:suspended:${event.id}`);
   } else if (
     ["BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.EXPIRED"].includes(
       event.event_type,

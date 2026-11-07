@@ -457,6 +457,9 @@ export function SirahRegistrationForm({
     // Restore the saved record once, without overwriting in-progress edits on status polling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id]);
+  const selectedRouteAvailable = Boolean(
+    order?.method && order.methods.includes(order.method as SirahMethod),
+  );
   const processingOrderId =
     order?.paymentState === "PROCESSING" &&
     ["STRIPE", "PAYPAL"].includes(order.method || "")
@@ -1126,13 +1129,13 @@ export function SirahRegistrationForm({
       ) : (
         <section aria-label="Your course registration">
           <p>
-            <strong>Reference: {order.reference}</strong>
+            <strong>Registration saved · {order.reference}</strong>
           </p>
           <div className={styles.status}>
             <p>
               Payment:{" "}
               <strong>
-                {order.paymentState === "PROCESSING"
+                {["UNPAID", "PROCESSING"].includes(order.paymentState)
                   ? "Payment pending"
                   : order.paymentState === "AWAITING_REVIEW"
                     ? "Awaiting bank transfer verification"
@@ -1459,19 +1462,24 @@ export function SirahRegistrationForm({
                   </p>
                 )}
                 {order.method === "STRIPE" && <p>No Stripe account needed.</p>}
-                <Terms
-                  order={order}
-                  accepted={accepted}
-                  onChange={setAccepted}
-                />
+                {selectedRouteAvailable && (
+                  <Terms
+                    order={order}
+                    accepted={accepted}
+                    onChange={setAccepted}
+                  />
+                )}
                 {!order.methods.length && (
                   <p className={styles.notice}>
-                    Your registration is recorded. No payment route is currently
-                    approved for this selection. Contact TGA for the next step;
-                    no payment has been taken.
+                    Your registration is saved. Payment is pending until an
+                    approved method is available for this country and plan.
+                    Return using the secure “Complete my payment” email link or
+                    open this saved registration again. Enrolment follows
+                    verified payment.
                   </p>
                 )}
-                {order.method &&
+                {selectedRouteAvailable &&
+                  order.method &&
                   ["STRIPE", "PAYPAL"].includes(order.method) && (
                     <button
                       type="button"
