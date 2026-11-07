@@ -1,4 +1,5 @@
 import "server-only";
+import { sirahOriginAllowed } from "@/lib/sirah/origin";
 import Stripe from "stripe";
 import { randomUUID } from "node:crypto";
 import { type SirahOrder } from "@prisma/client";
@@ -94,7 +95,14 @@ export async function startSirahCheckout(
   revision: number,
   acceptedVersion: string,
   stripeOverride?: Stripe,
+  requestedReturnOrigin?: string,
 ) {
+  if (
+    requestedReturnOrigin &&
+    !sirahOriginAllowed(requestedReturnOrigin, appUrl(), appUrl())
+  )
+    throw new SirahError("This payment return address is not approved.", 403);
+  const checkoutBase = requestedReturnOrigin || appUrl();
   let order = await ownedSirahOrder(id, userId);
   if (!["STRIPE", "PAYPAL"].includes(order.method || ""))
     throw new SirahError("Select an available online method first.");
@@ -162,7 +170,7 @@ export async function startSirahCheckout(
       throw new SirahError("Checkout ownership mismatch.");
     if (existing.payment_status === "paid") {
       await verifySirahStripeSession(order.id, existing.id, stripe);
-      return { url: `${appUrl()}/seerah/register?order=${order.id}` };
+      return { url: `${checkoutBase}/seerah/register?order=${order.id}` };
     }
     if (existing.status === "expired")
       throw new SirahError(
@@ -191,7 +199,7 @@ export async function startSirahCheckout(
     return {
       url:
         url ||
-        `${appUrl()}/seerah/register?order=${order.id}&payment=processing`,
+        `${checkoutBase}/seerah/register?order=${order.id}&payment=processing`,
     };
   }
   const attempt = await prisma.sirahAudit.findFirst({
@@ -211,7 +219,7 @@ export async function startSirahCheckout(
       409,
     );
   }
-  const returnUrl = `${appUrl()}/seerah/register?order=${order.id}&payment=processing`;
+  const returnUrl = `${checkoutBase}/seerah/register?order=${order.id}&payment=processing`;
   if (method === "STRIPE") {
     const stripe = stripeOverride || stripeClient();
     await verifyStripeMerchant(stripe);
@@ -221,7 +229,7 @@ export async function startSirahCheckout(
         payment_method_types: ["card"],
         client_reference_id: order.id,
         success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${appUrl()}/seerah/register?order=${order.id}`,
+        cancel_url: `${checkoutBase}/seerah/register?order=${order.id}`,
         metadata: {
           sirahOrderId: order.id,
           checkoutToken: order.checkoutToken,
@@ -293,7 +301,7 @@ export async function startSirahCheckout(
         ],
         application_context: {
           return_url: returnUrl,
-          cancel_url: `${appUrl()}/seerah/register?order=${order.id}`,
+          cancel_url: `${checkoutBase}/seerah/register?order=${order.id}`,
         },
       },
       `sirah-${order.checkoutToken}`,
@@ -365,7 +373,7 @@ export async function startSirahCheckout(
       application_context: {
         brand_name: "The Global Awakening",
         return_url: returnUrl,
-        cancel_url: `${appUrl()}/seerah/register?order=${order.id}`,
+        cancel_url: `${checkoutBase}/seerah/register?order=${order.id}`,
         shipping_preference: "NO_SHIPPING",
         user_action: "SUBSCRIBE_NOW",
       },

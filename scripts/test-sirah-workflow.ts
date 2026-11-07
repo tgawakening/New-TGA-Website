@@ -7,6 +7,7 @@ import { PDFDocument } from "pdf-lib";
 import { handleSirahStripeWebhook as handleStripeWebhook } from "../services/sirah-stripe-webhook.service";
 import { handleSirahPaypalWebhook } from "../services/sirah-webhooks.service";
 import { resolveSirahResumeToken, resumeHash } from "../lib/sirah/resume";
+import { sirahOriginAllowed } from "../lib/sirah/origin";
 import { prisma } from "../lib/prisma";
 import {
   catalogue,
@@ -1264,6 +1265,7 @@ test("paid international invitations stay separate from public groups and use th
 });
 
 test("dedicated Sīrah checkout creates a monthly subscription and a single annual card payment", async () => {
+  process.env.NEXT_PUBLIC_APP_URL = "https://www.tga-awakening.com/";
   for (const plan of ["MONTHLY", "ANNUAL"] as const) {
     process.env.SIRAH_STRIPE_SECRET_KEY = "sk_test_synthetic";
     process.env.SIRAH_STRIPE_WEBHOOK_SECRET = "whsec_synthetic";
@@ -1301,6 +1303,15 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
       order.revision,
       approvedTestTerms.version,
       fake,
+      "https://tga-awakening.com",
+    );
+    assert.equal(
+      new URL(captured!.success_url!).origin,
+      "https://tga-awakening.com",
+    );
+    assert.equal(
+      new URL(captured!.cancel_url!).origin,
+      "https://tga-awakening.com",
     );
     assert.equal(
       captured!.mode,
@@ -1507,4 +1518,40 @@ test("combined registration uses server method-specific pricing and rejects unap
   const again = await registerSirah(input, result.userId);
   assert.equal(again.orderId, order.id);
   assert.equal(await prisma.sirahOrder.count(), 1);
+});
+
+test("production apex and www origins are accepted with an internal app URL, while unrelated origins remain denied", () => {
+  const internal = "http://new-tga-website.internal:8080/api/sirah/orders";
+  const configured = "https://www.tga-awakening.com/";
+  assert.equal(
+    sirahOriginAllowed("https://tga-awakening.com", internal, configured),
+    true,
+  );
+  assert.equal(
+    sirahOriginAllowed("https://www.tga-awakening.com", internal, configured),
+    true,
+  );
+  for (const origin of [
+    "https://evil.example",
+    "https://tga-awakening.com.evil.example",
+    "http://tga-awakening.com",
+    "null",
+  ])
+    assert.equal(sirahOriginAllowed(origin, internal, configured), false);
+  assert.equal(
+    sirahOriginAllowed(
+      "https://tga-awakening.com",
+      internal,
+      "https://another.example",
+    ),
+    false,
+  );
+  assert.equal(
+    sirahOriginAllowed(
+      "http://localhost:3001",
+      "http://localhost:3001/api/sirah/orders",
+      "http://localhost:3001",
+    ),
+    true,
+  );
 });
