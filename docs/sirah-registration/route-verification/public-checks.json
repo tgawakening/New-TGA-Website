@@ -1,0 +1,132 @@
+{
+  "checkedAt": "2026-11-07T21:30:49.091254+00:00",
+  "routes": [
+    {
+      "country": "PK",
+      "plan": "MONTHLY",
+      "status": "200",
+      "currency": "PKR",
+      "amountMinor": 350000,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "PK",
+      "plan": "ANNUAL",
+      "status": "200",
+      "currency": "PKR",
+      "amountMinor": 3240000,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "GB",
+      "plan": "MONTHLY",
+      "status": "200",
+      "currency": "GBP",
+      "amountMinor": 2999,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "GB",
+      "plan": "ANNUAL",
+      "status": "200",
+      "currency": "GBP",
+      "amountMinor": 32389,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "US",
+      "plan": "MONTHLY",
+      "status": "200",
+      "currency": "USD",
+      "amountMinor": 3999,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "US",
+      "plan": "ANNUAL",
+      "status": "200",
+      "currency": "USD",
+      "amountMinor": 43189,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "FR",
+      "plan": "MONTHLY",
+      "status": "200",
+      "currency": "EUR",
+      "amountMinor": 3599,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "FR",
+      "plan": "ANNUAL",
+      "status": "200",
+      "currency": "EUR",
+      "amountMinor": 38869,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "BH",
+      "plan": "MONTHLY",
+      "status": "200",
+      "currency": "BHD",
+      "amountMinor": 8500,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "BH",
+      "plan": "ANNUAL",
+      "status": "200",
+      "currency": "BHD",
+      "amountMinor": 91800,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "SA",
+      "plan": "MONTHLY",
+      "status": "200",
+      "currency": "SAR",
+      "amountMinor": 8500,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    },
+    {
+      "country": "SA",
+      "plan": "ANNUAL",
+      "status": "200",
+      "currency": "SAR",
+      "amountMinor": 91800,
+      "methods": [],
+      "termsConfigured": false,
+      "manualInstructionsPresent": false
+    }
+  ],
+  "sessionStatus": "200",
+  "registrationAvailable": true,
+  "anonymousOrderStatus": "401",
+  "anonymousEvidenceStatus": "401",
+  "anonymousReceiptStatus": "404",
+  "stripeInvalidSignatureStatus": "400",
+  "paypalMalformedBodyStatus": "400"
+}

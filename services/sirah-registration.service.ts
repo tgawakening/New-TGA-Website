@@ -265,7 +265,13 @@ export async function repriceSirah(
     plan,
     method || defaultPriceMethod(countryCode, plan),
   );
-  if (method && !methodAvailable(method, countryCode, price.currency, plan))
+  if (
+    method &&
+    !methodAvailable(method, countryCode, price.currency, plan, {
+      id: orderId,
+      amountMinor: price.amountMinor,
+    })
+  )
     throw new SirahError(
       "This payment route is not approved or configured for this market and plan.",
     );

@@ -8,6 +8,7 @@ import {
   dispatchSirahNotifications,
   queueSirahNotice,
 } from "./sirah-notifications.service";
+import { addMonthsClamped, serializable } from "./sirah-confirmation.service";
 import { auditSirah } from "./sirah-registration.service";
 export async function maintainSirahOrders() {
   if (!(await sirahSchemaAvailable()))
@@ -23,15 +24,67 @@ export async function maintainSirahOrders() {
   const failures: string[] = [];
   for (const order of ended) {
     try {
-      if (order.plan === "MONTHLY" && order.paymentState === "FAILED" && !order.cancelledAt &&
-          (order.terms as SirahTerms | null)?.failedPaymentGraceDays &&
-          (!order.programmeEnd || order.programmeEnd > now)) {
-        await prisma.$transaction(async tx => {
+      if (
+        order.plan === "MONTHLY" &&
+        ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "") &&
+        !order.cancelledAt &&
+        order.paidCount > 0 &&
+        order.paidCount < 12 &&
+        !["REFUNDED", "REFUND_PENDING"].includes(order.paymentState) &&
+        order.programmeEnd &&
+        order.programmeEnd > now
+      ) {
+        // An unpaid manual renewal pauses access; it must remain receiptable,
+        // rather than becoming a terminal completed programme.
+        if (order.enrolmentState === "PENDING" && order.paymentState !== "PAID")
+          continue;
+        await serializable(async (tx) => {
           const changed = await tx.sirahOrder.updateMany({
-            where:{id:order.id,paymentState:"FAILED",enrolmentState:"ACTIVE",accessEndsAt:{lte:now}},
-            data:{enrolmentState:"PENDING",revision:{increment:1}},
+            where: { id: order.id, revision: order.revision },
+            data: {
+              enrolmentState: "PENDING",
+              ...(order.paymentState === "PAID"
+                ? { paymentState: "UNPAID" }
+                : {}),
+              revision: { increment: 1 },
+            },
           });
-          if (changed.count) await auditSirah(tx,order.id,"system:maintenance","RENEWAL_GRACE_EXPIRED",{});
+          if (changed.count && order.enrolmentState === "ACTIVE")
+            await auditSirah(
+              tx,
+              order.id,
+              "system:maintenance",
+              "MANUAL_PAID_PERIOD_ENDED",
+              {},
+            );
+        });
+        continue;
+      }
+      if (
+        order.plan === "MONTHLY" &&
+        order.paymentState === "FAILED" &&
+        !order.cancelledAt &&
+        (order.terms as SirahTerms | null)?.failedPaymentGraceDays &&
+        (!order.programmeEnd || order.programmeEnd > now)
+      ) {
+        await prisma.$transaction(async (tx) => {
+          const changed = await tx.sirahOrder.updateMany({
+            where: {
+              id: order.id,
+              paymentState: "FAILED",
+              enrolmentState: "ACTIVE",
+              accessEndsAt: { lte: now },
+            },
+            data: { enrolmentState: "PENDING", revision: { increment: 1 } },
+          });
+          if (changed.count)
+            await auditSirah(
+              tx,
+              order.id,
+              "system:maintenance",
+              "RENEWAL_GRACE_EXPIRED",
+              {},
+            );
         });
         continue; // Keep the existing subscription available for verified recovery.
       }
@@ -89,7 +142,7 @@ export async function maintainSirahOrders() {
   const due = await prisma.sirahOrder.findMany({
     where: {
       plan: "MONTHLY",
-      enrolmentState: "ACTIVE",
+      enrolmentState: { in: ["ACTIVE", "PENDING"] },
       cancelledAt: null,
       nextBillingAt: { lte: now },
       paidCount: { lt: 12 },
@@ -112,7 +165,14 @@ export async function maintainSirahOrders() {
             revision: order.revision,
             paymentState: "PAID",
           },
-          data: { paymentState: "UNPAID", revision: { increment: 1 } },
+          data: {
+            paymentState: "UNPAID",
+            enrolmentState: "PENDING",
+            accessEndsAt: order.programmeStart
+              ? addMonthsClamped(order.programmeStart, order.paidCount)
+              : order.nextBillingAt,
+            revision: { increment: 1 },
+          },
         });
     });
   }
