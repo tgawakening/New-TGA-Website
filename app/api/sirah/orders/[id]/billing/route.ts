@@ -10,7 +10,10 @@ import {
   SirahError,
 } from "@/services/sirah-registration.service";
 import { actOnSirahOrder } from "@/services/sirah-admin.service";
-import { stripeClient } from "@/services/sirah-online.service";
+import {
+  stripeClient,
+  resumeSirahPaypalRenewals,
+} from "@/services/sirah-online.service";
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -21,12 +24,25 @@ export async function POST(
     const order = await ownedSirahOrder((await params).id, user.id);
     const input = z
       .object({
-        action: z.enum(["PORTAL", "CANCEL"]),
+        action: z.enum(["PORTAL", "CANCEL", "RESUME"]),
         revision: z.number().int().nonnegative(),
+        acceptedTermsVersion: z.string().min(1).max(200).optional(),
         reason: z.string().trim().min(3).max(1500).optional(),
       })
       .strict()
       .parse(await request.json());
+    if (input.action === "RESUME") {
+      if (!input.acceptedTermsVersion)
+        throw new SirahError("Accept the approved renewal terms.");
+      return privateJson(
+        await resumeSirahPaypalRenewals(
+          order.id,
+          user.id,
+          input.revision,
+          input.acceptedTermsVersion,
+        ),
+      );
+    }
     if (input.action === "CANCEL") {
       if (!input.reason)
         throw new SirahError("Provide your cancellation reason.");

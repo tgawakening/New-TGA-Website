@@ -94,9 +94,13 @@ function Terms({
       ))}
       {order.plan === "MONTHLY" && (
         <p>
-          The next billing date will be displayed by the payment provider before
-          you confirm payment. Billing ends within the agreed 12-month
-          programme.
+          Monthly payments are voluntary renewals, not an obligation to make
+          twelve payments. The programme has a maximum of twelve monthly billing
+          cycles. Cancel future renewals from this saved registration using
+          “Cancel future payments”. Cancellation does not automatically refund
+          completed monthly periods; statutory rights still apply.
+          {order.terms.cancellationTiming === "PERIOD_END" &&
+            " Your verified current paid period remains accessible until its scheduled expiry."}
         </p>
       )}
       <label className={styles.check}>
@@ -731,6 +735,24 @@ export function SirahRegistrationForm({
       const fresh = await api(`/api/sirah/orders/${order.id}`);
       setOrder(fresh.order);
       setMessage("Cancellation has been recorded under the approved terms.");
+    });
+  }
+  async function resumeRenewals() {
+    if (!order?.terms || !window.confirm(`Resume future voluntary renewals of ${formatSirahMoney(order.amountMinor,order.currency)} per month on your existing PayPal subscription? This does not confirm payment or restore access.`)) return;
+    await run(async()=>{
+      const result = await api(`/api/sirah/orders/${order.id}/billing`,{method:"POST",body:JSON.stringify({action:"RESUME",revision:order.revision,acceptedTermsVersion:order.terms!.version})});
+      setMessage(result.message);
+    });
+  }
+  async function requestRefundReview() {
+    if (!order) return;
+    const reason = window.prompt("Reason for requesting an upfront payment refund review:");
+    if (!reason) return;
+    await run(async () => {
+      const result = await api(`/api/sirah/orders/${order.id}/refund-request`, {
+        method: "POST", body: JSON.stringify({revision:order.revision,reason}),
+      });
+      setMessage(result.message);
     });
   }
   async function submitEvidence(event: FormEvent<HTMLFormElement>) {
@@ -1502,7 +1524,7 @@ export function SirahRegistrationForm({
                     verified payment.
                   </p>
                 )}
-                {selectedRouteAvailable &&
+                {selectedRouteAvailable && !order.hasBillingProfile &&
                   order.method &&
                   ["STRIPE", "PAYPAL"].includes(order.method) && (
                     <button
@@ -1717,6 +1739,30 @@ export function SirahRegistrationForm({
               ))}
             </div>
           )}
+          {order.paymentState === "FAILED" && order.hasBillingProfile && (
+            <p className={styles.notice} role="status">
+              Update payment details for your existing subscription below. Do not
+              start another subscription. Access is restored after verified payment.
+              {order.accessEndsAt && ` Current access or grace expires on ${new Date(order.accessEndsAt).toLocaleDateString()}.`}
+            </p>
+          )}
+          {order.cancelledAt && order.accessEndsAt && (
+            <p className={styles.notice} role="status">
+              Future payments are cancelled. Current paid access ends on{" "}
+              {new Date(order.accessEndsAt).toLocaleDateString()}.
+            </p>
+          )}
+          {order.plan === "ANNUAL" && order.paymentState === "PAID" && (
+            <button type="button" disabled={busy} onClick={() => void requestRefundReview()}>
+              Request a refund review
+            </button>
+          )}
+          {order.paymentState === "FAILED" && order.hasBillingProfile &&
+            order.method === "PAYPAL" && selectedRouteAvailable && !order.cancelledAt && (
+              <button type="button" disabled={busy} onClick={()=>void resumeRenewals()}>
+                Resume existing PayPal renewals
+              </button>
+            )}
           {order.hasBillingProfile && (
             <button
               type="button"
@@ -1726,7 +1772,7 @@ export function SirahRegistrationForm({
               Manage billing / payment details
             </button>
           )}
-          {order.enrolmentState !== "CANCELLED" &&
+          {!order.cancelledAt && order.enrolmentState !== "CANCELLED" &&
             order.enrolmentState !== "COMPLETED" &&
             (order.terms || order.paymentState === "UNPAID") && (
               <button
@@ -1734,7 +1780,7 @@ export function SirahRegistrationForm({
                 disabled={busy}
                 onClick={() => void cancelRegistration()}
               >
-                Request cancellation
+                {order.plan === "MONTHLY" ? "Cancel future payments" : "Request cancellation"}
               </button>
             )}
           <button type="button" disabled={busy} onClick={() => void refresh()}>

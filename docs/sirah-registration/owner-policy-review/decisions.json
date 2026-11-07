@@ -1,0 +1,53 @@
+{
+  "source": "Owner decisions supplied in this conversation, 7 November 2026",
+  "publicationApproved": false,
+  "legalReviewCompleted": false,
+  "ownerConfirmed": {
+    "monthlyRenewalsVoluntary": true,
+    "compulsoryTwelvePayments": false,
+    "annualRefundPrinciple": "Actual verified upfront amount times eligible unused months divided by twelve; statutory rights preserved"
+  },
+  "proposedForFinalApproval": {
+    "annualEligibleMonths": "FULLY_UNUSED_ONLY",
+    "partlyCompletedMonth": "USED",
+    "cancelledUpfrontAccess": "END_OF_CURRENT_PAID_MONTH",
+    "refundTargetCalendarDaysAfterApproval": 20,
+    "shorterStatutoryDeadlinePrevails": true,
+    "recordingsAccess": "Only while paid access is active; no extension beyond original programme expiry",
+    "failedRenewalGraceCalendarDays": 7,
+    "failedAfterGrace": "PAUSE",
+    "recovery": "Restore only after verified successful payment; reuse original subscription"
+  },
+  "tax": {
+    "ownerStatedPosition": "Not applicable to advertised course fees",
+    "merchantServicesAndJurisdictionsVerified": false,
+    "automaticTaxAdded": false
+  },
+  "monthlyTermsConfigurationAfterApproval": {
+    "version": null,
+    "commitment": null,
+    "cancellation": null,
+    "refund": null,
+    "access": null,
+    "tax": null,
+    "cancellationTiming": "PERIOD_END",
+    "failedPaymentAccess": "PAUSE",
+    "failedPaymentGraceDays": 7,
+    "refundAccess": null,
+    "refundBilling": null
+  },
+  "annualTermsConfigurationAfterApproval": {
+    "version": null,
+    "commitment": null,
+    "cancellation": null,
+    "refund": null,
+    "access": null,
+    "tax": null,
+    "cancellationTiming": "PERIOD_END",
+    "annualRefundBasis": "FULL_UNUSED_MONTHS",
+    "refundAccess": "REVOKE",
+    "refundAccessTiming": "CURRENT_MONTH_END",
+    "failedPaymentAccess": null,
+    "refundBilling": null
+  }
+}

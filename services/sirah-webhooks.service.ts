@@ -1,4 +1,5 @@
 import "server-only";
+import { paidSirahPeriodEnd } from "@/lib/sirah/subscription-access";
 import type Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import {
@@ -104,9 +105,7 @@ export async function handleSirahStripeEvent(
               : terms?.cancellationTiming === "IMMEDIATE"
                 ? { enrolmentState: "CANCELLED" }
                 : {
-                    accessEndsAt: new Date(
-                      current.ended_at ? current.ended_at * 1000 : Date.now(),
-                    ),
+                    accessEndsAt: paidSirahPeriodEnd(order) || new Date(),
                   }),
           },
         });
@@ -450,7 +449,7 @@ export async function handleSirahPaypalWebhook(request: Request) {
               ? { enrolmentState: "COMPLETED" }
               : terms?.cancellationTiming === "IMMEDIATE"
                 ? { enrolmentState: "CANCELLED" }
-                : { accessEndsAt: order.nextBillingAt || order.programmeEnd }),
+                : { accessEndsAt: paidSirahPeriodEnd(order) || new Date() }),
           },
         });
         await auditSirah(

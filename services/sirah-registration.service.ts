@@ -232,6 +232,8 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     revision: order.revision,
     paidMinor: order.paidMinor,
     programmeEnd: order.programmeEnd,
+    cancelledAt: order.cancelledAt,
+    accessEndsAt: order.accessEndsAt,
     nextBillingAt: order.nextBillingAt,
     hasBillingProfile: !!order.providerSubscriptionId,
     receipts: order.receipts,

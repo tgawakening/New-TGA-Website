@@ -19,6 +19,7 @@ import {
 } from "./sirah-registration.service";
 import {
   addMonthsClamped,
+  serializable,
   confirmSirahPayment,
 } from "./sirah-confirmation.service";
 import {
@@ -685,13 +686,14 @@ export async function markSirahProviderFailure(
   order: SirahOrder,
   eventId: string,
 ) {
-  await prisma.$transaction(async (tx) => {
+  await serializable(async (tx) => {
     if (await tx.sirahPaymentEvent.findUnique({ where: { id: eventId } }))
       return;
     const current = await tx.sirahOrder.findUniqueOrThrow({
       where: { id: order.id },
     });
     if (
+      !!current.cancelledAt ||
       ["REFUNDED"].includes(current.paymentState) ||
       ["CANCELLED", "COMPLETED"].includes(current.enrolmentState)
     )
@@ -706,13 +708,22 @@ export async function markSirahProviderFailure(
         kind: "FAILED",
       },
     });
+    const terms = current.terms as import("@/lib/sirah/config").SirahTerms | null;
+    const days = terms?.failedPaymentGraceDays || 0;
+    const now = new Date();
+    const due = current.nextBillingAt || now;
+    const graceEnd = current.paymentState === "FAILED" && current.accessEndsAt
+      ? current.accessEndsAt
+      : new Date(Math.min(due.getTime() + days * 86400000, current.programmeEnd?.getTime() ?? Infinity));
+    const allowGrace = terms?.failedPaymentAccess === "PAUSE" && days > 0 &&
+      current.paidCount > 0 && !current.cancelledAt && graceEnd > now;
     await tx.sirahOrder.update({
       where: { id: order.id },
       data: {
         paymentState: "FAILED",
-        ...((current.terms as { failedPaymentAccess?: string } | null)
-          ?.failedPaymentAccess === "PAUSE"
-          ? { enrolmentState: "PENDING" }
+        ...(terms?.failedPaymentAccess === "PAUSE"
+          ? { enrolmentState: allowGrace ? "ACTIVE" : "PENDING",
+              ...(days > 0 && !current.cancelledAt ? { accessEndsAt: graceEnd } : {}) }
           : {}),
         revision: { increment: 1 },
       },
@@ -805,4 +816,79 @@ export async function resetUnsettledSirahCheckout(
       { providerOrderId: session.id },
     );
   });
+}
+
+/** Resume only the same approved voluntary subscription; activation is not settlement. */
+export async function resumeSirahPaypalRenewals(
+  orderId: string,
+  userId: string,
+  revision: number,
+  acceptedTermsVersion: string,
+) {
+  const order = await ownedSirahOrder(orderId, userId);
+  const terms = order.terms as import("@/lib/sirah/config").SirahTerms | null;
+  if (
+    order.revision !== revision ||
+    order.plan !== "MONTHLY" ||
+    order.method !== "PAYPAL" ||
+    !order.providerSubscriptionId ||
+    order.cancelledAt ||
+    order.paidCount >= 12 ||
+    order.paymentState !== "FAILED" ||
+    ["CANCELLED", "COMPLETED"].includes(order.enrolmentState) ||
+    (order.programmeEnd && order.programmeEnd <= new Date())
+  )
+    throw new SirahError(
+      "Only the unchanged failed subscription can resume future renewals.",
+      409,
+    );
+  if (
+    !methodAvailable("PAYPAL", order.countryCode, order.currency, "MONTHLY") ||
+    terms?.version !== acceptedTermsVersion ||
+    termsFor("MONTHLY")?.version !== acceptedTermsVersion
+  )
+    throw new SirahError(
+      "Review the currently approved renewal terms before resuming.",
+      409,
+    );
+  const path = `/v1/billing/subscriptions/${order.providerSubscriptionId}`;
+  const owns = (sub: { custom_id?: string; plan_id?: string }) =>
+    sub.custom_id === order.id && sub.plan_id === order.providerPlanId;
+  const current = await paypalRequest(path);
+  if (!owns(current)) throw new SirahError("Subscription ownership mismatch.");
+  const issue = paypalPlanIssue(
+    await paypalRequest(`/v1/billing/plans/${order.providerPlanId}`),
+    {
+      productId: process.env.SIRAH_PAYPAL_PRODUCT_ID || "",
+      currency: order.currency,
+      amountMinor: order.amountMinor,
+    },
+  );
+  if (issue) throw new SirahError(issue, 409);
+  if (current.status === "SUSPENDED")
+    await paypalRequest(
+      `${path}/activate`,
+      "POST",
+      { reason: "Student requested future voluntary renewals" },
+      `resume-${order.id}-${revision}`,
+    );
+  else if (current.status !== "ACTIVE")
+    throw new SirahError(
+      "A cancelled or expired subscription cannot be resumed.",
+      409,
+    );
+  const verified = await paypalRequest(path);
+  if (!owns(verified) || verified.status !== "ACTIVE")
+    throw new SirahError("PayPal has not confirmed resumed renewals.", 409);
+  await prisma.$transaction((tx) =>
+    auditSirah(tx, order.id, `student:${userId}`, "RENEWALS_RESUMED", {
+      subscriptionId: order.providerSubscriptionId,
+      acceptedTermsVersion,
+      settlementConfirmed: false,
+    }),
+  );
+  return {
+    message:
+      "Existing future renewals resumed. Payment remains pending and access changes only after verified settlement.",
+  };
 }

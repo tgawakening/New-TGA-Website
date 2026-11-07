@@ -27,6 +27,7 @@ const subjects: Record<string, string> = {
   FAILED: "Recurring payment requires attention",
   CANCELLED: "Course enrolment cancelled",
   REFUNDED: "Payment refund recorded",
+  REFUND_REQUESTED: "Refund review requested",
   COMPLETED: "Course marked completed",
   INVITATION: "Your course group invitation",
   INVITATION_PENDING: "Course group invitation needs follow-up",
@@ -51,7 +52,7 @@ export async function queueSirahNotice(
       },
     },
   });
-  const paymentReminder = ["REGISTERED", "PAYMENT_RESUME"].includes(kind);
+  const paymentReminder = ["REGISTERED", "PAYMENT_RESUME", "FAILED"].includes(kind);
   if (paymentReminder && order.paymentState === "PAID") return;
   const paid =
     order.user.status === "ACTIVE" &&
@@ -82,6 +83,8 @@ export async function queueSirahNotice(
     `Timestamp: ${new Date().toISOString()}`,
     ...(note ? [`Note: ${note}`] : []),
   ];
+  if (kind === "FAILED" && order.accessEndsAt)
+    rows.push(`Renewal grace ends: ${order.accessEndsAt.toISOString()}. Update the existing subscription's payment details; access resumes only after verified payment.`);
   if (kind === "SUBMITTED")
     rows.push(
       "Your payment submission has been received. Enrolment confirmation follows admin approval.",
@@ -143,7 +146,7 @@ export async function queueSirahNotice(
     ].join("\n");
     const payload = {
       subject: paymentUrl
-        ? "Complete your Sīrah registration"
+        ? kind === "FAILED" ? "Update your Sīrah payment" : "Complete your Sīrah registration"
         : `${SIRAH_TITLE} — ${subjects[kind] || kind}`,
       html: `<div style="background:#f5efdf;color:#141611;padding:24px;font-family:Arial,sans-serif"><h2>The Global Awakening</h2><h3>${escapeHtml(subjects[kind] || kind)}</h3>${text
         .split("\n")
