@@ -1,3 +1,4 @@
+import { defaultPriceMethod } from "@/lib/sirah/payment-display";
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
     const price = priceFor(
       v.countryCode,
       v.plan,
-      v.method || (v.countryCode === "PK" ? "BANK_TRANSFER" : null),
+      v.method || defaultPriceMethod(v.countryCode, v.plan),
     );
     return NextResponse.json({
       pricing: price,

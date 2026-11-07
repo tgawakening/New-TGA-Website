@@ -1,3 +1,4 @@
+import { detectedResidence } from "@/lib/sirah/geolocation";
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import { countries } from "countries-list";
 import { redirect } from "next/navigation";
@@ -50,6 +51,7 @@ export default async function SirahRegisterPage({
       <Link href="/seerah">← Back to the course</Link>
       <SirahRegistrationForm
         initialCountry={initialCountry}
+        detectedCountry={await detectedResidence()}
         initialPlan={initialPlan}
         requireBillingCountry={Boolean(params.country && !initialCountry)}
       />

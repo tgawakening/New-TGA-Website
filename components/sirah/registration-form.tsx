@@ -1,4 +1,5 @@
 "use client";
+import { useResidence, saveResidence } from "@/lib/sirah/use-residence";
 import {
   useEffect,
   useImperativeHandle,
@@ -106,15 +107,20 @@ function Terms({
 }
 export function SirahRegistrationForm({
   initialCountry,
+  detectedCountry,
   initialPlan,
   requireBillingCountry = false,
   controlRef,
 }: {
   initialCountry?: string;
+  detectedCountry?: string;
   initialPlan?: SirahPlan;
   requireBillingCountry?: boolean;
   controlRef?: Ref<RegistrationControls>;
 } = {}) {
+  const suggestedResidence = useResidence(detectedCountry);
+  const [residenceConfirmed, setResidenceConfirmed] = useState(false);
+  const [manualConfirmed, setManualConfirmed] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
@@ -131,7 +137,9 @@ export function SirahRegistrationForm({
   const [phoneCountry, setPhoneCountry] = useState<CountryCode>(
     initialCountry && getCountries().includes(initialCountry as CountryCode)
       ? (initialCountry as CountryCode)
-      : "GB",
+      : getCountries().includes(suggestedResidence as CountryCode)
+        ? (suggestedResidence as CountryCode)
+        : "PK",
   );
   const [phone, setPhone] = useState("");
   const [billing, setBilling] = useState(
@@ -139,7 +147,7 @@ export function SirahRegistrationForm({
       ? ""
       : initialCountry && initialCountry in countries
         ? initialCountry
-        : "GB",
+        : suggestedResidence,
   );
   const [billingEdited, setBillingEdited] = useState(
     Boolean(
@@ -152,6 +160,7 @@ export function SirahRegistrationForm({
     plan: SirahPlan;
     currency: string;
     amountMinor: number;
+    totalMinor: number;
   } | null>(null);
   const [quoteError, setQuoteError] = useState("");
   const [plan, setPlan] = useState<SirahPlan>(initialPlan || "MONTHLY");
@@ -182,12 +191,24 @@ export function SirahRegistrationForm({
         if (choice.country) {
           setBilling(choice.country in countries ? choice.country : "");
           setBillingEdited(true);
+          setResidenceConfirmed(false);
+          saveResidence(choice.country);
         }
         if (choice.plan) setPlan(choice.plan);
       },
     }),
     [order],
   );
+  useEffect(() => {
+    if (!billingEdited && !initialCountry && !requireBillingCountry && !order)
+      setBilling(suggestedResidence);
+  }, [
+    suggestedResidence,
+    billingEdited,
+    initialCountry,
+    requireBillingCountry,
+    order,
+  ]);
   useEffect(() => {
     if (!ready || order || !billing || !(billing in countries)) return;
     const controller = new AbortController();
@@ -208,6 +229,7 @@ export function SirahRegistrationForm({
             plan,
             currency: result.pricing.currency,
             amountMinor: result.pricing.amountMinor,
+            totalMinor: result.pricing.totalMinor,
           });
         }
       })
@@ -293,19 +315,14 @@ export function SirahRegistrationForm({
             if (
               !initialCountry &&
               !requireBillingCountry &&
+              !localStorage.getItem("tga-sirah-residence-v1") &&
+              saved.billingEdited &&
               saved.billing in countries
             )
               setBilling(saved.billing);
             if (!initialPlan && ["MONTHLY", "ANNUAL"].includes(saved.plan))
               setPlan(saved.plan);
             if (saved.billingEdited) setBillingEdited(true);
-          } else if (!initialCountry && !requireBillingCountry) {
-            const region = new Intl.Locale(navigator.language).region;
-            if (region && region in countries) {
-              setBilling(region);
-              if (getCountries().includes(region as CountryCode))
-                setPhoneCountry(region as CountryCode);
-            }
           }
         } catch {}
         setUser(result.user);
@@ -421,6 +438,13 @@ export function SirahRegistrationForm({
   }
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!residenceConfirmed) {
+      setFields({
+        countryCode: ["Please confirm your current country of residence."],
+      });
+      return;
+    }
+    saveResidence(billing);
     const data = new FormData(event.currentTarget);
     requestKey.current ||= crypto.randomUUID();
     const input = {
@@ -486,7 +510,9 @@ export function SirahRegistrationForm({
         }),
       });
       setOrder(result.order);
+      saveResidence(countryCode);
       setAccepted(false);
+      setManualConfirmed(false);
     });
   }
   async function refresh() {
@@ -534,6 +560,7 @@ export function SirahRegistrationForm({
       });
       setOrder(result.order);
       setAccepted(false);
+      setManualConfirmed(false);
       setMessage(
         "The unsettled checkout is closed. Choose an available payment method; Pakistan manual monthly payments use PKR 3,500.",
       );
@@ -577,7 +604,7 @@ export function SirahRegistrationForm({
   }
   async function submitEvidence(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!order) return;
+    if (!order || !manualConfirmed) return;
     const data = new FormData(event.currentTarget);
     await run(async () => {
       const details = {
@@ -768,15 +795,17 @@ export function SirahRegistrationForm({
               }
             />
             <label>
-              Residence / billing country
+              Country of residence
               <select
                 name="countryCode"
                 autoComplete="country"
-                aria-label="Residence / billing country"
+                aria-label="Country of residence"
                 required
                 value={billing}
                 onChange={(event) => {
                   setBilling(event.target.value);
+                  saveResidence(event.target.value);
+                  setResidenceConfirmed(false);
                   setBillingEdited(true);
                   clearField("countryCode");
                 }}
@@ -797,6 +826,21 @@ export function SirahRegistrationForm({
                 ))}
               </select>
               {errorText("countryCode")}
+            </label>
+            <label className={styles.residenceConfirmation}>
+              <span>
+                <input
+                  type="checkbox"
+                  checked={residenceConfirmed}
+                  onChange={(event) =>
+                    setResidenceConfirmed(event.target.checked)
+                  }
+                  required
+                />{" "}
+                I confirm that{" "}
+                {billing && countries[billing as keyof typeof countries]?.name}{" "}
+                is my current country of residence.
+              </span>
             </label>
             <div className={styles.planChoice}>
               <label>
@@ -826,11 +870,15 @@ export function SirahRegistrationForm({
                       {formatSirahMoney(quote.amountMinor, quote.currency)}
                     </strong>
                     <span>
+                      Charge currency: {quote.currency}
+                      {plan === "MONTHLY"
+                        ? ` · ${formatSirahMoney(quote.totalMinor, quote.currency)} across 12 months`
+                        : ""}
+                    </span>
+                    <span>
                       {plan === "ANNUAL"
                         ? "One payment · 12 months"
-                        : billing === "PK"
-                          ? "Per month · manual rate"
-                          : "Per month"}
+                        : "Per month"}
                     </span>
                   </>
                 ) : (
@@ -1090,6 +1138,33 @@ export function SirahRegistrationForm({
                   order.manualEvidenceAllowed && (
                     <>
                       <div className={styles.notice}>
+                        {order.countryCode === "PK" &&
+                          order.plan === "MONTHLY" && (
+                            <p>
+                              Manual payments are PKR 3,500 per month. The PKR
+                              3,000 rate applies to automatic card payments.
+                            </p>
+                          )}
+                        <label className={styles.residenceConfirmation}>
+                          <span>
+                            <input
+                              type="checkbox"
+                              checked={manualConfirmed}
+                              onChange={(event) =>
+                                setManualConfirmed(event.target.checked)
+                              }
+                            />{" "}
+                            I confirm the manual payment amount of{" "}
+                            {formatSirahMoney(
+                              order.amountMinor,
+                              order.currency,
+                            )}
+                            {order.plan === "MONTHLY"
+                              ? " per month"
+                              : " for 12 months"}
+                            .
+                          </span>
+                        </label>
                         {order.manualAccounts
                           .filter((a) => a.method === order.method)
                           .map((account) => (
@@ -1131,7 +1206,11 @@ export function SirahRegistrationForm({
                         </p>
                         <p>
                           Add SIRAH BEYOND CHRONOLOGY and your registration
-                          reference in the payment remarks.
+                          reference in the payment remarks. After paying, upload
+                          your receipt here or send it to 03262055614 on
+                          WhatsApp. Include your full name, registered email and
+                          registration reference. We’ll confirm your enrolment
+                          after reviewing your payment.
                         </p>
                         <p>
                           <strong>
@@ -1153,11 +1232,6 @@ export function SirahRegistrationForm({
                           </button>
                         </p>
                       </div>
-                      <p>
-                        After payment, upload your receipt here or send your
-                        screenshot to 03262055614 on WhatsApp. Include your
-                        registration reference, full name and registered email.
-                      </p>
                       <a
                         href={order.paymentSupportUrl}
                         target="_blank"
@@ -1229,7 +1303,7 @@ export function SirahRegistrationForm({
                         <button
                           className={styles.primary}
                           type="submit"
-                          disabled={busy || !accepted}
+                          disabled={busy || !accepted || !manualConfirmed}
                         >
                           {busy
                             ? "Submitting evidence…"

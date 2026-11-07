@@ -58,7 +58,7 @@ export const regionalFees: Market[] = rates.map(
             Number(catalogue.find((row) => row[0] === "PK")![4]),
             "PKR",
             false,
-            "Manual payment initiated by the student",
+            "Manual payment through JazzCash or Meezan Bank",
           ),
           onlineRecurringVerified: false,
         }
