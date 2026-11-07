@@ -1,5 +1,8 @@
 "use client";
 
+import { countries } from "countries-list";
+import { resolveMarket, priceFor, formatSirahMoney } from "@/lib/sirah/catalog";
+import { useResidence, saveResidence } from "@/lib/sirah/use-residence";
 import Image, { getImageProps } from "next/image";
 import {
   SirahRegistrationProvider,
@@ -10,7 +13,7 @@ import { Autoplay, A11y } from "swiper/modules";
 import type { Swiper as SwiperInstance } from "swiper";
 import { useReducedMotion } from "framer-motion";
 import "swiper/css";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header, Footer } from "@/components/home/sections";
 import {
   activeCampaign,
@@ -341,7 +344,11 @@ function Plan({
   plan,
   annual,
   country,
+  available,
+  pakistanOnlineAvailable,
 }: {
+  available?: boolean;
+  pakistanOnlineAvailable?: boolean;
   plan: FeePlan | null;
   annual: boolean;
   country: string;
@@ -353,11 +360,36 @@ function Plan({
       </p>
       {plan ? (
         <>
+          {(annual || (country === "PK" && pakistanOnlineAvailable)) && (
+            <p>
+              <s>
+                {annual
+                  ? formatSirahMoney(
+                      priceFor(country, "MONTHLY", "STRIPE").amountMinor * 12,
+                      plan.currency,
+                    )
+                  : formatFee(3500, "PKR")}
+              </s>{" "}
+              {annual ? "12 online monthly payments" : "Manual monthly rate"}
+            </p>
+          )}
           <h3>
             {formatFee(plan.amount, plan.currency)}
             <small>{plan.frequency}</small>
           </h3>
+          <p>Charge currency: {plan.currency}</p>
           <p>{plan.method}</p>
+          {!annual &&
+            country === "PK" &&
+            (pakistanOnlineAvailable ? (
+              <p>
+                PKR 3,000 per month with automatic card payments. Manual
+                payments through JazzCash or Meezan Bank are PKR 3,500 per
+                month.
+              </p>
+            ) : (
+              <p>Automatic card payments are currently unavailable</p>
+            ))}
           {plan.total && <p>{plan.total}</p>}
         </>
       ) : (
@@ -369,7 +401,18 @@ function Plan({
           </p>
         </>
       )}
-      {annual && <p className={styles.planNote}>One payment for 12 months.</p>}
+      {annual && (
+        <p className={styles.planNote}>
+          Save approximately 10% compared with 12 online monthly payments. One
+          payment covers the full 12 months.
+        </p>
+      )}
+      {available === false && (
+        <p className={styles.paymentNotice}>
+          Payment is currently unavailable for this plan. Enquire on WhatsApp
+          for assistance.
+        </p>
+      )}
       <PrimaryAction
         placement={`fees-${country}-${annual ? "annual" : "monthly"}`}
         country={country}
@@ -427,48 +470,20 @@ function PublicCourseGroups() {
   );
 }
 
-function detectMarket() {
-  const region = new Intl.Locale(navigator.language).region;
-  if (region && config.markets.some((m) => m.code === region)) return region;
-  const eurozone = new Set([
-    "AT",
-    "BE",
-    "BG",
-    "CY",
-    "DE",
-    "EE",
-    "ES",
-    "FI",
-    "FR",
-    "GR",
-    "HR",
-    "IE",
-    "IT",
-    "LT",
-    "LU",
-    "LV",
-    "MT",
-    "NL",
-    "PT",
-    "SI",
-    "SK",
-  ]);
-  return region && eurozone.has(region) ? "EURO" : "OTHER";
-}
-function subscribeLocaleChange(callback: () => void) {
-  window.addEventListener("languagechange", callback);
-  return () => window.removeEventListener("languagechange", callback);
-}
 function Fees({
+  availability,
   pakistanOnlineAvailable = false,
   country,
   onCountryChange,
 }: {
+  availability?: Record<string, Record<string, boolean>>;
   pakistanOnlineAvailable?: boolean;
   country: string;
   onCountryChange: (value: string) => void;
 }) {
-  const market = config.markets.find((m) => m.code === country)!;
+  const market = config.markets.find(
+    (m) => m.code === resolveMarket(country)[0],
+  )!;
   const monthly =
     market.code === "PK" && !pakistanOnlineAvailable
       ? market.manualMonthly || null
@@ -493,11 +508,26 @@ function Fees({
               <em>to begin.</em>
             </h2>
           </div>
-          <p>
-            Choose your country to see the fee in your currency. Study through
-            live teaching, discussion and Q&A across a 12-month programme. Pay
-            monthly or make one annual payment.
-          </p>
+          <div className={styles.feeIntroduction}>
+            <p>
+              Choose your country of residence to see the fees for your region.
+              The 12-month programme includes live teaching, discussion and Q&A.
+              Pay monthly or make one upfront payment.
+            </p>
+            <p>
+              Choosing your country accurately is an amānah. Please select the
+              country where you currently live. Allah commands us to honour our
+              trusts (
+              <a
+                href="https://quran.com/4/58"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Qur’an 4:58
+              </a>
+              ).
+            </p>
+          </div>
         </div>
         <div
           className={styles.countries}
@@ -516,55 +546,42 @@ function Fees({
           ))}
         </div>
         <label className={styles.countrySelect}>
-          Your country
+          Country of residence
           <select
-            aria-label="Your country"
+            aria-label="Country of residence"
             value={country}
             onChange={(e) => select(e.target.value)}
           >
-            {config.markets.map((m) => (
-              <option value={m.code} key={m.code}>
-                {m.name}
-              </option>
-            ))}
+            {Object.entries(countries)
+              .sort((a, b) => a[1].name.localeCompare(b[1].name))
+              .map(([code, details]) => (
+                <option value={code} key={code}>
+                  {details.name}
+                </option>
+              ))}
           </select>
         </label>
         <div aria-live="polite" aria-atomic="true">
           <h3 className={styles.marketTitle}>{market.name}</h3>
           <div className={styles.plans}>
-            <Plan plan={monthly} annual={false} country={country} />
-            <Plan plan={market.annual} annual country={country} />
+            <Plan
+              plan={monthly}
+              annual={false}
+              country={country}
+              pakistanOnlineAvailable={pakistanOnlineAvailable}
+              available={availability?.[market.code]?.MONTHLY}
+            />
+            <Plan
+              plan={market.annual}
+              annual
+              country={country}
+              available={availability?.[market.code]?.ANNUAL}
+            />
           </div>
-          {market.code === "PK" &&
-            pakistanOnlineAvailable &&
-            market.manualMonthly && (
-              <>
-                <h3 className={styles.marketTitle}>Manual monthly payment</h3>
-                <div className={styles.plans}>
-                  <Plan
-                    plan={market.manualMonthly}
-                    annual={false}
-                    country={country}
-                  />
-                </div>
-              </>
-            )}
-          {market.code === "PK" && !pakistanOnlineAvailable && (
-            <p className={styles.paymentNotice}>
-              The manual monthly rate is shown. Online recurring payment
-              availability is being confirmed.
-            </p>
-          )}
           {market.code === "OTHER" && (
             <p className={styles.paymentNotice}>
               Fees are shown in GBP. Any conversion by your bank may vary; no
               fixed local-currency amount is offered.
-            </p>
-          )}
-          {!market.terms && (
-            <p className={styles.paymentNotice}>
-              Online checkout is currently unavailable. Enquire on WhatsApp for
-              course and payment information.
             </p>
           )}
           {config.checkoutEnabled && market.terms && (
@@ -584,10 +601,12 @@ function SeerahContent({
   initialCampaign,
   pakistanOnlineAvailable,
   visitorCountry,
+  availability,
 }: {
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
   visitorCountry?: string;
+  availability?: Record<string, Record<string, boolean>>;
 }) {
   const openRegistration = useSirahRegistration();
   const mobileHero = getImageProps({
@@ -599,13 +618,8 @@ function SeerahContent({
   }).props;
   const root = useRef<HTMLDivElement>(null);
   const activeSection = useSectionExperience(root);
-  const [chosenCountry, setCountry] = useState<string | null>(null);
-  const suggestedCountry = useSyncExternalStore(
-    subscribeLocaleChange,
-    detectMarket,
-    () => "PK",
-  );
-  const country = chosenCountry || suggestedCountry;
+  const country = useResidence(visitorCountry);
+  const setCountry = saveResidence;
   const [orientation, setOrientation] = useState(
     initialCampaign === "orientation",
   );
@@ -708,7 +722,7 @@ function SeerahContent({
                 <div className={styles.heroActions}>
                   <PrimaryAction placement="hero" country={country} />
                   {orientation ? (
-                    <OrientationAction country={visitorCountry || country} />
+                    <OrientationAction country={country} />
                   ) : (
                     <a className={styles.secondary} href="#course-details">
                       Explore the Course <span aria-hidden>↓</span>
@@ -871,6 +885,7 @@ function SeerahContent({
             </div>
           </section>
           <Fees
+            availability={availability}
             pakistanOnlineAvailable={pakistanOnlineAvailable}
             country={country}
             onCountryChange={setCountry}
@@ -965,6 +980,7 @@ export default function SeerahPage(props: {
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
   visitorCountry?: string;
+  availability?: Record<string, Record<string, boolean>>;
 }) {
   return (
     <SirahRegistrationProvider>

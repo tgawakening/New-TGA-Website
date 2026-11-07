@@ -1,3 +1,4 @@
+import { defaultPriceMethod } from "@/lib/sirah/payment-display";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
@@ -73,7 +74,7 @@ export async function registerSirah(
   const initial = priceFor(
     input.countryCode,
     input.plan,
-    input.countryCode === "PK" ? "BANK_TRANSFER" : null,
+    defaultPriceMethod(input.countryCode, input.plan),
   );
   const result = await prisma.$transaction(async (tx) => {
     if (userId) {
@@ -237,7 +238,7 @@ export async function repriceSirah(
   const price = priceFor(
     countryCode,
     plan,
-    method || (countryCode === "PK" ? "BANK_TRANSFER" : null),
+    method || defaultPriceMethod(countryCode, plan),
   );
   if (method && !methodAvailable(method, countryCode, price.currency, plan))
     throw new SirahError(

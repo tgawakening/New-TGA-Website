@@ -546,3 +546,19 @@
 .experience .phoneControl input {
   min-height: 44px;
 }
+
+.experience .residenceConfirmation {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-weight: 400;
+}
+.experience .residenceConfirmation input {
+  display: inline-block;
+  width: 20px;
+  min-height: 20px;
+  height: 20px;
+  padding: 0;
+  vertical-align: middle;
+  margin: 0 8px 0 0;
+  accent-color: #735719;
+}

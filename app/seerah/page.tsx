@@ -1,5 +1,5 @@
-import { headers } from "next/headers";
-import { countries } from "countries-list";
+import { detectedResidence } from "@/lib/sirah/geolocation";
+import { planAvailability } from "@/lib/sirah/payment-display";
 import { methodAvailable } from "@/lib/sirah/config";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import type { Metadata } from "next";
@@ -51,13 +51,12 @@ export const metadata: Metadata = {
 };
 
 export default async function SeerahRoute() {
-  const hint = (await headers()).get("x-vercel-ip-country")?.toUpperCase();
-  const visitorCountry =
-    hint && Object.hasOwn(countries, hint) ? hint : undefined;
+  const visitorCountry = await detectedResidence();
   return (
     <div className={montserrat.variable}>
       <SeerahPage
         visitorCountry={visitorCountry}
+        availability={planAvailability()}
         initialCampaign={activeCampaign()}
         pakistanOnlineAvailable={
           methodAvailable("STRIPE", "PK", "PKR", "MONTHLY") ||

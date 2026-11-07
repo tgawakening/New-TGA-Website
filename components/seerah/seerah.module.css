@@ -2195,3 +2195,17 @@
     background: #141611;
   }
 }
+
+.feeIntroduction {
+  max-width: 480px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #41463a;
+}
+.feeIntroduction p + p {
+  margin-top: 20px;
+}
+.feeIntroduction a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
