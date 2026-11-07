@@ -1,0 +1,50 @@
+{
+  "productionCommit": "b1ba0062d9d1bea911294aaf87b6a39b9d96aa16",
+  "deploymentId": "23d01f3b-a942-4462-b13b-b144d78616be",
+  "deploymentPhase": "ACTIVE",
+  "workflowTestsPassed": 52,
+  "configurationTestsPassed": 7,
+  "productionBrowserWidths": [
+    390,
+    1440
+  ],
+  "productionQuoteChecks": 20,
+  "receivingDetailsMatchExistingRecords": true,
+  "receivingAccountsVerified": [
+    "BANK_TRANSFER",
+    "JAZZCASH"
+  ],
+  "studentAndAdminDelivery": [
+    {
+      "id": "cmw6t0gb70000t001dbpmc6st",
+      "providerId": "01a1b782-e737-7f30-9893-35aca879b783",
+      "emailType": "SIRAH_OPS_handoff-20261108-v1",
+      "recipientRole": "ADMIN",
+      "delivery": "delivered"
+    },
+    {
+      "id": "cmw6brpd9000c5n0un91q4jop",
+      "providerId": "01a1b5c8-fbe7-75d1-b326-bc47b010ea13",
+      "emailType": "SIRAH_REGISTERED",
+      "recipientRole": "ADMIN",
+      "delivery": "delivered"
+    },
+    {
+      "id": "cmw6brp7w000b5n0usslspi7z",
+      "providerId": "01a1b5c8-faf5-76aa-8f86-c5f3d04377f4",
+      "emailType": "SIRAH_REGISTERED",
+      "recipientRole": "STUDENT",
+      "delivery": "delivered"
+    }
+  ],
+  "termsPublished": false,
+  "taxAccountantVerified": false,
+  "liveCollectionRoutes": [],
+  "schedule": {
+    "name": "sirah-maintenance",
+    "cron": "15 * * * *",
+    "timezone": "UTC"
+  },
+  "databasePendingMigrations": 0,
+  "paidStudentGroupURLsConfigured": false
+}

@@ -2,7 +2,7 @@
 
 **Proposed final text for authorised approval — NOT PUBLISHED OR EFFECTIVE.**
 
-Draft reviewed: 8 November 2026. Seller: **Global Awakening CIC**, UK, as confirmed by TGA. Company number, registered address and the publication/effective date must be checked against the seller's current records before publication. No other programme's policy is changed by this draft.
+Draft reviewed: 8 November 2026. Seller: **Global Awakening CIC**, registered in England and Wales, company **15523255**. Registered office: **128 City Road, London, United Kingdom, EC1V 2NX**. These entity details were independently checked against [Companies House](https://find-and-update.company-information.service.gov.uk/company/15523255), with a fresh successful registry request. The publication/effective date remains pending approval. No other programme's policy is changed by this draft.
 
 ## 1. Scope and priority
 
@@ -64,9 +64,9 @@ TGA has stated that tax is not applicable, but accountant confirmation is pendin
 
 This is an engineering-supported draft, not completed legal review. The owner has already confirmed voluntary monthly renewal and the unused-month annual refund principle; do not ask for those decisions again.
 
-Before publication, an authorised decision-maker must approve this complete text, its effective date, the fully-unused-month/rounding rule, month-boundary recording/access expiry, seven-day grace, twenty-day target with statutory priority, and the treatment of the general policy's additional course-start fourteen-day full-refund promise. Confirm that first verified payment is the intended paid-period start, or approve and implement a different cohort-based start. Confirm the seller's current company number/address and official cancellation contact. Legal review must settle mixed live-teaching/recordings treatment, early-performance/digital-content consents and mandatory overseas rights.
+Before publication, an authorised decision-maker must approve this complete text, its effective date, the fully-unused-month/rounding rule, month-boundary recording/access expiry, seven-day grace, twenty-day target with statutory priority, and the treatment of the general policy's additional course-start fourteen-day full-refund promise. Confirm that first verified payment is the intended paid-period start, or approve and implement a different cohort-based start. Approve the official cancellation contact; the company number and registered address have been independently verified. Legal review must settle mixed live-teaching/recordings treatment, early-performance/digital-content consents and mandatory overseas rights.
 
-The live general page was independently checked on 8 November 2026. It identifies **Global Awakening Ltd** and says **Last updated 12 February 2025**. Those statements conflict with the newly confirmed course seller, **Global Awakening CIC**, and are not evidence of a current Sīrah policy approval. Do not copy the general terms' company number/address or change unrelated programme agreements without checking the actual entity records.
+The live general page was independently checked on 8 November 2026. It identifies **Global Awakening Ltd** and says **Last updated 12 February 2025**. Companies House confirms that **Global Awakening Ltd** was the former name of the same company until 28 May 2025. The number 15523255 and registered office match the current **Global Awakening CIC** record. The general policy's historical name/date do not establish current Sīrah approval. Stripe's company field also still uses the former Ltd name; an authorised account holder must confirm/update its business record. No unrelated programme agreement or provider KYC record is changed by this draft.
 
 Accountant determination, per launch country:
 
