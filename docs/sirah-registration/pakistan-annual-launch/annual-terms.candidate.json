@@ -13,5 +13,9 @@
   "annualRefundBasis": "FULL_UNUSED_MONTHS",
   "refundAccessTiming": "CURRENT_MONTH_END",
   "refundBilling": "CANCEL",
-  "requiresConfirmedCommencement": true
+  "requiresConfirmedCommencement": true,
+  "approvedRoutes": [
+    "BANK_TRANSFER:PK:PKR",
+    "JAZZCASH:PK:PKR"
+  ]
 }

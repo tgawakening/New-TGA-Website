@@ -93,7 +93,7 @@ are not evidence of genuine settlement or a provider-signed webhook.
 
 ## Validation and rollout evidence
 
-63 isolated workflow tests and seven configuration tests pass. Built-app browser
+64 isolated workflow tests and seven configuration tests pass. Built-app browser
 checks at 390 and 1350 px verify the confirmed 14 November date, separate unchecked
 express choices, submission blocked until choices are made, private receipt
 submission leaving access pending, staff approval at PKR 32,400, duplicate-safe
@@ -110,3 +110,5 @@ and whether the additive cohort table exists can be distinguished. A missing
 cohort table does not disable pending registration or manufacture a start date.
 Collection remains closed pending the recorded policy/tax approvals and required
 configuration. No actual activation is performed by this package's code rollout.
+
+The first-market terms also contain `approvedRoutes` limited to `BANK_TRANSFER:PK:PKR` and `JAZZCASH:PK:PKR`. This is separate from payment verification certificates: installing the Pakistan policy cannot approve another provider, country or currency even if unrelated live flags already exist. A malformed or empty scope fails closed. Future country/provider approvals require an appropriate approved terms version and their own verification certificates.

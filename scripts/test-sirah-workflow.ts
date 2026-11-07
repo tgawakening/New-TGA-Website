@@ -3447,3 +3447,30 @@ test("an expired cohort-start window preserves the unused-month calculation and 
   assert.equal(quote.policyApprovalRequired, true);
   assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } })).refundedMinor, 0);
 });
+
+test("Pakistan-only approved terms cannot approve unrelated online routes even with their live verification flags present", () => {
+  enableManual();
+  const terms = { ...approvedTestTerms, approvedRoutes: ["BANK_TRANSFER:PK:PKR", "JAZZCASH:PK:PKR"] };
+  process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify(terms);
+  Object.assign(process.env, {
+    SIRAH_LIVE_PAYMENTS_APPROVED: "true", SIRAH_STRIPE_SECRET_KEY: "sk_live_synthetic",
+    SIRAH_STRIPE_ACCOUNT_ID: "acct_test", SIRAH_STRIPE_WEBHOOK_SECRET: "synthetic",
+    SIRAH_STRIPE_ANNUAL_COUNTRIES: "GB,PK", SIRAH_STRIPE_ANNUAL_CURRENCIES: "GBP,PKR",
+    SIRAH_STRIPE_ANNUAL_VERIFIED_ROUTES: "GB:GBP,PK:PKR",
+    PAYPAL_ENV: "live", PAYPAL_CLIENT_ID: "synthetic", PAYPAL_CLIENT_SECRET: "synthetic",
+    SIRAH_PAYPAL_MERCHANT_ID: "SYNTHETIC", SIRAH_PAYPAL_WEBHOOK_ID: "SYNTHETIC",
+    SIRAH_PAYPAL_ANNUAL_COUNTRIES: "GB", SIRAH_PAYPAL_ANNUAL_CURRENCIES: "GBP",
+    SIRAH_PAYPAL_ANNUAL_VERIFIED_ROUTES: "GB:GBP",
+  });
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "ANNUAL"), true);
+  assert.equal(methodAvailable("JAZZCASH", "PK", "PKR", "ANNUAL"), true);
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "ANNUAL"), false);
+  assert.equal(methodAvailable("STRIPE", "PK", "PKR", "ANNUAL"), false);
+  assert.equal(methodAvailable("PAYPAL", "GB", "GBP", "ANNUAL"), false);
+  process.env.SIRAH_CLOSED_VERIFICATION_CHECKOUTS = JSON.stringify([{ orderId: "synthetic-scoped-order", method: "STRIPE", country: "GB", currency: "GBP", plan: "ANNUAL", amountMinor: 32389, expiresAt: new Date(Date.now() + 60000).toISOString() }]);
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "ANNUAL", { id: "synthetic-scoped-order", amountMinor: 32389 }), false);
+  for (const approvedRoutes of [[], ["STRIPE:*:GBP"], "BANK_TRANSFER:PK:PKR"]) {
+    process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify({ ...terms, approvedRoutes });
+    assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "ANNUAL"), false);
+  }
+});
