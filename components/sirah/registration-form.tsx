@@ -827,10 +827,6 @@ export function SirahRegistrationForm({
                 is my current country of residence.
               </span>
             </label>
-            <div className={styles.cardIntroduction}>
-              <strong>Pay by debit or credit card</strong>
-              <small>No Stripe account needed.</small>
-            </div>
             <div className={styles.planChoice}>
               <label>
                 Payment plan
@@ -861,10 +857,6 @@ export function SirahRegistrationForm({
                         priceFor(billing, "ANNUAL", null).currency,
                       )}
                     </s>
-                    <span>
-                      Save approximately 10% compared with 12 online monthly
-                      payments. One payment covers the full 12 months.
-                    </span>
                   </>
                 )}
                 {quote?.country === billing && quote.plan === plan ? (
@@ -872,23 +864,12 @@ export function SirahRegistrationForm({
                     <strong>
                       {formatSirahMoney(quote.amountMinor, quote.currency)}
                     </strong>
-                    <span>
-                      Charge currency: {quote.currency}
-                      {plan === "MONTHLY"
-                        ? ` · ${formatSirahMoney(quote.totalMinor, quote.currency)} across 12 months`
-                        : ""}
-                    </span>
+                    <span>Charge currency: {quote.currency}</span>
                     <span>
                       {plan === "ANNUAL"
                         ? "One payment · 12 months"
                         : "Per month"}
                     </span>
-                    {!quote.cardAvailable && (
-                      <span>
-                        Card payments are currently unavailable for this
-                        selection.
-                      </span>
-                    )}
                   </>
                 ) : (
                   <span>
@@ -899,6 +880,34 @@ export function SirahRegistrationForm({
                   </span>
                 )}
               </div>
+            </div>
+            <div className={styles.planNotes} aria-live="polite">
+              {billing && plan === "ANNUAL" && (
+                <p>
+                  Save approximately 10% compared with 12 online monthly
+                  payments. One payment covers the full 12 months.
+                </p>
+              )}
+              {quote?.country === billing && quote.plan === plan && (
+                <>
+                  {plan === "MONTHLY" && (
+                    <p>
+                      {formatSirahMoney(quote.totalMinor, quote.currency)}{" "}
+                      across 12 months.
+                    </p>
+                  )}
+                  {!quote.cardAvailable && (
+                    <p>
+                      Card payments are currently unavailable for this
+                      selection.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+            <div className={styles.cardIntroduction}>
+              <strong>Pay by debit or credit card</strong>
+              <small>No Stripe account needed.</small>
             </div>
             <button
               className={`${styles.primary} ${styles.submitRegistration}`}

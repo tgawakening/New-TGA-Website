@@ -633,9 +633,10 @@
 }
 .cardIntroduction {
   grid-column: 1 / -1;
-  padding: 14px 16px;
-  background: #e9e3cf;
-  border-left: 3px solid #a78228;
+  padding: 0;
+  color: #41463a;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .compactForm,
 .compactForm > * {
@@ -700,4 +701,25 @@
   .closedRegistration {
     bottom: 24px;
   }
+}
+
+.experience .cardIntroduction small {
+  display: inline;
+  margin-left: 6px;
+  font-size: inherit;
+}
+.planNotes {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #41463a;
+}
+.experience .planNotes p {
+  margin: 0;
+}
+.experience .planNotes p + p {
+  margin-top: 4px;
+}
+.planNotes:empty {
+  display: none;
 }
