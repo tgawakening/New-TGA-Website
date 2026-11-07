@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 import { countries } from "countries-list";
 import {
   getCountries,
@@ -14,6 +16,9 @@ const options = getCountries()
     calling: `+${getCountryCallingCode(code)}`,
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
+export function countryFlagImage(code: string) {
+  return `/images/flags/${code.toLowerCase()}.${["AC", "TA"].includes(code) ? "svg" : "png"}`;
+}
 export function countryFlag(code: string) {
   return String.fromCodePoint(
     ...code
@@ -35,6 +40,10 @@ export function PhoneControl({
   onChange: (value: string) => void;
   error?: string;
 }) {
+  const parsedValue = value.startsWith("+")
+    ? parsePhoneNumberFromString(value)
+    : undefined;
+  const displayValue = parsedValue ? String(parsedValue.nationalNumber) : value;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -67,6 +76,7 @@ export function PhoneControl({
         ?.scrollIntoView({ block: "nearest" });
   }, [open, active, filtered]);
   function choose(code: CountryCode) {
+    onChange(displayValue);
     onCountryChange(code);
     setOpen(false);
     trigger.current?.focus();
@@ -103,7 +113,13 @@ export function PhoneControl({
             setOpen(!open);
           }}
         >
-          <span aria-hidden>{countryFlag(country)}</span>
+          <Image
+            src={countryFlagImage(country)}
+            width={22}
+            height={16}
+            alt=""
+            unoptimized
+          />
           <span>+{getCountryCallingCode(country)}</span>
           <span aria-hidden>⌄</span>
         </button>
@@ -111,10 +127,19 @@ export function PhoneControl({
           id="sirah-phone"
           name="phone"
           type="tel"
-          autoComplete="tel"
+          autoComplete="tel-national"
           inputMode="tel"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
+          value={displayValue}
+          onChange={(event) => {
+            const next = event.target.value;
+            const parsed = next.startsWith("+")
+              ? parsePhoneNumberFromString(next)
+              : undefined;
+            if (parsed?.country) {
+              onCountryChange(parsed.country);
+              onChange(String(parsed.nationalNumber));
+            } else onChange(next);
+          }}
           placeholder="Your number"
           required
           aria-invalid={!!error}
@@ -191,7 +216,14 @@ export function PhoneControl({
                 key={item.code}
                 onClick={() => choose(item.code)}
               >
-                <span aria-hidden>{countryFlag(item.code)}</span>
+                <Image
+                  src={countryFlagImage(item.code)}
+                  width={22}
+                  height={16}
+                  alt=""
+                  loading="lazy"
+                  unoptimized
+                />
                 <span>{item.name}</span>
                 <span>{item.calling}</span>
               </button>

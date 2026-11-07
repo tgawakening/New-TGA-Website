@@ -6,11 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import LegacyRegistration from "@/components/sirah/legacy-registration";
 import type { Metadata } from "next";
-import Link from "next/link";
+import SeerahPage from "@/components/seerah/seerah-page";
+import { activeCampaign } from "@/components/seerah/course-config";
+import { planAvailability } from "@/lib/sirah/payment-display";
+import { methodAvailable } from "@/lib/sirah/config";
 import { sirahFont } from "@/lib/sirah/font";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
-import { SirahRegistrationForm } from "@/components/sirah/registration-form";
-import styles from "@/components/sirah/registration.module.css";
 export const metadata: Metadata = {
   title: `Register | ${SIRAH_TITLE}`,
   robots: { index: false, follow: false },
@@ -47,14 +48,19 @@ export default async function SirahRegisterPage({
     return <LegacyRegistration />;
   }
   return (
-    <main className={`${styles.page} ${sirahFont.variable}`}>
-      <Link href="/seerah">← Back to the course</Link>
-      <SirahRegistrationForm
-        initialCountry={initialCountry}
-        detectedCountry={await detectedResidence()}
-        initialPlan={initialPlan}
-        requireBillingCountry={Boolean(params.country && !initialCountry)}
+    <div className={sirahFont.variable}>
+      <SeerahPage
+        initialCampaign={activeCampaign()}
+        visitorCountry={await detectedResidence()}
+        availability={planAvailability()}
+        pakistanOnlineAvailable={methodAvailable(
+          "STRIPE",
+          "PK",
+          "PKR",
+          "MONTHLY",
+        )}
+        registrationEntry={{ country: initialCountry, plan: initialPlan, requireBillingCountry: Boolean(params.country && !initialCountry) }}
       />
-    </main>
+    </div>
   );
 }

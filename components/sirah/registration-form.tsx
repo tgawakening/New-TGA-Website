@@ -21,7 +21,10 @@ import {
   type SirahMethod,
 } from "@/lib/sirah/catalog";
 import { sirahRegistrationSchema } from "@/lib/sirah/validation";
-import { PhoneControl } from "./phone-control";
+import Image from "next/image";
+import { PasswordFields } from "./password-fields";
+import { priceFor } from "@/lib/sirah/catalog";
+import { PhoneControl, countryFlagImage } from "./phone-control";
 export type RegistrationControls = {
   setPreferences: (choice: { country?: string; plan?: SirahPlan }) => void;
 };
@@ -121,6 +124,7 @@ export function SirahRegistrationForm({
   const suggestedResidence = useResidence(detectedCountry);
   const [residenceConfirmed, setResidenceConfirmed] = useState(false);
   const [manualConfirmed, setManualConfirmed] = useState(false);
+  const [passwordForManager, setPasswordForManager] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
@@ -161,6 +165,7 @@ export function SirahRegistrationForm({
     currency: string;
     amountMinor: number;
     totalMinor: number;
+    cardAvailable: boolean;
   } | null>(null);
   const [quoteError, setQuoteError] = useState("");
   const [plan, setPlan] = useState<SirahPlan>(initialPlan || "MONTHLY");
@@ -230,6 +235,7 @@ export function SirahRegistrationForm({
             currency: result.pricing.currency,
             amountMinor: result.pricing.amountMinor,
             totalMinor: result.pricing.totalMinor,
+            cardAvailable: Boolean(result.cardAvailable),
           });
         }
       })
@@ -433,6 +439,11 @@ export function SirahRegistrationForm({
   }
   function choosePhoneCountry(code: CountryCode) {
     setPhoneCountry(code);
+    setBilling(code);
+    setBillingEdited(true);
+    setResidenceConfirmed(false);
+    saveResidence(code);
+    clearField("countryCode");
     setPhoneError("");
     clearField("phone");
   }
@@ -738,48 +749,11 @@ export function SirahRegistrationForm({
               {errorText("email")}
             </label>
             {!user && (
-              <>
-                <label>
-                  Create password
-                  <input
-                    name="password"
-                    aria-label="Create password"
-                    type="password"
-                    minLength={8}
-                    maxLength={72}
-                    autoComplete="new-password"
-                    required
-                    onChange={() => clearField("password")}
-                    aria-invalid={!!fieldError("password")}
-                    aria-describedby={
-                      fieldError("password")
-                        ? "sirah-error-password"
-                        : undefined
-                    }
-                  />
-                  {errorText("password")}
-                </label>
-                <label>
-                  Confirm password
-                  <input
-                    name="confirmPassword"
-                    aria-label="Confirm password"
-                    type="password"
-                    minLength={8}
-                    maxLength={72}
-                    autoComplete="new-password"
-                    required
-                    onChange={() => clearField("confirmPassword")}
-                    aria-invalid={!!fieldError("confirmPassword")}
-                    aria-describedby={
-                      fieldError("confirmPassword")
-                        ? "sirah-error-confirmPassword"
-                        : undefined
-                    }
-                  />
-                  {errorText("confirmPassword")}
-                </label>
-              </>
+              <PasswordFields
+                errors={fields}
+                onEdit={clearField}
+                onPassword={setPasswordForManager}
+              />
             )}
             <PhoneControl
               country={phoneCountry}
@@ -796,35 +770,46 @@ export function SirahRegistrationForm({
             />
             <label>
               Country of residence
-              <select
-                name="countryCode"
-                autoComplete="country"
-                aria-label="Country of residence"
-                required
-                value={billing}
-                onChange={(event) => {
-                  setBilling(event.target.value);
-                  saveResidence(event.target.value);
-                  setResidenceConfirmed(false);
-                  setBillingEdited(true);
-                  clearField("countryCode");
-                }}
-                aria-invalid={!!fieldError("countryCode")}
-                aria-describedby={
-                  fieldError("countryCode")
-                    ? "sirah-error-countryCode"
-                    : undefined
-                }
-              >
-                <option value="" disabled>
-                  Select your billing country
-                </option>
-                {residenceCountries.map((c) => (
-                  <option value={c.code} key={c.code}>
-                    {c.name}
+              <span className={styles.residenceControl}>
+                {billing && (
+                  <Image
+                    src={countryFlagImage(billing)}
+                    width={24}
+                    height={18}
+                    alt=""
+                    unoptimized
+                  />
+                )}
+                <select
+                  name="countryCode"
+                  autoComplete="country"
+                  aria-label="Country of residence"
+                  required
+                  value={billing}
+                  onChange={(event) => {
+                    setBilling(event.target.value);
+                    saveResidence(event.target.value);
+                    setResidenceConfirmed(false);
+                    setBillingEdited(true);
+                    clearField("countryCode");
+                  }}
+                  aria-invalid={!!fieldError("countryCode")}
+                  aria-describedby={
+                    fieldError("countryCode")
+                      ? "sirah-error-countryCode"
+                      : undefined
+                  }
+                >
+                  <option value="" disabled>
+                    Select your billing country
                   </option>
-                ))}
-              </select>
+                  {residenceCountries.map((c) => (
+                    <option value={c.code} key={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </span>
               {errorText("countryCode")}
             </label>
             <label className={styles.residenceConfirmation}>
@@ -842,6 +827,10 @@ export function SirahRegistrationForm({
                 is my current country of residence.
               </span>
             </label>
+            <div className={styles.cardIntroduction}>
+              <strong>Pay by debit or credit card</strong>
+              <small>No Stripe account needed.</small>
+            </div>
             <div className={styles.planChoice}>
               <label>
                 Payment plan
@@ -864,6 +853,20 @@ export function SirahRegistrationForm({
                 role="status"
                 aria-live="polite"
               >
+                {billing && plan === "ANNUAL" && (
+                  <>
+                    <s>
+                      {formatSirahMoney(
+                        priceFor(billing, "MONTHLY", "STRIPE").amountMinor * 12,
+                        priceFor(billing, "ANNUAL", null).currency,
+                      )}
+                    </s>
+                    <span>
+                      Save approximately 10% compared with 12 online monthly
+                      payments. One payment covers the full 12 months.
+                    </span>
+                  </>
+                )}
                 {quote?.country === billing && quote.plan === plan ? (
                   <>
                     <strong>
@@ -880,12 +883,18 @@ export function SirahRegistrationForm({
                         ? "One payment · 12 months"
                         : "Per month"}
                     </span>
+                    {!quote.cardAvailable && (
+                      <span>
+                        Card payments are currently unavailable for this
+                        selection.
+                      </span>
+                    )}
                   </>
                 ) : (
                   <span>
                     {quoteError ||
                       (billing
-                        ? "Checking fee…"
+                        ? `${formatSirahMoney(priceFor(billing, plan, billing === "PK" ? "BANK_TRANSFER" : null).amountMinor, priceFor(billing, plan, null).currency)} · confirming fee…`
                         : "Choose your billing country")}
                   </span>
                 )}
@@ -923,6 +932,52 @@ export function SirahRegistrationForm({
               Confirming your payment with the provider. This page will recheck
               safely; you can also check the verified payment status below.
             </p>
+          )}
+          {passwordForManager && (
+            <div className={styles.notice}>
+              <p>
+                Your account is created. Use your browser’s password manager to
+                keep your login for course access.
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  const PasswordCredential = (
+                    window as unknown as {
+                      PasswordCredential?: new (data: {
+                        id: string;
+                        password: string;
+                        name: string;
+                      }) => Credential;
+                    }
+                  ).PasswordCredential;
+                  if (!PasswordCredential || !navigator.credentials) {
+                    setMessage(
+                      "Your browser controls password saving. Use its password manager to save the login you created.",
+                    );
+                    return;
+                  }
+                  try {
+                    await navigator.credentials.store(
+                      new PasswordCredential({
+                        id: email,
+                        password: passwordForManager,
+                        name,
+                      }),
+                    );
+                    setMessage(
+                      "Your login was offered to your browser’s password manager.",
+                    );
+                  } catch {
+                    setMessage(
+                      "Use your browser’s password manager to save your login.",
+                    );
+                  }
+                }}
+              >
+                Save login securely
+              </button>
+            </div>
           )}
           {invitation &&
             order.paymentState === "PAID" &&
@@ -1100,16 +1155,17 @@ export function SirahRegistrationForm({
                     {order.methods.map((method) => (
                       <option value={method} key={method}>
                         {method === "BANK_TRANSFER"
-                          ? "Meezan Bank"
+                          ? "Pay by bank transfer · Meezan Bank"
                           : method === "JAZZCASH"
                             ? "JazzCash"
                             : method === "STRIPE"
-                              ? "Card (Stripe)"
+                              ? "Pay by debit or credit card"
                               : "PayPal"}
                       </option>
                     ))}
                   </select>
                 </label>
+                {order.method === "STRIPE" && <p>No Stripe account needed.</p>}
                 <Terms
                   order={order}
                   accepted={accepted}

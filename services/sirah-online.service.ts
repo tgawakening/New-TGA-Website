@@ -29,9 +29,9 @@ const appUrl = () =>
     "",
   );
 export function stripeClient() {
-  if (!process.env.STRIPE_SECRET_KEY)
+  if (!process.env.SIRAH_STRIPE_SECRET_KEY)
     throw new SirahError("Stripe is not configured.", 503);
-  return new Stripe(process.env.STRIPE_SECRET_KEY);
+  return new Stripe(process.env.SIRAH_STRIPE_SECRET_KEY);
 }
 async function verifyStripeMerchant(stripe: Stripe) {
   const account = await stripe.accounts.retrieve();
@@ -93,6 +93,7 @@ export async function startSirahCheckout(
   userId: string,
   revision: number,
   acceptedVersion: string,
+  stripeOverride?: Stripe,
 ) {
   let order = await ownedSirahOrder(id, userId);
   if (!["STRIPE", "PAYPAL"].includes(order.method || ""))
@@ -149,7 +150,7 @@ export async function startSirahCheckout(
   // A saved provider reference is retrieved, never recreated after an
   // idempotency key expires. Unknown attempts require reconciliation after 20h.
   if (method === "STRIPE" && order.providerOrderId) {
-    const stripe = stripeClient();
+    const stripe = stripeOverride || stripeClient();
     await verifyStripeMerchant(stripe);
     const existing = await stripe.checkout.sessions.retrieve(
       order.providerOrderId,
@@ -212,11 +213,12 @@ export async function startSirahCheckout(
   }
   const returnUrl = `${appUrl()}/seerah/register?order=${order.id}&payment=processing`;
   if (method === "STRIPE") {
-    const stripe = stripeClient();
+    const stripe = stripeOverride || stripeClient();
     await verifyStripeMerchant(stripe);
     const session = await stripe.checkout.sessions.create(
       {
         mode: order.plan === "ANNUAL" ? "payment" : "subscription",
+        payment_method_types: ["card"],
         client_reference_id: order.id,
         success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${appUrl()}/seerah/register?order=${order.id}`,
