@@ -522,12 +522,14 @@ export function SirahRegistrationForm({
   }
   function choosePhoneCountry(code: CountryCode) {
     setPhoneCountry(code);
-    setAccepted(false);
-    setBilling(code);
-    setBillingEdited(true);
-    setResidenceConfirmed(false);
-    saveResidence(code);
-    clearField("countryCode");
+    // A calling code may suggest an untouched residence, but cannot overwrite
+    // the student's explicit country choice or a country selected on the fees page.
+    if (!billingEdited && !initialCountry) {
+      setAccepted(false);
+      setBilling(code);
+      setResidenceConfirmed(false);
+      clearField("countryCode");
+    }
     setPhoneError("");
     clearField("phone");
   }
