@@ -41,7 +41,10 @@ export type SirahTerms = {
   tax: string;
   cancellationTiming: "IMMEDIATE" | "PERIOD_END";
   failedPaymentAccess: "KEEP" | "PAUSE";
+  failedPaymentGraceDays?: number;
   refundAccess: "KEEP" | "REVOKE";
+  annualRefundBasis?: "FULL_UNUSED_MONTHS";
+  refundAccessTiming?: "CURRENT_MONTH_END";
   refundBilling: "CANCEL" | "CONTINUE";
 };
 export function termsFor(plan: SirahPlan): SirahTerms | null {
@@ -56,7 +59,11 @@ export function termsFor(plan: SirahPlan): SirahTerms | null {
     return value &&
       ["IMMEDIATE", "PERIOD_END"].includes(value.cancellationTiming) &&
       ["KEEP", "PAUSE"].includes(value.failedPaymentAccess) &&
+      (value.failedPaymentGraceDays === undefined ||
+        (Number.isInteger(value.failedPaymentGraceDays) && value.failedPaymentGraceDays >= 0 && value.failedPaymentGraceDays <= 30)) &&
       ["KEEP", "REVOKE"].includes(value.refundAccess) &&
+      (value.annualRefundBasis === undefined || value.annualRefundBasis === "FULL_UNUSED_MONTHS") &&
+      (value.refundAccessTiming === undefined || value.refundAccessTiming === "CURRENT_MONTH_END") &&
       ["CANCEL", "CONTINUE"].includes(value.refundBilling) &&
       [
         "version",
@@ -158,8 +165,6 @@ export function methodAvailable(
       process.env.SIRAH_STRIPE_WEBHOOK_SECRET &&
       process.env.SIRAH_STRIPE_ACCOUNT_ID,
     );
-  if (plan === "MONTHLY" && termsFor(plan)?.cancellationTiming === "PERIOD_END")
-    return false;
   return (
     PAYPAL_CURRENCIES.has(currency) &&
     currencyScale(currency) === 2 &&

@@ -23,6 +23,18 @@ export async function maintainSirahOrders() {
   const failures: string[] = [];
   for (const order of ended) {
     try {
+      if (order.plan === "MONTHLY" && order.paymentState === "FAILED" && !order.cancelledAt &&
+          (order.terms as SirahTerms | null)?.failedPaymentGraceDays &&
+          (!order.programmeEnd || order.programmeEnd > now)) {
+        await prisma.$transaction(async tx => {
+          const changed = await tx.sirahOrder.updateMany({
+            where:{id:order.id,paymentState:"FAILED",enrolmentState:"ACTIVE",accessEndsAt:{lte:now}},
+            data:{enrolmentState:"PENDING",revision:{increment:1}},
+          });
+          if (changed.count) await auditSirah(tx,order.id,"system:maintenance","RENEWAL_GRACE_EXPIRED",{});
+        });
+        continue; // Keep the existing subscription available for verified recovery.
+      }
       await cancelSirahProvider(order, "IMMEDIATE");
       await prisma.$transaction(async (tx) => {
         await tx.sirahOrder.update({

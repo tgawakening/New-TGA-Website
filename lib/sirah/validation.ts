@@ -83,7 +83,9 @@ export const sirahAdminActionSchema = z
       "REFUND",
       "RETRY_NOTIFICATIONS",
       "RECONCILE_PROVIDER",
+      "QUOTE_ANNUAL_REFUND",
     ]),
+    unusedEligibleMonths: z.number().int().min(0).max(12).optional(),
     note: z.string().trim().max(1500).optional(),
     verifiedAmount: z
       .string()
@@ -102,6 +104,8 @@ export const sirahAdminActionSchema = z
   })
   .strict()
   .superRefine((v, ctx) => {
+    if (v.action === "QUOTE_ANNUAL_REFUND" && v.unusedEligibleMonths === undefined)
+      ctx.addIssue({code:"custom",path:["unusedEligibleMonths"],message:"Specify the staff-reviewed whole unused eligible months."});
     if (
       ["REJECT", "CANCEL", "REFUND", "RECONCILE_PROVIDER"].includes(v.action) &&
       !v.note

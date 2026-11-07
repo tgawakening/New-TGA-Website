@@ -1,3 +1,6 @@
+import { calculateSirahAnnualRefund, calculateSirahAnnualUnusedMonths } from "../lib/sirah/annual-refund";
+import { quoteSirahAnnualRefund, requestSirahAnnualRefund } from "../services/sirah-refunds.service";
+import { maintainSirahOrders } from "../services/sirah-maintenance.service";
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -37,6 +40,7 @@ import {
   recordSirahRefund,
   actOnSirahOrder,
   listSirahAdmin,
+  cancelSirahProvider,
 } from "../services/sirah-admin.service";
 import {
   confirmSirahPayment,
@@ -48,6 +52,7 @@ import {
   verifySirahStripeSession,
   verifySirahStripeInvoice,
   verifySirahPaypal,
+  markSirahProviderFailure,
 } from "../services/sirah-online.service";
 import {
   dispatchSirahNotifications,
@@ -1935,4 +1940,555 @@ test("manual receiving accounts can be approved independently without changing l
   delete process.env.SIRAH_JAZZCASH_VERIFIED;
   assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "MONTHLY"), true);
   assert.equal(methodAvailable("JAZZCASH", "PK", "PKR", "MONTHLY"), true);
+});
+
+async function voluntaryPaypalOrder() {
+  const terms = {
+    ...approvedTestTerms,
+    cancellationTiming: "PERIOD_END",
+    failedPaymentAccess: "PAUSE",
+    failedPaymentGraceDays: 7,
+  };
+  Object.assign(process.env, {
+    PAYPAL_ENV: "sandbox",
+    PAYPAL_CLIENT_ID: "synthetic",
+    PAYPAL_CLIENT_SECRET: "synthetic",
+    SIRAH_PAYPAL_MERCHANT_ID: "MERCHANT_TEST",
+    SIRAH_PAYPAL_WEBHOOK_ID: "WH_TEST",
+    SIRAH_PAYPAL_PRODUCT_ID: "PROD_TEST",
+    SIRAH_PAYPAL_MONTHLY_CURRENCIES: "GBP",
+    SIRAH_MONTHLY_TERMS_JSON: JSON.stringify(terms),
+  });
+  const result = await create("GB", "MONTHLY");
+  await repriceSirah(
+    result.orderId,
+    result.userId,
+    0,
+    "GB",
+    "MONTHLY",
+    "PAYPAL",
+  );
+  await prisma.sirahOrder.update({
+    where: { id: result.orderId },
+    data: {
+      providerSubscriptionId: "I-VOLUNTARY",
+      providerPlanId: "P-VOLUNTARY",
+    },
+  });
+  await confirmSirahPayment({
+    orderId: result.orderId,
+    eventId: "paypal:sale:first",
+    provider: "PAYPAL",
+    currency: "GBP",
+    amountMinor: 2999,
+    actor: "provider:test",
+  });
+  return {
+    ...result,
+    order: await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: result.orderId },
+    }),
+  };
+}
+
+test("PayPal voluntary period-end cancellation verifies stopped billing and duplicate events preserve paid access", async () => {
+  const { order } = await voluntaryPaypalOrder();
+  assert.equal(methodAvailable("PAYPAL", "GB", "GBP", "MONTHLY"), true);
+  const end = order.nextBillingAt!;
+  let cancelled = false;
+  let calls = 0;
+  global.fetch = async (raw) => {
+    const url = String(raw);
+    if (url.endsWith("/oauth2/token"))
+      return Response.json({ access_token: "synthetic" });
+    if (url.endsWith("/cancel")) {
+      calls++;
+      cancelled = true;
+      return new Response(null, { status: 204 });
+    }
+    if (url.endsWith("/verify-webhook-signature"))
+      return Response.json({ verification_status: "SUCCESS" });
+    if (url.endsWith("/I-VOLUNTARY"))
+      return Response.json({
+        custom_id: order.id,
+        plan_id: "P-VOLUNTARY",
+        status: cancelled ? "CANCELLED" : "ACTIVE",
+      });
+    throw Error("Unexpected provider request");
+  };
+  await actOnSirahOrder(
+    {
+      orderId: order.id,
+      revision: order.revision,
+      action: "CANCEL",
+      note: "Stop future voluntary payments",
+    },
+    "student:test",
+  );
+  const current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(calls, 1);
+  assert.equal(current.paymentState, "PAID");
+  assert.equal(current.enrolmentState, "ACTIVE");
+  assert.equal(current.nextBillingAt, null);
+  assert.equal(current.accessEndsAt?.getTime(), end.getTime());
+  assert.equal(canAccessSirah(current, new Date(end.getTime() - 1)), true);
+  assert.equal(canAccessSirah(current, end), false);
+  for (let i = 0; i < 2; i++)
+    await handleSirahPaypalWebhook(
+      new Request("https://example.test/webhook", {
+        method: "POST",
+        headers: paypalSignatureHeaders,
+        body: JSON.stringify({
+          id: "CANCEL-EVENT",
+          event_type: "BILLING.SUBSCRIPTION.CANCELLED",
+          resource: { id: "I-VOLUNTARY" },
+        }),
+      }),
+    );
+  assert.equal(
+    (
+      await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } })
+    ).accessEndsAt?.getTime(),
+    end.getTime(),
+  );
+  assert.equal(
+    await prisma.sirahPaymentEvent.count({ where: { kind: "REFUND" } }),
+    0,
+  );
+  await cancelSirahProvider(current, "PERIOD_END");
+  assert.equal(calls, 1);
+});
+
+test("PayPal cancellation cannot report success when provider status or ownership is unverified", async () => {
+  const { order } = await voluntaryPaypalOrder();
+  let wrong = false;
+  global.fetch = async (raw) => {
+    const url = String(raw);
+    if (url.endsWith("/oauth2/token"))
+      return Response.json({ access_token: "synthetic" });
+    if (url.endsWith("/cancel")) return new Response(null, { status: 204 });
+    return Response.json({
+      custom_id: wrong ? "another-order" : order.id,
+      plan_id: "P-VOLUNTARY",
+      status: "ACTIVE",
+    });
+  };
+  await assert.rejects(
+    () =>
+      actOnSirahOrder(
+        {
+          orderId: order.id,
+          revision: order.revision,
+          action: "CANCEL",
+          note: "Stop future payments",
+        },
+        "student:test",
+      ),
+    /not confirmed/,
+  );
+  assert.equal(
+    (await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } }))
+      .cancelledAt,
+    null,
+  );
+  wrong = true;
+  await assert.rejects(
+    () => cancelSirahProvider(order, "PERIOD_END"),
+    /ownership/,
+  );
+});
+
+test("failed renewals have a non-extending seven-day grace and recover only after one verified settlement", async () => {
+  const { order } = await voluntaryPaypalOrder();
+  const due = new Date(Date.now() - 86400000);
+  await prisma.sirahOrder.update({
+    where: { id: order.id },
+    data: { nextBillingAt: due },
+  });
+  await markSirahProviderFailure(order, "paypal:failure:first");
+  let current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.paymentState, "FAILED");
+  assert.equal(current.enrolmentState, "ACTIVE");
+  const expiry = current.accessEndsAt!;
+  assert.equal(expiry.getTime(), due.getTime() + 7 * 86400000);
+  assert.equal(canAccessSirah(current, new Date(expiry.getTime() - 1)), true);
+  assert.equal(canAccessSirah(current, expiry), false);
+  await markSirahProviderFailure(current, "paypal:failure:retry");
+  current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.accessEndsAt?.getTime(), expiry.getTime());
+  const notice = await prisma.sirahNotification.findFirstOrThrow({
+    where: {
+      orderId: order.id,
+      kind: "FAILED",
+      toEmail: { endsWith: "@example.test" },
+    },
+  });
+  assert.match(JSON.stringify(notice.payload), /register#payment=/);
+  await prisma.sirahOrder.update({
+    where: { id: order.id },
+    data: { accessEndsAt: new Date(Date.now() - 1000) },
+  });
+  global.fetch = async () => {
+    throw Error("Grace expiry must not cancel an existing subscription");
+  };
+  await maintainSirahOrders();
+  current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.enrolmentState, "PENDING");
+  assert.equal(current.cancelledAt, null);
+  assert.equal(current.providerSubscriptionId, "I-VOLUNTARY");
+  const payment = {
+    orderId: order.id,
+    eventId: "paypal:sale:renewal",
+    provider: "PAYPAL" as const,
+    currency: "GBP",
+    amountMinor: 2999,
+    actor: "provider:test",
+  };
+  await confirmSirahPayment(payment);
+  await confirmSirahPayment(payment);
+  current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.paymentState, "PAID");
+  assert.equal(current.accessEndsAt, null);
+  assert.equal(current.paidCount, 2);
+  assert.equal(canAccessSirah(current), true);
+  assert.equal(
+    await prisma.enrollment.count({ where: { userId: order.userId } }),
+    1,
+  );
+});
+
+test("upfront refunds use collected minor units, fully unused calendar months and subtract prior refunds", () => {
+  for (const [unused, expected] of [
+    [6, 16194],
+    [3, 8097],
+    [0, 0],
+    [12, 32389],
+  ])
+    assert.equal(
+      calculateSirahAnnualRefund({
+        collectedMinor: 32389,
+        refundedMinor: 0,
+        unusedEligibleMonths: unused,
+        currency: "GBP",
+      }).additionalRefundMinor,
+      expected,
+    );
+  assert.equal(
+    calculateSirahAnnualRefund({
+      collectedMinor: 32389,
+      refundedMinor: 10000,
+      unusedEligibleMonths: 6,
+      currency: "GBP",
+    }).additionalRefundMinor,
+    6194,
+  );
+  assert.equal(
+    calculateSirahAnnualRefund({
+      collectedMinor: 91800,
+      refundedMinor: 0,
+      unusedEligibleMonths: 6,
+      currency: "BHD",
+    }).additionalRefundMinor,
+    45900,
+  );
+  assert.equal(
+    calculateSirahAnnualRefund({
+      collectedMinor: 100,
+      refundedMinor: 70,
+      unusedEligibleMonths: 6,
+      currency: "GBP",
+    }).additionalRefundMinor,
+    0,
+  );
+  assert.throws(() =>
+    calculateSirahAnnualRefund({
+      collectedMinor: 100,
+      refundedMinor: 101,
+      unusedEligibleMonths: 6,
+      currency: "GBP",
+    }),
+  );
+  assert.throws(() =>
+    calculateSirahAnnualRefund({
+      collectedMinor: 100,
+      refundedMinor: 0,
+      unusedEligibleMonths: 6.5,
+      currency: "GBP",
+    }),
+  );
+  const start = new Date("2026-01-31T12:00:00Z");
+  const boundary = addMonthsClamped(start, 6);
+  assert.equal(
+    calculateSirahAnnualUnusedMonths(start, boundary).unusedEligibleMonths,
+    6,
+  );
+  const partial = calculateSirahAnnualUnusedMonths(
+    start,
+    new Date(boundary.getTime() + 1),
+  );
+  assert.equal(partial.unusedEligibleMonths, 5);
+  assert.equal(
+    partial.paidThrough.getTime(),
+    addMonthsClamped(start, 7).getTime(),
+  );
+});
+
+test("student upfront refund requests are private, deduplicated and calculation is audited without issuing funds", async () => {
+  enableManual();
+  const result = await create("PK", "ANNUAL");
+  const selected = await repriceSirah(
+    result.orderId,
+    result.userId,
+    0,
+    "PK",
+    "ANNUAL",
+    "BANK_TRANSFER",
+  );
+  const submitted = await evidence(selected, result.userId);
+  await actOnSirahOrder(
+    {
+      orderId: selected.id,
+      revision: submitted.revision,
+      action: "APPROVE",
+      verifiedAmount: "32400",
+      currency: "PKR",
+      transactionReference: "ANNUAL-PAID",
+      verifiedTransfer: true,
+    },
+    "admin:test",
+  );
+  let order = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: selected.id },
+  });
+  await assert.rejects(
+    () =>
+      requestSirahAnnualRefund(
+        order.id,
+        "someone-else",
+        order.revision,
+        "Review unused months",
+      ),
+    /not found/,
+  );
+  await requestSirahAnnualRefund(
+    order.id,
+    result.userId,
+    order.revision,
+    "Review unused months",
+  );
+  assert.equal(
+    (
+      await requestSirahAnnualRefund(
+        order.id,
+        result.userId,
+        order.revision,
+        "Duplicate review",
+      )
+    ).duplicate,
+    true,
+  );
+  const quote = await quoteSirahAnnualRefund(
+    order.id,
+    order.revision,
+    6,
+    "admin:test",
+  );
+  assert.equal(quote.additionalRefundMinor, 1620000);
+  assert.equal(quote.policyApprovalRequired, true);
+  assert.equal(
+    await prisma.sirahAudit.count({
+      where: { orderId: order.id, action: "REFUND_REQUESTED" },
+    }),
+    1,
+  );
+  assert.equal(
+    await prisma.sirahAudit.count({
+      where: { orderId: order.id, action: "ANNUAL_REFUND_QUOTED" },
+    }),
+    1,
+  );
+  assert.equal(
+    (await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } }))
+      .refundedMinor,
+    0,
+  );
+  assert.equal(
+    await prisma.sirahPaymentEvent.count({ where: { kind: "REFUND" } }),
+    0,
+  );
+  await recordSirahRefund(
+    order.id,
+    "manual:prior-partial",
+    100000,
+    "PKR",
+    "admin:test",
+    "Verified partial refund",
+  );
+  order = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(
+    (await quoteSirahAnnualRefund(order.id, order.revision, 6, "admin:test"))
+      .additionalRefundMinor,
+    1520000,
+  );
+});
+
+test("Stripe cancellation verifies the final provider state without proration or automatic refunds", async () => {
+  process.env.SIRAH_STRIPE_ACCOUNT_ID = "acct-test";
+  let stopped = false;
+  let periodEnd = false;
+  let unconfirmed = false;
+  const order = {
+    id: "ORDER-STRIPE-CANCEL",
+    method: "STRIPE",
+    providerSubscriptionId: "sub-cancel",
+  };
+  const fake = {
+    accounts: { retrieve: async () => ({ id: "acct-test" }) },
+    subscriptions: {
+      retrieve: async () => ({
+        metadata: { sirahOrderId: order.id },
+        status: stopped ? "canceled" : "active",
+        cancel_at_period_end: periodEnd,
+      }),
+      update: async (_id: string, args: { cancel_at_period_end: boolean }) => {
+        assert.equal(args.cancel_at_period_end, true);
+        if (!unconfirmed) periodEnd = true;
+      },
+      cancel: async (
+        _id: string,
+        args: { invoice_now: boolean; prorate: boolean },
+      ) => {
+        assert.equal(args.prorate, false);
+        assert.equal(args.invoice_now, false);
+        stopped = true;
+      },
+    },
+  } as unknown as Stripe;
+  await cancelSirahProvider(order, "PERIOD_END", fake);
+  assert.equal(periodEnd, true);
+  assert.equal(stopped, false);
+  periodEnd = false;
+  unconfirmed = true;
+  await assert.rejects(
+    () => cancelSirahProvider(order, "PERIOD_END", fake),
+    /not confirmed/,
+  );
+  await cancelSirahProvider(order, "IMMEDIATE", fake);
+  assert.equal(stopped, true);
+});
+
+test("proposed upfront month-end access survives the unused-month refund and respects the original programme expiry", async () => {
+  enableManual();
+  const start = new Date();
+  start.setUTCDate(start.getUTCDate() - 10);
+  const terms = {
+    ...approvedTestTerms,
+    cancellationTiming: "PERIOD_END",
+    annualRefundBasis: "FULL_UNUSED_MONTHS",
+    refundAccessTiming: "CURRENT_MONTH_END",
+  };
+  process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify(terms);
+  const result = await create("PK", "ANNUAL");
+  let order = await repriceSirah(
+    result.orderId,
+    result.userId,
+    0,
+    "PK",
+    "ANNUAL",
+    "BANK_TRANSFER",
+  );
+  order = await evidence(order, result.userId);
+  await actOnSirahOrder(
+    {
+      orderId: order.id,
+      revision: order.revision,
+      action: "APPROVE",
+      verifiedAmount: "32400",
+      currency: "PKR",
+      transactionReference: "ANNUAL-ACCESS",
+      verifiedTransfer: true,
+    },
+    "admin:test",
+  );
+  await prisma.sirahOrder.update({
+    where: { id: order.id },
+    data: { programmeStart: start, programmeEnd: addMonthsClamped(start, 12) },
+  });
+  let current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  const expected = addMonthsClamped(start, 1);
+  await actOnSirahOrder(
+    {
+      orderId: order.id,
+      revision: current.revision,
+      action: "CANCEL",
+      note: "Unused-month refund review",
+    },
+    "student:test",
+  );
+  current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.accessEndsAt?.getTime(), expected.getTime());
+  assert.equal(canAccessSirah(current), true);
+  await recordSirahRefund(
+    order.id,
+    "manual:unused-eleven",
+    2970000,
+    "PKR",
+    "admin:test",
+    "Staff-approved synthetic unused-month refund",
+  );
+  current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.accessEndsAt?.getTime(), expected.getTime());
+  assert.equal(canAccessSirah(current, new Date(expected.getTime() - 1)), true);
+  assert.equal(canAccessSirah(current, expected), false);
+  assert.equal(current.refundedMinor, 2970000);
+  assert.equal(current.paidMinor, 3240000);
+});
+
+test("a failure after cancellation cannot remove the remaining verified paid period", async () => {
+  const { order } = await voluntaryPaypalOrder();
+  const boundary = order.nextBillingAt!;
+  await prisma.sirahOrder.update({
+    where: { id: order.id },
+    data: {
+      cancelledAt: new Date(),
+      accessEndsAt: boundary,
+      nextBillingAt: null,
+    },
+  });
+  await markSirahProviderFailure(order, "paypal:late-failed-attempt");
+  const current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.paymentState, "PAID");
+  assert.equal(current.accessEndsAt?.getTime(), boundary.getTime());
+  assert.equal(canAccessSirah(current), true);
+});
+
+test("annual refund quotes reject unverified balances and unreconciled refunds", async () => {
+  enableManual();
+  const result=await create("PK","ANNUAL");
+  await prisma.sirahOrder.update({where:{id:result.orderId},data:{paidMinor:3240000,paidCount:1,paymentState:"PAID",programmeStart:new Date()}});
+  await assert.rejects(()=>quoteSirahAnnualRefund(result.orderId,0,6,"admin:test"),/reconciled verified/);
+  await prisma.sirahPaymentEvent.create({data:{id:"verified-annual",orderId:result.orderId,provider:"BANK_TRANSFER",kind:"FIRST",currency:"PKR",amountMinor:3240000}});
+  await prisma.sirahOrder.update({where:{id:result.orderId},data:{refundedMinor:1000}});
+  await assert.rejects(()=>quoteSirahAnnualRefund(result.orderId,0,6,"admin:test"),/reconciled verified/);
+  assert.equal(await prisma.sirahAudit.count({where:{orderId:result.orderId,action:"ANNUAL_REFUND_QUOTED"}}),0);
 });

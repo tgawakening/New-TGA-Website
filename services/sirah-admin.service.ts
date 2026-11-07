@@ -1,4 +1,7 @@
 import "server-only";
+import { calculateSirahAnnualUnusedMonths } from "@/lib/sirah/annual-refund";
+import { quoteSirahAnnualRefund } from "./sirah-refunds.service";
+import { paidSirahPeriodEnd } from "@/lib/sirah/subscription-access";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -123,12 +126,14 @@ export async function cancelSirahProvider(
     id: string;
     method: string | null;
     providerSubscriptionId: string | null;
+    providerPlanId?: string | null;
   },
   timing: "IMMEDIATE" | "PERIOD_END",
+  stripeOverride?: ReturnType<typeof stripeClient>,
 ) {
   if (!order.providerSubscriptionId) return;
   if (order.method === "STRIPE") {
-    const stripe = stripeClient();
+    const stripe = stripeOverride || stripeClient();
     if (
       (await stripe.accounts.retrieve()).id !==
       process.env.SIRAH_STRIPE_ACCOUNT_ID
@@ -137,6 +142,8 @@ export async function cancelSirahProvider(
     const current = await stripe.subscriptions.retrieve(
       order.providerSubscriptionId,
     );
+    if (current.metadata.sirahOrderId !== order.id)
+      throw new SirahError("Subscription ownership mismatch.");
     if (current.status === "canceled") return;
     if (timing === "PERIOD_END")
       await stripe.subscriptions.update(order.providerSubscriptionId, {
@@ -147,28 +154,42 @@ export async function cancelSirahProvider(
         invoice_now: false,
         prorate: false,
       });
-  } else if (order.method === "PAYPAL") {
-    // PayPal cannot guarantee a new future cancellation schedule. Keep this option
-    // inactive rather than silently substituting immediate cancellation.
-    if (timing === "PERIOD_END")
+    const verified = await stripe.subscriptions.retrieve(
+      order.providerSubscriptionId,
+    );
+    if (
+      verified.metadata.sirahOrderId !== order.id ||
+      (verified.status !== "canceled" &&
+        !(timing === "PERIOD_END" && verified.cancel_at_period_end))
+    )
       throw new SirahError(
-        "PayPal period-end cancellation needs provider configuration; it has not been substituted with immediate cancellation.",
+        "Stripe has not confirmed cancellation; retry or contact support.",
         409,
       );
-    const sub = await paypalRequest(
-      `/v1/billing/subscriptions/${order.providerSubscriptionId}`,
-    );
-    if (sub.custom_id !== order.id)
-      throw new SirahError("Subscription ownership mismatch.");
+  } else if (order.method === "PAYPAL") {
+    const path = `/v1/billing/subscriptions/${order.providerSubscriptionId}`;
+    const owns = (sub: { custom_id?: string; plan_id?: string }) =>
+      sub.custom_id === order.id &&
+      (!order.providerPlanId || sub.plan_id === order.providerPlanId);
+    const sub = await paypalRequest(path);
+    if (!owns(sub)) throw new SirahError("Subscription ownership mismatch.");
     if (!["CANCELLED", "EXPIRED"].includes(sub.status))
       await paypalRequest(
-        `/v1/billing/subscriptions/${order.providerSubscriptionId}/cancel`,
+        `${path}/cancel`,
         "POST",
-        { reason: "Course cancellation requested" },
+        { reason: "Student cancelled future voluntary renewals" },
         `cancel-${order.id}`,
+      );
+    // PayPal stops billing now; the application's paid-period boundary controls access.
+    const verified = await paypalRequest(path);
+    if (!owns(verified) || !["CANCELLED", "EXPIRED"].includes(verified.status))
+      throw new SirahError(
+        "PayPal has not confirmed cancellation; retry or contact support.",
+        409,
       );
   }
 }
+
 export async function recordSirahRefund(
   orderId: string,
   refundId: string,
@@ -214,13 +235,18 @@ export async function recordSirahRefund(
       terms?.refundAccess === "KEEP" &&
       !order.cancelledAt &&
       !["CANCELLED", "COMPLETED"].includes(order.enrolmentState);
+    const refundEnd = terms?.refundAccessTiming === "CURRENT_MONTH_END" &&
+      order.plan === "ANNUAL" && terms.annualRefundBasis === "FULL_UNUSED_MONTHS" && order.programmeStart
+      ? order.accessEndsAt || calculateSirahAnnualUnusedMonths(order.programmeStart,order.cancelledAt || new Date()).paidThrough : null;
     await tx.sirahOrder.update({
       where: { id: orderId },
       data: {
         refundedMinor: { increment: amountMinor },
         paymentState: all ? "REFUNDED" : "PAID",
         ...(terms?.refundAccess === "REVOKE"
-          ? { enrolmentState: "CANCELLED" }
+          ? refundEnd ? {cancelledAt:order.cancelledAt || new Date(),accessEndsAt:refundEnd,
+              ...(refundEnd <= new Date() ? {enrolmentState:"CANCELLED"} : {})}
+            : { enrolmentState: "CANCELLED" }
           : releaseHold
             ? {
                 enrolmentState: "ACTIVE",
@@ -356,6 +382,8 @@ export async function actOnSirahOrder(
       "Another admin or student changed this record. Reload first.",
       409,
     );
+  if (input.action === "QUOTE_ANNUAL_REFUND")
+    return quoteSirahAnnualRefund(order.id, input.revision, input.unusedEligibleMonths!, actor);
   if (input.action === "REFUND") {
     if (!input.verifiedAmount || !input.currency)
       throw new SirahError(
@@ -456,15 +484,22 @@ export async function actOnSirahOrder(
     if (order.paidCount && !terms)
       throw new SirahError("Approved cancellation terms are not configured.");
     const timing = terms?.cancellationTiming || "IMMEDIATE";
+    const paidUntil = timing !== "PERIOD_END" ? null
+      : order.plan === "ANNUAL" && terms?.annualRefundBasis === "FULL_UNUSED_MONTHS" && order.programmeStart
+        ? order.accessEndsAt || calculateSirahAnnualUnusedMonths(order.programmeStart,new Date()).paidThrough
+        : paidSirahPeriodEnd(order);
+    if (timing === "PERIOD_END" && order.paidCount && !paidUntil)
+      throw new SirahError("The verified paid-period expiry needs reconciliation before cancellation.", 409);
     await cancelSirahProvider(order, timing);
     await serializable(async (tx) => {
       const changed = await tx.sirahOrder.updateMany({
         where: { id: order.id, revision: input.revision },
         data: {
           cancelledAt: new Date(),
-          ...(timing === "PERIOD_END" && order.nextBillingAt
-            ? { accessEndsAt: order.nextBillingAt }
-            : { enrolmentState: "CANCELLED", nextBillingAt: null }),
+          nextBillingAt: null,
+          ...(paidUntil
+            ? { accessEndsAt: paidUntil }
+            : { enrolmentState: "CANCELLED" }),
           revision: { increment: 1 },
         },
       });

@@ -19,6 +19,7 @@ import {
 } from "./sirah-registration.service";
 import {
   addMonthsClamped,
+  serializable,
   confirmSirahPayment,
 } from "./sirah-confirmation.service";
 import {
@@ -685,13 +686,14 @@ export async function markSirahProviderFailure(
   order: SirahOrder,
   eventId: string,
 ) {
-  await prisma.$transaction(async (tx) => {
+  await serializable(async (tx) => {
     if (await tx.sirahPaymentEvent.findUnique({ where: { id: eventId } }))
       return;
     const current = await tx.sirahOrder.findUniqueOrThrow({
       where: { id: order.id },
     });
     if (
+      !!current.cancelledAt ||
       ["REFUNDED"].includes(current.paymentState) ||
       ["CANCELLED", "COMPLETED"].includes(current.enrolmentState)
     )
@@ -706,13 +708,22 @@ export async function markSirahProviderFailure(
         kind: "FAILED",
       },
     });
+    const terms = current.terms as import("@/lib/sirah/config").SirahTerms | null;
+    const days = terms?.failedPaymentGraceDays || 0;
+    const now = new Date();
+    const due = current.nextBillingAt && current.nextBillingAt < now ? current.nextBillingAt : now;
+    const graceEnd = current.paymentState === "FAILED" && current.accessEndsAt
+      ? current.accessEndsAt
+      : new Date(Math.min(due.getTime() + days * 86400000, current.programmeEnd?.getTime() ?? Infinity));
+    const allowGrace = terms?.failedPaymentAccess === "PAUSE" && days > 0 &&
+      current.paidCount > 0 && !current.cancelledAt && graceEnd > now;
     await tx.sirahOrder.update({
       where: { id: order.id },
       data: {
         paymentState: "FAILED",
-        ...((current.terms as { failedPaymentAccess?: string } | null)
-          ?.failedPaymentAccess === "PAUSE"
-          ? { enrolmentState: "PENDING" }
+        ...(terms?.failedPaymentAccess === "PAUSE"
+          ? { enrolmentState: allowGrace ? "ACTIVE" : "PENDING",
+              ...(days > 0 && !current.cancelledAt ? { accessEndsAt: graceEnd } : {}) }
           : {}),
         revision: { increment: 1 },
       },

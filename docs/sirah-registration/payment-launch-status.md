@@ -56,3 +56,7 @@ Validation: 35 isolated MySQL workflow tests passed, including mismatched approv
 ## Receipt-compatibility continuation
 
 The interrupted compatibility check found a form gate hiding saved manual terms after a route was disabled, preventing proof submission. The follow-up restores consent/proof for issued manual instructions without enabling new transfers, adds independent optional receiving-account approval flags, and rejects malformed PayPal deliveries before provider verification. See [repair, 39-test evidence and exact approval/configuration actions](receipt-compatibility/README.md). All live route gates remain unchanged by the rollout.
+
+## Owner-policy continuation
+
+The owner confirmed voluntary monthly renewal and unused-month upfront refund principles, then supplied proposed detailed settings for legal/publication review. See [policy implementation, decision record, consumer-law sources and activation blockers](owner-policy-review/README.md). The new calculation and grace/cancellation logic do not install approved terms or enable collection. The owner-stated tax position is no tax on advertised fees, with actual merchant/jurisdiction verification still outstanding.
