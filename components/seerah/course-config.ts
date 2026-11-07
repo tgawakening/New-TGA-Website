@@ -49,7 +49,6 @@ export const courseConfig: {
   campaign: {
     mode: "orientation" | "enrolment";
     orientationEndsAt: string;
-    whatsappUrl: string;
     enrolmentUrl: string | null;
   };
   orientation: {
@@ -58,6 +57,7 @@ export const courseConfig: {
     times: { time: string; region: string }[];
   };
   hero: Artwork | null;
+  heroMobile: Artwork;
   socialImage: Artwork | null;
   videos: CourseVideo[];
   essentials: string[];
@@ -72,8 +72,6 @@ export const courseConfig: {
   campaign: {
     mode: "orientation",
     orientationEndsAt: "2026-11-07T16:00:00Z",
-    // Course WhatsApp destination retained from /seerah for orientation and enquiries.
-    whatsappUrl: "https://chat.whatsapp.com/EXcZmIOG9c8LOSdjK7KMko",
     enrolmentUrl: null,
   },
   orientation: {
@@ -86,16 +84,22 @@ export const courseConfig: {
     ],
   },
   hero: {
-    src: "/Seerah new/hero banner page.png",
-    alt: "A learner entering a stone doorway in warm evening light",
+    src: "/Seerah new/Seerah desktop hero.png",
+    alt: "Sīrah course artwork on antique parchment with a compass and coins",
     width: 1672,
     height: 941,
   },
+  heroMobile: {
+    src: "/Seerah new/Seerah mobile hero.png",
+    alt: "Sīrah course parchment beneath a dark writing surface",
+    width: 1122,
+    height: 1402,
+  },
   socialImage: {
-    src: "/Seerah new/hero banner home.png",
-    alt: "A learner approaching an ancient doorway",
-    width: 1942,
-    height: 809,
+    src: "/Seerah new/Seerah desktop hero.png",
+    alt: "Sīrah Beyond Chronology course artwork",
+    width: 1672,
+    height: 941,
   },
   // Web copies derived from the verified 4K Git LFS originals; full vertical frame retained.
   videos: [
@@ -366,14 +370,8 @@ export function activeCampaign(now = Date.now()) {
     : "enrolment";
 }
 
-// Public enquiry/update groups: visitors may join before registering.
-// These are independent of the protected, post-payment course invitations.
-export const publicCourseGroups = {
-  pakistan: "https://chat.whatsapp.com/Hhs5PieBzen7YvYnkLF9Fo",
-  overseas: "https://chat.whatsapp.com/Ghr9XgXpncIIFYuWcs45oI",
-};
-export function publicCourseGroup(country: string) {
-  return country === "PK"
-    ? publicCourseGroups.pakistan
-    : publicCourseGroups.overseas;
-}
+// Compatibility exports for existing callers; public destinations have one source.
+export {
+  consultationDestinations as publicCourseGroups,
+  consultationForCountry as publicCourseGroup,
+} from "./consultation-config";

@@ -1342,3 +1342,61 @@ test("legacy credentials never enable dedicated Sīrah cards and live needs both
   delete process.env.SIRAH_LIVE_PAYMENTS_APPROVED;
   assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), false);
 });
+
+test("Pakistan monthly selection switches server payable totals and card Checkout charges only the automatic rate", async () => {
+  enableManual();
+  Object.assign(process.env, {
+    SIRAH_STRIPE_SECRET_KEY: "sk_test_synthetic",
+    SIRAH_STRIPE_WEBHOOK_SECRET: "whsec_synthetic",
+    SIRAH_STRIPE_ACCOUNT_ID: "acct_synthetic",
+    SIRAH_STRIPE_MONTHLY_CURRENCIES: "PKR",
+    SIRAH_PK_RECURRING_VERIFIED: "true",
+  });
+  const result = await create("PK", "MONTHLY");
+  let order = await publicSirahOrder(result.orderId, result.userId);
+  assert.equal(order.amountMinor, 300000);
+  assert.equal(order.totalMinor, 3600000);
+  order = await repriceSirah(
+    order.id,
+    result.userId,
+    order.revision,
+    "PK",
+    "MONTHLY",
+    "BANK_TRANSFER",
+  );
+  assert.equal(order.amountMinor, 350000);
+  assert.equal(order.totalMinor, 4200000);
+  order = await repriceSirah(
+    order.id,
+    result.userId,
+    order.revision,
+    "PK",
+    "MONTHLY",
+    "STRIPE",
+  );
+  assert.equal(order.amountMinor, 300000);
+  assert.equal(order.totalMinor, 3600000);
+  let chargedMinor: number | null | undefined;
+  const fake = {
+    accounts: { retrieve: async () => ({ id: "acct_synthetic" }) },
+    checkout: {
+      sessions: {
+        create: async (params: Stripe.Checkout.SessionCreateParams) => {
+          chargedMinor = params.line_items![0].price_data!.unit_amount;
+          return {
+            id: "cs_pk_synthetic",
+            url: "https://checkout.stripe.com/test-only",
+          };
+        },
+      },
+    },
+  } as unknown as Stripe;
+  await startSirahCheckout(
+    order.id,
+    result.userId,
+    order.revision,
+    approvedTestTerms.version,
+    fake,
+  );
+  assert.equal(chargedMinor, 300000);
+});

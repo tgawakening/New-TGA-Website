@@ -22,6 +22,7 @@ import {
 } from "@/lib/sirah/catalog";
 import { sirahRegistrationSchema } from "@/lib/sirah/validation";
 import Image from "next/image";
+import { ConsultationAction } from "@/components/seerah/consultation-action";
 import { PasswordFields } from "./password-fields";
 import { priceFor } from "@/lib/sirah/catalog";
 import { PhoneControl, countryFlagImage } from "./phone-control";
@@ -669,13 +670,11 @@ export function SirahRegistrationForm({
             Registration setup is being completed. You can enquire with the team
             while registration is unavailable.
           </p>
-          <a
-            href="https://wa.me/923262055614"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Enquire on WhatsApp ↗
-          </a>
+          <ConsultationAction
+            className={styles.primary}
+            placement="registration-unavailable"
+            countryOverride={billing || undefined}
+          />
         </div>
       ) : !order ? (
         <>
@@ -868,7 +867,11 @@ export function SirahRegistrationForm({
                     <span>
                       {plan === "ANNUAL"
                         ? "One payment · 12 months"
-                        : "Per month"}
+                        : billing === "PK"
+                          ? quote.cardAvailable
+                            ? "Per month · automatic card"
+                            : "Per month · manual payment"
+                          : "Per month"}
                     </span>
                   </>
                 ) : (
@@ -1150,6 +1153,11 @@ export function SirahRegistrationForm({
                   Available payment method
                   <select
                     aria-label="Available payment method"
+                    aria-describedby={
+                      order.countryCode === "PK" && order.plan === "MONTHLY"
+                        ? "sirah-pk-method-pricing"
+                        : undefined
+                    }
                     value={order.method || ""}
                     disabled={busy || !order.methods.length}
                     onChange={(event) =>
@@ -1174,6 +1182,13 @@ export function SirahRegistrationForm({
                     ))}
                   </select>
                 </label>
+                {order.countryCode === "PK" && order.plan === "MONTHLY" && (
+                  <p className={styles.notice} id="sirah-pk-method-pricing">
+                    Automatic card payments are PKR 3,000 per month. Manual bank
+                    transfer or JazzCash payments are PKR 3,500 per month. Your
+                    amount updates when you select a payment method.
+                  </p>
+                )}
                 {order.method === "STRIPE" && <p>No Stripe account needed.</p>}
                 <Terms
                   order={order}

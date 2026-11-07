@@ -132,10 +132,14 @@ test("checkout clicks are distinct from confirmations; old, duplicate and invali
 test("campaign artwork and both self-contained portrait web videos are available", () => {
   const { courseConfig, topics } = fixture().load("course-config");
   const root = path.resolve(scriptDirectory, "..");
-  assert.equal(courseConfig.hero.src, "/Seerah new/hero banner page.png");
+  assert.equal(courseConfig.hero.src, "/Seerah new/Seerah desktop hero.png");
   assert.equal(
     courseConfig.socialImage.src,
-    "/Seerah new/hero banner home.png",
+    "/Seerah new/Seerah desktop hero.png",
+  );
+  assert.equal(
+    courseConfig.heroMobile.src,
+    "/Seerah new/Seerah mobile hero.png",
   );
   assert.equal(topics.length, 10);
   assert.equal(new Set(topics.map((topic) => topic.artwork.src)).size, 10);
@@ -158,4 +162,21 @@ test("campaign artwork and both self-contained portrait web videos are available
     assert.equal(video.width / video.height, 9 / 16);
     assert.ok(fs.existsSync(path.join(root, "public", video.poster.src)));
   }
+});
+
+test("public Sīrah consultations use approved regional groups and require a choice without a country", () => {
+  const { consultationDestinations, consultationForCountry } = fixture().load(
+    "consultation-config",
+  );
+  assert.equal(
+    consultationForCountry("PK"),
+    "https://chat.whatsapp.com/Hhs5PieBzen7YvYnkLF9Fo",
+  );
+  for (const country of ["GB", "SA", "JP"])
+    assert.equal(
+      consultationForCountry(country),
+      "https://chat.whatsapp.com/Ghr9XgXpncIIFYuWcs45oI",
+    );
+  assert.equal(consultationForCountry(), null);
+  assert.equal(consultationDestinations.orientation, null);
 });

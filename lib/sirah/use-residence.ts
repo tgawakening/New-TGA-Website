@@ -26,7 +26,13 @@ export function saveResidence(value: string) {
   } catch {}
   window.dispatchEvent(new Event("sirah-residence"));
 }
-export function useResidence(detected?: string) {
+export function useResidenceSelection(detected?: string) {
   const choice = useSyncExternalStore(subscribe, saved, () => null);
-  return resolveResidence(null, choice, detected);
+  return {
+    country: resolveResidence(null, choice, detected),
+    hasResidence: Boolean(choice || validResidence(detected)),
+  };
+}
+export function useResidence(detected?: string) {
+  return useResidenceSelection(detected).country;
 }

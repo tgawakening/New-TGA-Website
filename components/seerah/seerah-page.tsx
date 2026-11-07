@@ -2,7 +2,10 @@
 
 import { countries } from "countries-list";
 import { resolveMarket, priceFor, formatSirahMoney } from "@/lib/sirah/catalog";
-import { useResidence, saveResidence } from "@/lib/sirah/use-residence";
+import {
+  useResidenceSelection,
+  saveResidence,
+} from "@/lib/sirah/use-residence";
 import Image, { getImageProps } from "next/image";
 import {
   SirahRegistrationProvider,
@@ -17,16 +20,19 @@ import { useEffect, useRef, useState } from "react";
 import { Header, Footer } from "@/components/home/sections";
 import {
   activeCampaign,
-  publicCourseGroup,
-  publicCourseGroups,
   courseConfig as config,
   learningOutcomes,
   topics,
   type FeePlan,
 } from "./course-config";
 import { trackSeerah } from "./analytics";
+import { consultationDestinations } from "./consultation-config";
 import { formatFee } from "./regional-fees";
 import styles from "./seerah.module.css";
+import {
+  ConsultationAction,
+  ConsultationProvider,
+} from "./consultation-action";
 import {
   CoursePreview,
   TeachingApproach,
@@ -73,38 +79,6 @@ function PrimaryAction({
     >
       Register for the Course <span aria-hidden>↗</span>
     </a>
-  );
-}
-
-function OrientationAction({ country }: { country: string }) {
-  const [choice, setChoice] = useState<string | null>(null);
-  const selected = choice || (country === "PK" ? "PK" : "OTHER");
-  return (
-    <div className={styles.orientationAction}>
-      <select
-        aria-label="Orientation region"
-        value={selected}
-        onChange={(event) => setChoice(event.target.value)}
-      >
-        <option value="PK">Pakistan</option>
-        <option value="OTHER">Overseas</option>
-      </select>
-      <a
-        className={styles.secondary}
-        href={publicCourseGroup(selected)}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() =>
-          trackSeerah("seerah_whatsapp_click", {
-            placement: "hero-orientation",
-            intent: "orientation",
-            country: selected,
-          })
-        }
-      >
-        Join Free Orientation <span aria-hidden>↗</span>
-      </a>
-    </div>
   );
 }
 
@@ -360,36 +334,37 @@ function Plan({
       </p>
       {plan ? (
         <>
-          {(annual || (country === "PK" && pakistanOnlineAvailable)) && (
+          {annual && (
             <p>
               <s>
-                {annual
-                  ? formatSirahMoney(
-                      priceFor(country, "MONTHLY", "STRIPE").amountMinor * 12,
-                      plan.currency,
-                    )
-                  : formatFee(3500, "PKR")}
+                {formatSirahMoney(
+                  priceFor(country, "MONTHLY", "STRIPE").amountMinor * 12,
+                  plan.currency,
+                )}
               </s>{" "}
-              {annual ? "12 online monthly payments" : "Manual monthly rate"}
+              12 online monthly payments
             </p>
           )}
           <h3>
+            {country === "PK" && !annual && (
+              <s
+                className={styles.manualComparison}
+                aria-label="Manual monthly price"
+              >
+                {formatFee(
+                  priceFor("PK", "MONTHLY", "BANK_TRANSFER").amountMinor / 100,
+                  "PKR",
+                )}
+              </s>
+            )}
             {formatFee(plan.amount, plan.currency)}
             <small>{plan.frequency}</small>
           </h3>
           <p>Charge currency: {plan.currency}</p>
           <p>{plan.method}</p>
-          {!annual &&
-            country === "PK" &&
-            (pakistanOnlineAvailable ? (
-              <p>
-                PKR 3,000 per month with automatic card payments. Manual
-                payments through JazzCash or Meezan Bank are PKR 3,500 per
-                month.
-              </p>
-            ) : (
-              <p>Automatic card payments are currently unavailable</p>
-            ))}
+          {!annual && country === "PK" && !pakistanOnlineAvailable && (
+            <p>Automatic card payments are currently unavailable</p>
+          )}
           {plan.total && <p>{plan.total}</p>}
         </>
       ) : (
@@ -418,21 +393,10 @@ function Plan({
         country={country}
         plan={annual ? "ANNUAL" : "MONTHLY"}
       />
-      <a
+      <ConsultationAction
         className={styles.readMore}
-        href={publicCourseGroup(country)}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() =>
-          trackSeerah("seerah_whatsapp_click", {
-            placement: "fees",
-            intent: "fee_enquiry",
-            country,
-          })
-        }
-      >
-        Enquire on WhatsApp ↗
-      </a>
+        placement={`fees-${country}-${annual ? "annual" : "monthly"}`}
+      />
     </article>
   );
 }
@@ -441,31 +405,16 @@ function PublicCourseGroups() {
   return (
     <div id="course-enquiries" className={styles.publicGroups}>
       <div>
-        <h3>Join the conversation</h3>
+        <h3>Questions before you register?</h3>
         <p>
-          Join your regional WhatsApp group for course enquiries and updates,
-          even before registering. Complete course registration separately to
-          enrol.
+          Speak with the Sīrah team about the course and your regional payment
+          options.
         </p>
       </div>
-      <div className={styles.groupActions}>
-        <a
-          className={styles.secondary}
-          href={publicCourseGroups.pakistan}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Join Pakistan Group <span aria-hidden>↗</span>
-        </a>
-        <a
-          className={styles.secondary}
-          href={publicCourseGroups.overseas}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Join Overseas Group <span aria-hidden>↗</span>
-        </a>
-      </div>
+      <ConsultationAction
+        className={styles.secondary}
+        placement="course-enquiries"
+      />
     </div>
   );
 }
@@ -484,10 +433,7 @@ function Fees({
   const market = config.markets.find(
     (m) => m.code === resolveMarket(country)[0],
   )!;
-  const monthly =
-    market.code === "PK" && !pakistanOnlineAvailable
-      ? market.manualMonthly || null
-      : market.monthly;
+  const monthly = market.monthly;
   function select(value: string) {
     onCountryChange(value);
     trackSeerah("seerah_country_select", { country: value });
@@ -610,15 +556,29 @@ function SeerahContent({
 }) {
   const openRegistration = useSirahRegistration();
   const mobileHero = getImageProps({
-    src: "/Seerah new/seerah-hero-mobile.png",
-    alt: "A learner entering a stone doorway in warm evening light",
-    width: 1122,
-    height: 1402,
+    src: config.heroMobile.src,
+    alt: config.heroMobile.alt,
+    width: config.heroMobile.width,
+    height: config.heroMobile.height,
     sizes: "100vw",
   }).props;
   const root = useRef<HTMLDivElement>(null);
   const activeSection = useSectionExperience(root);
-  const country = useResidence(visitorCountry);
+  const { country, hasResidence } = useResidenceSelection(visitorCountry);
+  const mobileBar = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = mobileBar.current;
+    if (!bar) return;
+    const update = () =>
+      root.current?.style.setProperty(
+        "--sirah-mobile-bar-height",
+        `${bar.getBoundingClientRect().height}px`,
+      );
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
   const setCountry = saveResidence;
   const [orientation, setOrientation] = useState(
     initialCampaign === "orientation",
@@ -630,7 +590,7 @@ function SeerahContent({
     return () => window.clearInterval(timer);
   }, []);
   return (
-    <>
+    <ConsultationProvider country={hasResidence ? country : undefined}>
       <div className={styles.page} ref={root}>
         <a className={styles.skip} href="#overview">
           Skip to course content
@@ -698,54 +658,21 @@ function SeerahContent({
             <div className={styles.heroShade} />
             <div className={`${styles.container} ${styles.heroInner}`}>
               <div className={styles.heroCopy}>
-                <p className={styles.eyebrow}>The Global Awakening</p>
-                <p className={styles.heroOverline}>
-                  A life to study. A responsibility to carry.
-                </p>
-                <h1 id="course-title">
-                  <span>SĪRAH</span>
-                  <span className={styles.heroSubtitle}>
-                    <span aria-hidden>| </span>BEYOND
-                    <br />
-                    CHRONOLOGY
-                  </span>
+                <h1 id="course-title" aria-label="Sīrah | Beyond Chronology">
+                  Beyond Chronology
                 </h1>
-                <p className={styles.tagline}>
-                  Law, Power, Leadership &amp; Movement
-                </p>
                 <p className={styles.heroIntro}>
-                  Study the life of the Prophet ﷺ through the decisions he made
-                  and the community he built. Examine classical sources, explore
-                  difficult questions and connect your learning with
-                  responsibilities in your own life.
+                  Study the life of the Prophet ﷺ through the decisions he made,
+                  the community he built, and the responsibilities his example
+                  places on us.
                 </p>
                 <div className={styles.heroActions}>
                   <PrimaryAction placement="hero" country={country} />
-                  {orientation ? (
-                    <OrientationAction country={country} />
-                  ) : (
-                    <a className={styles.secondary} href="#course-details">
-                      Explore the Course <span aria-hidden>↓</span>
-                    </a>
-                  )}
+                  <ConsultationAction
+                    className={styles.secondary}
+                    placement="hero"
+                  />
                 </div>
-                <p className={styles.supporting}>
-                  <a href="#course-enquiries">
-                    Join a regional WhatsApp group before registering ↗
-                  </a>
-                </p>
-                {orientation && (
-                  <p className={styles.supporting}>
-                    Join the WhatsApp group for orientation details.
-                  </p>
-                )}
-                {config.essentials.length > 0 && (
-                  <ul className={styles.essentials}>
-                    {config.essentials.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                )}
               </div>
             </div>
           </section>
@@ -774,6 +701,16 @@ function SeerahContent({
                     </p>
                   ))}
                 </div>
+                {consultationDestinations.orientation && (
+                  <a
+                    className={styles.readMore}
+                    href={consultationDestinations.orientation}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Orientation details ↗
+                  </a>
+                )}
               </div>
             </aside>
           )}
@@ -911,6 +848,10 @@ function SeerahContent({
                       Contact the team ↗
                     </a>
                   </p>
+                  <ConsultationAction
+                    className={styles.readMore}
+                    placement="faq"
+                  />
                 </div>
                 <div className={styles.faqs}>
                   {orientation && (
@@ -964,15 +905,19 @@ function SeerahContent({
                 <em>Reflect on your responsibility.</em>
               </h2>
               <PrimaryAction placement="closing" country={country} />
+              <ConsultationAction
+                className={styles.secondary}
+                placement="closing"
+              />
             </div>
           </section>
         </main>
         <Footer />
-        <div className={styles.mobileAction}>
+        <div className={styles.mobileAction} ref={mobileBar}>
           <PrimaryAction placement="mobile-sticky" country={country} />
         </div>
       </div>
-    </>
+    </ConsultationProvider>
   );
 }
 
