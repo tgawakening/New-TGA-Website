@@ -2114,3 +2114,84 @@
   background: #dfe3cf;
   border-block: 1px solid #b9c0a4;
 }
+.orientationAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.orientationAction select {
+  width: 100px;
+  min-height: 44px;
+  padding: 8px 6px;
+  color: var(--ivory);
+  border: 1px solid #8d8f6f;
+  background: #20251c;
+  font-size: 12px;
+}
+.orientationAction .secondary {
+  white-space: nowrap;
+  padding-inline: 4px;
+}
+@media (max-width: 760px) {
+  .orientationAction {
+    width: 100%;
+  }
+  .orientationAction select {
+    width: 100px;
+  }
+  .orientationAction .secondary {
+    flex: 1;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+}
+/* The portrait source replaces the landscape source only below 768px. */
+.heroMedia {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+}
+@media (max-width: 767px) {
+  .hero {
+    display: flex;
+    flex-direction: column;
+    background: #141611;
+  }
+  .heroMedia {
+    position: relative;
+    inset: auto;
+    order: 2;
+    width: 100%;
+    aspect-ratio: 1.18;
+    z-index: 0;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .heroMedia .heroImage {
+    display: block;
+    object-fit: cover;
+    object-position: center bottom;
+  }
+  .heroMedia::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 54px;
+    background: linear-gradient(#141611, transparent);
+    pointer-events: none;
+  }
+  .heroInner {
+    order: 1;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    padding-block: 36px 24px;
+  }
+  .page:has(.heroImage) .heroCopy {
+    max-width: 100%;
+  }
+  .heroShade {
+    background: #141611;
+  }
+}

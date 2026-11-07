@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { navItems } from "@/components/home/data";
@@ -26,7 +26,15 @@ function PillButton({
   );
 }
 
-export function Header({ enrolmentAction }: { enrolmentAction?: { href: string; label: string; onClick?: () => void } } = {}) {
+export function Header({
+  enrolmentAction,
+}: {
+  enrolmentAction?: {
+    href: string;
+    label: string;
+    onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  };
+} = {}) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [hasSession, setHasSession] = useState(false);
 
@@ -38,14 +46,17 @@ export function Header({ enrolmentAction }: { enrolmentAction?: { href: string; 
   }, []);
 
   useEffect(() => {
-    const syncSession = () => setHasSession(document.cookie.includes("ga_session="));
+    const syncSession = () =>
+      setHasSession(document.cookie.includes("ga_session="));
     syncSession();
     window.addEventListener("focus", syncSession);
     return () => window.removeEventListener("focus", syncSession);
   }, []);
 
   return (
-    <header className={`ga-header sticky top-0 z-50 ${isScrolled ? "ga-header-scrolled" : ""}`}>
+    <header
+      className={`ga-header sticky top-0 z-50 ${isScrolled ? "ga-header-scrolled" : ""}`}
+    >
       <div className="ga-container flex h-24 items-center justify-between gap-4">
         <div className="flex items-center">
           <Link href="/" aria-label="Go to homepage">
@@ -61,10 +72,13 @@ export function Header({ enrolmentAction }: { enrolmentAction?: { href: string; 
         </div>
 
         <nav className="hidden items-center gap-2 lg:flex">
-          {navItems.map((item) => (
+          {navItems.map((item) =>
             item.children?.length ? (
               <div key={item.label} className="ga-nav-dropdown group relative">
-                <button type="button" className="ga-nav-btn ga-nav-btn-dropdown">
+                <button
+                  type="button"
+                  className="ga-nav-btn ga-nav-btn-dropdown"
+                >
                   {item.label}
                   <span aria-hidden className="ga-nav-caret">
                     <svg viewBox="0 0 20 20" focusable="false">
@@ -74,27 +88,50 @@ export function Header({ enrolmentAction }: { enrolmentAction?: { href: string; 
                 </button>
                 <div className="ga-nav-dropdown-menu">
                   {item.children.map((child) => (
-                    <Link key={child.href} href={child.href} className="ga-nav-dropdown-link">
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      className="ga-nav-dropdown-link"
+                    >
                       {child.label}
                     </Link>
                   ))}
                 </div>
               </div>
             ) : (
-              <Link key={item.label} href={item.href ?? "/"} className="ga-nav-btn ga-nav-link">
+              <Link
+                key={item.label}
+                href={item.href ?? "/"}
+                className="ga-nav-btn ga-nav-link"
+              >
                 {item.label}
               </Link>
-            )
-          ))}
+            ),
+          )}
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/support-our-mission" className="ga-btn ga-header-cta ga-cta-signin ga-header-support">
+          <Link
+            href="/support-our-mission"
+            className="ga-btn ga-header-cta ga-cta-signin ga-header-support"
+          >
             Support Our Mission
           </Link>
-          <span className="hidden md:inline-flex"><Link href={hasSession ? "/dashboard" : enrolmentAction?.href ?? "/seerah/register"} onClick={hasSession ? undefined : enrolmentAction?.onClick} className="ga-btn ga-header-cta ga-cta-register">
-            {hasSession ? "Your Dashboard" : enrolmentAction?.label ?? "Enroll Now"}
-          </Link></span>
+          <span className="hidden md:inline-flex">
+            <Link
+              href={
+                hasSession
+                  ? "/dashboard"
+                  : (enrolmentAction?.href ?? "/seerah/register")
+              }
+              onClick={hasSession ? undefined : enrolmentAction?.onClick}
+              className="ga-btn ga-header-cta ga-cta-register"
+            >
+              {hasSession
+                ? "Your Dashboard"
+                : (enrolmentAction?.label ?? "Enroll Now")}
+            </Link>
+          </span>
         </div>
 
         {SHOW_AUTH_BUTTONS ? (

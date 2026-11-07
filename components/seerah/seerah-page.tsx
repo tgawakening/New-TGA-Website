@@ -1,6 +1,10 @@
 "use client";
 
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
+import {
+  SirahRegistrationProvider,
+  useSirahRegistration,
+} from "@/components/sirah/registration-provider";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, A11y } from "swiper/modules";
 import type { Swiper as SwiperInstance } from "swiper";
@@ -43,6 +47,7 @@ function PrimaryAction({
   country?: string;
   plan?: "MONTHLY" | "ANNUAL";
 }) {
+  const open = useSirahRegistration();
   const params = new URLSearchParams();
   if (country) params.set("country", country);
   if (plan) params.set("plan", plan);
@@ -51,10 +56,52 @@ function PrimaryAction({
     <a
       className={styles.primary}
       href={`/seerah/register${query ? `?${query}` : ""}`}
-      onClick={() => trackSeerah("seerah_registration_open", { placement })}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+          return;
+        event.preventDefault();
+        trackSeerah("seerah_registration_open", { placement });
+        open({
+          country,
+          plan,
+          replacePreferences: placement.startsWith("fees"),
+        });
+      }}
     >
       Register for the Course <span aria-hidden>↗</span>
     </a>
+  );
+}
+
+function OrientationAction({ country }: { country: string }) {
+  const [choice, setChoice] = useState<string | null>(null);
+  const selected = choice || (country === "PK" ? "PK" : "OTHER");
+  return (
+    <div className={styles.orientationAction}>
+      <select
+        aria-label="Orientation region"
+        value={selected}
+        onChange={(event) => setChoice(event.target.value)}
+      >
+        <option value="PK">Pakistan</option>
+        <option value="OTHER">Overseas</option>
+      </select>
+      <a
+        className={styles.secondary}
+        href={publicCourseGroup(selected)}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() =>
+          trackSeerah("seerah_whatsapp_click", {
+            placement: "hero-orientation",
+            intent: "orientation",
+            country: selected,
+          })
+        }
+      >
+        Join Free Orientation <span aria-hidden>↗</span>
+      </a>
+    </div>
   );
 }
 
@@ -536,10 +583,20 @@ function Fees({
 function SeerahContent({
   initialCampaign,
   pakistanOnlineAvailable,
+  visitorCountry,
 }: {
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
+  visitorCountry?: string;
 }) {
+  const openRegistration = useSirahRegistration();
+  const mobileHero = getImageProps({
+    src: "/Seerah new/seerah-hero-mobile.png",
+    alt: "A learner entering a stone doorway in warm evening light",
+    width: 1122,
+    height: 1402,
+    sizes: "100vw",
+  }).props;
   const root = useRef<HTMLDivElement>(null);
   const activeSection = useSectionExperience(root);
   const [chosenCountry, setCountry] = useState<string | null>(null);
@@ -568,6 +625,17 @@ function SeerahContent({
           enrolmentAction={{
             href: "/seerah/register",
             label: "Register for the Course",
+            onClick: (event) => {
+              if (
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              )
+                return;
+              event.preventDefault();
+              openRegistration({ country });
+            },
           }}
         />
         <nav className={styles.sectionNav} aria-label="Course sections">
@@ -595,15 +663,24 @@ function SeerahContent({
             aria-labelledby="course-title"
           >
             {config.hero && (
-              <Image
-                className={styles.heroImage}
-                src={config.hero.src}
-                alt={config.hero.alt}
-                fill
-                priority
-                sizes="100vw"
-              />
+              <picture className={styles.heroMedia}>
+                <source
+                  media="(max-width: 767px)"
+                  srcSet={mobileHero.srcSet}
+                  sizes="100vw"
+                />
+                <Image
+                  className={styles.heroImage}
+                  src={config.hero.src}
+                  alt={config.hero.alt}
+                  fill
+                  loading="eager"
+                  fetchPriority="high"
+                  sizes="100vw"
+                />
+              </picture>
             )}
+
             <div className={styles.heroShade} />
             <div className={`${styles.container} ${styles.heroInner}`}>
               <div className={styles.heroCopy}>
@@ -631,20 +708,7 @@ function SeerahContent({
                 <div className={styles.heroActions}>
                   <PrimaryAction placement="hero" country={country} />
                   {orientation ? (
-                    <a
-                      className={styles.secondary}
-                      href={config.campaign.whatsappUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() =>
-                        trackSeerah("seerah_whatsapp_click", {
-                          placement: "hero-orientation",
-                          intent: "orientation",
-                        })
-                      }
-                    >
-                      Join Free Orientation <span aria-hidden>↗</span>
-                    </a>
+                    <OrientationAction country={visitorCountry || country} />
                   ) : (
                     <a className={styles.secondary} href="#course-details">
                       Explore the Course <span aria-hidden>↓</span>
@@ -670,17 +734,6 @@ function SeerahContent({
                 )}
               </div>
             </div>
-            {config.hero && (
-              <div className={styles.mobileArtwork}>
-                <Image
-                  src={config.hero.src}
-                  alt={config.hero.alt}
-                  fill
-                  priority
-                  sizes="100vw"
-                />
-              </div>
-            )}
           </section>
           {orientation && (
             <aside
@@ -911,6 +964,11 @@ function SeerahContent({
 export default function SeerahPage(props: {
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
+  visitorCountry?: string;
 }) {
-  return <SeerahContent {...props} />;
+  return (
+    <SirahRegistrationProvider>
+      <SeerahContent {...props} />
+    </SirahRegistrationProvider>
+  );
 }

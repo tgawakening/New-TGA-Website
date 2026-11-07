@@ -24,7 +24,12 @@ export default async function SirahRegisterPage({
   const country = params.country?.toUpperCase();
   const initialCountry =
     country && Object.hasOwn(countries, country) ? country : undefined;
-  const initialPlan = params.plan === "ANNUAL" ? "ANNUAL" : "MONTHLY";
+  const initialPlan =
+    params.plan === "ANNUAL"
+      ? "ANNUAL"
+      : params.plan === "MONTHLY"
+        ? "MONTHLY"
+        : undefined;
   if (resume) {
     const user = await getCurrentUser();
     if (!user || user.status !== "ACTIVE") redirect("/login");

@@ -1,18 +1,33 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type FormEvent,
+  type Ref,
+} from "react";
 import { countries } from "countries-list";
 import {
   getCountries,
+  parsePhoneNumberFromString,
   getCountryCallingCode,
   type CountryCode,
 } from "libphonenumber-js/max";
 import {
-  SIRAH_TITLE,
   formatSirahMoney,
   type SirahPlan,
   type SirahMethod,
 } from "@/lib/sirah/catalog";
-import { normalizeSirahPhone } from "@/lib/sirah/phone";
+import { sirahRegistrationSchema } from "@/lib/sirah/validation";
+import { PhoneControl } from "./phone-control";
+export type RegistrationControls = {
+  setPreferences: (choice: { country?: string; plan?: SirahPlan }) => void;
+};
+const draftKey = "tga-sirah-registration-draft-v1";
+class ApiError extends Error {
+  fields?: Record<string, string[]>;
+}
 import type { publicSirahOrder } from "@/services/sirah-registration.service";
 import styles from "./registration.module.css";
 type Order = Awaited<ReturnType<typeof publicSirahOrder>>;
@@ -22,13 +37,6 @@ type User = {
   phoneCountryCode: string;
   phoneNumber: string;
 };
-const phoneCountries = getCountries()
-  .map((code) => ({
-    code,
-    name: countries[code as keyof typeof countries]?.name || code,
-    calling: `+${getCountryCallingCode(code)}`,
-  }))
-  .sort((a, b) => a.name.localeCompare(b.name));
 const residenceCountries = Object.entries(countries)
   .map(([code, c]) => ({ code, name: c.name }))
   .sort((a, b) => a.name.localeCompare(b.name));
@@ -44,12 +52,13 @@ async function api(path: string, init?: RequestInit) {
   });
   const result = await response.json();
   if (!response.ok) {
-    const fields = result.fields
-      ? Object.values(result.fields).flat().join(" ")
-      : "";
-    throw Error(
-      `${result.error || "Please try again."}${fields ? ` ${fields}` : ""}`,
-    );
+    const error = new ApiError(result.error || "Please try again.");
+    error.fields =
+      result.fields ||
+      (response.status === 409 && /email/i.test(result.error || "")
+        ? { email: [result.error] }
+        : undefined);
+    throw error;
   }
   return result;
 }
@@ -99,10 +108,12 @@ export function SirahRegistrationForm({
   initialCountry,
   initialPlan,
   requireBillingCountry = false,
+  controlRef,
 }: {
   initialCountry?: string;
   initialPlan?: SirahPlan;
   requireBillingCountry?: boolean;
+  controlRef?: Ref<RegistrationControls>;
 } = {}) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
@@ -117,7 +128,11 @@ export function SirahRegistrationForm({
   >([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phoneCountry, setPhoneCountry] = useState<CountryCode>("GB");
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>(
+    initialCountry && getCountries().includes(initialCountry as CountryCode)
+      ? (initialCountry as CountryCode)
+      : "GB",
+  );
   const [phone, setPhone] = useState("");
   const [billing, setBilling] = useState(
     requireBillingCountry
@@ -131,7 +146,14 @@ export function SirahRegistrationForm({
       requireBillingCountry || (initialCountry && initialCountry in countries),
     ),
   );
-  const [search, setSearch] = useState("");
+  const [fields, setFields] = useState<Record<string, string[]>>({});
+  const [quote, setQuote] = useState<{
+    country: string;
+    plan: SirahPlan;
+    currency: string;
+    amountMinor: number;
+  } | null>(null);
+  const [quoteError, setQuoteError] = useState("");
   const [plan, setPlan] = useState<SirahPlan>(initialPlan || "MONTHLY");
   const [available, setAvailable] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -145,8 +167,107 @@ export function SirahRegistrationForm({
     groupUrl: string | null;
     contactUrl?: string | null;
   } | null>(null);
+  const initialPreferences = useRef({
+    initialCountry,
+    initialPlan,
+    requireBillingCountry,
+  });
   const requestKey = useRef("");
+  const submitLock = useRef(false);
+  useImperativeHandle(
+    controlRef,
+    () => ({
+      setPreferences(choice) {
+        if (order) return;
+        if (choice.country) {
+          setBilling(choice.country in countries ? choice.country : "");
+          setBillingEdited(true);
+        }
+        if (choice.plan) setPlan(choice.plan);
+      },
+    }),
+    [order],
+  );
   useEffect(() => {
+    if (!ready || order || !billing || !(billing in countries)) return;
+    const controller = new AbortController();
+    void api("/api/pricing", {
+      method: "POST",
+      signal: controller.signal,
+      body: JSON.stringify({
+        courseSlug: "seerah-course",
+        countryCode: billing,
+        plan,
+      }),
+    })
+      .then((result) => {
+        if (!controller.signal.aborted) {
+          setQuoteError("");
+          setQuote({
+            country: billing,
+            plan,
+            currency: result.pricing.currency,
+            amountMinor: result.pricing.amountMinor,
+          });
+        }
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) setQuoteError(cause.message);
+      });
+    return () => controller.abort();
+  }, [ready, order, billing, plan]);
+  useEffect(() => {
+    if (!ready || order) return;
+    try {
+      sessionStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          name,
+          email,
+          phoneCountry,
+          phone,
+          billing,
+          plan,
+          billingEdited,
+        }),
+      );
+    } catch {}
+  }, [
+    ready,
+    order,
+    name,
+    email,
+    phoneCountry,
+    phone,
+    billing,
+    plan,
+    billingEdited,
+  ]);
+  function fieldError(key: string) {
+    return fields[key]?.[0];
+  }
+  function clearField(key: string) {
+    setFields((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  }
+  function errorText(key: string) {
+    return fieldError(key) ? (
+      <small
+        id={`sirah-error-${key}`}
+        className={styles.fieldError}
+        role="alert"
+      >
+        {fieldError(key)}
+      </small>
+    ) : null;
+  }
+
+  useEffect(() => {
+    const { initialCountry, initialPlan, requireBillingCountry } =
+      initialPreferences.current;
     let active = true;
     void api("/api/sirah/session")
       .then(async (result) => {
@@ -155,10 +276,52 @@ export function SirahRegistrationForm({
           setAvailable(false);
           return;
         }
+        let restoredPhone = false;
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(draftKey) || "null");
+          if (saved) {
+            if (!result.user) {
+              if (typeof saved.name === "string") setName(saved.name);
+              if (typeof saved.email === "string") setEmail(saved.email);
+            }
+            if (typeof saved.phone === "string") {
+              setPhone(saved.phone);
+              restoredPhone = !!saved.phone;
+            }
+            if (getCountries().includes(saved.phoneCountry))
+              setPhoneCountry(saved.phoneCountry);
+            if (
+              !initialCountry &&
+              !requireBillingCountry &&
+              saved.billing in countries
+            )
+              setBilling(saved.billing);
+            if (!initialPlan && ["MONTHLY", "ANNUAL"].includes(saved.plan))
+              setPlan(saved.plan);
+            if (saved.billingEdited) setBillingEdited(true);
+          } else if (!initialCountry && !requireBillingCountry) {
+            const region = new Intl.Locale(navigator.language).region;
+            if (region && region in countries) {
+              setBilling(region);
+              if (getCountries().includes(region as CountryCode))
+                setPhoneCountry(region as CountryCode);
+            }
+          }
+        } catch {}
         setUser(result.user);
         if (result.user) {
           setName(result.user.fullName);
           setEmail(result.user.email);
+          if (!restoredPhone && result.user.phoneNumber) {
+            const value = result.user.phoneNumber.trim();
+            setPhone(value);
+            const parsed = parsePhoneNumberFromString(
+              value.startsWith("+")
+                ? value
+                : `${result.user.phoneCountryCode}${value}`,
+            );
+            if (parsed?.country) setPhoneCountry(parsed.country);
+          }
         }
         const id = new URL(window.location.href).searchParams.get("order");
         if (id && result.user) {
@@ -229,59 +392,74 @@ export function SirahRegistrationForm({
     };
   }, [processingOrderId]);
   async function run(work: () => Promise<void>) {
+    if (submitLock.current) return;
+    submitLock.current = true;
     setBusy(true);
     setError("");
     setMessage("");
     try {
       await work();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Please try again.");
+      if (cause instanceof ApiError && cause.fields && !order) {
+        setFields(cause.fields);
+        setError("");
+      } else
+        setError(
+          cause instanceof Error
+            ? `${cause.message}${cause instanceof ApiError && cause.fields ? ` ${Object.values(cause.fields).flat().join(" ")}` : ""}`
+            : "Please try again.",
+        );
     } finally {
+      submitLock.current = false;
       setBusy(false);
     }
   }
   function choosePhoneCountry(code: CountryCode) {
     setPhoneCountry(code);
     setPhoneError("");
-    if (!billingEdited) setBilling(code);
+    clearField("phone");
   }
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    try {
-      normalizeSirahPhone(
-        phoneCountry,
-        `+${getCountryCallingCode(phoneCountry)}`,
-        phone,
-      );
+    requestKey.current ||= crypto.randomUUID();
+    const input = {
+      fullName: name,
+      email,
+      ...(!user
+        ? {
+            password: data.get("password"),
+            confirmPassword: data.get("confirmPassword"),
+          }
+        : {}),
+      phoneCountry,
+      callingCode: `+${getCountryCallingCode(phoneCountry)}`,
+      phone,
+      countryCode: billing,
+      plan,
+      requestKey: requestKey.current,
+    };
+    const parsed = sirahRegistrationSchema.safeParse(input);
+    if (!parsed.success) {
+      const next = parsed.error.flatten().fieldErrors;
+      setFields(next);
       setPhoneError("");
-    } catch (cause) {
-      setPhoneError(
-        cause instanceof Error ? cause.message : "Check your phone number.",
+      const first = event.currentTarget.querySelector<HTMLElement>(
+        `[name="${Object.keys(next)[0]}"]`,
       );
+      first?.focus();
       return;
     }
+    setFields({});
+    setPhoneError("");
     await run(async () => {
-      requestKey.current ||= crypto.randomUUID();
       const result = await api("/api/sirah/orders", {
         method: "POST",
-        body: JSON.stringify({
-          fullName: name,
-          email,
-          ...(!user
-            ? {
-                password: data.get("password"),
-                confirmPassword: data.get("confirmPassword"),
-              }
-            : {}),
-          phoneCountry,
-          callingCode: `+${getCountryCallingCode(phoneCountry)}`,
-          phone,
-          countryCode: billing,
-          plan,
-          requestKey: requestKey.current,
-        }),
+        body: JSON.stringify(parsed.data),
       });
+      try {
+        sessionStorage.removeItem(draftKey);
+      } catch {}
       setOrder(result.order);
       setMessage(result.message);
       const url = new URL(window.location.href);
@@ -428,12 +606,23 @@ export function SirahRegistrationForm({
       <p className={styles.eyebrow}>
         The Global Awakening · Course registration
       </p>
-      <h2>{SIRAH_TITLE}</h2>
-      <p>12 months · Live online teaching and Q&A</p>
-      <p>
-        Registration records your application and account. Enrolment and course
-        access follow verified payment or admin approval.
+      <h2>Sīrah | Beyond Chronology</h2>
+      <p className={styles.introduction}>
+        Create your account and choose your payment plan.
       </p>
+      {ready && !user && (
+        <p className={styles.signIn}>
+          Already have an account?{" "}
+          <a
+            href={`/login?next=${encodeURIComponent(`/seerah/register?country=${billing}&plan=${plan}`)}`}
+          >
+            Sign in
+          </a>
+        </p>
+      )}
+      {ready && user && (
+        <p className={styles.signIn}>Signed in as {user.email}</p>
+      )}
       {!ready ? (
         <p role="status">Loading registration…</p>
       ) : !available ? (
@@ -472,131 +661,131 @@ export function SirahRegistrationForm({
               ))}
             </div>
           )}
-          <form onSubmit={register} className={styles.form}>
+          <form
+            onSubmit={register}
+            noValidate
+            className={`${styles.form} ${styles.compactForm}`}
+            aria-busy={busy}
+          >
             <label>
               Full name
               <input
+                name="fullName"
+                aria-label="Full name"
                 value={name}
                 readOnly={!!user}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  clearField("fullName");
+                }}
                 autoComplete="name"
                 minLength={2}
                 maxLength={120}
                 required
+                aria-invalid={!!fieldError("fullName")}
+                aria-describedby={
+                  fieldError("fullName") ? "sirah-error-fullName" : undefined
+                }
               />
+              {errorText("fullName")}
             </label>
             <label>
               Email
               <input
+                name="email"
+                aria-label="Email"
                 type="email"
                 value={email}
                 readOnly={!!user}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  clearField("email");
+                }}
                 autoComplete="email"
                 required
+                aria-invalid={!!fieldError("email")}
+                aria-describedby={
+                  fieldError("email") ? "sirah-error-email" : undefined
+                }
               />
+              {errorText("email")}
             </label>
-            {!user ? (
+            {!user && (
               <>
-                <p>
-                  Already registered an account? <a href="/login">Sign in</a>{" "}
-                  with your existing email and password.
-                </p>
-                <div className={styles.grid}>
-                  <label>
-                    Create password
-                    <input
-                      name="password"
-                      type="password"
-                      minLength={8}
-                      maxLength={72}
-                      autoComplete="new-password"
-                      required
-                    />
-                  </label>
-                  <label>
-                    Confirm password
-                    <input
-                      name="confirmPassword"
-                      type="password"
-                      minLength={8}
-                      maxLength={72}
-                      autoComplete="new-password"
-                      required
-                    />
-                  </label>
-                </div>
+                <label>
+                  Create password
+                  <input
+                    name="password"
+                    aria-label="Create password"
+                    type="password"
+                    minLength={8}
+                    maxLength={72}
+                    autoComplete="new-password"
+                    required
+                    onChange={() => clearField("password")}
+                    aria-invalid={!!fieldError("password")}
+                    aria-describedby={
+                      fieldError("password")
+                        ? "sirah-error-password"
+                        : undefined
+                    }
+                  />
+                  {errorText("password")}
+                </label>
+                <label>
+                  Confirm password
+                  <input
+                    name="confirmPassword"
+                    aria-label="Confirm password"
+                    type="password"
+                    minLength={8}
+                    maxLength={72}
+                    autoComplete="new-password"
+                    required
+                    onChange={() => clearField("confirmPassword")}
+                    aria-invalid={!!fieldError("confirmPassword")}
+                    aria-describedby={
+                      fieldError("confirmPassword")
+                        ? "sirah-error-confirmPassword"
+                        : undefined
+                    }
+                  />
+                  {errorText("confirmPassword")}
+                </label>
               </>
-            ) : (
-              <p>
-                Using your signed-in account. No additional password is needed.
-              </p>
             )}
+            <PhoneControl
+              country={phoneCountry}
+              value={phone}
+              onCountryChange={choosePhoneCountry}
+              onChange={(value) => {
+                setPhone(value);
+                setPhoneError("");
+                clearField("phone");
+              }}
+              error={
+                phoneError || fieldError("phone") || fieldError("phoneCountry")
+              }
+            />
             <label>
-              Search phone countries
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Country name or calling code"
-              />
-            </label>
-            <div className={styles.grid}>
-              <label>
-                Phone country
-                <select
-                  aria-label="Phone country"
-                  value={phoneCountry}
-                  onChange={(event) =>
-                    choosePhoneCountry(event.target.value as CountryCode)
-                  }
-                >
-                  {phoneCountries
-                    .filter(
-                      (c) =>
-                        c.code === phoneCountry ||
-                        `${c.name} ${c.calling}`
-                          .toLowerCase()
-                          .includes(search.toLowerCase()),
-                    )
-                    .map((c) => (
-                      <option value={c.code} key={c.code}>
-                        {c.name} ({c.calling})
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                Phone / WhatsApp
-                <input
-                  type="tel"
-                  autoComplete="tel"
-                  value={phone}
-                  onChange={(event) => {
-                    setPhone(event.target.value);
-                    setPhoneError("");
-                  }}
-                  placeholder="National or international number"
-                  required
-                  aria-invalid={!!phoneError}
-                  aria-describedby="sirah-phone-help"
-                />
-              </label>
-            </div>
-            <p id="sirah-phone-help">
-              {phoneError ||
-                "We validate the number format for your selected country. This does not verify phone ownership or WhatsApp availability."}
-            </p>
-            <label>
-              Country of residence / billing country
+              Residence / billing country
               <select
-                aria-label="Country of residence / billing country"
+                name="countryCode"
+                autoComplete="country"
+                aria-label="Residence / billing country"
                 required
                 value={billing}
                 onChange={(event) => {
                   setBilling(event.target.value);
                   setBillingEdited(true);
+                  clearField("countryCode");
                 }}
+                aria-invalid={!!fieldError("countryCode")}
+                aria-describedby={
+                  fieldError("countryCode")
+                    ? "sirah-error-countryCode"
+                    : undefined
+                }
               >
                 <option value="" disabled>
                   Select your billing country
@@ -607,27 +796,63 @@ export function SirahRegistrationForm({
                   </option>
                 ))}
               </select>
+              {errorText("countryCode")}
             </label>
-            <p>
-              The phone country suggests your billing country initially. Change
-              billing country if you live elsewhere; fees use your billing
-              country, not the calling prefix.
-            </p>
-            <label>
-              Preferred payment plan
-              <select
-                aria-label="Preferred payment plan"
-                value={plan}
-                onChange={(event) => setPlan(event.target.value as SirahPlan)}
+            <div className={styles.planChoice}>
+              <label>
+                Payment plan
+                <select
+                  name="plan"
+                  aria-label="Payment plan"
+                  value={plan}
+                  onChange={(event) => {
+                    setPlan(event.target.value as SirahPlan);
+                    clearField("plan");
+                  }}
+                >
+                  <option value="MONTHLY">Monthly payment</option>
+                  <option value="ANNUAL">Annual upfront · 12 months</option>
+                </select>
+                {errorText("plan")}
+              </label>
+              <div
+                className={styles.pricePreview}
+                role="status"
+                aria-live="polite"
               >
-                <option value="MONTHLY">Monthly payment</option>
-                <option value="ANNUAL">
-                  Annual upfront — one payment for 12 months
-                </option>
-              </select>
-            </label>
-            <button className={styles.primary} type="submit" disabled={busy}>
-              {busy ? "Recording registration…" : "Register for the Course"}
+                {quote?.country === billing && quote.plan === plan ? (
+                  <>
+                    <strong>
+                      {formatSirahMoney(quote.amountMinor, quote.currency)}
+                    </strong>
+                    <span>
+                      {plan === "ANNUAL"
+                        ? "One payment · 12 months"
+                        : billing === "PK"
+                          ? "Per month · manual rate"
+                          : "Per month"}
+                    </span>
+                  </>
+                ) : (
+                  <span>
+                    {quoteError ||
+                      (billing
+                        ? "Checking fee…"
+                        : "Choose your billing country")}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              className={`${styles.primary} ${styles.submitRegistration}`}
+              type="submit"
+              disabled={busy || !ready}
+            >
+              {busy
+                ? "Creating your registration…"
+                : user
+                  ? "Continue registration"
+                  : "Create account & continue"}
             </button>
           </form>
         </>

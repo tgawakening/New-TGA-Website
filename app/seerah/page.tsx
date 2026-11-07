@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { countries } from "countries-list";
 import { methodAvailable } from "@/lib/sirah/config";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import type { Metadata } from "next";
@@ -48,10 +50,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SeerahRoute() {
+export default async function SeerahRoute() {
+  const hint = (await headers()).get("x-vercel-ip-country")?.toUpperCase();
+  const visitorCountry =
+    hint && Object.hasOwn(countries, hint) ? hint : undefined;
   return (
     <div className={montserrat.variable}>
-      <SeerahPage initialCampaign={activeCampaign()} pakistanOnlineAvailable={methodAvailable("STRIPE", "PK", "PKR", "MONTHLY") || methodAvailable("PAYPAL", "PK", "PKR", "MONTHLY")} />
+      <SeerahPage
+        visitorCountry={visitorCountry}
+        initialCampaign={activeCampaign()}
+        pakistanOnlineAvailable={
+          methodAvailable("STRIPE", "PK", "PKR", "MONTHLY") ||
+          methodAvailable("PAYPAL", "PK", "PKR", "MONTHLY")
+        }
+      />
     </div>
   );
 }
