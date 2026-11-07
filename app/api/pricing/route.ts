@@ -120,6 +120,12 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({
       pricing: price,
+      cardAvailable: methodAvailable(
+        "STRIPE",
+        v.countryCode,
+        price.currency,
+        v.plan,
+      ),
       available: v.method
         ? methodAvailable(v.method, v.countryCode, price.currency, v.plan)
         : false,

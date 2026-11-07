@@ -18,7 +18,8 @@
     "prisma:seed": "node prisma/seed.mjs",
     "test:seerah": "node --test scripts/test-seerah-config.mjs",
     "test:sirah-workflow": "node --conditions=react-server --import tsx --test scripts/test-sirah-workflow.ts",
-    "sirah:database:status": "node scripts/sirah-database-status.cjs"
+    "sirah:database:status": "node scripts/sirah-database-status.cjs",
+    "sirah:stripe:check": "node --import tsx scripts/check-sirah-stripe.ts"
   },
   "engines": {
     "node": "20.x || 22.x"

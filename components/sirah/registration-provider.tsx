@@ -28,6 +28,7 @@ type Selection = {
   country?: string;
   plan?: "MONTHLY" | "ANNUAL";
   replacePreferences?: boolean;
+  requireBillingCountry?: boolean;
 };
 const RegistrationContext = createContext<(selection?: Selection) => void>(
   () => {},
@@ -35,12 +36,15 @@ const RegistrationContext = createContext<(selection?: Selection) => void>(
 export const useSirahRegistration = () => useContext(RegistrationContext);
 export function SirahRegistrationProvider({
   children,
+  entry,
 }: {
   children: ReactNode;
+  entry?: Selection;
 }) {
-  const [selection, setSelection] = useState<Selection>({});
-  const [mounted, setMounted] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [closedNotice, setClosedNotice] = useState(false);
+  const [selection, setSelection] = useState<Selection>(entry || {});
+  const [mounted, setMounted] = useState(Boolean(entry));
+  const [open, setOpen] = useState(Boolean(entry));
   const lastSelection = useRef<Selection>({});
   const dialog = useRef<HTMLDialogElement>(null);
   const previous = useRef<HTMLElement | null>(null);
@@ -83,6 +87,7 @@ export function SirahRegistrationProvider({
   return (
     <RegistrationContext.Provider
       value={(choice) => {
+        setClosedNotice(false);
         const next = choice || {};
         const changes: Selection = {};
         if (
@@ -103,14 +108,48 @@ export function SirahRegistrationProvider({
       }}
     >
       {children}
+      {closedNotice && (
+        <aside className={styles.closedRegistration} role="status">
+          <span>Your progress is kept for this visit.</span>
+          <button
+            type="button"
+            onClick={() => {
+              setClosedNotice(false);
+              setOpen(true);
+            }}
+          >
+            Enrol now
+          </button>
+          <button
+            type="button"
+            aria-label="Dismiss registration reminder"
+            onClick={() => setClosedNotice(false)}
+          >
+            ×
+          </button>
+        </aside>
+      )}
       {mounted && (
         <dialog
           ref={dialog}
           className={styles.dialog}
           aria-label="Register for Sīrah Beyond Chronology"
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            setOpen(false);
+            setClosedNotice(true);
+            if (entry)
+              window.history.replaceState(window.history.state, "", "/seerah");
+          }}
           onClick={(event) => {
-            if (event.target === event.currentTarget) dialog.current?.close();
+            if (event.target !== event.currentTarget) return;
+            const bounds = event.currentTarget.getBoundingClientRect();
+            if (
+              event.clientX < bounds.left ||
+              event.clientX > bounds.right ||
+              event.clientY < bounds.top ||
+              event.clientY > bounds.bottom
+            )
+              dialog.current?.close();
           }}
         >
           <div className={styles.dialogInner}>
@@ -127,7 +166,8 @@ export function SirahRegistrationProvider({
               initialCountry={selection.country}
               initialPlan={selection.plan}
               requireBillingCountry={Boolean(
-                selection.country && !/^[A-Z]{2}$/.test(selection.country),
+                entry?.requireBillingCountry ||
+                (selection.country && !/^[A-Z]{2}$/.test(selection.country)),
               )}
             />
           </div>

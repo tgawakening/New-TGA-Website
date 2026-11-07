@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import Stripe from "stripe";
 import sharp from "sharp";
 import { PDFDocument } from "pdf-lib";
-import { handleStripeWebhook } from "../services/payment.service";
+import { handleSirahStripeWebhook as handleStripeWebhook } from "../services/sirah-stripe-webhook.service";
 import { handleSirahPaypalWebhook } from "../services/sirah-webhooks.service";
 import { prisma } from "../lib/prisma";
 import {
@@ -42,6 +42,7 @@ import {
   addMonthsClamped,
 } from "../services/sirah-confirmation.service";
 import {
+  startSirahCheckout,
   verifySirahStripeSession,
   verifySirahStripeInvoice,
   verifySirahPaypal,
@@ -413,8 +414,8 @@ test("receipt uploads validate real content, reject invalid/oversized evidence, 
   );
 });
 async function stripeOrder(plan: "ANNUAL" | "MONTHLY") {
-  process.env.STRIPE_SECRET_KEY = "sk_test_synthetic";
-  process.env.STRIPE_WEBHOOK_SECRET = "whsec_synthetic";
+  process.env.SIRAH_STRIPE_SECRET_KEY = "sk_test_synthetic";
+  process.env.SIRAH_STRIPE_WEBHOOK_SECRET = "whsec_synthetic";
   process.env.SIRAH_STRIPE_ACCOUNT_ID = "acct_synthetic";
   process.env.SIRAH_STRIPE_ANNUAL_CURRENCIES = "GBP";
   process.env.SIRAH_STRIPE_MONTHLY_CURRENCIES = "GBP";
@@ -970,7 +971,7 @@ test("the real Stripe webhook entry verifies signatures before confirming, and d
   assert.equal(await prisma.sirahPaymentEvent.count(), 0);
   const signature = sdk.webhooks.generateTestHeaderString({
     payload: payloadText,
-    secret: process.env.STRIPE_WEBHOOK_SECRET!,
+    secret: process.env.SIRAH_STRIPE_WEBHOOK_SECRET!,
   });
   await handleStripeWebhook({ signature, payloadText }, fake.client);
   await handleStripeWebhook({ signature, payloadText }, fake.client);
@@ -1258,4 +1259,86 @@ test("paid international invitations stay separate from public groups and use th
       },
     });
   }
+});
+
+test("dedicated Sīrah checkout creates a monthly subscription and a single annual card payment", async () => {
+  for (const plan of ["MONTHLY", "ANNUAL"] as const) {
+    process.env.SIRAH_STRIPE_SECRET_KEY = "sk_test_synthetic";
+    process.env.SIRAH_STRIPE_WEBHOOK_SECRET = "whsec_synthetic";
+    process.env.SIRAH_STRIPE_ACCOUNT_ID = "acct_synthetic";
+    process.env.SIRAH_STRIPE_MONTHLY_CURRENCIES = "GBP";
+    process.env.SIRAH_STRIPE_ANNUAL_CURRENCIES = "GBP";
+    enableManual();
+    const result = await create("GB", plan);
+    const order = await repriceSirah(
+      result.orderId,
+      result.userId,
+      0,
+      "GB",
+      plan,
+      "STRIPE",
+    );
+    let captured: Stripe.Checkout.SessionCreateParams | undefined;
+    const fake = {
+      accounts: { retrieve: async () => ({ id: "acct_synthetic" }) },
+      checkout: {
+        sessions: {
+          create: async (params: Stripe.Checkout.SessionCreateParams) => {
+            captured = params;
+            return {
+              id: `cs_${plan}`,
+              url: "https://checkout.stripe.com/synthetic-only",
+            };
+          },
+        },
+      },
+    } as unknown as Stripe;
+    await startSirahCheckout(
+      order.id,
+      result.userId,
+      order.revision,
+      approvedTestTerms.version,
+      fake,
+    );
+    assert.equal(
+      captured!.mode,
+      plan === "MONTHLY" ? "subscription" : "payment",
+    );
+    assert.deepEqual(captured!.payment_method_types, ["card"]);
+    assert.equal(
+      captured!.line_items![0].price_data!.unit_amount,
+      plan === "MONTHLY" ? 2999 : 32389,
+    );
+    assert.equal(
+      captured!.line_items![0].price_data!.recurring?.interval,
+      plan === "MONTHLY" ? "month" : undefined,
+    );
+    assert.equal(
+      (await publicSirahOrder(order.id, result.userId)).paymentState,
+      "PROCESSING",
+    );
+    assert.equal(
+      canAccessSirah(
+        await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } }),
+      ),
+      false,
+    );
+  }
+});
+
+test("legacy credentials never enable dedicated Sīrah cards and live needs both approvals", () => {
+  enableManual();
+  process.env.STRIPE_SECRET_KEY = "sk_test_old_batch_only";
+  process.env.STRIPE_WEBHOOK_SECRET = "whsec_old_batch_only";
+  process.env.SIRAH_STRIPE_ACCOUNT_ID = "acct_synthetic";
+  process.env.SIRAH_STRIPE_MONTHLY_CURRENCIES = "GBP";
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), false);
+  process.env.SIRAH_STRIPE_SECRET_KEY = "sk_live_synthetic_only";
+  process.env.SIRAH_STRIPE_WEBHOOK_SECRET = "whsec_synthetic_only";
+  process.env.SIRAH_LIVE_PAYMENTS_APPROVED = "true";
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), false);
+  process.env.SIRAH_STRIPE_SANDBOX_VERIFIED = "true";
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), true);
+  delete process.env.SIRAH_LIVE_PAYMENTS_APPROVED;
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), false);
 });

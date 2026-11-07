@@ -123,8 +123,9 @@ export function methodAvailable(
   if (!termsFor(plan)) return false;
   if (
     method === "STRIPE" &&
-    !process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_") &&
-    process.env.SIRAH_LIVE_PAYMENTS_APPROVED !== "true"
+    !/^(sk|rk)_test_/.test(process.env.SIRAH_STRIPE_SECRET_KEY || "") &&
+    (process.env.SIRAH_LIVE_PAYMENTS_APPROVED !== "true" ||
+      process.env.SIRAH_STRIPE_SANDBOX_VERIFIED !== "true")
   )
     return false;
   if (
@@ -147,8 +148,8 @@ export function methodAvailable(
   if (!configuredCurrencies(method, plan).has(currency)) return false;
   if (method === "STRIPE")
     return Boolean(
-      process.env.STRIPE_SECRET_KEY &&
-      process.env.STRIPE_WEBHOOK_SECRET &&
+      process.env.SIRAH_STRIPE_SECRET_KEY &&
+      process.env.SIRAH_STRIPE_WEBHOOK_SECRET &&
       process.env.SIRAH_STRIPE_ACCOUNT_ID,
     );
   if (plan === "MONTHLY" && termsFor(plan)?.cancellationTiming === "PERIOD_END")

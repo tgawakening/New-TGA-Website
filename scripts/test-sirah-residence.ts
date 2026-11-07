@@ -91,8 +91,8 @@ test("only configured trusted country headers suggest residence; missing lookup 
 test("synthetically verified card readiness selects 3000; manual remains 3500 independently", () => {
   const keys = [
     "SIRAH_PK_RECURRING_VERIFIED",
-    "STRIPE_SECRET_KEY",
-    "STRIPE_WEBHOOK_SECRET",
+    "SIRAH_STRIPE_SECRET_KEY",
+    "SIRAH_STRIPE_WEBHOOK_SECRET",
     "SIRAH_STRIPE_ACCOUNT_ID",
     "SIRAH_STRIPE_MONTHLY_CURRENCIES",
     "SIRAH_MONTHLY_TERMS_JSON",
@@ -101,8 +101,8 @@ test("synthetically verified card readiness selects 3000; manual remains 3500 in
   const previous = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   Object.assign(process.env, {
     SIRAH_PK_RECURRING_VERIFIED: "true",
-    STRIPE_SECRET_KEY: "sk_test_synthetic_only",
-    STRIPE_WEBHOOK_SECRET: "whsec_synthetic_only",
+    SIRAH_STRIPE_SECRET_KEY: "sk_test_synthetic_only",
+    SIRAH_STRIPE_WEBHOOK_SECRET: "whsec_synthetic_only",
     SIRAH_STRIPE_ACCOUNT_ID: "acct_synthetic_only",
     SIRAH_STRIPE_MONTHLY_CURRENCIES: "PKR",
     SIRAH_MANUAL_ACCOUNTS_VERIFIED: "true",

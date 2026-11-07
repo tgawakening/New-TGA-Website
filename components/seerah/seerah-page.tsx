@@ -977,13 +977,18 @@ function SeerahContent({
 }
 
 export default function SeerahPage(props: {
+  registrationEntry?: {
+    country?: string;
+    plan?: "MONTHLY" | "ANNUAL";
+    requireBillingCountry?: boolean;
+  };
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
   visitorCountry?: string;
   availability?: Record<string, Record<string, boolean>>;
 }) {
   return (
-    <SirahRegistrationProvider>
+    <SirahRegistrationProvider entry={props.registrationEntry}>
       <SeerahContent {...props} />
     </SirahRegistrationProvider>
   );
