@@ -120,6 +120,7 @@ export function methodAvailable(
   currency: string,
   plan: SirahPlan,
 ) {
+  if (method === "PAYPAL" && country === "PK") return false;
   if (!termsFor(plan)) return false;
   if (
     method === "STRIPE" &&

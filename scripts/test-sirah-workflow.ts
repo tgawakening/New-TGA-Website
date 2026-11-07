@@ -1555,3 +1555,285 @@ test("production apex and www origins are accepted with an internal app URL, whi
     true,
   );
 });
+
+test("Pakistan never offers PayPal, including with otherwise configured GBP routes", () => {
+  enableManual();
+  Object.assign(process.env, {
+    PAYPAL_ENV: "sandbox",
+    PAYPAL_CLIENT_ID: "synthetic",
+    PAYPAL_CLIENT_SECRET: "synthetic",
+    SIRAH_PAYPAL_MERCHANT_ID: "MERCHANT_TEST",
+    SIRAH_PAYPAL_WEBHOOK_ID: "WEBHOOK_TEST",
+    SIRAH_PAYPAL_PRODUCT_ID: "PROD_TEST",
+    SIRAH_PAYPAL_MONTHLY_CURRENCIES: "GBP",
+    SIRAH_PAYPAL_ANNUAL_CURRENCIES: "GBP",
+  });
+  assert.equal(methodAvailable("PAYPAL", "PK", "GBP", "MONTHLY"), false);
+  assert.equal(methodAvailable("PAYPAL", "PK", "GBP", "ANNUAL"), false);
+  assert.equal(methodAvailable("PAYPAL", "GB", "GBP", "MONTHLY"), true);
+});
+
+test("PayPal reuses only a fully matching Sīrah plan and leaves incompatible preferred plans untouched", async () => {
+  const plan = (id: string, outstanding = false) => ({
+    id,
+    status: "ACTIVE",
+    product_id: "PROD_TEST",
+    quantity_supported: false,
+    billing_cycles: [
+      {
+        tenure_type: "REGULAR",
+        sequence: 1,
+        total_cycles: 12,
+        frequency: { interval_unit: "MONTH", interval_count: 1 },
+        pricing_scheme: {
+          fixed_price: { currency_code: "GBP", value: "29.99" },
+        },
+      },
+    ],
+    payment_preferences: {
+      auto_bill_outstanding: outstanding,
+      payment_failure_threshold: 1,
+      setup_fee: { currency_code: "GBP", value: "0.00" },
+    },
+    taxes: null,
+  });
+  for (const outstanding of [false, true]) {
+    enableManual();
+    Object.assign(process.env, {
+      PAYPAL_ENV: "sandbox",
+      PAYPAL_CLIENT_ID: "synthetic",
+      PAYPAL_CLIENT_SECRET: "synthetic",
+      SIRAH_PAYPAL_MERCHANT_ID: "MERCHANT_TEST",
+      SIRAH_PAYPAL_WEBHOOK_ID: "WEBHOOK_TEST",
+      SIRAH_PAYPAL_PRODUCT_ID: "PROD_TEST",
+      SIRAH_PAYPAL_MONTHLY_CURRENCIES: "GBP",
+      SIRAH_PAYPAL_MONTHLY_PLAN_GBP: "P-PREFERRED",
+    });
+    const result = await create("GB");
+    const order = await repriceSirah(
+      result.orderId,
+      result.userId,
+      0,
+      "GB",
+      "MONTHLY",
+      "PAYPAL",
+    );
+    let created = 0;
+    let selected: unknown;
+    let createBody: Record<string, unknown> | undefined;
+    global.fetch = async (raw, init) => {
+      const url = String(raw);
+      const method = init?.method || "GET";
+      const response = (data: unknown) =>
+        new Response(JSON.stringify(data), {
+          headers: { "Content-Type": "application/json" },
+        });
+      if (url.endsWith("/v1/oauth2/token"))
+        return response({ access_token: "synthetic" });
+      if (url.endsWith("/v1/billing/plans/P-PREFERRED") && method === "GET")
+        return response(plan("P-PREFERRED", outstanding));
+      if (url.endsWith("/v1/billing/plans") && method === "POST") {
+        created++;
+        createBody = JSON.parse(String(init?.body));
+        return response(plan("P-NEW"));
+      }
+      if (url.endsWith("/v1/billing/plans/P-NEW") && method === "GET")
+        return response(plan("P-NEW"));
+      if (url.endsWith("/v1/billing/subscriptions") && method === "POST") {
+        selected = JSON.parse(String(init?.body)).plan_id;
+        return response({
+          id: `I-TEST-${outstanding}`,
+          links: [
+            {
+              rel: "approve",
+              href: "https://www.sandbox.paypal.com/synthetic-approval",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected provider test request: ${method} ${url}`);
+    };
+    await startSirahCheckout(
+      order.id,
+      result.userId,
+      order.revision,
+      approvedTestTerms.version,
+    );
+    assert.equal(created, outstanding ? 1 : 0);
+    assert.equal(selected, outstanding ? "P-NEW" : "P-PREFERRED");
+    const stored = await publicSirahOrder(order.id, result.userId);
+    assert.equal(stored.paymentState, "PROCESSING");
+    assert.equal(stored.paidMinor, 0);
+    assert.equal(stored.enrolmentState, "PENDING");
+    if (outstanding) {
+      assert.equal(createBody?.product_id, "PROD_TEST");
+      assert.equal(createBody?.status, "ACTIVE");
+      assert.equal(createBody?.quantity_supported, false);
+      assert.deepEqual(createBody?.payment_preferences, {
+        auto_bill_outstanding: false,
+        payment_failure_threshold: 1,
+      });
+    }
+  }
+});
+
+test("PayPal upfront rejects an altered approved quote before capturing any funds", async () => {
+  enableManual();
+  Object.assign(process.env, {
+    PAYPAL_ENV: "sandbox",
+    PAYPAL_CLIENT_ID: "synthetic",
+    PAYPAL_CLIENT_SECRET: "synthetic",
+    SIRAH_PAYPAL_MERCHANT_ID: "MERCHANT_TEST",
+    SIRAH_PAYPAL_WEBHOOK_ID: "WEBHOOK_TEST",
+    SIRAH_PAYPAL_ANNUAL_CURRENCIES: "GBP",
+  });
+  const result = await create("GB", "ANNUAL");
+  const order = await repriceSirah(
+    result.orderId,
+    result.userId,
+    0,
+    "GB",
+    "ANNUAL",
+    "PAYPAL",
+  );
+  await prisma.sirahOrder.update({
+    where: { id: order.id },
+    data: { providerOrderId: "PP-QUOTE-TEST", paymentState: "PROCESSING" },
+  });
+  let captures = 0;
+  for (const bad of ["merchant", "amount", "currency"]) {
+    global.fetch = async (raw, init) => {
+      const url = String(raw);
+      const response = (data: unknown) =>
+        new Response(JSON.stringify(data), {
+          headers: { "Content-Type": "application/json" },
+        });
+      if (url.endsWith("/v1/oauth2/token"))
+        return response({ access_token: "synthetic" });
+      if (url.endsWith("/v2/checkout/orders/PP-QUOTE-TEST"))
+        return response({
+          id: "PP-QUOTE-TEST",
+          status: "APPROVED",
+          purchase_units: [
+            {
+              custom_id: order.id,
+              payee: {
+                merchant_id:
+                  bad === "merchant" ? "WRONG_MERCHANT" : "MERCHANT_TEST",
+              },
+              amount: {
+                currency_code: bad === "currency" ? "USD" : "GBP",
+                value: bad === "amount" ? "1.00" : "323.89",
+              },
+            },
+          ],
+        });
+      if (url.endsWith("/capture") && init?.method === "POST") {
+        captures++;
+        throw new Error("Capture must not be called for an altered quote.");
+      }
+      throw new Error(`Unexpected provider request: ${url}`);
+    };
+    await assert.rejects(
+      () => verifySirahPaypal(order.id, "PP-QUOTE-TEST", true),
+      /merchant, amount or currency/,
+    );
+  }
+  assert.equal(captures, 0);
+  const pending = await publicSirahOrder(order.id, result.userId);
+  assert.equal(pending.paidMinor, 0);
+  assert.equal(pending.enrolmentState, "PENDING");
+});
+
+test("a verified PayPal order-approval webhook uses existing capture checks and duplicate delivery enrols once", async () => {
+  enableManual();
+  Object.assign(process.env, {
+    PAYPAL_ENV: "sandbox",
+    PAYPAL_CLIENT_ID: "synthetic",
+    PAYPAL_CLIENT_SECRET: "synthetic",
+    SIRAH_PAYPAL_MERCHANT_ID: "MERCHANT_TEST",
+    SIRAH_PAYPAL_WEBHOOK_ID: "WEBHOOK_TEST",
+    SIRAH_PAYPAL_ANNUAL_CURRENCIES: "GBP",
+  });
+  const result = await create("GB", "ANNUAL");
+  const order = await repriceSirah(
+    result.orderId,
+    result.userId,
+    0,
+    "GB",
+    "ANNUAL",
+    "PAYPAL",
+  );
+  await prisma.sirahOrder.update({
+    where: { id: order.id },
+    data: { providerOrderId: "PP-APPROVED-HOOK", paymentState: "PROCESSING" },
+  });
+  let captures = 0;
+  const payment = () => ({
+    id: "PP-APPROVED-HOOK",
+    status: captures ? "COMPLETED" : "APPROVED",
+    purchase_units: [
+      {
+        custom_id: order.id,
+        payee: { merchant_id: "MERCHANT_TEST" },
+        amount: { currency_code: "GBP", value: "323.89" },
+        ...(captures
+          ? {
+              payments: {
+                captures: [
+                  {
+                    id: "CAPTURE-APPROVED-HOOK",
+                    status: "COMPLETED",
+                    amount: { currency_code: "GBP", value: "323.89" },
+                  },
+                ],
+              },
+            }
+          : {}),
+      },
+    ],
+  });
+  global.fetch = async (raw, init) => {
+    const url = String(raw);
+    const response = (data: unknown) =>
+      new Response(JSON.stringify(data), {
+        headers: { "Content-Type": "application/json" },
+      });
+    if (url.endsWith("/v1/oauth2/token"))
+      return response({ access_token: "synthetic" });
+    if (url.endsWith("/v1/notifications/verify-webhook-signature"))
+      return response({ verification_status: "SUCCESS" });
+    if (url.endsWith("/v2/checkout/orders/PP-APPROVED-HOOK"))
+      return response(payment());
+    if (
+      url.endsWith("/v2/checkout/orders/PP-APPROVED-HOOK/capture") &&
+      init?.method === "POST"
+    ) {
+      captures++;
+      return response(payment());
+    }
+    throw new Error(`Unexpected provider request: ${url}`);
+  };
+  const request = () =>
+    new Request("https://example.test/api/sirah/webhooks/paypal", {
+      method: "POST",
+      body: JSON.stringify({
+        id: "EVENT-APPROVED-HOOK",
+        event_type: "CHECKOUT.ORDER.APPROVED",
+        resource: { id: "PP-APPROVED-HOOK" },
+      }),
+    });
+  await handleSirahPaypalWebhook(request());
+  await handleSirahPaypalWebhook(request());
+  assert.equal(captures, 1);
+  const paid = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(paid.paymentState, "PAID");
+  assert.equal(paid.paidCount, 1);
+  assert.equal(paid.enrolmentState, "ACTIVE");
+  assert.equal(
+    await prisma.enrollment.count({ where: { userId: result.userId } }),
+    1,
+  );
+});
