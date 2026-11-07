@@ -32,7 +32,7 @@ The production origin responds with `x-do-app-origin: ec0a3209-f496-4fc4-b695-93
 
 - `npm run check`: lint, TypeScript and production build passed.
 - `npm run test:seerah`: six configuration tests passed.
-- `npm run test:sirah-workflow`: all 30 tests passed against isolated local MySQL, including same-order reuse, method pricing, resume tokens, email deduplication, verified confirmation, signed synthetic webhooks and older registrations.
+- `npm run test:sirah-workflow`: all 31 tests passed against isolated local MySQL, including same-order reuse, method pricing, resume tokens, email deduplication, verified confirmation, signed synthetic webhooks and older registrations.
 - The resume migration applied successfully in that isolated database. No production database operation was performed in this task.
 - Chromium checks against the production build at 390, 768, 1,350 and 1,440 px: correct feature placement, one feature/link, correct responsive source, no section overflow, clear mobile copy, working `/seerah` navigation and preserved landing hero.
 - Eight fresh registration entry checks: direct URL and landing button at all four widths. Blank account fields, inline methods in the same form, and no dialog horizontal overflow.
@@ -46,3 +46,9 @@ The production origin responds with `x-do-app-origin: ec0a3209-f496-4fc4-b695-93
 Review and merge updated **PR #13** into `main`, then let DigitalOcean deploy that resulting main commit (or select that exact commit in App Platform if automatic deployment is disabled). The homepage change adds no migration. The already merged registration migration is recorded as completed in `e8f92dd`; verify the active deployment's source branch and SHA in DigitalOcean before declaring the homepage live. Finally check the public homepage feature appears before Mission & Vision, links to `/seerah`, and both registration entry points still work.
 
 No production merge or deployment was performed for this homepage update.
+
+## Follow-up synchronization
+
+The owner identified a newer main push, `0a8f6cdfec576318d6d67f70ba995da67ec5bb4e`, containing the approved-domain registration submission and payment-return fix. That main commit was merged into this review branch, preserving the newer server origin checks. Build, lint, TypeScript and all 31 isolated workflow tests passed again.
+
+Public read-only invalid-resume probes now return HTTP 410 on both `https://tga-awakening.com` and `https://www.tga-awakening.com`, while an unrelated Origin returns HTTP 403 on both. This verifies the deployed origin handling without creating a registration or charging a payment. It does not expose the active DigitalOcean source SHA; the homepage feature remains in this review PR.
