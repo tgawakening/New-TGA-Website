@@ -34,6 +34,11 @@ export function getGroupInvitation(country: string) {
 }
 export type SirahTerms = {
   version: string;
+  requiresConfirmedCommencement?: boolean;
+  cohortCommencementDate?: string;
+  cohortRevision?: number;
+  earlyServiceRequestText?: string;
+  digitalContentConsentText?: string;
   commitment: string;
   cancellation: string;
   refund: string;
@@ -57,6 +62,15 @@ export function termsFor(plan: SirahPlan): SirahTerms | null {
       ] || "null",
     );
     return value &&
+      (value.requiresConfirmedCommencement === undefined ||
+        typeof value.requiresConfirmedCommencement === "boolean") &&
+      ["earlyServiceRequestText", "digitalContentConsentText"].every(
+        (key) =>
+          value[key] === undefined ||
+          (typeof value[key] === "string" &&
+            value[key].trim() &&
+            value[key].length <= 2000),
+      ) &&
       ["IMMEDIATE", "PERIOD_END"].includes(value.cancellationTiming) &&
       ["KEEP", "PAUSE"].includes(value.failedPaymentAccess) &&
       (value.failedPaymentGraceDays === undefined ||
@@ -76,7 +90,12 @@ export function termsFor(plan: SirahPlan): SirahTerms | null {
         "refund",
         "access",
         "tax",
-      ].every((key) => typeof value[key] === "string" && value[key].trim())
+      ].every(
+        (key) =>
+          typeof value[key] === "string" &&
+          value[key].trim() &&
+          !/<<[A-Z_]+>>/.test(value[key]),
+      )
       ? value
       : null;
   } catch {

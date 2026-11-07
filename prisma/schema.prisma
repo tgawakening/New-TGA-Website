@@ -542,3 +542,15 @@ model SirahResumeLink {
 
   @@index([orderId, createdAt])
 }
+
+// Current Sīrah cohort schedule. Null is explicitly pending; orientation is separate.
+model SirahCohort {
+  batchCode      String   @id
+  commencementAt DateTime? @db.DateTime(3)
+  confirmedAt    DateTime? @db.DateTime(3)
+  confirmedBy    String?
+  sourceReference String?
+  revision       Int      @default(0)
+  history        Json?
+  updatedAt      DateTime @updatedAt
+}

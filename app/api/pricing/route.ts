@@ -1,3 +1,8 @@
+import {
+  publicSirahCohort,
+  cohortAllowsPayment,
+  snapshotSirahCohort,
+} from "@/services/sirah-cohort.service";
 import { defaultPriceMethod } from "@/lib/sirah/payment-display";
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -118,28 +123,39 @@ export async function POST(request: Request) {
       v.plan,
       v.method || defaultPriceMethod(v.countryCode, v.plan),
     );
+    const cohort = await publicSirahCohort();
+    const commencementReady = cohortAllowsPayment(termsFor(v.plan), cohort);
     return NextResponse.json({
+      cohort,
       pricing: price,
       methods: (
         ["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"] as const
-      ).filter((method) =>
-        methodAvailable(method, v.countryCode, price.currency, v.plan),
+      ).filter(
+        (method) =>
+          commencementReady &&
+          methodAvailable(method, v.countryCode, price.currency, v.plan),
       ),
-      manualAccounts: v.countryCode === "PK"
-        ? manualAccounts().filter(account =>
-            methodAvailable(account.method, v.countryCode, price.currency, v.plan),
-          )
-        : [],
-      cardAvailable: methodAvailable(
-        "STRIPE",
-        v.countryCode,
-        price.currency,
-        v.plan,
-      ),
+      manualAccounts:
+        v.countryCode === "PK"
+          ? manualAccounts().filter(
+              (account) =>
+                commencementReady &&
+                methodAvailable(
+                  account.method,
+                  v.countryCode,
+                  price.currency,
+                  v.plan,
+                ),
+            )
+          : [],
+      cardAvailable:
+        commencementReady &&
+        methodAvailable("STRIPE", v.countryCode, price.currency, v.plan),
       available: v.method
-        ? methodAvailable(v.method, v.countryCode, price.currency, v.plan)
+        ? commencementReady &&
+          methodAvailable(v.method, v.countryCode, price.currency, v.plan)
         : false,
-      terms: termsFor(v.plan),
+      terms: snapshotSirahCohort(termsFor(v.plan), cohort),
     });
   } catch {
     return NextResponse.json(

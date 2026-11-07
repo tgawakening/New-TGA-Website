@@ -244,7 +244,9 @@ export async function recordSirahRefund(
         refundedMinor: { increment: amountMinor },
         paymentState: all ? "REFUNDED" : "PAID",
         ...(terms?.refundAccess === "REVOKE"
-          ? refundEnd ? {cancelledAt:order.cancelledAt || new Date(),accessEndsAt:refundEnd,
+          ? all && order.plan === "ANNUAL" && terms.requiresConfirmedCommencement
+            ? { enrolmentState: "CANCELLED", cancelledAt: order.cancelledAt || new Date(), accessEndsAt: new Date() }
+            : refundEnd ? {cancelledAt:order.cancelledAt || new Date(),accessEndsAt:refundEnd,
               ...(refundEnd <= new Date() ? {enrolmentState:"CANCELLED"} : {})}
             : { enrolmentState: "CANCELLED" }
           : releaseHold

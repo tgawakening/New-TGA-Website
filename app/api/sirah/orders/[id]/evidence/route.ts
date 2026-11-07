@@ -51,6 +51,11 @@ export async function POST(
         parsed.data,
         content,
         String(body.get("acceptedTermsVersion") || ""),
+        {
+          earlyServiceRequested: body.get("earlyServiceRequested") === "true",
+          digitalContentConsented:
+            body.get("digitalContentConsented") === "true",
+        },
       ),
     );
   } catch (error) {

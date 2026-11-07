@@ -18,6 +18,8 @@ export async function POST(
       .object({
         revision: z.number().int().nonnegative(),
         acceptedTermsVersion: z.string().min(1),
+        earlyServiceRequested: z.boolean().optional(),
+        digitalContentConsented: z.boolean().optional(),
       })
       .strict()
       .safeParse(await request.json());
@@ -31,6 +33,10 @@ export async function POST(
         input.data.acceptedTermsVersion,
         undefined,
         returnOrigin,
+        {
+          earlyServiceRequested: input.data.earlyServiceRequested,
+          digitalContentConsented: input.data.digitalContentConsented,
+        },
       ),
     );
   } catch (error) {

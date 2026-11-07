@@ -1,4 +1,5 @@
 "use client";
+import { SirahAdminCohort } from "./admin-cohort";
 import { useEffect, useState, type FormEvent } from "react";
 import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
@@ -111,6 +112,7 @@ export function SirahAdminStudents({
           Export this results page (CSV)
         </a>
       </p>
+      <SirahAdminCohort />
       <div className={styles.filters}>
         <label>
           Search name, email, phone or reference

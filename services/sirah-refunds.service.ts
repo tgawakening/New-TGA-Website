@@ -1,4 +1,9 @@
 import "server-only";
+import type { SirahTerms } from "@/lib/sirah/config";
+import {
+  courseStartRefundThrough,
+  pakistanCalendarDate,
+} from "@/lib/sirah/cohort-dates";
 import {
   calculateSirahAnnualRefund,
   calculateSirahAnnualUnusedMonths,
@@ -59,7 +64,57 @@ export async function quoteSirahAnnualRefund(
       order.programmeStart,
       new Date(),
     );
-    if (unusedEligibleMonths > calendar.unusedEligibleMonths)
+    const terms = order.terms as SirahTerms | null;
+    const promisedDates: string[] = [];
+    if (terms?.requiresConfirmedCommencement) {
+      if (terms.cohortCommencementDate)
+        promisedDates.push(terms.cohortCommencementDate);
+      const cohort = await tx.sirahCohort.findUnique({
+        where: { batchCode: order.batchCode },
+      });
+      if (cohort?.confirmedAt && cohort.commencementAt)
+        promisedDates.push(cohort.commencementAt.toISOString().slice(0, 10));
+      for (const change of Array.isArray(cohort?.history)
+        ? cohort.history
+        : []) {
+        if (
+          change &&
+          typeof change === "object" &&
+          !Array.isArray(change) &&
+          typeof change.commencementDate === "string" &&
+          typeof change.at === "string" &&
+          new Date(change.at) >= order.createdAt
+        )
+          promisedDates.push(change.commencementDate);
+      }
+    }
+    const commencementDate =
+      promisedDates
+        .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+        .sort()
+        .at(-1) || null;
+    const through = commencementDate
+      ? courseStartRefundThrough(commencementDate)
+      : null;
+    const today = pakistanCalendarDate(new Date());
+    const fullRefundEligible =
+      !!commencementDate && today >= commencementDate && today <= through!;
+    const courseStartProtection = {
+      commencementDate,
+      fullRefundThrough: through,
+      timeZone: "Asia/Karachi",
+      status: !commencementDate
+        ? "PENDING"
+        : today < commencementDate
+          ? "NOT_STARTED_REVIEW_REQUIRED"
+          : fullRefundEligible
+            ? "ELIGIBLE_FULL_REFUND"
+            : "EXPIRED",
+    };
+    if (
+      !fullRefundEligible &&
+      unusedEligibleMonths > calendar.unusedEligibleMonths
+    )
       throw new SirahError(
         "The proposed standard refunds only fully unused months. Statutory exceptions require separate staff review.",
         409,
@@ -71,8 +126,20 @@ export async function quoteSirahAnnualRefund(
         unusedEligibleMonths,
         currency: order.currency,
       }),
+      ...(fullRefundEligible
+        ? {
+            cumulativeCapMinor: collected,
+            additionalRefundMinor: collected - order.refundedMinor,
+            priorRefundExceedsPolicyCap: false,
+            calculationVersion: "sirah-course-start-full-refund-v1",
+          }
+        : {}),
+      courseStartProtection,
+      statutoryCancellationReviewRequired: true,
       usedMonths: calendar.usedMonths,
-      proposedAccessEndsAt: calendar.paidThrough.toISOString(),
+      proposedAccessEndsAt: fullRefundEligible
+        ? new Date().toISOString()
+        : calendar.paidThrough.toISOString(),
     };
     await auditSirah(tx, orderId, actor, "ANNUAL_REFUND_QUOTED", {
       ...quote,

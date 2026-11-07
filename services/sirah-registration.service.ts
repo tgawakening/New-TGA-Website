@@ -1,5 +1,6 @@
 import { defaultPriceMethod } from "@/lib/sirah/payment-display";
 import "server-only";
+import { publicSirahCohort, cohortAllowsPayment, snapshotSirahCohort } from "./sirah-cohort.service";
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
@@ -76,6 +77,10 @@ export async function registerSirah(
     input.plan,
     input.method || defaultPriceMethod(input.countryCode, input.plan),
   );
+  const cohort = await publicSirahCohort();
+  const initialTerms = snapshotSirahCohort(termsFor(input.plan), cohort);
+  if (input.method && !cohortAllowsPayment(termsFor(input.plan), cohort))
+    throw new SirahError("The first paid teaching date is pending owner confirmation. Save a pending registration without payment.");
   if (
     input.method &&
     !methodAvailable(
@@ -156,8 +161,8 @@ export async function registerSirah(
         plan: input.plan,
         method: input.method || null,
         terms:
-          input.method && termsFor(input.plan)
-            ? jsonValue(termsFor(input.plan))
+          input.method && initialTerms
+            ? jsonValue(initialTerms)
             : Prisma.DbNull,
         pricingVersion: initial.pricingVersion,
         currency: initial.currency,
@@ -195,10 +200,12 @@ export async function ownedSirahOrder(orderId: string, userId: string) {
 }
 export async function publicSirahOrder(orderId: string, userId: string) {
   const order = await ownedSirahOrder(orderId, userId);
+  const cohort = await publicSirahCohort();
+  const commencementReady = cohortAllowsPayment(termsFor(order.plan as SirahPlan), cohort);
   const methods = (
     ["BANK_TRANSFER", "JAZZCASH", "STRIPE", "PAYPAL"] as SirahMethod[]
   ).filter((method) =>
-    methodAvailable(
+    commencementReady && methodAvailable(
       method,
       order.countryCode,
       order.currency,
@@ -211,6 +218,7 @@ export async function publicSirahOrder(orderId: string, userId: string) {
   });
   return {
     id: order.id,
+    cohort,
     fullName: student.fullName,
     email: student.email,
     reference: order.reference,
@@ -246,7 +254,7 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     manualAccounts:
       order.countryCode === "PK" &&
       methods.some((m) => ["BANK_TRANSFER", "JAZZCASH"].includes(m))
-        ? manualAccounts()
+        ? manualAccounts().filter(account => methods.includes(account.method))
         : [],
     paymentSupportUrl: PAYMENT_SUPPORT_URL,
     // Deliberately no course-group URL. The confirmed endpoint checks entitlement.
@@ -265,6 +273,10 @@ export async function repriceSirah(
     plan,
     method || defaultPriceMethod(countryCode, plan),
   );
+  const cohort = await publicSirahCohort();
+  const selectedTerms = snapshotSirahCohort(termsFor(plan), cohort);
+  if (method && !cohortAllowsPayment(termsFor(plan), cohort))
+    throw new SirahError("The first paid teaching date is pending owner confirmation. Payment remains closed.");
   if (
     method &&
     !methodAvailable(method, countryCode, price.currency, plan, {
@@ -297,7 +309,7 @@ export async function repriceSirah(
         amountMinor: price.amountMinor,
         totalMinor: price.totalMinor,
         pricingVersion: price.pricingVersion,
-        terms: termsFor(plan) ? jsonValue(termsFor(plan)) : Prisma.DbNull,
+        terms: selectedTerms ? jsonValue(selectedTerms) : Prisma.DbNull,
         revision: { increment: 1 },
       },
     });
