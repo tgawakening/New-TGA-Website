@@ -1,7 +1,7 @@
 "use client";
 
 import { countries } from "countries-list";
-import { resolveMarket, priceFor, formatSirahMoney } from "@/lib/sirah/catalog";
+import { resolveMarket, priceFor, formatSirahMoney, annualSirahSavings } from "@/lib/sirah/catalog";
 import {
   useResidenceSelection,
   saveResidence,
@@ -376,10 +376,9 @@ function Plan({
           </p>
         </>
       )}
-      {annual && (
+      {annual && plan && (
         <p className={styles.planNote}>
-          Save approximately 10% compared with 12 online monthly payments. One
-          payment covers the full 12 months.
+          Save {formatSirahMoney(annualSirahSavings(country).savingMinor, plan.currency)} — approximately {annualSirahSavings(country).approximatePercent}% compared with 12 online monthly payments. Pay once for 12 months.
         </p>
       )}
       {available === false && (

@@ -17,6 +17,7 @@ import {
 } from "libphonenumber-js/max";
 import {
   formatSirahMoney,
+  annualSirahSavings,
   type SirahPlan,
   type SirahMethod,
 } from "@/lib/sirah/catalog";
@@ -1034,8 +1035,7 @@ export function SirahRegistrationForm({
             <div className={styles.planNotes} aria-live="polite">
               {billing && plan === "ANNUAL" && (
                 <p>
-                  Save approximately 10% compared with 12 online monthly
-                  payments. One payment covers the full 12 months.
+                  Save {formatSirahMoney(annualSirahSavings(billing).savingMinor, annualSirahSavings(billing).currency)} — approximately {annualSirahSavings(billing).approximatePercent}% compared with 12 online monthly payments. Pay once for 12 months.
                 </p>
               )}
               {quote?.country === billing && quote.plan === plan && (
@@ -1400,8 +1400,7 @@ export function SirahRegistrationForm({
               </p>
             ) : (
               <p>
-                Annual upfront is approximately 10% less than 12 online monthly
-                payments.
+                Save {formatSirahMoney(annualSirahSavings(order.countryCode).savingMinor, order.currency)} — approximately {annualSirahSavings(order.countryCode).approximatePercent}% compared with 12 online monthly payments.
               </p>
             )}
             {order.countryCode === "PK" &&
@@ -1609,7 +1608,7 @@ export function SirahRegistrationForm({
                         </p>
                         <p>
                           {selectedRouteAvailable
-                            ? "Add SIRAH BEYOND CHRONOLOGY and your registration reference in the payment remarks. After paying, upload your receipt here or send it to the payment-support WhatsApp."
+                            ? "Add SIRAH BEYOND CHRONOLOGY and your registration reference in the payment remarks. After paying, upload your private receipt here. WhatsApp is available if you need payment support."
                             : "Use the reference below when submitting proof of a transfer you already made."}{" "}
                           Include your full name, registered email and
                           registration reference. Staff must verify receipt
@@ -1640,7 +1639,7 @@ export function SirahRegistrationForm({
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Send payment evidence on WhatsApp ↗
+                        Payment support on WhatsApp ↗
                       </a>
                       <form onSubmit={submitEvidence} className={styles.form}>
                         <label>

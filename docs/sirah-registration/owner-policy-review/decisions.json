@@ -1,5 +1,5 @@
 {
-  "source": "Owner decisions supplied in this conversation, 7 November 2026",
+  "source": "Owner confirmations and proposed policy settings supplied in this conversation; reviewed 8 November 2026",
   "publicationApproved": false,
   "legalReviewCompleted": false,
   "ownerConfirmed": {
@@ -21,7 +21,8 @@
   "tax": {
     "ownerStatedPosition": "Not applicable to advertised course fees",
     "merchantServicesAndJurisdictionsVerified": false,
-    "automaticTaxAdded": false
+    "automaticTaxAdded": false,
+    "accountantConfirmationReceived": false
   },
   "monthlyTermsConfigurationAfterApproval": {
     "version": null,
@@ -49,5 +50,11 @@
     "refundAccessTiming": "CURRENT_MONTH_END",
     "failedPaymentAccess": null,
     "refundBilling": null
+  },
+  "seller": {
+    "ownerConfirmedName": "Global Awakening CIC",
+    "establishedCountry": "GB",
+    "merchantIdentityIndependentlyVerified": false,
+    "companyNumberAndAddressVerified": false
   }
 }
