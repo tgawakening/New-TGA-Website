@@ -38,8 +38,8 @@ export function SirahPromotion() {
             Beyond Chronology
           </h2>
           <p>
-            Study how the Prophet ﷺ made decisions, built a community, and led
-            through changing circumstances.
+            Study the life of the Prophet, peace be upon him, through his
+            decisions, leadership, and the community he built.
           </p>
           <ul className={styles.essentials} aria-label="Course format">
             {courseConfig.essentials.map((detail) => (
