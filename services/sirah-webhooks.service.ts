@@ -238,7 +238,29 @@ export async function handleSirahPaypalWebhook(request: Request) {
   const bodyText = await request.text();
   if (bodyText.length > 1024 * 1024)
     throw new SirahError("Webhook too large.", 413);
-  const event = JSON.parse(bodyText);
+  const signatureHeaders = [
+    "paypal-auth-algo",
+    "paypal-cert-url",
+    "paypal-transmission-id",
+    "paypal-transmission-sig",
+    "paypal-transmission-time",
+  ];
+  if (signatureHeaders.some((name) => !request.headers.get(name)?.trim()))
+    throw new SirahError("Missing PayPal webhook signature headers.", 400);
+  let event;
+  try {
+    event = JSON.parse(bodyText);
+  } catch {
+    throw new SirahError("Malformed PayPal webhook.", 400);
+  }
+  if (
+    !event || typeof event !== "object" ||
+    typeof event.id !== "string" || !event.id ||
+    typeof event.event_type !== "string" || !event.event_type ||
+    !event.resource || typeof event.resource !== "object" ||
+    Array.isArray(event.resource)
+  )
+    throw new SirahError("Malformed PayPal webhook.", 400);
   const check = await paypalRequest(
     "/v1/notifications/verify-webhook-signature",
     "POST",

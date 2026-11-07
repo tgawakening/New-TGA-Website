@@ -52,3 +52,7 @@ The signed `CHECKOUT.ORDER.APPROVED` event now invokes the same quote-checked, i
 Sīrah PayPal webhook: `https://www.tga-awakening.com/api/sirah/webhooks/paypal`, ID `8P300895YB677700G`. Event delivery and a genuine payment have not been verified end to end. The Stripe/PayPal currency whitelists, live approval and manual-account approval are not enabled by this rollout.
 
 Validation: 35 isolated MySQL workflow tests passed, including mismatched approved quotes rejected before capture, preferred-plan compatibility, Pakistan PayPal exclusion and duplicate signed-approval delivery producing one enrolment. Provider responses in those integration tests are synthetic. Real Stripe upfront provider payment is separately verified; its app webhook/enrolment status remains pending.
+
+## Receipt-compatibility continuation
+
+The interrupted compatibility check found a form gate hiding saved manual terms after a route was disabled, preventing proof submission. The follow-up restores consent/proof for issued manual instructions without enabling new transfers, adds independent optional receiving-account approval flags, and rejects malformed PayPal deliveries before provider verification. See [repair, 39-test evidence and exact approval/configuration actions](receipt-compatibility/README.md). All live route gates remain unchanged by the rollout.

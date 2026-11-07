@@ -75,7 +75,12 @@ export function termsFor(plan: SirahPlan): SirahTerms | null {
 // These exact account details exist in the project's previous registration page.
 // Keep them behind explicit verification, not an invented or inferred merchant approval.
 export function manualAccounts() {
-  if (process.env.SIRAH_MANUAL_ACCOUNTS_VERIFIED !== "true") return [];
+  const verified = (method: "BANK_TRANSFER" | "JAZZCASH") => {
+    const override = process.env[`SIRAH_${method}_VERIFIED`]?.trim();
+    return override
+      ? override === "true"
+      : process.env.SIRAH_MANUAL_ACCOUNTS_VERIFIED === "true";
+  };
   return [
     {
       method: "BANK_TRANSFER" as const,
@@ -91,7 +96,7 @@ export function manualAccounts() {
       account: process.env.SIRAH_JAZZCASH_ACCOUNT || "03244517741",
       iban: null,
     },
-  ];
+  ].filter((account) => verified(account.method));
 }
 const PAYPAL_CURRENCIES = new Set([
   "GBP",
