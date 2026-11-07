@@ -12,7 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    checkSirahOrigin(request);
+    const returnOrigin = checkSirahOrigin(request);
     const user = await sirahUser((await params).id);
     const input = z
       .object({
@@ -29,6 +29,8 @@ export async function POST(
         user.id,
         input.data.revision,
         input.data.acceptedTermsVersion,
+        undefined,
+        returnOrigin,
       ),
     );
   } catch (error) {
