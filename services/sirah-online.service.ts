@@ -325,48 +325,16 @@ export async function startSirahCheckout(
   };
   const preferredPlanId =
     process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${order.currency}`];
-  let preferredIssue: string | null = null;
-  if (!planId && preferredPlanId) {
+  if (!planId) {
+    if (!preferredPlanId)
+      throw new SirahError("A verified reusable PayPal plan is not configured for this currency.", 409);
     const preferred = await paypalRequest(
       `/v1/billing/plans/${encodeURIComponent(preferredPlanId)}`,
     );
-    preferredIssue = paypalPlanIssue(preferred, expectedPlan);
-    if (!preferredIssue && preferred.id === preferredPlanId)
-      planId = preferredPlanId;
-    else preferredIssue ||= "Preferred plan identity mismatch.";
-  }
-  const reusedPlan = Boolean(planId);
-  if (!planId) {
-    const plan = await paypalRequest(
-      "/v1/billing/plans",
-      "POST",
-      {
-        product_id: process.env.SIRAH_PAYPAL_PRODUCT_ID,
-        status: "ACTIVE",
-        quantity_supported: false,
-        name: SIRAH_TITLE.slice(0, 127),
-        billing_cycles: [
-          {
-            frequency: { interval_unit: "MONTH", interval_count: 1 },
-            tenure_type: "REGULAR",
-            sequence: 1,
-            total_cycles: 12,
-            pricing_scheme: {
-              fixed_price: {
-                currency_code: order.currency,
-                value: paypalDecimal(order.amountMinor, order.currency),
-              },
-            },
-          },
-        ],
-        payment_preferences: {
-          auto_bill_outstanding: false,
-          payment_failure_threshold: 1,
-        },
-      },
-      `plan-${order.checkoutToken}`,
-    );
-    planId = plan.id;
+    const preferredIssue = paypalPlanIssue(preferred, expectedPlan);
+    if (preferredIssue || preferred.id !== preferredPlanId)
+      throw new SirahError(preferredIssue || "Preferred plan identity mismatch.", 409);
+    planId = preferredPlanId;
   }
   const plan = await paypalRequest(
     `/v1/billing/plans/${encodeURIComponent(planId!)}`,
@@ -387,8 +355,7 @@ export async function startSirahCheckout(
         );
       await auditSirah(tx, id, `student:${userId}`, "PAYPAL_PLAN_SELECTED", {
         planId,
-        reused: reusedPlan,
-        preferredIssue,
+        reused: true,
       });
     });
   const subscription = await paypalRequest(

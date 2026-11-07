@@ -648,6 +648,7 @@ test("a successful PayPal subscription approval without settlement does not gran
   process.env.SIRAH_PAYPAL_WEBHOOK_ID = "WH_TEST";
   process.env.SIRAH_PAYPAL_PRODUCT_ID = "PROD_TEST";
   process.env.SIRAH_PAYPAL_MONTHLY_CURRENCIES = "GBP";
+  process.env.SIRAH_PAYPAL_MONTHLY_PLAN_GBP = "P_TEST";
   const result = await create("GB", "MONTHLY");
   await repriceSirah(
     result.orderId,
@@ -1580,6 +1581,7 @@ test("Pakistan never offers PayPal, including with otherwise configured GBP rout
     SIRAH_PAYPAL_WEBHOOK_ID: "WEBHOOK_TEST",
     SIRAH_PAYPAL_PRODUCT_ID: "PROD_TEST",
     SIRAH_PAYPAL_MONTHLY_CURRENCIES: "GBP",
+    SIRAH_PAYPAL_MONTHLY_PLAN_GBP: "P-VOLUNTARY",
     SIRAH_PAYPAL_ANNUAL_CURRENCIES: "GBP",
   });
   assert.equal(methodAvailable("PAYPAL", "PK", "GBP", "MONTHLY"), false);
@@ -1667,27 +1669,22 @@ test("PayPal reuses only a fully matching Sīrah plan and leaves incompatible pr
       }
       throw new Error(`Unexpected provider test request: ${method} ${url}`);
     };
-    await startSirahCheckout(
-      order.id,
-      result.userId,
-      order.revision,
-      approvedTestTerms.version,
-    );
-    assert.equal(created, outstanding ? 1 : 0);
-    assert.equal(selected, outstanding ? "P-NEW" : "P-PREFERRED");
+    if (outstanding) {
+      await assert.rejects(
+        () => startSirahCheckout(order.id, result.userId, order.revision, approvedTestTerms.version),
+        /Outstanding-balance/,
+      );
+      assert.equal(selected, undefined);
+      assert.equal(created, 0, "Checkout must never provision a per-student plan");
+      assert.equal(createBody, undefined);
+    } else {
+      await startSirahCheckout(order.id, result.userId, order.revision, approvedTestTerms.version);
+      assert.equal(created, 0);
+      assert.equal(selected, "P-PREFERRED");
+    }
     const stored = await publicSirahOrder(order.id, result.userId);
-    assert.equal(stored.paymentState, "PROCESSING");
     assert.equal(stored.paidMinor, 0);
     assert.equal(stored.enrolmentState, "PENDING");
-    if (outstanding) {
-      assert.equal(createBody?.product_id, "PROD_TEST");
-      assert.equal(createBody?.status, "ACTIVE");
-      assert.equal(createBody?.quantity_supported, false);
-      assert.deepEqual(createBody?.payment_preferences, {
-        auto_bill_outstanding: false,
-        payment_failure_threshold: 1,
-      });
-    }
   }
 });
 
@@ -1958,6 +1955,7 @@ async function voluntaryPaypalOrder() {
     SIRAH_PAYPAL_WEBHOOK_ID: "WH_TEST",
     SIRAH_PAYPAL_PRODUCT_ID: "PROD_TEST",
     SIRAH_PAYPAL_MONTHLY_CURRENCIES: "GBP",
+    SIRAH_PAYPAL_MONTHLY_PLAN_GBP: "P-VOLUNTARY",
     SIRAH_MONTHLY_TERMS_JSON: JSON.stringify(terms),
   });
   const result = await create("GB", "MONTHLY");

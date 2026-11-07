@@ -1,0 +1,116 @@
+{
+  "mode": "inspect",
+  "productId": "PROD-4MG49974LK7417127",
+  "results": [
+    {
+      "currency": "GBP",
+      "amount": "29.99",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_GBP",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "USD",
+      "amount": "39.99",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_USD",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "CAD",
+      "amount": "55.99",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_CAD",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "EUR",
+      "amount": "35.99",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_EUR",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "CHF",
+      "amount": "32.99",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_CHF",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "SEK",
+      "amount": "395.00",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_SEK",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "NOK",
+      "amount": "369.00",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_NOK",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "DKK",
+      "amount": "269.00",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_DKK",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "PLN",
+      "amount": "159.00",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_PLN",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "CZK",
+      "amount": "875.00",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_CZK",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    },
+    {
+      "currency": "HUF",
+      "amount": "13100",
+      "planId": null,
+      "status": "MISSING_COMPATIBLE_PLAN",
+      "action": "NO_CHANGE",
+      "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_HUF",
+      "websiteEnabled": false,
+      "settlementVerified": false
+    }
+  ]
+}

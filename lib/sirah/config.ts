@@ -173,7 +173,9 @@ export function methodAvailable(
       process.env.PAYPAL_CLIENT_SECRET &&
       process.env.SIRAH_PAYPAL_MERCHANT_ID &&
       process.env.SIRAH_PAYPAL_WEBHOOK_ID &&
-      (plan === "ANNUAL" || process.env.SIRAH_PAYPAL_PRODUCT_ID),
+      (plan === "ANNUAL" ||
+        (process.env.SIRAH_PAYPAL_PRODUCT_ID &&
+          process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${currency}`])),
     )
   );
 }

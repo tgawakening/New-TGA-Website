@@ -180,3 +180,18 @@ test("public Sīrah consultations use approved regional groups and require a cho
   assert.equal(consultationForCountry(), null);
   assert.equal(consultationDestinations.orientation, null);
 });
+
+
+test("annual savings use online minor-unit prices for every catalogue market", () => {
+  const { load } = fixture();
+  const { catalogue, priceFor, annualSirahSavings } = load("@/lib/sirah/catalog");
+  for (const [country] of catalogue) {
+    const result = annualSirahSavings(country);
+    assert.equal(result.standardMinor, priceFor(country, "MONTHLY", "STRIPE").amountMinor * 12);
+    assert.equal(result.savingMinor + result.upfrontMinor, result.standardMinor);
+    assert.equal(result.approximatePercent, 10);
+  }
+  assert.equal(annualSirahSavings("GB").savingMinor, 3599);
+  assert.equal(annualSirahSavings("PK").savingMinor, 360000);
+  assert.equal(annualSirahSavings("BH").savingMinor, 10200);
+});

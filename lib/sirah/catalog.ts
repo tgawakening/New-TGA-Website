@@ -117,3 +117,21 @@ export function priceFor(
     method,
   };
 }
+
+/** Compare the upfront fee with online monthly fees, never Pakistan's manual rate. */
+export function annualSirahSavings(country: string) {
+  const monthly = priceFor(country, "MONTHLY", "STRIPE");
+  const upfront = priceFor(country, "ANNUAL", "STRIPE");
+  const standardMinor = monthly.amountMinor * SIRAH_MONTHS;
+  const savingMinor = standardMinor - upfront.amountMinor;
+  return {
+    currency: upfront.currency,
+    standardMinor,
+    upfrontMinor: upfront.amountMinor,
+    savingMinor,
+    approximatePercent: Number(
+      (BigInt(savingMinor) * BigInt(100) + BigInt(standardMinor) / BigInt(2)) /
+        BigInt(standardMinor),
+    ),
+  };
+}

@@ -122,8 +122,8 @@ const paymentLabels: Record<PaymentMethod, string> = {
   NAYAPAY: "Nayapay",
 };
 
-const supportWhatsappNumber = "03181602388";
-const supportWhatsappHref = "https://wa.me/923181602388";
+const supportWhatsappNumber = "03262055614";
+const supportWhatsappHref = "https://wa.me/923262055614";
 const registrationFormStorageKey = "ga-seerah-registration-form";
 const registrationResumeStorageKey = "ga-seerah-registration-resume";
 
