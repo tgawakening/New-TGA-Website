@@ -2210,41 +2210,49 @@
   text-underline-offset: 3px;
 }
 
-/* Supplied parchment artwork: keep every pixel and put copy in its dark space. */
+/* Landing hero: copy sets the height; the complete desktop artwork sits to its right. */
 .hero {
-  display: grid;
+  display: block;
   min-height: 0;
   padding: 0;
-  background: #25251b;
+  background: #141611;
   overflow: hidden;
 }
 .heroMedia {
-  position: relative;
-  inset: auto;
-  grid-area: 1 / 1;
-  align-self: end;
-  width: 100%;
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: auto;
+  height: 100%;
   aspect-ratio: 1672 / 941;
   z-index: 0;
   margin: 0;
+  pointer-events: none;
 }
 .heroMedia .heroImage {
+  display: block;
   object-fit: contain;
-  object-position: center;
+  object-position: right center;
   z-index: 0;
 }
-.heroMedia::after,
+.heroMedia::after {
+  display: block;
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, #141611, transparent 45%),
+    linear-gradient(#141611, transparent 6%, transparent 94%, #141611);
+  pointer-events: none;
+}
 .heroShade {
   display: none;
 }
 .heroInner {
-  grid-area: 1 / 1;
   position: relative;
   z-index: 1;
-  align-self: center;
   width: 100%;
-  padding-top: clamp(24px, 4vw, 64px);
-  padding-bottom: clamp(24px, 4vw, 64px);
+  padding-top: clamp(64px, 6.5vw, 96px);
+  padding-bottom: clamp(64px, 6.5vw, 96px);
 }
 .page:has(.heroImage) .heroCopy {
   max-width: 46%;
@@ -2256,7 +2264,17 @@
     serif;
   letter-spacing: -1.2px;
   color: var(--ivory);
-  margin: 0 0 20px;
+  gap: 14px;
+  margin: 0 0 22px;
+}
+.hero .heroCopy h1 > .heroCourseName {
+  font: 600 15px/1.3 var(--font-montserrat), Arial, sans-serif;
+  letter-spacing: 0.24em;
+  color: var(--gold);
+}
+.hero .heroCopy h1 > .heroCourseTitle {
+  font: inherit;
+  letter-spacing: inherit;
 }
 .hero .heroIntro {
   font-size: 16px;
@@ -2357,7 +2375,7 @@
   .heroInner {
     order: 0;
     width: 100%;
-    padding: 28px 20px 0;
+    padding: 32px 20px 16px;
   }
   .page:has(.heroImage) .heroCopy {
     max-width: 100%;
@@ -2392,11 +2410,20 @@
     max-width: 100%;
   }
   .heroMedia {
+    position: relative;
+    inset: auto;
     order: 1;
     flex-shrink: 0;
-    aspect-ratio: 1122 / 1402;
-    margin-top: max(-50vw, -180px);
+    width: 100%;
+    height: auto;
+    /* Crop only the portrait's empty upper surface, keeping its parchment intact. */
+    aspect-ratio: 1122 / 800;
+    margin: 0;
     z-index: 0;
+  }
+  .heroMedia .heroImage {
+    object-fit: cover;
+    object-position: center bottom;
   }
   .orientation > .container {
     grid-template-columns: 1fr;
@@ -2425,7 +2452,7 @@
     content: "";
     position: absolute;
     inset: 0 0 auto;
-    height: 60px;
+    height: 48px;
     z-index: 1;
     background: linear-gradient(#25251b, transparent);
     pointer-events: none;
