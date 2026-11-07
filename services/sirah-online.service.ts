@@ -811,7 +811,10 @@ export async function resumeSirahPaypalRenewals(
       409,
     );
   if (
-    !methodAvailable("PAYPAL", order.countryCode, order.currency, "MONTHLY") ||
+    !methodAvailable("PAYPAL", order.countryCode, order.currency, "MONTHLY", {
+      id: order.id,
+      amountMinor: order.amountMinor,
+    }) ||
     terms?.version !== acceptedTermsVersion ||
     termsFor("MONTHLY")?.version !== acceptedTermsVersion
   )

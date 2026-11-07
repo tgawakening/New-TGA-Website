@@ -2614,6 +2614,20 @@ test("PayPal failed-subscription recovery reuses the approved plan, verifies act
       ),
     /approved/,
   );
+  // A closed monthly test must be able to exercise recovery without opening
+  // public renewals or treating activation itself as verified payment.
+  Object.assign(process.env, {
+    PAYPAL_ENV: "live", SIRAH_LIVE_PAYMENTS_APPROVED: "true",
+    SIRAH_PAYPAL_MONTHLY_COUNTRIES: "GB",
+  });
+  await assert.rejects(resumeSirahPaypalRenewals(order.id, userId, current.revision, approvedTestTerms.version), /approved/);
+  process.env.SIRAH_CLOSED_VERIFICATION_CHECKOUTS = JSON.stringify([{
+    orderId: order.id, method: "PAYPAL", plan: "MONTHLY", country: "GB", currency: "GBP",
+    amountMinor: order.amountMinor, expiresAt: new Date(Date.now() + 60000).toISOString(),
+  }]);
+  await resumeSirahPaypalRenewals(order.id, userId, current.revision, approvedTestTerms.version);
+  assert.equal(methodAvailable("PAYPAL", "GB", "GBP", "MONTHLY"), false);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } })).paymentState, "FAILED");
   await prisma.sirahOrder.update({
     where: { id: order.id },
     data: { programmeEnd: new Date(Date.now() - 1000) },

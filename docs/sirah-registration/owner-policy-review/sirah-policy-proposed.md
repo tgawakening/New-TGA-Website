@@ -2,7 +2,7 @@
 
 **Final commercial-policy draft for consumer-law/publication review — NOT PUBLISHED OR EFFECTIVE.**
 
-Owner commercial direction confirmed in the continuation conversation. Effective date: actual publication date, prospectively only. Seller: **Global Awakening CIC**, UK, as confirmed by TGA. Company number, registered address and the publication/effective date must be checked against the seller's current records before publication. No other programme's policy is changed by this draft.
+Owner commercial direction confirmed in the continuation conversation. Effective date: actual publication date, prospectively only. Seller: **Global Awakening CIC**, registered in England and Wales, company **15523255**. Registered office: **128 City Road, London, United Kingdom, EC1V 2NX**. These details reuse the independently checked Companies House evidence in PR #23; publication remains subject to the review below. No other programme's policy is changed by this draft.
 
 ## 1. Scope and priority
 
