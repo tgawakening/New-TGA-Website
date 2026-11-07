@@ -146,7 +146,7 @@ export async function queueSirahNotice(
     ].join("\n");
     const payload = {
       subject: paymentUrl
-        ? "Complete your Sīrah registration"
+        ? kind === "FAILED" ? "Update your Sīrah payment" : "Complete your Sīrah registration"
         : `${SIRAH_TITLE} — ${subjects[kind] || kind}`,
       html: `<div style="background:#f5efdf;color:#141611;padding:24px;font-family:Arial,sans-serif"><h2>The Global Awakening</h2><h3>${escapeHtml(subjects[kind] || kind)}</h3>${text
         .split("\n")

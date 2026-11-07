@@ -737,6 +737,13 @@ export function SirahRegistrationForm({
       setMessage("Cancellation has been recorded under the approved terms.");
     });
   }
+  async function resumeRenewals() {
+    if (!order?.terms || !window.confirm(`Resume future voluntary renewals of ${formatSirahMoney(order.amountMinor,order.currency)} per month on your existing PayPal subscription? This does not confirm payment or restore access.`)) return;
+    await run(async()=>{
+      const result = await api(`/api/sirah/orders/${order.id}/billing`,{method:"POST",body:JSON.stringify({action:"RESUME",revision:order.revision,acceptedTermsVersion:order.terms!.version})});
+      setMessage(result.message);
+    });
+  }
   async function requestRefundReview() {
     if (!order) return;
     const reason = window.prompt("Reason for requesting an upfront payment refund review:");
@@ -1750,6 +1757,12 @@ export function SirahRegistrationForm({
               Request a refund review
             </button>
           )}
+          {order.paymentState === "FAILED" && order.hasBillingProfile &&
+            order.method === "PAYPAL" && selectedRouteAvailable && !order.cancelledAt && (
+              <button type="button" disabled={busy} onClick={()=>void resumeRenewals()}>
+                Resume existing PayPal renewals
+              </button>
+            )}
           {order.hasBillingProfile && (
             <button
               type="button"

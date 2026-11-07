@@ -53,6 +53,7 @@ import {
   verifySirahStripeInvoice,
   verifySirahPaypal,
   markSirahProviderFailure,
+  resumeSirahPaypalRenewals,
 } from "../services/sirah-online.service";
 import {
   dispatchSirahNotifications,
@@ -2484,11 +2485,163 @@ test("a failure after cancellation cannot remove the remaining verified paid per
 
 test("annual refund quotes reject unverified balances and unreconciled refunds", async () => {
   enableManual();
-  const result=await create("PK","ANNUAL");
-  await prisma.sirahOrder.update({where:{id:result.orderId},data:{paidMinor:3240000,paidCount:1,paymentState:"PAID",programmeStart:new Date()}});
-  await assert.rejects(()=>quoteSirahAnnualRefund(result.orderId,0,6,"admin:test"),/reconciled verified/);
-  await prisma.sirahPaymentEvent.create({data:{id:"verified-annual",orderId:result.orderId,provider:"BANK_TRANSFER",kind:"FIRST",currency:"PKR",amountMinor:3240000}});
-  await prisma.sirahOrder.update({where:{id:result.orderId},data:{refundedMinor:1000}});
-  await assert.rejects(()=>quoteSirahAnnualRefund(result.orderId,0,6,"admin:test"),/reconciled verified/);
-  assert.equal(await prisma.sirahAudit.count({where:{orderId:result.orderId,action:"ANNUAL_REFUND_QUOTED"}}),0);
+  const result = await create("PK", "ANNUAL");
+  await prisma.sirahOrder.update({
+    where: { id: result.orderId },
+    data: {
+      paidMinor: 3240000,
+      paidCount: 1,
+      paymentState: "PAID",
+      programmeStart: new Date(),
+    },
+  });
+  await assert.rejects(
+    () => quoteSirahAnnualRefund(result.orderId, 0, 6, "admin:test"),
+    /reconciled verified/,
+  );
+  await prisma.sirahPaymentEvent.create({
+    data: {
+      id: "verified-annual",
+      orderId: result.orderId,
+      provider: "BANK_TRANSFER",
+      kind: "FIRST",
+      currency: "PKR",
+      amountMinor: 3240000,
+    },
+  });
+  await prisma.sirahOrder.update({
+    where: { id: result.orderId },
+    data: { refundedMinor: 1000 },
+  });
+  await assert.rejects(
+    () => quoteSirahAnnualRefund(result.orderId, 0, 6, "admin:test"),
+    /reconciled verified/,
+  );
+  assert.equal(
+    await prisma.sirahAudit.count({
+      where: { orderId: result.orderId, action: "ANNUAL_REFUND_QUOTED" },
+    }),
+    0,
+  );
+});
+
+test("PayPal failed-subscription recovery reuses the approved plan, verifies activation and does not impersonate payment", async () => {
+  const { order, userId } = await voluntaryPaypalOrder();
+  await markSirahProviderFailure(order, "paypal:recoverable-failure");
+  let current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  let active = false;
+  let activations = 0;
+  const plan = {
+    id: "P-VOLUNTARY",
+    status: "ACTIVE",
+    product_id: "PROD_TEST",
+    quantity_supported: false,
+    billing_cycles: [
+      {
+        tenure_type: "REGULAR",
+        sequence: 1,
+        total_cycles: 12,
+        frequency: { interval_unit: "MONTH", interval_count: 1 },
+        pricing_scheme: {
+          fixed_price: { currency_code: "GBP", value: "29.99" },
+        },
+      },
+    ],
+    payment_preferences: {
+      auto_bill_outstanding: false,
+      payment_failure_threshold: 1,
+    },
+  };
+  global.fetch = async (raw) => {
+    const url = String(raw);
+    if (url.endsWith("/oauth2/token"))
+      return Response.json({ access_token: "synthetic" });
+    if (url.endsWith("/activate")) {
+      activations++;
+      active = true;
+      return new Response(null, { status: 204 });
+    }
+    if (url.endsWith("/P-VOLUNTARY")) return Response.json(plan);
+    if (url.endsWith("/I-VOLUNTARY"))
+      return Response.json({
+        custom_id: order.id,
+        plan_id: "P-VOLUNTARY",
+        status: active ? "ACTIVE" : "SUSPENDED",
+      });
+    throw Error("No new subscription, capture or refund may be created");
+  };
+  await assert.rejects(
+    () =>
+      resumeSirahPaypalRenewals(
+        order.id,
+        "unrelated",
+        current.revision,
+        approvedTestTerms.version,
+      ),
+    /not found/,
+  );
+  await resumeSirahPaypalRenewals(
+    order.id,
+    userId,
+    current.revision,
+    approvedTestTerms.version,
+  );
+  await resumeSirahPaypalRenewals(
+    order.id,
+    userId,
+    current.revision,
+    approvedTestTerms.version,
+  );
+  assert.equal(activations, 1);
+  current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.paymentState, "FAILED");
+  assert.equal(current.paidCount, 1);
+  assert.equal(current.providerSubscriptionId, "I-VOLUNTARY");
+  assert.equal(await prisma.enrollment.count({ where: { userId } }), 1);
+  await assert.rejects(
+    () =>
+      resumeSirahPaypalRenewals(
+        order.id,
+        userId,
+        current.revision,
+        "outdated-terms",
+      ),
+    /approved/,
+  );
+  await prisma.sirahOrder.update({
+    where: { id: order.id },
+    data: { programmeEnd: new Date(Date.now() - 1000) },
+  });
+  await assert.rejects(
+    () =>
+      resumeSirahPaypalRenewals(
+        order.id,
+        userId,
+        current.revision,
+        approvedTestTerms.version,
+      ),
+    /unchanged failed/,
+  );
+  assert.equal(activations, 1);
+});
+
+test("an early failed-renewal notice never shortens the already paid month", async () => {
+  const { order } = await voluntaryPaypalOrder();
+  const paidUntil = order.nextBillingAt!;
+  await markSirahProviderFailure(order, "paypal:early-failure");
+  const current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(
+    current.accessEndsAt?.getTime(),
+    paidUntil.getTime() + 7 * 86400000,
+  );
+  assert.equal(
+    canAccessSirah(current, new Date(paidUntil.getTime() - 1)),
+    true,
+  );
 });
