@@ -112,3 +112,23 @@ Collection remains closed pending the recorded policy/tax approvals and required
 configuration. No actual activation is performed by this package's code rollout.
 
 The first-market terms also contain `approvedRoutes` limited to `BANK_TRANSFER:PK:PKR` and `JAZZCASH:PK:PKR`. This is separate from payment verification certificates: installing the Pakistan policy cannot approve another provider, country or currency even if unrelated live flags already exist. A malformed or empty scope fails closed. Future country/provider approvals require an appropriate approved terms version and their own verification certificates.
+
+## Latest owner instruction: immediate activation requested
+
+The owner subsequently instructed urgent activation despite outstanding
+circumstances. `digitalocean.owner-launch-request.json` records that instruction
+and gives the exact first-method runtime patch, with a fully inclusive PKR 32,400
+student price and no claim of tax exemption or completed independent review.
+The earlier review states remain truthful; do not request the settled commercial
+terms or 14 November date again. This is an instruction to proceed with the
+first tested/configured route, not to fabricate verification for online gateways
+or to mark a screenshot paid. Check the actual publication date when applying.
+
+The remaining operator action is to apply that file's `settings` values in the
+existing App Platform service and redeploy. The current connected DigitalOcean
+tools do not expose App Platform updates and this executor has no App Platform
+token. Existing Stripe/PayPal/receiving credentials do not need to be re-entered.
+The two receiving verification flags reflect the owner's existing account
+confirmation; each route certificate records isolated manual workflow acceptance,
+not a claim that a new production student deposit has already settled. Confirm
+live receipt/staff/enrolment/delivery separately before announcing paid enrolment.

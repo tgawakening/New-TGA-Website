@@ -1,0 +1,26 @@
+{
+  "ownerInstruction": "Owner requests immediate payment activation despite outstanding circumstances; prioritise the tested Pakistan manual annual routes. Do not fabricate independent reviews, payment receipt, provider verification or confirmed enrolment.",
+  "ownerLaunchRequested": true,
+  "independentLegalReviewCompleted": false,
+  "accountantDeterminationReceived": false,
+  "newLivePaymentVerified": false,
+  "activationApplied": false,
+  "publicationDate": "2026-11-08; replace with actual publication date if applied on a later day",
+  "component": "tga-app / new-tga-website",
+  "scope": "RUN_TIME",
+  "settings": {
+    "SIRAH_ANNUAL_TERMS_JSON": "{\"version\":\"sirah-pk-annual-v1\",\"commitment\":\"Global Awakening CIC, company 15523255, 128 City Road, London, EC1V 2NX, United Kingdom, supplies Sīrah | Beyond Chronology. Pakistan annual upfront is one PKR 32,400 payment for up to twelve months, with no recurring debit. The confirmed cohort first teaching date and additional course-start full-refund deadline are shown with this booking and retained in its accepted terms. Published 8 November 2026, prospectively only. Registration and proof alone do not confirm payment; enrolment follows TGA verification. For this Sīrah booking these course-specific payment, refund and access rules prevail over conflicting general TGA policies, without reducing mandatory rights.\",\"cancellation\":\"Send any clear cancellation/refund request through your saved registration, https://wa.me/923262055614 or Enquiries.awakeningteam@outlook.com. A particular form is not required. TGA provides a full refund for cancellation requested within fourteen days of course commencement. This protection is additional to any applicable statutory cancellation period measured from contract conclusion, and other mandatory rights; the more protective applicable result governs.\",\"refund\":\"Outside an applicable full-refund entitlement, refund eligible fully unused months using the actual upfront payment divided by twelve, less prior refunds. A started month is used under the standard rule. Round down once to the smallest currency unit; never exceed unrefunded collections. Statutory exceptions and the additional course-start full refund prevail. Refund processing targets twenty calendar days after approval, subject to any shorter statutory deadline; internal approval cannot restart a legal clock. Applicable UK cancellation reimbursement can be due within fourteen days of notification, without undue delay. Refund by the original method unless expressly agreed otherwise; no refund fee.\",\"access\":\"Paid access begins on the first verified payment and expires twelve calendar months later unless ended earlier under the applicable cancellation/refund rules. Under the standard unused-month cancellation, teaching and recordings continue to the end of the current paid month, then end. Recordings do not extend beyond active paid access or original programme expiry. The course commencement date and paid-period start are separate. Students not requesting immediate supply may save a pending registration without selecting payment and contact support to agree a later start before transferring.\",\"tax\":\"PKR 32,400 is the full price for this Pakistan annual booking. No additional course fee or tax charge will be added at checkout. Any tax TGA is legally required to collect is included within that total.\",\"earlyServiceRequestText\":\"I expressly request teaching and related services to begin during any applicable statutory cancellation period. I understand the applicable cancellation rules and any lawful proportionate service charge, subject to TGA's additional full-refund protection.\",\"digitalContentConsentText\":\"I expressly consent to immediate access to recordings during any applicable statutory cancellation period and acknowledge that, where the law provides, the statutory right to cancel supply of that digital content is lost once supply begins. This does not remove TGA's additional fourteen-day course-start full refund, my service cancellation rights or other mandatory remedies.\",\"cancellationTiming\":\"PERIOD_END\",\"failedPaymentAccess\":\"PAUSE\",\"refundAccess\":\"REVOKE\",\"annualRefundBasis\":\"FULL_UNUSED_MONTHS\",\"refundAccessTiming\":\"CURRENT_MONTH_END\",\"refundBilling\":\"CANCEL\",\"requiresConfirmedCommencement\":true,\"approvedRoutes\":[\"BANK_TRANSFER:PK:PKR\",\"JAZZCASH:PK:PKR\"]}",
+    "SIRAH_BANK_TRANSFER_VERIFIED": "true",
+    "SIRAH_BANK_TRANSFER_ANNUAL_VERIFIED_ROUTES": "PK:PKR",
+    "SIRAH_JAZZCASH_VERIFIED": "true",
+    "SIRAH_JAZZCASH_ANNUAL_VERIFIED_ROUTES": "PK:PKR"
+  },
+  "checksBeforeAnnouncement": [
+    "Read back PK/ANNUAL quote: PKR 3240000 and each enabled method independently",
+    "Match receiving instructions against the existing owner-confirmed account records",
+    "Do not mark receipt submission paid; authorised staff verify actual account receipt first",
+    "Confirm one paid event/enrolment and genuinely delivered student/admin confirmation",
+    "Do not enable unverified Stripe/PayPal or unsupported country/currency combinations"
+  ],
+  "unchanged": "All credentials, monthly/online live flags, currency lists, existing receiving details and registrations remain unchanged."
+}

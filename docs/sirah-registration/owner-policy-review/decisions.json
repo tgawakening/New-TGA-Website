@@ -71,5 +71,13 @@
     "companyNumber": "15523255",
     "registeredOffice": "128 City Road, London, United Kingdom, EC1V 2NX",
     "registryEvidence": "Companies House verification preserved in PR #23; no duplicate entity research"
+  },
+  "latestOwnerLaunchInstruction": {
+    "recordedDatePakistan": "2026-11-08",
+    "immediatePaymentActivationRequested": true,
+    "source": "Owner requests automatic or manual payment methods urgently despite outstanding circumstances, according to countries",
+    "firstOperationalTarget": "Pakistan annual through existing verified Meezan/JazzCash receiving arrangements at PKR 32,400",
+    "reviewStatus": "Independent legal and accountant reviews remain unverified; the launch instruction must not be represented as completed review",
+    "verificationControls": "Retain receiving-account checks, exact method/country/currency scope, staff verification of actual bank receipt, idempotency and paid-only enrolment"
   }
 }
