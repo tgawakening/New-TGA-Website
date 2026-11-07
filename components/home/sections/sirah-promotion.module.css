@@ -3,9 +3,9 @@
   isolation: isolate;
   display: grid;
   align-items: center;
-  min-height: clamp(28rem, 45vw, 42rem);
+  min-height: 0;
   overflow: hidden;
-  background: #1c1b12;
+  background: #141611;
   color: #f5efdf;
 }
 
@@ -13,14 +13,13 @@
   position: absolute;
   inset: 0 0 0 auto;
   height: 100%;
-  max-width: 100%;
   aspect-ratio: 1672 / 941;
   mask-image: linear-gradient(90deg, transparent, black 28%);
   z-index: -2;
 }
 
 .image {
-  object-fit: cover;
+  object-fit: contain;
   object-position: right center;
 }
 
@@ -38,7 +37,7 @@
   width: 100%;
   max-width: 1240px;
   margin-inline: auto;
-  padding: 4rem clamp(1.5rem, 5vw, 4.5rem);
+  padding: 3rem clamp(1.5rem, 5vw, 4.5rem);
 }
 
 .copy {
@@ -49,8 +48,7 @@
 }
 
 .copy h2,
-.copy p,
-.essentials {
+.copy p {
   margin: 0;
 }
 
@@ -64,7 +62,9 @@
 
 .copy h2 {
   font-family: Georgia, serif;
-  font-size: clamp(2.65rem, 5vw, 4.5rem);
+  display: grid;
+  gap: 0.5rem;
+  font-size: clamp(2rem, 3.4vw, 3rem);
   font-weight: 400;
   line-height: 1.02;
 }
@@ -75,19 +75,15 @@
   line-height: 1.6;
 }
 
-.essentials {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.65rem;
-  padding: 0;
-  list-style: none;
+.copy h2 .courseName {
+  color: #e2b961;
+  font: 600 0.875rem/1.4 Arial, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
-.essentials li {
-  padding: 0.25rem 0.55rem;
-  border: 1px solid #f5efdf40;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
+.copy h2 .subtitle {
+  font: 500 0.875rem/1.5 Arial, sans-serif;
 }
 
 .copy a {
@@ -99,6 +95,7 @@
   border-radius: 0.25rem;
   background: #d9ad4a;
   color: #141611;
+  font-size: 0.875rem;
   font-weight: 700;
   text-decoration: none;
 }
@@ -114,32 +111,38 @@
 
 @media (max-width: 767px) {
   .promotion {
-    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #25251b;
   }
 
   .artwork {
-    inset: auto 0 0;
+    position: relative;
+    inset: auto;
+    order: 1;
+    width: 100%;
     height: auto;
-    aspect-ratio: 1122 / 1402;
-    mask-image: linear-gradient(180deg, transparent, black 38%);
+    aspect-ratio: 1122 / 800;
+    mask-image: linear-gradient(180deg, transparent, black 18%);
+    z-index: 0;
   }
 
   .image {
-    object-fit: contain;
+    object-fit: cover;
     object-position: center bottom;
   }
 
   .promotion::before {
-    background: linear-gradient(180deg, #1c1b12 0%, #1c1b1252 35%, transparent 59%);
+    display: none;
   }
 
   .content {
-    padding-block: 2.25rem calc(64vw + 1rem);
+    padding: 1.75rem 1.5rem 0.75rem;
   }
 
   .copy {
     gap: 0.85rem;
-    width: min(100%, 29rem);
+    width: 100%;
   }
 
   .copy h2 {

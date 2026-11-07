@@ -33,19 +33,16 @@ export function SirahPromotion() {
       )}
       <div className={styles.content}>
         <div className={styles.copy}>
-          <p className={styles.eyebrow}>Featured live online course</p>
-          <h2 id="home-sirah-title" aria-label="Sīrah | Beyond Chronology">
-            Beyond Chronology
+          <p className={styles.eyebrow}>12-month live online course</p>
+          <h2 id="home-sirah-title">
+            <span className={styles.courseName}>Sīrah</span>{" "}
+            <span>Beyond Chronology</span>{" "}
+            <span className={styles.subtitle}>Law, Power, Leadership &amp; Movement</span>
           </h2>
           <p>
             Study the life of the Prophet, peace be upon him, through his
             decisions, leadership, and the community he built.
           </p>
-          <ul className={styles.essentials} aria-label="Course format">
-            {courseConfig.essentials.map((detail) => (
-              <li key={detail}>{detail}</li>
-            ))}
-          </ul>
           <Link href="/seerah">
             Explore the Sīrah Course <span aria-hidden="true">↗</span>
           </Link>
