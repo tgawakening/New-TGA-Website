@@ -1,4 +1,5 @@
 import "server-only";
+import { sirahOriginAllowed } from "@/lib/sirah/origin";
 import { currentSirahResumeGrant } from "@/lib/sirah/resume";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -22,12 +23,11 @@ export function sirahResponseError(error: unknown) {
 }
 export function checkSirahOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  if (
-    origin &&
-    origin !== new URL(request.url).origin &&
-    origin !== process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "")
-  )
+  if (!sirahOriginAllowed(origin, request.url, process.env.NEXT_PUBLIC_APP_URL))
     throw new SirahError("This request must come from the TGA website.", 403);
+  return (
+    origin || new URL(process.env.NEXT_PUBLIC_APP_URL || request.url).origin
+  );
 }
 export async function sirahUser(orderId?: string) {
   const user = await getCurrentUser();

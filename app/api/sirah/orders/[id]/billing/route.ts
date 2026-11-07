@@ -16,7 +16,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    checkSirahOrigin(request);
+    const returnOrigin = checkSirahOrigin(request);
     const user = await sirahUser((await params).id);
     const order = await ownedSirahOrder((await params).id, user.id);
     const input = z
@@ -54,11 +54,11 @@ export async function POST(
           after_completion: {
             type: "redirect",
             redirect: {
-              return_url: `${process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin}/seerah/register?order=${order.id}`,
+              return_url: `${returnOrigin}/seerah/register?order=${order.id}`,
             },
           },
         },
-        return_url: `${process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin}/seerah/register?order=${order.id}`,
+        return_url: `${returnOrigin}/seerah/register?order=${order.id}`,
       });
       return privateJson({ url: session.url });
     }
