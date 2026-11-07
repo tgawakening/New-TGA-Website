@@ -6,6 +6,8 @@ const required = [
   "SirahAudit",
   "SirahPaymentEvent",
   "SirahNotification",
+  "SirahResumeLink",
+  "SirahCohort",
 ];
 (async () => {
   const { PrismaClient } = await import("@prisma/client");
@@ -17,7 +19,9 @@ const required = [
   const missing = required.filter((name) => !names.has(name));
   console.log(
     "Sīrah registration tables:",
-    missing.length ? `missing ${missing.join(", ")}` : "all five present",
+    missing.length
+      ? `missing ${missing.join(", ")}`
+      : `all ${required.length} present`,
   );
   console.log(
     "Prisma migration history:",
@@ -37,15 +41,26 @@ const required = [
           !row.rolledBack,
       ),
     );
+    console.log(
+      "Cohort setting migration completed:",
+      rows.some(
+        (row) =>
+          row.name === "202611080001_sirah_cohort_commencement" &&
+          row.finished &&
+          !row.rolledBack,
+      ),
+    );
     if (failed.length) {
       console.log(
         "Resolve the migration failure before deploying another migration.",
       );
       process.exitCode = 2;
-    } else if (missing.length)
+    } else if (missing.length) {
+      process.exitCode = 2;
       console.log(
         "Next: npm run prisma:migrate:deploy, then run this status command again.",
       );
+    }
   } else if (tables.length) {
     console.log(
       "STOP: existing tables have no Prisma migration history. Compare the existing schema and establish a verified baseline before migrate deploy. Do not use migrate reset or db push.",

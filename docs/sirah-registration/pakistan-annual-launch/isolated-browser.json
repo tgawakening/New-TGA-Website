@@ -1,0 +1,30 @@
+[
+  {
+    "method": "BANK_TRANSFER",
+    "width": 1350,
+    "syntheticOnly": true,
+    "pricePKR": 32400,
+    "separateUncheckedChoices": true,
+    "missingChoicesBlockSubmission": true,
+    "evidenceAloneGrantsNoAccess": true,
+    "staffVerificationRequired": true,
+    "duplicateApprovalSafe": true,
+    "annualEnrolmentConfirmed": true,
+    "noHorizontalOverflow": true,
+    "realPaymentOrExternalDeliveryClaimed": false
+  },
+  {
+    "method": "JAZZCASH",
+    "width": 390,
+    "syntheticOnly": true,
+    "pricePKR": 32400,
+    "separateUncheckedChoices": true,
+    "missingChoicesBlockSubmission": true,
+    "evidenceAloneGrantsNoAccess": true,
+    "staffVerificationRequired": true,
+    "duplicateApprovalSafe": true,
+    "annualEnrolmentConfirmed": true,
+    "noHorizontalOverflow": true,
+    "realPaymentOrExternalDeliveryClaimed": false
+  }
+]

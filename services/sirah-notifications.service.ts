@@ -1,11 +1,12 @@
 import "server-only";
+import { courseStartRefundThrough } from "@/lib/sirah/cohort-dates";
 import { createSirahResumeLink } from "@/lib/sirah/resume";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
 import { SIRAH_TITLE, formatSirahMoney } from "@/lib/sirah/catalog";
-import { getGroupInvitation } from "@/lib/sirah/config";
+import { getGroupInvitation, type SirahTerms } from "@/lib/sirah/config";
 const escapeHtml = (value: string) =>
   value.replace(
     /[&<>"']/g,
@@ -83,6 +84,27 @@ export async function queueSirahNotice(
     `Timestamp: ${new Date().toISOString()}`,
     ...(note ? [`Note: ${note}`] : []),
   ];
+  if (["SUBMITTED", "CONFIRMED"].includes(kind) && order.terms) {
+    const terms = order.terms as SirahTerms;
+    rows.push(`Accepted payment terms version: ${terms.version}`,
+      ...(["commitment", "cancellation", "refund", "access", "tax"] as const).flatMap(key =>
+        typeof terms[key] === "string" ? [`${key}: ${terms[key]}`] : []));
+    if (terms.earlyServiceRequestText || terms.digitalContentConsentText) {
+      const acceptance = await tx.sirahAudit.findFirst({
+        where: { orderId, action: { in: ["EVIDENCE_SUBMITTED", "TERMS_ACCEPTED"] } },
+        orderBy: { createdAt: "desc" },
+      });
+      const detail = acceptance?.detail as { earlyServiceRequested?: boolean; digitalContentConsented?: boolean } | null;
+      rows.push(`Service-start request: ${detail?.earlyServiceRequested === true ? "Expressly requested" : "Not recorded"}`,
+        `Recording-access consent/acknowledgement: ${detail?.digitalContentConsented === true ? "Expressly given" : "Not recorded"}`,
+        ...(terms.earlyServiceRequestText ? [terms.earlyServiceRequestText] : []),
+        ...(terms.digitalContentConsentText ? [terms.digitalContentConsentText] : []));
+    }
+    if (terms.cohortCommencementDate) rows.push(`First paid class (confirmed cohort date): ${terms.cohortCommencementDate}`, `Additional course-start full-refund protection through: ${courseStartRefundThrough(terms.cohortCommencementDate)} inclusive, Pakistan calendar date. Statutory rights are separate.`);
+    if (order.programmeStart) rows.push(`Paid access starts: ${order.programmeStart.toISOString()}`);
+    if (order.programmeEnd) rows.push(`Programme expires: ${order.programmeEnd.toISOString()}`);
+    if (order.accessEndsAt) rows.push(`Paid access ends: ${order.accessEndsAt.toISOString()}`);
+  }
   if (kind === "FAILED" && order.accessEndsAt)
     rows.push(`Renewal grace ends: ${order.accessEndsAt.toISOString()}. Update the existing subscription's payment details; access resumes only after verified payment.`);
   if (kind === "SUBMITTED")

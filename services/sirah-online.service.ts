@@ -1,4 +1,6 @@
 import "server-only";
+import { publicSirahCohort, cohortAllowsPayment } from "./sirah-cohort.service";
+import { sirahAccessConsentsComplete, type SirahAccessConsents } from "@/lib/sirah/access-consent";
 import { paypalPlanIssue } from "@/lib/sirah/paypal-plan";
 import { sirahOriginAllowed } from "@/lib/sirah/origin";
 import Stripe from "stripe";
@@ -98,6 +100,7 @@ export async function startSirahCheckout(
   acceptedVersion: string,
   stripeOverride?: Stripe,
   requestedReturnOrigin?: string,
+  accessConsents: SirahAccessConsents = {},
 ) {
   if (
     requestedReturnOrigin &&
@@ -126,6 +129,14 @@ export async function startSirahCheckout(
     (order.terms as { version?: string } | null)?.version !== terms.version
   )
     throw new SirahError("Review and accept the current payment terms.");
+  const cohort = await publicSirahCohort();
+  if (!cohortAllowsPayment(terms, cohort))
+    throw new SirahError("The first paid teaching date is pending owner confirmation. Payment remains closed.");
+  if (terms.requiresConfirmedCommencement &&
+      (order.terms as { cohortCommencementDate?: string } | null)?.cohortCommencementDate !== cohort.commencementDate)
+    throw new SirahError("The course commencement date changed. Review the date and select your payment route again before checkout.", 409);
+  if (!sirahAccessConsentsComplete(terms, accessConsents))
+    throw new SirahError("Please make the separate service-start and recording-access choices before checkout.");
   if (order.paymentState !== "PROCESSING") {
     const token = randomUUID();
     const result = await prisma.sirahOrder.updateMany({
@@ -152,6 +163,10 @@ export async function startSirahCheckout(
     await prisma.$transaction((tx) =>
       auditSirah(tx, id, `student:${userId}`, "TERMS_ACCEPTED", {
         version: acceptedVersion,
+        earlyServiceRequested: accessConsents.earlyServiceRequested === true,
+        digitalContentConsented: accessConsents.digitalContentConsented === true,
+        earlyServiceRequestText: terms.earlyServiceRequestText || null,
+        digitalContentConsentText: terms.digitalContentConsentText || null,
         checkoutToken: token,
       }),
     );

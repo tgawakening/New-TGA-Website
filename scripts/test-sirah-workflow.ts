@@ -1,6 +1,9 @@
 import { calculateSirahAnnualRefund, calculateSirahAnnualUnusedMonths } from "../lib/sirah/annual-refund";
 import { quoteSirahAnnualRefund, requestSirahAnnualRefund } from "../services/sirah-refunds.service";
 import { maintainSirahOrders } from "../services/sirah-maintenance.service";
+import { publicSirahCohort, updateSirahCohort } from "../services/sirah-cohort.service";
+import { courseStartRefundThrough, pakistanCalendarDate } from "../lib/sirah/cohort-dates";
+import { readFileSync } from "node:fs";
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -20,7 +23,7 @@ import {
   SIRAH_SLUG,
 } from "../lib/sirah/catalog";
 import { normalizeSirahPhone } from "../lib/sirah/phone";
-import { getGroupInvitation, methodAvailable } from "../lib/sirah/config";
+import { getGroupInvitation, methodAvailable, termsFor } from "../lib/sirah/config";
 import {
   sirahRegistrationSchema,
   sirahRepriceSchema,
@@ -184,6 +187,7 @@ beforeEach(async () => {
   await prisma.sirahReceipt.deleteMany();
   await prisma.sirahPaymentEvent.deleteMany();
   await prisma.sirahOrder.deleteMany();
+  await prisma.sirahCohort.deleteMany();
   await prisma.enrollment.deleteMany();
   await prisma.manualPaymentSubmission.deleteMany();
   await prisma.subscription.deleteMany();
@@ -3006,4 +3010,440 @@ test("closed verification permits only the authorised saved order and amount, re
     ),
     /not currently enabled/,
   );
+});
+
+test("manual annual express consents are separate, required server-side and durably confirmed for each receiving route", async () => {
+  for (const method of ["BANK_TRANSFER", "JAZZCASH"] as const) {
+    enableManual();
+    const terms = {
+      ...approvedTestTerms,
+      earlyServiceRequestText:
+        "TEST ONLY: I expressly request services during the cancellation period.",
+      digitalContentConsentText:
+        "TEST ONLY: I expressly consent to immediate recordings and acknowledge the applicable cancellation consequence; the extra full-refund promise remains.",
+    };
+    process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify(terms);
+    const saved = await create("PK", "ANNUAL");
+    const order = await repriceSirah(
+      saved.orderId,
+      saved.userId,
+      0,
+      "PK",
+      "ANNUAL",
+      method,
+    );
+    const input = {
+      revision: order.revision,
+      method,
+      route: "WHATSAPP" as const,
+      payerName: "Synthetic payer",
+    };
+    for (const consents of [
+      {},
+      { earlyServiceRequested: true },
+      { digitalContentConsented: true },
+    ]) {
+      await assert.rejects(
+        submitSirahEvidence(
+          order.id,
+          saved.userId,
+          input,
+          null,
+          terms.version,
+          consents,
+        ),
+        /separate/,
+      );
+    }
+    assert.equal(
+      (await publicSirahOrder(order.id, saved.userId)).paymentState,
+      "UNPAID",
+    );
+    assert.equal(
+      await prisma.sirahReceipt.count({ where: { orderId: order.id } }),
+      0,
+    );
+    await submitSirahEvidence(
+      order.id,
+      saved.userId,
+      input,
+      null,
+      terms.version,
+      { earlyServiceRequested: true, digitalContentConsented: true },
+    );
+    assert.equal(
+      (await publicSirahOrder(order.id, saved.userId)).enrolmentState,
+      "PENDING",
+    );
+    await approve(
+      await publicSirahOrder(order.id, saved.userId),
+      `consented-annual-${method}`,
+    );
+    const consent = await prisma.sirahAudit.findFirstOrThrow({
+      where: { orderId: order.id, action: "EVIDENCE_SUBMITTED" },
+    });
+    assert.equal(
+      (consent.detail as { earlyServiceRequested: boolean })
+        .earlyServiceRequested,
+      true,
+    );
+    assert.equal(
+      (consent.detail as { digitalContentConsented: boolean })
+        .digitalContentConsented,
+      true,
+    );
+    const notices = await prisma.sirahNotification.findMany({
+      where: { orderId: order.id, kind: "CONFIRMED" },
+    });
+    assert.equal(notices.length, 2);
+    for (const notice of notices) {
+      const text = JSON.stringify(notice);
+      assert.ok(text.includes(terms.version));
+      assert.ok(text.includes(terms.earlyServiceRequestText));
+      assert.ok(text.includes(terms.digitalContentConsentText));
+      assert.ok(text.includes("Paid access starts:"));
+    }
+    const paid = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    assert.equal(paid.amountMinor, 3240000);
+    assert.equal(paid.paidCount, 1);
+    assert.equal(paid.accessEndsAt, null);
+    assert.equal(canAccessSirah(paid), true);
+  }
+});
+
+test("online annual checkout cannot infer express consents from general terms acceptance or create a provider session early", async () => {
+  enableManual();
+  const terms = {
+    ...approvedTestTerms,
+    earlyServiceRequestText: "TEST service request",
+    digitalContentConsentText: "TEST recording consent and acknowledgement",
+  };
+  Object.assign(process.env, {
+    SIRAH_ANNUAL_TERMS_JSON: JSON.stringify(terms),
+    SIRAH_STRIPE_SECRET_KEY: "sk_test_synthetic",
+    SIRAH_STRIPE_WEBHOOK_SECRET: "synthetic",
+    SIRAH_STRIPE_ACCOUNT_ID: "acct_test",
+    SIRAH_STRIPE_ANNUAL_CURRENCIES: "GBP",
+  });
+  const saved = await create("GB", "ANNUAL");
+  const order = await repriceSirah(
+    saved.orderId,
+    saved.userId,
+    0,
+    "GB",
+    "ANNUAL",
+    "STRIPE",
+  );
+  let calls = 0;
+  const stripe = {
+    accounts: {
+      retrieve: async () => {
+        calls++;
+        return { id: "acct_test" };
+      },
+    },
+    checkout: {
+      sessions: {
+        create: async () => ({
+          id: "cs_consented",
+          url: "https://checkout.stripe.com/synthetic",
+        }),
+      },
+    },
+  } as unknown as Stripe;
+  await assert.rejects(
+    startSirahCheckout(
+      order.id,
+      saved.userId,
+      order.revision,
+      terms.version,
+      stripe,
+    ),
+    /separate/,
+  );
+  assert.equal(calls, 0);
+  assert.equal(
+    (await publicSirahOrder(order.id, saved.userId)).paymentState,
+    "UNPAID",
+  );
+  await startSirahCheckout(
+    order.id,
+    saved.userId,
+    order.revision,
+    terms.version,
+    stripe,
+    undefined,
+    { earlyServiceRequested: true, digitalContentConsented: true },
+  );
+  assert.equal(calls, 1);
+  const audit = await prisma.sirahAudit.findFirstOrThrow({
+    where: { orderId: order.id, action: "TERMS_ACCEPTED" },
+  });
+  assert.equal(
+    (audit.detail as { digitalContentConsented: boolean })
+      .digitalContentConsented,
+    true,
+  );
+  const current = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(current.paidCount, 0);
+  assert.equal(canAccessSirah(current), false);
+});
+
+test("the unapproved Pakistan launch candidate cannot activate a route with unresolved dates", () => {
+  enableManual();
+  const candidate = readFileSync(
+    "docs/sirah-registration/pakistan-annual-launch/annual-terms.candidate.json",
+    "utf8",
+  );
+  process.env.SIRAH_ANNUAL_TERMS_JSON = candidate;
+  assert.equal(termsFor("ANNUAL"), null);
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "ANNUAL"), false);
+  assert.equal(methodAvailable("JAZZCASH", "PK", "PKR", "ANNUAL"), false);
+  // Isolated synthetic parsing check; this does not supply actual approval or dates.
+  process.env.SIRAH_ANNUAL_TERMS_JSON = candidate
+    .replaceAll("<<COHORT_COMMENCEMENT_DATE>>", "TEST DATE ONLY")
+    .replaceAll("<<PUBLICATION_DATE>>", "TEST DATE ONLY");
+  assert.equal(termsFor("ANNUAL")?.version, "sirah-pk-annual-v1");
+});
+
+test("cohort date stays pending until owner-confirmed; new payment instructions are withheld and old records remain unchanged", async () => {
+  enableManual();
+  process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify({
+    ...approvedTestTerms,
+    requiresConfirmedCommencement: true,
+  });
+  delete process.env.SIRAH_JAZZCASH_ANNUAL_VERIFIED_ROUTES;
+  const { POST } = await import("../app/api/pricing/route");
+  const quote = async () =>
+    (
+      await POST(
+        new Request("http://localhost/api/pricing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            courseSlug: SIRAH_SLUG,
+            countryCode: "PK",
+            plan: "ANNUAL",
+          }),
+        }),
+      )
+    ).json();
+  assert.equal((await publicSirahCohort()).confirmed, false);
+  let price = await quote();
+  assert.deepEqual(price.methods, []);
+  assert.deepEqual(price.manualAccounts, []);
+  const saved = await create("PK", "ANNUAL");
+  await assert.rejects(
+    repriceSirah(
+      saved.orderId,
+      saved.userId,
+      0,
+      "PK",
+      "ANNUAL",
+      "BANK_TRANSFER",
+    ),
+    /teaching date/,
+  );
+  await assert.rejects(
+    updateSirahCohort(
+      {
+        revision: 0,
+        commencementDate: "2026-11-14",
+        ownerConfirmed: false,
+        sourceReference: "SYNTHETIC",
+        reason: "Synthetic first teaching date test",
+      },
+      "admin:test",
+    ),
+    /owner/,
+  );
+  const confirmed = await updateSirahCohort(
+    {
+      revision: 0,
+      commencementDate: "2026-11-14",
+      ownerConfirmed: true,
+      sourceReference: "SYNTHETIC TEST ONLY",
+      reason: "Synthetic first teaching date test",
+    },
+    "admin:test",
+  );
+  assert.equal(confirmed.commencementDate, "2026-11-14");
+  assert.equal(confirmed.courseStartFullRefundThrough, "2026-11-28");
+  await assert.rejects(
+    updateSirahCohort(
+      {
+        revision: 0,
+        commencementDate: null,
+        ownerConfirmed: false,
+        reason: "Stale synthetic date edit",
+      },
+      "admin:test",
+    ),
+    /changed/,
+  );
+  price = await quote();
+  assert.deepEqual(price.methods, ["BANK_TRANSFER"]);
+  assert.deepEqual(
+    price.manualAccounts.map((a: { method: string }) => a.method),
+    ["BANK_TRANSFER"],
+  );
+  const order = await repriceSirah(
+    saved.orderId,
+    saved.userId,
+    0,
+    "PK",
+    "ANNUAL",
+    "BANK_TRANSFER",
+  );
+  assert.equal(order.terms?.cohortCommencementDate, "2026-11-14");
+  assert.deepEqual(
+    order.manualAccounts.map((a) => a.method),
+    ["BANK_TRANSFER"],
+  );
+  assert.equal(order.paidMinor, 0);
+  const history = await prisma.sirahCohort.findUniqueOrThrow({
+    where: { batchCode: confirmed.batchCode },
+  });
+  assert.equal(Array.isArray(history.history), true);
+  assert.equal(JSON.stringify(price.cohort).includes("admin:test"), false);
+});
+
+test("missing cohort migration withholds dated collection while preserving pending registration", async () => {
+  enableManual();
+  process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify({
+    ...approvedTestTerms,
+    requiresConfirmedCommencement: true,
+  });
+  await prisma.$executeRawUnsafe(
+    "RENAME TABLE SirahCohort TO SirahCohort_isolated_missing",
+  );
+  try {
+    const cohort = await publicSirahCohort();
+    assert.equal(cohort.schemaAvailable, false);
+    assert.equal(cohort.commencementDate, null);
+    const saved = await create("PK", "ANNUAL");
+    assert.equal(
+      (await publicSirahOrder(saved.orderId, saved.userId)).paymentState,
+      "UNPAID",
+    );
+    await assert.rejects(
+      repriceSirah(
+        saved.orderId,
+        saved.userId,
+        0,
+        "PK",
+        "ANNUAL",
+        "BANK_TRANSFER",
+      ),
+      /teaching date/,
+    );
+  } finally {
+    await prisma.$executeRawUnsafe(
+      "RENAME TABLE SirahCohort_isolated_missing TO SirahCohort",
+    );
+  }
+});
+
+test("confirmed course-start full-refund protection supersedes unused-month cap and survives an earlier date correction", async () => {
+  enableManual();
+  process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify({
+    ...approvedTestTerms,
+    requiresConfirmedCommencement: true,
+    annualRefundBasis: "FULL_UNUSED_MONTHS",
+    refundAccessTiming: "CURRENT_MONTH_END",
+  });
+  const date = pakistanCalendarDate(new Date(Date.now() - 7 * 86400000));
+  let cohort = await updateSirahCohort(
+    {
+      revision: 0,
+      commencementDate: date,
+      ownerConfirmed: true,
+      sourceReference: "SYNTHETIC",
+      reason: "Synthetic refund protection clock",
+    },
+    "admin:test",
+  );
+  const saved = await create("PK", "ANNUAL");
+  let order = await repriceSirah(
+    saved.orderId,
+    saved.userId,
+    0,
+    "PK",
+    "ANNUAL",
+    "BANK_TRANSFER",
+  );
+  order = await evidence(order, saved.userId);
+  await approve(order, "synthetic-course-start-payment");
+  const paid = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  cohort = await updateSirahCohort(
+    {
+      revision: cohort.revision,
+      commencementDate: pakistanCalendarDate(
+        new Date(Date.now() - 100 * 86400000),
+      ),
+      ownerConfirmed: true,
+      sourceReference: "SYNTHETIC CORRECTION",
+      reason: "Synthetic correction must preserve promised protection",
+    },
+    "admin:test",
+  );
+  const quote = await quoteSirahAnnualRefund(
+    order.id,
+    paid.revision,
+    0,
+    "admin:test",
+  );
+  assert.equal(quote.courseStartProtection.commencementDate, date);
+  assert.equal(quote.courseStartProtection.status, "ELIGIBLE_FULL_REFUND");
+  assert.equal(quote.additionalRefundMinor, 3240000);
+  assert.equal(quote.statutoryCancellationReviewRequired, true);
+  await recordSirahRefund(
+    order.id,
+    "manual:synthetic-full-course-start-refund",
+    3240000,
+    "PKR",
+    "admin:test",
+    "Synthetic verified refund; no actual transfer",
+  );
+  const refunded = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: order.id },
+  });
+  assert.equal(refunded.paymentState, "REFUNDED");
+  assert.equal(canAccessSirah(refunded), false);
+  assert.equal(
+    (refunded.terms as { cohortCommencementDate: string })
+      .cohortCommencementDate,
+    date,
+  );
+  assert.equal(courseStartRefundThrough("2026-11-14"), "2026-11-28");
+  assert.equal(
+    pakistanCalendarDate(new Date("2026-11-28T18:59:59Z")),
+    "2026-11-28",
+  );
+  assert.equal(
+    pakistanCalendarDate(new Date("2026-11-28T19:00:00Z")),
+    "2026-11-29",
+  );
+});
+
+test("an expired cohort-start window preserves the unused-month calculation and separate statutory review", async () => {
+  enableManual();
+  process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify({ ...approvedTestTerms, requiresConfirmedCommencement: true });
+  await updateSirahCohort({ revision: 0, commencementDate: pakistanCalendarDate(new Date(Date.now() - 100 * 86400000)), ownerConfirmed: true, sourceReference: "SYNTHETIC", reason: "Synthetic expired cohort window" }, "admin:test");
+  const saved = await create("PK", "ANNUAL");
+  let order = await repriceSirah(saved.orderId, saved.userId, 0, "PK", "ANNUAL", "BANK_TRANSFER");
+  order = await evidence(order, saved.userId); await approve(order, "synthetic-after-window");
+  const paid = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  const quote = await quoteSirahAnnualRefund(order.id, paid.revision, 11, "admin:test");
+  assert.equal(quote.courseStartProtection.status, "EXPIRED");
+  assert.equal(quote.additionalRefundMinor, 2970000);
+  assert.equal(quote.statutoryCancellationReviewRequired, true);
+  assert.equal(quote.policyApprovalRequired, true);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } })).refundedMinor, 0);
 });

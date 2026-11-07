@@ -1,6 +1,23 @@
 import type { NextConfig } from "next";
+import { execFileSync } from "node:child_process";
+
+function buildRevision() {
+  const supplied =
+    process.env.TGA_SOURCE_COMMIT || process.env.VERCEL_GIT_COMMIT_SHA;
+  if (supplied && /^[a-f0-9]{40}$/.test(supplied)) return supplied;
+  try {
+    const revision = execFileSync("git", ["rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return /^[a-f0-9]{40}$/.test(revision) ? revision : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 
 const nextConfig: NextConfig = {
+  env: { TGA_BUILD_REVISION: buildRevision() },
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,

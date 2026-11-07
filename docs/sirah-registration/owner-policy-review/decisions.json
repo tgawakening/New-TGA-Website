@@ -19,7 +19,9 @@
     "courseStartFullRefundProtectionDays": 14,
     "statutoryCancellationRightsPreserved": true,
     "effectiveDate": "Actual publication date; prospective only",
-    "commercialPolicyDirectionApproved": true
+    "commercialPolicyDirectionApproved": true,
+    "firstPaidTeachingDate": "2026-11-14",
+    "freeOrientationDate": "2026-11-07"
   },
   "tax": {
     "ownerStatedPosition": "No additional tax charged to students; formal UK/Pakistan merchant-specific determination not supplied",

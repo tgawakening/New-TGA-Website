@@ -1,4 +1,5 @@
 "use client";
+import { sirahAccessConsentsComplete, type SirahAccessConsents } from "@/lib/sirah/access-consent";
 import { useResidence, saveResidence } from "@/lib/sirah/use-residence";
 import {
   useEffect,
@@ -79,10 +80,14 @@ function Terms({
   order,
   accepted,
   onChange,
+  accessConsents,
+  onAccessConsentChange,
 }: {
   order: Pick<Order, "terms" | "plan">;
   accepted: boolean;
   onChange: (v: boolean) => void;
+  accessConsents: SirahAccessConsents;
+  onAccessConsentChange: (v: SirahAccessConsents) => void;
 }) {
   return order.terms ? (
     <div className={styles.terms}>
@@ -103,6 +108,23 @@ function Terms({
           {order.terms.cancellationTiming === "PERIOD_END" &&
             " Your verified current paid period remains accessible until its scheduled expiry."}
         </p>
+      )}
+      {order.terms.earlyServiceRequestText && (
+        <label className={styles.check}>
+          <input type="checkbox" checked={accessConsents.earlyServiceRequested === true}
+            onChange={event => onAccessConsentChange({ ...accessConsents, earlyServiceRequested: event.target.checked })} />
+          {order.terms.earlyServiceRequestText}
+        </label>
+      )}
+      {order.terms.digitalContentConsentText && (
+        <label className={styles.check}>
+          <input type="checkbox" checked={accessConsents.digitalContentConsented === true}
+            onChange={event => onAccessConsentChange({ ...accessConsents, digitalContentConsented: event.target.checked })} />
+          {order.terms.digitalContentConsentText}
+        </label>
+      )}
+      {(order.terms.earlyServiceRequestText || order.terms.digitalContentConsentText) && (
+        <p>You can leave these choices unticked and save a pending registration without choosing a payment method. Contact course support to arrange a later start; do not transfer until the arrangements are confirmed. These choices do not remove TGA’s additional course-start full-refund protection or other mandatory remedies.</p>
       )}
       <label className={styles.check}>
         <input
@@ -183,6 +205,7 @@ export function SirahRegistrationForm({
     methods: SirahMethod[];
     terms: Order["terms"];
     manualAccounts: Order["manualAccounts"];
+    cohort: Order["cohort"];
   } | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<SirahMethod | "">("");
   const [resumeProblem, setResumeProblem] = useState(false);
@@ -194,6 +217,8 @@ export function SirahRegistrationForm({
   const [message, setMessage] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [accepted, setAccepted] = useState(false);
+  const [accessConsents, setAccessConsents] = useState<SirahAccessConsents>({});
+  useEffect(() => { setAccessConsents({}); }, [order?.id, order?.terms?.version, billing, plan, selectedMethod]);
   const [evidenceRoute, setEvidenceRoute] = useState("UPLOAD");
   const [invitation, setInvitation] = useState<{
     message: string;
@@ -260,6 +285,7 @@ export function SirahRegistrationForm({
             totalMinor: result.pricing.totalMinor,
             cardAvailable: Boolean(result.cardAvailable),
             methods: result.methods || [],
+            cohort: result.cohort,
             terms: result.terms,
             manualAccounts: result.manualAccounts || [],
           });
@@ -671,6 +697,7 @@ export function SirahRegistrationForm({
         body: JSON.stringify({
           revision: saved.revision,
           acceptedTermsVersion,
+          ...accessConsents,
         }),
       });
       if (!result.url) throw Error("No payment destination is available yet.");
@@ -686,7 +713,7 @@ export function SirahRegistrationForm({
     }
   }
   async function checkout() {
-    if (!order || !accepted || !order.terms) return;
+    if (!order || !accepted || !order.terms || !sirahAccessConsentsComplete(order.terms, accessConsents)) return;
     await run(() => openCheckout(order, order.terms!.version));
   }
   async function resetCheckout() {
@@ -760,7 +787,7 @@ export function SirahRegistrationForm({
   }
   async function submitEvidence(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!order || !manualConfirmed) return;
+    if (!order || !accepted || !manualConfirmed || !sirahAccessConsentsComplete(order.terms, accessConsents)) return;
     const data = new FormData(event.currentTarget);
     await run(async () => {
       const details = {
@@ -775,6 +802,8 @@ export function SirahRegistrationForm({
       };
       data.set("details", JSON.stringify(details));
       data.set("acceptedTermsVersion", order.terms?.version || "");
+      data.set("earlyServiceRequested", String(accessConsents.earlyServiceRequested === true));
+      data.set("digitalContentConsented", String(accessConsents.digitalContentConsented === true));
       const result = await api(`/api/sirah/orders/${order.id}/evidence`, {
         method: "POST",
         body: data,
@@ -793,6 +822,22 @@ export function SirahRegistrationForm({
       <p className={styles.introduction}>
         Create your account and choose your payment plan.
       </p>
+      {ready && (order?.cohort || quote?.cohort) && (
+        <div className={styles.notice} role="status">
+          <strong>First paid class: </strong>
+          {(order?.cohort || quote?.cohort)?.commencementDate
+            ? new Date(`${(order?.cohort || quote?.cohort)!.commencementDate}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+            : "Pending publication of the confirmed cohort date."}
+          {order?.terms?.cohortCommencementDate && order.terms.cohortCommencementDate !== order.cohort.commencementDate && (
+            <p>This saved booking retains {order.terms.cohortCommencementDate} for its recorded refund protection. A schedule correction does not shorten that protection.</p>
+          )}
+          {(order?.cohort || quote?.cohort)?.confirmed ? (
+            <p>The additional course-start full-refund protection runs through {(order?.cohort || quote?.cohort)!.courseStartFullRefundThrough} inclusive (Pakistan calendar date). Any applicable statutory cancellation rights remain separate.</p>
+          ) : (
+            <p>The free orientation is separate. You can save a pending registration; payments requiring the teaching date remain closed until the confirmed schedule is available here.</p>
+          )}
+        </div>
+      )}
       {ready && !user && (
         <p className={styles.signIn}>
           Already have an account?{" "}
@@ -1124,6 +1169,8 @@ export function SirahRegistrationForm({
                     order={{ terms: quote.terms, plan }}
                     accepted={accepted}
                     onChange={setAccepted}
+                    accessConsents={accessConsents}
+                    onAccessConsentChange={setAccessConsents}
                   />
                 )}
             </div>
@@ -1136,6 +1183,7 @@ export function SirahRegistrationForm({
                 Boolean(
                   selectedMethod &&
                   (!accepted ||
+                    !sirahAccessConsentsComplete(quote?.terms || null, accessConsents) ||
                     quote?.country !== billing ||
                     quote?.plan !== plan ||
                     quote?.method !== selectedMethod),
@@ -1506,6 +1554,8 @@ export function SirahRegistrationForm({
                     order={order}
                     accepted={accepted}
                     onChange={setAccepted}
+                    accessConsents={accessConsents}
+                    onAccessConsentChange={setAccessConsents}
                   />
                 )}
                 {order.manualEvidenceAllowed && !selectedRouteAvailable && (
@@ -1533,7 +1583,7 @@ export function SirahRegistrationForm({
                     <button
                       type="button"
                       className={styles.primary}
-                      disabled={busy || !accepted}
+                      disabled={busy || !accepted || !sirahAccessConsentsComplete(order.terms, accessConsents)}
                       onClick={() => void checkout()}
                     >
                       Continue to secure payment
@@ -1709,7 +1759,7 @@ export function SirahRegistrationForm({
                         <button
                           className={styles.primary}
                           type="submit"
-                          disabled={busy || !accepted || !manualConfirmed}
+                          disabled={busy || !accepted || !manualConfirmed || !sirahAccessConsentsComplete(order.terms, accessConsents)}
                         >
                           {busy
                             ? "Submitting evidence…"
