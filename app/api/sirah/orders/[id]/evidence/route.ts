@@ -17,7 +17,7 @@ export async function POST(
 ) {
   try {
     checkSirahOrigin(request);
-    const user = await sirahUser();
+    const user = await sirahUser((await params).id);
     const reader = request.body?.getReader();
     if (!reader) throw new SirahError("Missing upload.");
     let length = 0;

@@ -29,6 +29,13 @@ import { PhoneControl, countryFlagImage } from "./phone-control";
 export type RegistrationControls = {
   setPreferences: (choice: { country?: string; plan?: SirahPlan }) => void;
 };
+const methodLabel = (method: SirahMethod) =>
+  ({
+    STRIPE: "Pay by debit or credit card",
+    PAYPAL: "Pay with PayPal",
+    BANK_TRANSFER: "Pay by bank transfer",
+    JAZZCASH: "Pay with JazzCash",
+  })[method];
 const draftKey = "tga-sirah-registration-draft-v1";
 class ApiError extends Error {
   fields?: Record<string, string[]>;
@@ -72,7 +79,7 @@ function Terms({
   accepted,
   onChange,
 }: {
-  order: Order;
+  order: Pick<Order, "terms" | "plan">;
   accepted: boolean;
   onChange: (v: boolean) => void;
 }) {
@@ -162,12 +169,18 @@ export function SirahRegistrationForm({
   const [fields, setFields] = useState<Record<string, string[]>>({});
   const [quote, setQuote] = useState<{
     country: string;
+    method: SirahMethod | "";
     plan: SirahPlan;
     currency: string;
     amountMinor: number;
     totalMinor: number;
     cardAvailable: boolean;
+    methods: SirahMethod[];
+    terms: Order["terms"];
+    manualAccounts: Order["manualAccounts"];
   } | null>(null);
+  const [selectedMethod, setSelectedMethod] = useState<SirahMethod | "">("");
+  const [resumeProblem, setResumeProblem] = useState(false);
   const [quoteError, setQuoteError] = useState("");
   const [plan, setPlan] = useState<SirahPlan>(initialPlan || "MONTHLY");
   const [available, setAvailable] = useState(true);
@@ -225,18 +238,25 @@ export function SirahRegistrationForm({
         courseSlug: "seerah-course",
         countryCode: billing,
         plan,
+        method: selectedMethod || null,
       }),
     })
       .then((result) => {
         if (!controller.signal.aborted) {
           setQuoteError("");
+          if (selectedMethod && !result.methods?.includes(selectedMethod))
+            setSelectedMethod("");
           setQuote({
             country: billing,
+            method: selectedMethod,
             plan,
             currency: result.pricing.currency,
             amountMinor: result.pricing.amountMinor,
             totalMinor: result.pricing.totalMinor,
             cardAvailable: Boolean(result.cardAvailable),
+            methods: result.methods || [],
+            terms: result.terms,
+            manualAccounts: result.manualAccounts || [],
           });
         }
       })
@@ -244,7 +264,7 @@ export function SirahRegistrationForm({
         if (!controller.signal.aborted) setQuoteError(cause.message);
       });
     return () => controller.abort();
-  }, [ready, order, billing, plan]);
+  }, [ready, order, billing, plan, selectedMethod]);
   useEffect(() => {
     if (!ready || order) return;
     try {
@@ -258,6 +278,7 @@ export function SirahRegistrationForm({
           billing,
           plan,
           billingEdited,
+          selectedMethod,
         }),
       );
     } catch {}
@@ -271,6 +292,7 @@ export function SirahRegistrationForm({
     billing,
     plan,
     billingEdited,
+    selectedMethod,
   ]);
   function fieldError(key: string) {
     return fields[key]?.[0];
@@ -329,9 +351,49 @@ export function SirahRegistrationForm({
               setBilling(saved.billing);
             if (!initialPlan && ["MONTHLY", "ANNUAL"].includes(saved.plan))
               setPlan(saved.plan);
+            if (
+              ["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"].includes(
+                saved.selectedMethod,
+              )
+            )
+              setSelectedMethod(saved.selectedMethod);
             if (saved.billingEdited) setBillingEdited(true);
           }
         } catch {}
+        const fragment = new URLSearchParams(window.location.hash.slice(1));
+        const paymentToken = fragment.get("payment");
+        if (paymentToken) {
+          // Remove bearer link before any subsequent navigation or analytics.
+          window.history.replaceState(
+            null,
+            "",
+            window.location.pathname + window.location.search,
+          );
+          try {
+            const resumed = await api("/api/sirah/payment-resume", {
+              method: "POST",
+              body: JSON.stringify({ token: paymentToken }),
+            });
+            if (!active) return;
+            setUser(resumed.user);
+            setName(resumed.user.fullName);
+            setEmail(resumed.user.email);
+            setOrder(resumed.order);
+            const url = new URL(window.location.href);
+            url.searchParams.set("order", resumed.order.id);
+            window.history.replaceState(null, "", url);
+          } catch (cause) {
+            if (active) {
+              setResumeProblem(true);
+              setError(
+                cause instanceof Error
+                  ? cause.message
+                  : "Request a fresh payment link.",
+              );
+            }
+          }
+          return;
+        }
         setUser(result.user);
         if (result.user) {
           setName(result.user.fullName);
@@ -347,7 +409,9 @@ export function SirahRegistrationForm({
             if (parsed?.country) setPhoneCountry(parsed.country);
           }
         }
-        const id = new URL(window.location.href).searchParams.get("order");
+        const id =
+          new URL(window.location.href).searchParams.get("order") ||
+          result.resumeOrderId;
         if (id && result.user) {
           const current = await api(
             `/api/sirah/orders/${encodeURIComponent(id)}`,
@@ -383,6 +447,16 @@ export function SirahRegistrationForm({
       active = false;
     };
   }, [order?.id, order?.paymentState, order?.enrolmentState]);
+  useEffect(() => {
+    if (!order) return;
+    setName(order.fullName);
+    setEmail(order.email);
+    const parsed = parsePhoneNumberFromString(order.phoneE164);
+    setPhoneCountry(order.phoneCountry as CountryCode);
+    setPhone(parsed?.nationalNumber || order.phoneE164);
+    // Restore the saved record once, without overwriting in-progress edits on status polling.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
   const processingOrderId =
     order?.paymentState === "PROCESSING" &&
     ["STRIPE", "PAYPAL"].includes(order.method || "")
@@ -440,6 +514,7 @@ export function SirahRegistrationForm({
   }
   function choosePhoneCountry(code: CountryCode) {
     setPhoneCountry(code);
+    setAccepted(false);
     setBilling(code);
     setBillingEdited(true);
     setResidenceConfirmed(false);
@@ -474,6 +549,7 @@ export function SirahRegistrationForm({
       countryCode: billing,
       plan,
       requestKey: requestKey.current,
+      method: selectedMethod || null,
     };
     const parsed = sirahRegistrationSchema.safeParse(input);
     if (!parsed.success) {
@@ -497,11 +573,40 @@ export function SirahRegistrationForm({
         sessionStorage.removeItem(draftKey);
       } catch {}
       setOrder(result.order);
+      setUser(
+        (current) =>
+          current || {
+            fullName: name,
+            email,
+            phoneCountryCode: `+${getCountryCallingCode(phoneCountry)}`,
+            phoneNumber: phone,
+          },
+      );
       setMessage(result.message);
       const url = new URL(window.location.href);
       if (url.pathname === "/seerah/register") {
         url.searchParams.set("order", result.order.id);
         window.history.replaceState(null, "", url);
+      }
+      const sameAgreement = Boolean(
+        quote &&
+        quote.method === selectedMethod &&
+        quote.country === result.order.countryCode &&
+        quote.plan === result.order.plan &&
+        quote.amountMinor === result.order.amountMinor &&
+        quote.currency === result.order.currency &&
+        quote.terms?.version === result.order.terms?.version,
+      );
+      if (!sameAgreement) setAccepted(false);
+      if (
+        accepted &&
+        sameAgreement &&
+        result.order.terms &&
+        result.order.method === selectedMethod &&
+        ["STRIPE", "PAYPAL"].includes(selectedMethod) &&
+        ["UNPAID", "FAILED", "REJECTED"].includes(result.order.paymentState)
+      ) {
+        await openCheckout(result.order, result.order.terms.version);
       }
     });
   }
@@ -549,19 +654,30 @@ export function SirahRegistrationForm({
       );
     });
   }
-  async function checkout() {
-    if (!order || !accepted) return;
-    await run(async () => {
-      const result = await api(`/api/sirah/orders/${order.id}/checkout`, {
+  async function openCheckout(saved: Order, acceptedTermsVersion: string) {
+    try {
+      const result = await api(`/api/sirah/orders/${saved.id}/checkout`, {
         method: "POST",
         body: JSON.stringify({
-          revision: order.revision,
-          acceptedTermsVersion: order.terms?.version,
+          revision: saved.revision,
+          acceptedTermsVersion,
         }),
       });
       if (!result.url) throw Error("No payment destination is available yet.");
       window.location.assign(result.url);
-    });
+    } catch (cause) {
+      // A lost response can still mean the provider created a checkout. Reconcile the
+      // saved status before displaying another attempt; the server also locks retries.
+      try {
+        const current = await api(`/api/sirah/orders/${saved.id}`);
+        setOrder(current.order);
+      } catch {}
+      throw cause;
+    }
+  }
+  async function checkout() {
+    if (!order || !accepted || !order.terms) return;
+    await run(() => openCheckout(order, order.terms!.version));
   }
   async function resetCheckout() {
     if (!order) return;
@@ -786,6 +902,7 @@ export function SirahRegistrationForm({
                   required
                   value={billing}
                   onChange={(event) => {
+                    setAccepted(false);
                     setBilling(event.target.value);
                     saveResidence(event.target.value);
                     setResidenceConfirmed(false);
@@ -834,6 +951,7 @@ export function SirahRegistrationForm({
                   aria-label="Payment plan"
                   value={plan}
                   onChange={(event) => {
+                    setAccepted(false);
                     setPlan(event.target.value as SirahPlan);
                     clearField("plan");
                   }}
@@ -858,7 +976,9 @@ export function SirahRegistrationForm({
                     </s>
                   </>
                 )}
-                {quote?.country === billing && quote.plan === plan ? (
+                {quote?.country === billing &&
+                quote.plan === plan &&
+                quote.method === selectedMethod ? (
                   <>
                     <strong>
                       {formatSirahMoney(quote.amountMinor, quote.currency)}
@@ -868,9 +988,11 @@ export function SirahRegistrationForm({
                       {plan === "ANNUAL"
                         ? "One payment · 12 months"
                         : billing === "PK"
-                          ? quote.cardAvailable
-                            ? "Per month · automatic card"
-                            : "Per month · manual payment"
+                          ? selectedMethod === "BANK_TRANSFER" ||
+                            selectedMethod === "JAZZCASH" ||
+                            (!selectedMethod && !quote.cardAvailable)
+                            ? "Per month · manual payment"
+                            : "Per month · automatic card"
                           : "Per month"}
                     </span>
                   </>
@@ -908,20 +1030,96 @@ export function SirahRegistrationForm({
                 </>
               )}
             </div>
-            <div className={styles.cardIntroduction}>
-              <strong>Pay by debit or credit card</strong>
-              <small>No Stripe account needed.</small>
+            <div className={styles.paymentOptions}>
+              <label>
+                Payment method
+                <select
+                  aria-label="Payment method"
+                  value={selectedMethod}
+                  disabled={
+                    busy ||
+                    quote?.country !== billing ||
+                    quote?.plan !== plan ||
+                    !quote?.methods.length
+                  }
+                  onChange={(event) => {
+                    setSelectedMethod(event.target.value as SirahMethod);
+                    setAccepted(false);
+                  }}
+                >
+                  <option value="">Choose a payment method</option>
+                  {quote?.country === billing &&
+                    quote?.plan === plan &&
+                    quote.methods.map((method) => (
+                      <option key={method} value={method}>
+                        {methodLabel(method)}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              {selectedMethod === "STRIPE" && <p>No Stripe account needed.</p>}
+              {billing === "PK" && plan === "MONTHLY" && selectedMethod && (
+                <p>
+                  Automatic card: PKR 3,000 per month. Manual transfer: PKR
+                  3,500 per month, subject to receipt verification.
+                </p>
+              )}
+              {quote?.country === billing &&
+                quote?.plan === plan &&
+                !quote.methods.length && (
+                  <p>
+                    Payment options are being finalised. You can save your
+                    registration; no payment will be taken.
+                  </p>
+                )}
+              {["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) &&
+                quote?.manualAccounts
+                  .filter((account) => account.method === selectedMethod)
+                  .map((account) => (
+                    <div className={styles.notice} key={account.method}>
+                      <strong>{account.service}</strong>
+                      <p>
+                        {account.holder} · {account.account}
+                        {account.iban ? ` · ${account.iban}` : ""}
+                      </p>
+                      <p>
+                        Save your registration to get your payment reference and
+                        submit transfer details. Enrolment follows TGA’s receipt
+                        verification.
+                      </p>
+                    </div>
+                  ))}
+              {selectedMethod &&
+                quote?.country === billing &&
+                quote?.plan === plan && (
+                  <Terms
+                    order={{ terms: quote.terms, plan }}
+                    accepted={accepted}
+                    onChange={setAccepted}
+                  />
+                )}
             </div>
             <button
               className={`${styles.primary} ${styles.submitRegistration}`}
               type="submit"
-              disabled={busy || !ready}
+              disabled={
+                busy ||
+                !ready ||
+                Boolean(
+                  selectedMethod &&
+                  (!accepted ||
+                    quote?.country !== billing ||
+                    quote?.plan !== plan ||
+                    quote?.method !== selectedMethod),
+                )
+              }
             >
               {busy
                 ? "Creating your registration…"
-                : user
-                  ? "Continue registration"
-                  : "Create account & continue"}
+                : selectedMethod &&
+                    ["STRIPE", "PAYPAL"].includes(selectedMethod)
+                  ? "Save registration & continue to payment"
+                  : "Save registration & continue"}
             </button>
           </form>
         </>
@@ -933,7 +1131,13 @@ export function SirahRegistrationForm({
           <div className={styles.status}>
             <p>
               Payment:{" "}
-              <strong>{order.paymentState.replaceAll("_", " ")}</strong>
+              <strong>
+                {order.paymentState === "PROCESSING"
+                  ? "Payment pending"
+                  : order.paymentState === "AWAITING_REVIEW"
+                    ? "Awaiting bank transfer verification"
+                    : order.paymentState.replaceAll("_", " ")}
+              </strong>
             </p>
             <p>
               Enrolment: <strong>{order.enrolmentState}</strong>
@@ -1018,6 +1222,71 @@ export function SirahRegistrationForm({
                 )}
               </div>
             )}
+          <details className={styles.savedDetails}>
+            <summary>
+              {order.fullName} · {order.email} · Edit registration details
+            </summary>
+            <form
+              className={styles.form}
+              onSubmit={(event) => {
+                event.preventDefault();
+                void run(async () => {
+                  const result = await api(`/api/sirah/orders/${order.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({
+                      revision: order.revision,
+                      fullName: name,
+                      phoneCountry,
+                      callingCode: `+${getCountryCallingCode(phoneCountry)}`,
+                      phone,
+                    }),
+                  });
+                  setOrder(result.order);
+                  setMessage("Registration details saved.");
+                });
+              }}
+            >
+              <label>
+                Full name
+                <input
+                  aria-label="Saved full name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  minLength={2}
+                  maxLength={120}
+                  required
+                />
+              </label>
+              <label>
+                Email
+                <input
+                  aria-label="Saved email"
+                  type="email"
+                  value={order.email}
+                  readOnly
+                />
+                <small>
+                  For an email correction, contact TGA or update your account
+                  after signing in.
+                </small>
+              </label>
+              <PhoneControl
+                country={phoneCountry}
+                value={phone}
+                onCountryChange={setPhoneCountry}
+                onChange={setPhone}
+              />
+              <button
+                type="submit"
+                disabled={
+                  busy ||
+                  !["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState)
+                }
+              >
+                Save details
+              </button>
+            </form>
+          </details>
           <div className={styles.grid}>
             <label>
               Country of residence / billing country
@@ -1124,8 +1393,8 @@ export function SirahRegistrationForm({
           {["PROCESSING", "REFUND_PENDING"].includes(order.paymentState) ? (
             <div className={styles.notice}>
               <p>
-                Payment is processing. A return URL or approved checkout does
-                not confirm payment.
+                Payment pending. We’re waiting for confirmation from the payment
+                provider.
               </p>
               <button
                 type="button"
@@ -1177,7 +1446,7 @@ export function SirahRegistrationForm({
                             ? "JazzCash"
                             : method === "STRIPE"
                               ? "Pay by debit or credit card"
-                              : "PayPal"}
+                              : "Pay with PayPal"}
                       </option>
                     ))}
                   </select>
@@ -1400,8 +1669,8 @@ export function SirahRegistrationForm({
             )}
           {order.paymentState === "AWAITING_REVIEW" && (
             <p className={styles.notice}>
-              Your payment submission has been received. Enrolment confirmation
-              follows admin approval.
+              Awaiting bank transfer verification. TGA will check your transfer
+              details and confirm enrolment after receipt is verified.
             </p>
           )}
           {order.receipts.length > 0 && (
@@ -1447,6 +1716,37 @@ export function SirahRegistrationForm({
           </p>
         </section>
       )}
+      <details className={styles.resumeHelp} open={resumeProblem || undefined}>
+        <summary>Need a fresh payment link?</summary>
+        <form
+          className={styles.form}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            void run(async () => {
+              const result = await api("/api/sirah/payment-resume/request", {
+                method: "POST",
+                body: JSON.stringify({ email: data.get("email") }),
+              });
+              setMessage(result.message);
+            });
+          }}
+        >
+          <label>
+            Registration email
+            <input
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              defaultValue={email}
+            />
+          </label>
+          <button type="submit" disabled={busy}>
+            Send a fresh link
+          </button>
+        </form>
+      </details>
       {error && (
         <p className={styles.error} role="alert">
           {error}
