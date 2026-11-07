@@ -34,3 +34,33 @@ No real first-charge or renewal sandbox transaction was possible without connect
 - Browser first-visit PK and GB trusted hints (test-only configured proxy mode), direct-entry defaults, and saved explicit choices overriding a changed hint.
 - Browser checks at 360, 390, 430 and 1440 px: fresh en-GB browser falls back to Pakistan, actual-country selector, monthly/annual fee handoff, cross-surface sync and saved choice. New registration verifies residence confirmation, server manual price, payment instructions and manual amount acknowledgement.
 - Screenshots in this directory: `fees-residence-*.png`, `residence-modal-*.png`.
+
+## Live header verification endpoint
+
+`GET /api/sirah/location` reports the per-request suggested country, whether
+trusted detection succeeded, the configured provider name, the observed valid
+`CF-IPCountry` country code (or null), and whether a syntactically valid
+`do-connecting-ip` arrived. Responses are private/no-store; no IP, filesystem
+path, credentials or other request headers are returned or logged. An observed
+country header is diagnostic information only; it does not automatically become
+a trusted source.
+
+Check the endpoint on `https://tga-awakening.com` itself, not its Vercel mirror.
+Compare an ordinary request with requests containing artificial `CF-IPCountry`
+values: a trusted edge must replace them. A `cf-ray` response header alone does
+not prove that `CF-IPCountry` reaches the application. Leave Cloudflare mode off
+if the header is absent or supplied values pass through unchanged.
+
+For App Platform IP lookup use the two server-only settings listed above, and
+provision the actual GeoLite2 Country database file (setting a path alone does
+not install it). With verified Cloudflare geolocation use
+`SIRAH_GEO_PROVIDER=CLOUDFLARE`. A valid country header needs no database or API
+key; if it is absent/invalid, a configured database path enables fallback to
+App Platform's trusted IP. If both sources fail the suggested country is PK.
+The student's explicit/saved residence still takes priority in fees and both
+registration entry points. No GPS permission or client-side IP API is used.
+
+The lookup is tested against MaxMind's small synthetic Country test database
+for GB/US resolution, missing/invalid Cloudflare hints falling through to the
+platform IP, invalid/unmapped IP fallback, and valid country-header priority.
+This fixture is never used for production geolocation.

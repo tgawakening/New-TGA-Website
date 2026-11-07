@@ -139,3 +139,60 @@ test("synthetically verified card readiness selects 3000; manual remains 3500 in
     }
   }
 });
+
+test("App Platform lookup resolves countries and missing CF hints fall through to its trusted IP", async () => {
+  const { countryFromTrustedHeaders } =
+    await import("../lib/sirah/geolocation");
+  const path = `${process.cwd()}/scripts/fixtures/geoip/GeoIP2-Country-Test.mmdb`;
+  assert.equal(
+    await countryFromTrustedHeaders(
+      new Headers({ "do-connecting-ip": "81.2.69.160" }),
+      "APP_PLATFORM",
+      path,
+    ),
+    "GB",
+  );
+  assert.equal(
+    await countryFromTrustedHeaders(
+      new Headers({ "do-connecting-ip": "216.160.83.56" }),
+      "APP_PLATFORM",
+      path,
+    ),
+    "US",
+  );
+  assert.equal(
+    await countryFromTrustedHeaders(
+      new Headers({ "do-connecting-ip": "81.2.69.160" }),
+      "CLOUDFLARE",
+      path,
+    ),
+    "GB",
+  );
+  assert.equal(
+    await countryFromTrustedHeaders(
+      new Headers({
+        "cf-ipcountry": "XX",
+        "do-connecting-ip": "216.160.83.56",
+      }),
+      "CLOUDFLARE",
+      path,
+    ),
+    "US",
+  );
+  assert.equal(
+    await countryFromTrustedHeaders(
+      new Headers({ "cf-ipcountry": "PK", "do-connecting-ip": "81.2.69.160" }),
+      "CLOUDFLARE",
+      path,
+    ),
+    "PK",
+  );
+  assert.equal(
+    await countryFromTrustedHeaders(
+      new Headers({ "do-connecting-ip": "192.0.2.1" }),
+      "APP_PLATFORM",
+      path,
+    ),
+    undefined,
+  );
+});
