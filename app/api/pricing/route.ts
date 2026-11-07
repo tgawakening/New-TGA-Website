@@ -125,7 +125,11 @@ export async function POST(request: Request) {
       ).filter((method) =>
         methodAvailable(method, v.countryCode, price.currency, v.plan),
       ),
-      manualAccounts: v.countryCode === "PK" ? manualAccounts() : [],
+      manualAccounts: v.countryCode === "PK"
+        ? manualAccounts().filter(account =>
+            methodAvailable(account.method, v.countryCode, price.currency, v.plan),
+          )
+        : [],
       cardAvailable: methodAvailable(
         "STRIPE",
         v.countryCode,

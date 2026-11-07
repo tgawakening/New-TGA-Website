@@ -1,0 +1,92 @@
+{
+  "PKR": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "INR": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "GBP": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "USD": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "CAD": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "EUR": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "SAR": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "QAR": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "BHD": {
+    "presentmentInGBCountrySpecification": false,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "KWD": {
+    "presentmentInGBCountrySpecification": false,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "CHF": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "SEK": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "NOK": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "DKK": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "PLN": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "CZK": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "HUF": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  },
+  "RON": {
+    "presentmentInGBCountrySpecification": true,
+    "paymentAndAppVerificationCompleted": false,
+    "enabled": false
+  }
+}

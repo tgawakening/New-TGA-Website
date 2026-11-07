@@ -152,6 +152,17 @@ export function methodAvailable(
       country === "PK" &&
       manualAccounts().some((account) => account.method === method)
     );
+  // A verified GBP checkout must not enable every unlisted country billed in GBP.
+  const live = method === "PAYPAL"
+    ? process.env.PAYPAL_ENV === "live"
+    : !/^(sk|rk)_test_/.test(process.env.SIRAH_STRIPE_SECRET_KEY || "");
+  const approvedCountries = new Set(
+    (process.env[`SIRAH_${method}_${plan}_COUNTRIES`] || "")
+      .split(",")
+      .map(value => value.trim().toUpperCase())
+      .filter(value => /^[A-Z]{2}$/.test(value)),
+  );
+  if (live && !approvedCountries.has(country.toUpperCase())) return false;
   if (
     country === "PK" &&
     plan === "MONTHLY" &&
