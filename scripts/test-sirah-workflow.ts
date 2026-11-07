@@ -3357,7 +3357,7 @@ test("confirmed course-start full-refund protection supersedes unused-month cap 
     refundAccessTiming: "CURRENT_MONTH_END",
   });
   const date = pakistanCalendarDate(new Date(Date.now() - 7 * 86400000));
-  let cohort = await updateSirahCohort(
+  const cohort = await updateSirahCohort(
     {
       revision: 0,
       commencementDate: date,
@@ -3381,7 +3381,7 @@ test("confirmed course-start full-refund protection supersedes unused-month cap 
   const paid = await prisma.sirahOrder.findUniqueOrThrow({
     where: { id: order.id },
   });
-  cohort = await updateSirahCohort(
+  await updateSirahCohort(
     {
       revision: cohort.revision,
       commencementDate: pakistanCalendarDate(
