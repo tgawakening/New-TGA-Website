@@ -34,6 +34,7 @@ export function getGroupInvitation(country: string) {
 }
 export type SirahTerms = {
   version: string;
+  approvedRoutes?: string[];
   requiresConfirmedCommencement?: boolean;
   cohortCommencementDate?: string;
   cohortRevision?: number;
@@ -62,6 +63,15 @@ export function termsFor(plan: SirahPlan): SirahTerms | null {
       ] || "null",
     );
     return value &&
+      (value.approvedRoutes === undefined ||
+        (Array.isArray(value.approvedRoutes) &&
+          value.approvedRoutes.every(
+            (route: unknown) =>
+              typeof route === "string" &&
+              /^(BANK_TRANSFER|JAZZCASH|STRIPE|PAYPAL):[A-Z]{2}:[A-Z]{3}$/.test(
+                route,
+              ),
+          ))) &&
       (value.requiresConfirmedCommencement === undefined ||
         typeof value.requiresConfirmedCommencement === "boolean") &&
       ["earlyServiceRequestText", "digitalContentConsentText"].every(
@@ -191,8 +201,16 @@ export function methodAvailable(
   plan: SirahPlan,
   verificationOrder?: { id: string; amountMinor: number },
 ) {
+  country = country.toUpperCase();
+  currency = currency.toUpperCase();
   if (method === "PAYPAL" && country === "PK") return false;
-  if (!termsFor(plan)) return false;
+  const terms = termsFor(plan);
+  if (!terms) return false;
+  if (
+    terms.approvedRoutes &&
+    !terms.approvedRoutes.includes(`${method}:${country}:${currency}`)
+  )
+    return false;
   if (
     method === "STRIPE" &&
     !/^(sk|rk)_test_/.test(process.env.SIRAH_STRIPE_SECRET_KEY || "") &&
