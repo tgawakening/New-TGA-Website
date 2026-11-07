@@ -658,13 +658,13 @@ function SeerahContent({
             <div className={styles.heroShade} />
             <div className={`${styles.container} ${styles.heroInner}`}>
               <div className={styles.heroCopy}>
-                <h1 id="course-title" aria-label="Sīrah | Beyond Chronology">
-                  Beyond Chronology
+                <h1 id="course-title">
+                  <span className={styles.heroCourseName}>SĪRAH</span>{" "}
+                  <span className={styles.heroCourseTitle}>Beyond Chronology</span>
                 </h1>
                 <p className={styles.heroIntro}>
-                  Study the life of the Prophet ﷺ through the decisions he made,
-                  the community he built, and the responsibilities his example
-                  places on us.
+                  Study the life of the Prophet ﷺ through his decisions, the
+                  community he built, and our responsibilities today.
                 </p>
                 <div className={styles.heroActions}>
                   <PrimaryAction placement="hero" country={country} />
