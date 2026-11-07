@@ -1,0 +1,62 @@
+[
+  {
+    "width": 390,
+    "plan": "MONTHLY",
+    "country": "PK",
+    "pricePKR": 3500,
+    "manualMethods": [
+      "BANK_TRANSFER",
+      "JAZZCASH"
+    ],
+    "onlineMethodsOff": true,
+    "confirmedDate": "2026-11-14",
+    "separateConsentChoices": true,
+    "noHorizontalOverflow": true,
+    "noProductionRegistrationOrPaymentCreated": true
+  },
+  {
+    "width": 390,
+    "plan": "ANNUAL",
+    "country": "PK",
+    "pricePKR": 32400,
+    "manualMethods": [
+      "BANK_TRANSFER",
+      "JAZZCASH"
+    ],
+    "onlineMethodsOff": true,
+    "confirmedDate": "2026-11-14",
+    "separateConsentChoices": true,
+    "noHorizontalOverflow": true,
+    "noProductionRegistrationOrPaymentCreated": true
+  },
+  {
+    "width": 1350,
+    "plan": "MONTHLY",
+    "country": "PK",
+    "pricePKR": 3500,
+    "manualMethods": [
+      "BANK_TRANSFER",
+      "JAZZCASH"
+    ],
+    "onlineMethodsOff": true,
+    "confirmedDate": "2026-11-14",
+    "separateConsentChoices": true,
+    "noHorizontalOverflow": true,
+    "noProductionRegistrationOrPaymentCreated": true
+  },
+  {
+    "width": 1350,
+    "plan": "ANNUAL",
+    "country": "PK",
+    "pricePKR": 32400,
+    "manualMethods": [
+      "BANK_TRANSFER",
+      "JAZZCASH"
+    ],
+    "onlineMethodsOff": true,
+    "confirmedDate": "2026-11-14",
+    "separateConsentChoices": true,
+    "noHorizontalOverflow": true,
+    "noProductionRegistrationOrPaymentCreated": true
+  }
+]

@@ -1,10 +1,10 @@
 {
-  "ownerInstruction": "Owner requests immediate payment activation despite outstanding circumstances; prioritise the tested Pakistan manual annual routes. Do not fabricate independent reviews, payment receipt, provider verification or confirmed enrolment.",
+  "ownerInstruction": "Owner requests urgent country-appropriate payment activation despite outstanding circumstances. Activate tested Pakistan manual annual and monthly routes using the already confirmed fees and commercial policies; retain actual receipt verification and truthful review status.",
   "ownerLaunchRequested": true,
   "independentLegalReviewCompleted": false,
   "accountantDeterminationReceived": false,
   "newLivePaymentVerified": false,
-  "activationApplied": false,
+  "activationApplied": true,
   "publicationDate": "2026-11-08; replace with actual publication date if applied on a later day",
   "component": "tga-app / new-tga-website",
   "scope": "RUN_TIME",
@@ -13,14 +13,41 @@
     "SIRAH_BANK_TRANSFER_VERIFIED": "true",
     "SIRAH_BANK_TRANSFER_ANNUAL_VERIFIED_ROUTES": "PK:PKR",
     "SIRAH_JAZZCASH_VERIFIED": "true",
-    "SIRAH_JAZZCASH_ANNUAL_VERIFIED_ROUTES": "PK:PKR"
+    "SIRAH_JAZZCASH_ANNUAL_VERIFIED_ROUTES": "PK:PKR",
+    "SIRAH_MONTHLY_TERMS_JSON": "{\"version\":\"sirah-pk-manual-monthly-v1\",\"commitment\":\"Global Awakening CIC, company 15523255, 128 City Road, London, EC1V 2NX, United Kingdom, supplies Sīrah | Beyond Chronology. Pakistan manual monthly is PKR 3,500 per verified paid month. Renewals are voluntary, with no obligation to make twelve payments and no automatic debit. The programme schedule lasts at most twelve months. Published 8 November 2026, prospectively only. These course-specific payment, refund and access rules prevail over conflicting general TGA policies without reducing mandatory rights.\",\"cancellation\":\"You may stop future monthly payments without becoming liable for the remaining programme fees. Send any clear cancellation or refund request through your saved registration, https://wa.me/923262055614 or Enquiries.awakeningteam@outlook.com; no particular form is required. Access continues to the verified paid-period boundary. TGA preserves a full refund for cancellation requested within fourteen days of course commencement, additional to any applicable statutory cancellation period measured from contract conclusion and other mandatory rights. The more protective applicable result governs.\",\"refund\":\"Completed monthly periods are not automatically refunded simply because future payments stop. The additional fourteen-day course-start full-refund protection and statutory rights still apply. Refund processing targets twenty calendar days after approval, subject to any shorter statutory deadline. Internal approval cannot restart a legal clock; applicable UK cancellation reimbursement may be due within fourteen days of notification without undue delay. Refund by the original method unless expressly agreed otherwise, with no refund fee.\",\"access\":\"Each distinct verified manual monthly payment grants only its corresponding paid calendar month of the original programme schedule; the confirmation states its boundary. Unpaid months do not grant access. Course and recording access follow the paid period and do not extend beyond the original programme expiry, twelve calendar months after the first verified payment. The first paid teaching date and separate course-start refund window are displayed with the booking. Manual payments do not create automatic renewals or an automatic-payment grace period. Students not requesting immediate supply can save a pending registration without choosing payment and contact support to arrange a later start before transferring.\",\"tax\":\"PKR 3,500 is the full price for this Pakistan manual monthly booking. No additional course fee or tax charge will be added at checkout. Any tax TGA is legally required to collect is included within that total.\",\"earlyServiceRequestText\":\"I expressly request teaching and related services to begin during any applicable statutory cancellation period. I understand the applicable cancellation rules and any lawful proportionate service charge, subject to TGA's additional full-refund protection.\",\"digitalContentConsentText\":\"I expressly consent to immediate access to recordings during any applicable statutory cancellation period and acknowledge that, where the law provides, the statutory right to cancel supply of that digital content is lost once supply begins. This does not remove TGA's additional fourteen-day course-start full refund, my service cancellation rights or other mandatory remedies.\",\"cancellationTiming\":\"PERIOD_END\",\"failedPaymentAccess\":\"PAUSE\",\"refundAccess\":\"REVOKE\",\"refundBilling\":\"CANCEL\",\"requiresConfirmedCommencement\":true,\"approvedRoutes\":[\"BANK_TRANSFER:PK:PKR\",\"JAZZCASH:PK:PKR\"]}",
+    "SIRAH_BANK_TRANSFER_MONTHLY_VERIFIED_ROUTES": "PK:PKR",
+    "SIRAH_JAZZCASH_MONTHLY_VERIFIED_ROUTES": "PK:PKR"
   },
   "checksBeforeAnnouncement": [
-    "Read back PK/ANNUAL quote: PKR 3240000 and each enabled method independently",
+    "Read back PK annual/monthly quotes: PKR 3240000 / 350000 with each individually enabled manual method; other countries remain independently gated.",
     "Match receiving instructions against the existing owner-confirmed account records",
     "Do not mark receipt submission paid; authorised staff verify actual account receipt first",
     "Confirm one paid event/enrolment and genuinely delivered student/admin confirmation",
     "Do not enable unverified Stripe/PayPal or unsupported country/currency combinations"
   ],
-  "unchanged": "All credentials, monthly/online live flags, currency lists, existing receiving details and registrations remain unchanged."
+  "unchanged": "All credentials, monthly/online live flags, currency lists, existing receiving details and registrations remain unchanged.",
+  "livePaymentMethodsEnabled": {
+    "PK": {
+      "MONTHLY": {
+        "methods": [
+          "BANK_TRANSFER",
+          "JAZZCASH"
+        ],
+        "currency": "PKR",
+        "amountMinor": 350000
+      },
+      "ANNUAL": {
+        "methods": [
+          "BANK_TRANSFER",
+          "JAZZCASH"
+        ],
+        "currency": "PKR",
+        "amountMinor": 3240000
+      }
+    }
+  },
+  "productionDeploymentId": "5923f973-5206-4f17-b6f7-c8ca496723cd",
+  "productionSourceCommit": "d66f66b64aeb935f8d906ba844b9c152020adf67",
+  "productionDeploymentPhase": "ACTIVE",
+  "genuinePaidEnrolmentVerified": false
 }

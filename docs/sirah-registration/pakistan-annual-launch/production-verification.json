@@ -1,0 +1,149 @@
+{
+  "checkedAt": "2026-11-07T23:00:04.936713+00:00",
+  "quotes": [
+    {
+      "host": "tga-awakening.com",
+      "country": "PK",
+      "plan": "MONTHLY",
+      "status": 200,
+      "currency": "PKR",
+      "amountMinor": 350000,
+      "methods": [
+        "BANK_TRANSFER",
+        "JAZZCASH"
+      ],
+      "receivingDetailsMatchOwnerRecords": true,
+      "termsVersion": "sirah-pk-manual-monthly-v1"
+    },
+    {
+      "host": "tga-awakening.com",
+      "country": "PK",
+      "plan": "ANNUAL",
+      "status": 200,
+      "currency": "PKR",
+      "amountMinor": 3240000,
+      "methods": [
+        "BANK_TRANSFER",
+        "JAZZCASH"
+      ],
+      "receivingDetailsMatchOwnerRecords": true,
+      "termsVersion": "sirah-pk-annual-v1"
+    },
+    {
+      "host": "tga-awakening.com",
+      "country": "GB",
+      "plan": "MONTHLY",
+      "status": 200,
+      "currency": "GBP",
+      "amountMinor": 2999,
+      "methods": [],
+      "receivingDetailsMatchOwnerRecords": null,
+      "termsVersion": "sirah-pk-manual-monthly-v1"
+    },
+    {
+      "host": "tga-awakening.com",
+      "country": "GB",
+      "plan": "ANNUAL",
+      "status": 200,
+      "currency": "GBP",
+      "amountMinor": 32389,
+      "methods": [],
+      "receivingDetailsMatchOwnerRecords": null,
+      "termsVersion": "sirah-pk-annual-v1"
+    },
+    {
+      "host": "tga-awakening.com",
+      "country": "US",
+      "plan": "MONTHLY",
+      "status": 200,
+      "currency": "USD",
+      "amountMinor": 3999,
+      "methods": [],
+      "receivingDetailsMatchOwnerRecords": null,
+      "termsVersion": "sirah-pk-manual-monthly-v1"
+    },
+    {
+      "host": "tga-awakening.com",
+      "country": "US",
+      "plan": "ANNUAL",
+      "status": 200,
+      "currency": "USD",
+      "amountMinor": 43189,
+      "methods": [],
+      "receivingDetailsMatchOwnerRecords": null,
+      "termsVersion": "sirah-pk-annual-v1"
+    },
+    {
+      "host": "www.tga-awakening.com",
+      "country": "PK",
+      "plan": "MONTHLY",
+      "status": 200,
+      "currency": "PKR",
+      "amountMinor": 350000,
+      "methods": [
+        "BANK_TRANSFER",
+        "JAZZCASH"
+      ],
+      "receivingDetailsMatchOwnerRecords": true,
+      "termsVersion": "sirah-pk-manual-monthly-v1"
+    },
+    {
+      "host": "www.tga-awakening.com",
+      "country": "PK",
+      "plan": "ANNUAL",
+      "status": 200,
+      "currency": "PKR",
+      "amountMinor": 3240000,
+      "methods": [
+        "BANK_TRANSFER",
+        "JAZZCASH"
+      ],
+      "receivingDetailsMatchOwnerRecords": true,
+      "termsVersion": "sirah-pk-annual-v1"
+    },
+    {
+      "host": "www.tga-awakening.com",
+      "country": "GB",
+      "plan": "MONTHLY",
+      "status": 200,
+      "currency": "GBP",
+      "amountMinor": 2999,
+      "methods": [],
+      "receivingDetailsMatchOwnerRecords": null,
+      "termsVersion": "sirah-pk-manual-monthly-v1"
+    },
+    {
+      "host": "www.tga-awakening.com",
+      "country": "GB",
+      "plan": "ANNUAL",
+      "status": 200,
+      "currency": "GBP",
+      "amountMinor": 32389,
+      "methods": [],
+      "receivingDetailsMatchOwnerRecords": null,
+      "termsVersion": "sirah-pk-annual-v1"
+    },
+    {
+      "host": "www.tga-awakening.com",
+      "country": "US",
+      "plan": "MONTHLY",
+      "status": 200,
+      "currency": "USD",
+      "amountMinor": 3999,
+      "methods": [],
+      "receivingDetailsMatchOwnerRecords": null,
+      "termsVersion": "sirah-pk-manual-monthly-v1"
+    },
+    {
+      "host": "www.tga-awakening.com",
+      "country": "US",
+      "plan": "ANNUAL",
+      "status": 200,
+      "currency": "USD",
+      "amountMinor": 43189,
+      "methods": [],
+      "receivingDetailsMatchOwnerRecords": null,
+      "termsVersion": "sirah-pk-annual-v1"
+    }
+  ]
+}

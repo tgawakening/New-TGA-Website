@@ -132,3 +132,15 @@ The two receiving verification flags reflect the owner's existing account
 confirmation; each route certificate records isolated manual workflow acceptance,
 not a claim that a new production student deposit has already settled. Confirm
 live receipt/staff/enrolment/delivery separately before announcing paid enrolment.
+
+## Current status supersedes earlier review-stage holds
+
+See `LIVE-STATUS.md`. Following the owner's subsequent explicit immediate-launch
+instruction, Pakistan Meezan/JazzCash collection is now enabled for annual
+PKR 32,400 and manual monthly PKR 3,500. The original after-approval candidate is
+retained as review history; the applied values and truthful review/payment status
+are in `digitalocean.owner-launch-request.json`. Independent reviews and a new
+genuine paid transaction are not falsely marked complete. Production screenshots
+and redacted public checks are alongside this file. Automatic provider enrolment
+still depends on verified completed Stripe/PayPal payments, never staff receipt
+approval. The current private-provider-check blocker is console permission 403.

@@ -1,6 +1,6 @@
 {
   "source": "Owner commercial-policy and Pakistan annual launch decisions supplied in the continuation conversation; no independent legal or accountant approval claimed",
-  "publicationApproved": false,
+  "publicationApproved": true,
   "legalReviewCompleted": false,
   "ownerConfirmed": {
     "monthlyRenewalsVoluntary": true,
@@ -37,31 +37,44 @@
     "additionalStudentChargeAuthorised": false
   },
   "monthlyTermsConfigurationAfterApproval": {
-    "version": null,
-    "commitment": null,
-    "cancellation": null,
-    "refund": null,
-    "access": null,
-    "tax": null,
+    "version": "sirah-pk-manual-monthly-v1",
+    "commitment": "Global Awakening CIC, company 15523255, 128 City Road, London, EC1V 2NX, United Kingdom, supplies Sīrah | Beyond Chronology. Pakistan manual monthly is PKR 3,500 per verified paid month. Renewals are voluntary, with no obligation to make twelve payments and no automatic debit. The programme schedule lasts at most twelve months. Published 8 November 2026, prospectively only. These course-specific payment, refund and access rules prevail over conflicting general TGA policies without reducing mandatory rights.",
+    "cancellation": "You may stop future monthly payments without becoming liable for the remaining programme fees. Send any clear cancellation or refund request through your saved registration, https://wa.me/923262055614 or Enquiries.awakeningteam@outlook.com; no particular form is required. Access continues to the verified paid-period boundary. TGA preserves a full refund for cancellation requested within fourteen days of course commencement, additional to any applicable statutory cancellation period measured from contract conclusion and other mandatory rights. The more protective applicable result governs.",
+    "refund": "Completed monthly periods are not automatically refunded simply because future payments stop. The additional fourteen-day course-start full-refund protection and statutory rights still apply. Refund processing targets twenty calendar days after approval, subject to any shorter statutory deadline. Internal approval cannot restart a legal clock; applicable UK cancellation reimbursement may be due within fourteen days of notification without undue delay. Refund by the original method unless expressly agreed otherwise, with no refund fee.",
+    "access": "Each distinct verified manual monthly payment grants only its corresponding paid calendar month of the original programme schedule; the confirmation states its boundary. Unpaid months do not grant access. Course and recording access follow the paid period and do not extend beyond the original programme expiry, twelve calendar months after the first verified payment. The first paid teaching date and separate course-start refund window are displayed with the booking. Manual payments do not create automatic renewals or an automatic-payment grace period. Students not requesting immediate supply can save a pending registration without choosing payment and contact support to arrange a later start before transferring.",
+    "tax": "PKR 3,500 is the full price for this Pakistan manual monthly booking. No additional course fee or tax charge will be added at checkout. Any tax TGA is legally required to collect is included within that total.",
+    "earlyServiceRequestText": "I expressly request teaching and related services to begin during any applicable statutory cancellation period. I understand the applicable cancellation rules and any lawful proportionate service charge, subject to TGA's additional full-refund protection.",
+    "digitalContentConsentText": "I expressly consent to immediate access to recordings during any applicable statutory cancellation period and acknowledge that, where the law provides, the statutory right to cancel supply of that digital content is lost once supply begins. This does not remove TGA's additional fourteen-day course-start full refund, my service cancellation rights or other mandatory remedies.",
     "cancellationTiming": "PERIOD_END",
     "failedPaymentAccess": "PAUSE",
-    "failedPaymentGraceDays": 7,
-    "refundAccess": null,
-    "refundBilling": null
+    "refundAccess": "REVOKE",
+    "refundBilling": "CANCEL",
+    "requiresConfirmedCommencement": true,
+    "approvedRoutes": [
+      "BANK_TRANSFER:PK:PKR",
+      "JAZZCASH:PK:PKR"
+    ]
   },
   "annualTermsConfigurationAfterApproval": {
-    "version": null,
-    "commitment": null,
-    "cancellation": null,
-    "refund": null,
-    "access": null,
-    "tax": null,
+    "version": "sirah-pk-annual-v1",
+    "commitment": "Global Awakening CIC, company 15523255, 128 City Road, London, EC1V 2NX, United Kingdom, supplies Sīrah | Beyond Chronology. Pakistan annual upfront is one PKR 32,400 payment for up to twelve months, with no recurring debit. The confirmed cohort first teaching date and additional course-start full-refund deadline are shown with this booking and retained in its accepted terms. Published 8 November 2026, prospectively only. Registration and proof alone do not confirm payment; enrolment follows TGA verification. For this Sīrah booking these course-specific payment, refund and access rules prevail over conflicting general TGA policies, without reducing mandatory rights.",
+    "cancellation": "Send any clear cancellation/refund request through your saved registration, https://wa.me/923262055614 or Enquiries.awakeningteam@outlook.com. A particular form is not required. TGA provides a full refund for cancellation requested within fourteen days of course commencement. This protection is additional to any applicable statutory cancellation period measured from contract conclusion, and other mandatory rights; the more protective applicable result governs.",
+    "refund": "Outside an applicable full-refund entitlement, refund eligible fully unused months using the actual upfront payment divided by twelve, less prior refunds. A started month is used under the standard rule. Round down once to the smallest currency unit; never exceed unrefunded collections. Statutory exceptions and the additional course-start full refund prevail. Refund processing targets twenty calendar days after approval, subject to any shorter statutory deadline; internal approval cannot restart a legal clock. Applicable UK cancellation reimbursement can be due within fourteen days of notification, without undue delay. Refund by the original method unless expressly agreed otherwise; no refund fee.",
+    "access": "Paid access begins on the first verified payment and expires twelve calendar months later unless ended earlier under the applicable cancellation/refund rules. Under the standard unused-month cancellation, teaching and recordings continue to the end of the current paid month, then end. Recordings do not extend beyond active paid access or original programme expiry. The course commencement date and paid-period start are separate. Students not requesting immediate supply may save a pending registration without selecting payment and contact support to agree a later start before transferring.",
+    "tax": "PKR 32,400 is the full price for this Pakistan annual booking. No additional course fee or tax charge will be added at checkout. Any tax TGA is legally required to collect is included within that total.",
+    "earlyServiceRequestText": "I expressly request teaching and related services to begin during any applicable statutory cancellation period. I understand the applicable cancellation rules and any lawful proportionate service charge, subject to TGA's additional full-refund protection.",
+    "digitalContentConsentText": "I expressly consent to immediate access to recordings during any applicable statutory cancellation period and acknowledge that, where the law provides, the statutory right to cancel supply of that digital content is lost once supply begins. This does not remove TGA's additional fourteen-day course-start full refund, my service cancellation rights or other mandatory remedies.",
     "cancellationTiming": "PERIOD_END",
-    "annualRefundBasis": "FULL_UNUSED_MONTHS",
+    "failedPaymentAccess": "PAUSE",
     "refundAccess": "REVOKE",
+    "annualRefundBasis": "FULL_UNUSED_MONTHS",
     "refundAccessTiming": "CURRENT_MONTH_END",
-    "failedPaymentAccess": null,
-    "refundBilling": null
+    "refundBilling": "CANCEL",
+    "requiresConfirmedCommencement": true,
+    "approvedRoutes": [
+      "BANK_TRANSFER:PK:PKR",
+      "JAZZCASH:PK:PKR"
+    ]
   },
   "seller": {
     "ownerConfirmedName": "Global Awakening CIC",
@@ -78,6 +91,28 @@
     "source": "Owner requests automatic or manual payment methods urgently despite outstanding circumstances, according to countries",
     "firstOperationalTarget": "Pakistan annual through existing verified Meezan/JazzCash receiving arrangements at PKR 32,400",
     "reviewStatus": "Independent legal and accountant reviews remain unverified; the launch instruction must not be represented as completed review",
-    "verificationControls": "Retain receiving-account checks, exact method/country/currency scope, staff verification of actual bank receipt, idempotency and paid-only enrolment"
-  }
+    "verificationControls": "Retain receiving-account checks, exact method/country/currency scope, staff verification of actual bank receipt, idempotency and paid-only enrolment",
+    "manualRoutesEnabled": {
+      "PK": {
+        "MONTHLY": {
+          "methods": [
+            "BANK_TRANSFER",
+            "JAZZCASH"
+          ],
+          "currency": "PKR",
+          "amountMinor": 350000
+        },
+        "ANNUAL": {
+          "methods": [
+            "BANK_TRANSFER",
+            "JAZZCASH"
+          ],
+          "currency": "PKR",
+          "amountMinor": 3240000
+        }
+      }
+    },
+    "automaticEnrolmentRule": "Stripe and PayPal enrol automatically only after verified completed provider payment; staff receipt approval applies only to Meezan and JazzCash."
+  },
+  "publicationApprovalBasis": "Owner later explicitly directed immediate payment activation despite outstanding circumstances, superseding the prior process hold; this authorises the necessary first-market checkout publication, not a claim of completed independent legal or accountant review."
 }
