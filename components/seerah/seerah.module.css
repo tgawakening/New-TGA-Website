@@ -1586,20 +1586,6 @@
   color: #41463a;
   font-size: 16px;
 }
-.groupActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 20px;
-}
-.groupActions .secondary {
-  color: #141611;
-  border: 1px solid #80714c;
-  padding: 12px 18px;
-}
-.groupActions .secondary:hover {
-  background: #e7dfca;
-}
 .closing {
   padding: 48px 28px;
   margin-top: 48px;
@@ -2466,4 +2452,60 @@
   color: var(--charcoal);
   background: #f5efdf;
   border-color: #7b7357;
+}
+
+/* Public course enquiries: a complete control, with room for region selection. */
+.publicGroups p {
+  line-height: 1.7;
+}
+.publicGroups .consultationAction {
+  margin-top: 20px;
+  gap: 12px;
+  align-items: stretch;
+}
+.publicGroups .consultationAction .secondary {
+  min-height: 52px;
+  padding: 14px 22px;
+  gap: 28px;
+  border: 1px solid #20271b;
+  border-radius: 4px;
+  background: #20271b;
+  color: #fff9eb;
+  font: 600 14px/1.5 var(--font-montserrat), Arial, sans-serif;
+  text-decoration: none;
+}
+.publicGroups .consultationAction .secondary > span {
+  font-size: 18px;
+  line-height: 1;
+}
+.publicGroups .consultationAction .secondary:hover {
+  background: #35422b;
+  border-color: #35422b;
+}
+.publicGroups .consultationAction select {
+  min-height: 52px;
+  max-width: 220px;
+  padding: 12px 16px;
+  border-radius: 4px;
+}
+.publicGroups .consultationAction :is(a, button, select):focus-visible {
+  outline: 3px solid #735719;
+  outline-offset: 4px;
+}
+.publicGroups .consultationAction button:disabled {
+  background: #c9ceb9;
+  border-color: #8a9278;
+  color: #41463a;
+  opacity: 1;
+}
+@media (max-width: 767px) {
+  .publicGroups .consultationAction {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .publicGroups .consultationAction .secondary,
+  .publicGroups .consultationAction select {
+    width: 100%;
+    max-width: 100%;
+  }
 }
