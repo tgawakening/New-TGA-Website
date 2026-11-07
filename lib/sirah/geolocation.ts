@@ -25,12 +25,10 @@ export async function countryFromTrustedHeaders(
       : mode === "VERCEL"
         ? h.get("x-vercel-ip-country")
         : null;
-  if (country)
-    return validResidence(country.toUpperCase())
-      ? country.toUpperCase()
-      : undefined;
+  if (country && validResidence(country.toUpperCase()))
+    return country.toUpperCase();
   const ip =
-    mode === "APP_PLATFORM"
+    mode === "APP_PLATFORM" || mode === "CLOUDFLARE"
       ? h.get("do-connecting-ip")
       : mode === "DROPLET"
         ? h.get("x-real-ip")
