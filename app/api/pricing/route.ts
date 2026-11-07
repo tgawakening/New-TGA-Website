@@ -7,7 +7,7 @@ import { countries } from "countries-list";
 import { z } from "zod";
 import { calculatePricing } from "@/lib/pricing";
 import { priceFor, SIRAH_SLUG } from "@/lib/sirah/catalog";
-import { methodAvailable, termsFor } from "@/lib/sirah/config";
+import { methodAvailable, termsFor, manualAccounts } from "@/lib/sirah/config";
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => null);
@@ -120,6 +120,12 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({
       pricing: price,
+      methods: (
+        ["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"] as const
+      ).filter((method) =>
+        methodAvailable(method, v.countryCode, price.currency, v.plan),
+      ),
+      manualAccounts: v.countryCode === "PK" ? manualAccounts() : [],
       cardAvailable: methodAvailable(
         "STRIPE",
         v.countryCode,

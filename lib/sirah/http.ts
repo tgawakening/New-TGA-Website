@@ -1,4 +1,5 @@
 import "server-only";
+import { currentSirahResumeGrant } from "@/lib/sirah/resume";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -28,11 +29,17 @@ export function checkSirahOrigin(request: Request) {
   )
     throw new SirahError("This request must come from the TGA website.", 403);
 }
-export async function sirahUser() {
+export async function sirahUser(orderId?: string) {
   const user = await getCurrentUser();
-  if (!user || user.status !== "ACTIVE")
-    throw new SirahError("Please sign in to continue.", 401);
-  return user;
+  if (user?.status === "ACTIVE") return user;
+  if (orderId) {
+    const grant = await currentSirahResumeGrant();
+    if (grant?.orderId === orderId) return grant.order.user;
+  }
+  throw new SirahError(
+    "Please sign in or request a fresh payment link to continue.",
+    401,
+  );
 }
 export async function sirahAdmin(request: Request) {
   const denied = requireAdminAccess(request);

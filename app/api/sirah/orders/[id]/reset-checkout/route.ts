@@ -12,7 +12,7 @@ export async function POST(
 ) {
   try {
     checkSirahOrigin(request);
-    const user = await sirahUser();
+    const user = await sirahUser((await params).id);
     const id = (await params).id;
     await resetUnsettledSirahCheckout(id, user.id);
     return privateJson({ order: await publicSirahOrder(id, user.id) });
