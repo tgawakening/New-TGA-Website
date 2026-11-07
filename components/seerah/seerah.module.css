@@ -2209,3 +2209,234 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Supplied parchment artwork: keep every pixel and put copy in its dark space. */
+.hero {
+  display: grid;
+  min-height: 0;
+  padding: 0;
+  background: #25251b;
+  overflow: hidden;
+}
+.heroMedia {
+  position: relative;
+  inset: auto;
+  grid-area: 1 / 1;
+  align-self: end;
+  width: 100%;
+  aspect-ratio: 1672 / 941;
+  z-index: 0;
+  margin: 0;
+}
+.heroMedia .heroImage {
+  object-fit: contain;
+  object-position: center;
+  z-index: 0;
+}
+.heroMedia::after,
+.heroShade {
+  display: none;
+}
+.heroInner {
+  grid-area: 1 / 1;
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  width: 100%;
+  padding-top: clamp(24px, 4vw, 64px);
+  padding-bottom: clamp(24px, 4vw, 64px);
+}
+.page:has(.heroImage) .heroCopy {
+  max-width: 46%;
+  width: auto;
+}
+.hero .heroCopy h1 {
+  font:
+    400 clamp(36px, 4.2vw, 64px)/1.1 Georgia,
+    serif;
+  letter-spacing: -1.2px;
+  color: var(--ivory);
+  margin: 0 0 20px;
+}
+.hero .heroIntro {
+  font-size: 16px;
+  line-height: 1.75;
+  margin: 0 0 26px !important;
+  max-width: 38ch;
+  color: #f1ecdf;
+}
+.hero .heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+.hero .heroActions .primary,
+.hero .heroActions .secondary {
+  min-height: 48px;
+  padding: 12px 18px;
+  font-size: 12px;
+  text-align: left;
+}
+.consultationAction {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.consultationAction select {
+  max-width: 175px;
+  min-height: 44px;
+  padding: 8px;
+  color: var(--ivory);
+  background: #24261c;
+  border: 1px solid #9e956d;
+  border-radius: 2px;
+  font-size: 16px;
+}
+.consultationAction button:disabled {
+  opacity: 0.65;
+}
+.closing .consultationAction {
+  margin-top: 16px;
+}
+.faqGrid .consultationAction {
+  margin-top: 18px;
+}
+.plan h3 .manualComparison {
+  display: inline-block;
+  color: #666852;
+  font:
+    400 17px/1.5 var(--font-montserrat),
+    Arial,
+    sans-serif;
+  margin-right: 12px;
+}
+.orientation > .container {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1.5fr;
+  align-items: center;
+}
+.orientation .times {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+.orientation .times p {
+  display: grid;
+  grid-template-rows: 32px 20px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.orientation .times strong {
+  display: block;
+  margin: 0;
+  font-size: 23px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.orientation .times p > span {
+  display: block;
+  margin: 0;
+  font-size: 11px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .hero {
+    display: flex;
+    flex-direction: column;
+    background: #25251b;
+  }
+  .heroInner {
+    order: 0;
+    width: 100%;
+    padding: 28px 20px 0;
+  }
+  .page:has(.heroImage) .heroCopy {
+    max-width: 100%;
+  }
+  .hero .heroCopy h1 {
+    font-size: clamp(30px, 8vw, 36px);
+    letter-spacing: -0.6px;
+    margin-bottom: 16px;
+  }
+  .hero .heroIntro {
+    font-size: 15px;
+    line-height: 1.7;
+    max-width: 42ch;
+    margin-bottom: 22px !important;
+  }
+  .hero .heroActions {
+    align-items: stretch;
+    gap: 10px;
+  }
+  .hero .heroActions .primary,
+  .hero .heroActions .secondary {
+    min-height: 48px;
+    width: 100%;
+    font-size: 12px;
+  }
+  .hero .heroActions > a,
+  .hero .heroActions > .consultationAction {
+    width: 100%;
+  }
+  .hero .consultationAction select {
+    width: 100%;
+    max-width: 100%;
+  }
+  .heroMedia {
+    order: 1;
+    flex-shrink: 0;
+    aspect-ratio: 1122 / 1402;
+    margin-top: max(-50vw, -180px);
+    z-index: 0;
+  }
+  .orientation > .container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .orientation .times {
+    border-top: 1px solid #d9ad4a40;
+    padding-top: 18px;
+  }
+  .orientation .times strong {
+    font-size: 23px;
+  }
+  .page {
+    padding-bottom: calc(var(--sirah-mobile-bar-height, 88px) + 24px);
+  }
+  .mobileAction {
+    padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobileAction .primary {
+    min-height: 48px;
+  }
+}
+@media (max-width: 767px) {
+  .heroMedia::after {
+    display: block;
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 60px;
+    z-index: 1;
+    background: linear-gradient(#25251b, transparent);
+    pointer-events: none;
+  }
+}
+.ivory .consultationAction .secondary {
+  color: var(--charcoal);
+  border-color: #7b7357;
+}
+.ivory .consultationAction select {
+  color: var(--charcoal);
+  background: #f5efdf;
+  border-color: #7b7357;
+}
