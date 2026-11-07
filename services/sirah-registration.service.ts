@@ -74,8 +74,20 @@ export async function registerSirah(
   const initial = priceFor(
     input.countryCode,
     input.plan,
-    defaultPriceMethod(input.countryCode, input.plan),
+    input.method || defaultPriceMethod(input.countryCode, input.plan),
   );
+  if (
+    input.method &&
+    !methodAvailable(
+      input.method,
+      input.countryCode,
+      initial.currency,
+      input.plan,
+    )
+  )
+    throw new SirahError(
+      "This payment method is no longer available. Please review the current options.",
+    );
   const result = await prisma.$transaction(async (tx) => {
     if (userId) {
       const user = await tx.user.findUniqueOrThrow({
@@ -142,6 +154,11 @@ export async function registerSirah(
           countries[input.countryCode as keyof typeof countries].name,
         marketCode: initial.market,
         plan: input.plan,
+        method: input.method || null,
+        terms:
+          input.method && termsFor(input.plan)
+            ? jsonValue(termsFor(input.plan))
+            : Prisma.DbNull,
         pricingVersion: initial.pricingVersion,
         currency: initial.currency,
         amountMinor: initial.amountMinor,
@@ -188,8 +205,14 @@ export async function publicSirahOrder(orderId: string, userId: string) {
       order.plan as SirahPlan,
     ),
   );
+  const student = await prisma.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { fullName: true, email: true },
+  });
   return {
     id: order.id,
+    fullName: student.fullName,
+    email: student.email,
     reference: order.reference,
     courseTitle: SIRAH_TITLE,
     batchCode: order.batchCode,

@@ -1,4 +1,5 @@
 import "server-only";
+import { createSirahResumeLink } from "@/lib/sirah/resume";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +19,8 @@ const subjects: Record<string, string> = {
   REFUND_PENDING: "A verified refund is being reconciled",
   BILLING_REVIEW: "Refund recorded — billing cancellation needs follow-up",
   PAYMENT_RECONCILIATION: "Payment received — enrolment needs admin review",
-  REGISTERED: "Registration created — payment outstanding",
+  REGISTERED: "Complete your Sīrah registration",
+  PAYMENT_RESUME: "Complete your Sīrah registration",
   SUBMITTED: "Payment submission received — awaiting approval",
   CONFIRMED: "Payment received and enrolment confirmed",
   REJECTED: "Payment evidence needs attention",
@@ -49,6 +51,8 @@ export async function queueSirahNotice(
       },
     },
   });
+  const paymentReminder = ["REGISTERED", "PAYMENT_RESUME"].includes(kind);
+  if (paymentReminder && order.paymentState === "PAID") return;
   const paid =
     order.user.status === "ACTIVE" &&
     order.paymentState === "PAID" &&
@@ -101,18 +105,36 @@ export async function queueSirahNotice(
     .map((v) => v.trim())
     .filter(Boolean);
   const recipients =
-    kind === "INVITATION_PENDING"
-      ? admins.length
-        ? admins
-        : [""]
-      : [order.user.email, ...(admins.length ? admins : [""])];
+    kind === "PAYMENT_RESUME"
+      ? [order.user.email]
+      : kind === "INVITATION_PENDING"
+        ? admins.length
+          ? admins
+          : [""]
+        : [order.user.email, ...(admins.length ? admins : [""])];
   for (const email of recipients) {
     const admin = email !== order.user.email;
+    const key = createHash("sha256")
+      .update(`${order.id}:${kind}:${version}:${email}`)
+      .digest("hex");
+    if (
+      await tx.sirahNotification.findUnique({
+        where: { key },
+        select: { id: true },
+      })
+    )
+      continue;
+    const paymentUrl =
+      paymentReminder && !admin
+        ? await createSirahResumeLink(tx, order.id)
+        : null;
     const text = [
       ...rows,
       admin
         ? `Secure admin record: ${app}/admin/sirah?order=${order.id}`
-        : `Your registration: ${app}/seerah/register?order=${order.id}`,
+        : paymentUrl
+          ? `Complete my payment: ${paymentUrl}\nThis secure link expires in 72 hours. Registration alone does not confirm enrolment.`
+          : `Your registration: ${app}/seerah/register?order=${order.id}`,
       ...(admin && order.receipts[0]
         ? [
             `Protected receipt: ${app}/api/sirah/receipts/${order.receipts[0].id}`,
@@ -120,16 +142,17 @@ export async function queueSirahNotice(
         : []),
     ].join("\n");
     const payload = {
-      subject: `${SIRAH_TITLE} — ${subjects[kind] || kind}`,
+      subject: paymentUrl
+        ? "Complete your Sīrah registration"
+        : `${SIRAH_TITLE} — ${subjects[kind] || kind}`,
       html: `<div style="background:#f5efdf;color:#141611;padding:24px;font-family:Arial,sans-serif"><h2>The Global Awakening</h2><h3>${escapeHtml(subjects[kind] || kind)}</h3>${text
         .split("\n")
         .map((line) => `<p>${escapeHtml(line)}</p>`)
-        .join("")}</div>`,
+        .join(
+          "",
+        )}${paymentUrl ? `<p><a href="${escapeHtml(paymentUrl)}" style="display:inline-block;padding:12px 20px;background:#d9ad4a;color:#141611;font-weight:bold">Complete my payment</a></p>` : ""}</div>`,
       text,
     };
-    const key = createHash("sha256")
-      .update(`${order.id}:${kind}:${version}:${email}`)
-      .digest("hex");
     await tx.sirahNotification.upsert({
       where: { key },
       update: {},
@@ -202,6 +225,19 @@ export async function dispatchSirahNotifications(orderId?: string) {
   let sent = 0;
   for (const item of candidates) {
     if (!item.toEmail) continue;
+    if (["REGISTERED", "PAYMENT_RESUME"].includes(item.kind)) {
+      const order = await prisma.sirahOrder.findUnique({
+        where: { id: item.orderId },
+        select: { paymentState: true },
+      });
+      if (order?.paymentState === "PAID") {
+        await prisma.sirahNotification.update({
+          where: { id: item.id },
+          data: { state: "SUPERSEDED", error: null },
+        });
+        continue;
+      }
+    }
     const storedPayload = item.payload as {
       subject: string;
       html: string;

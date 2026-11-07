@@ -12,7 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await sirahUser();
+    const user = await sirahUser((await params).id);
     const order = await ownedSirahOrder((await params).id, user.id);
     if (order.paymentState !== "PAID" || !canAccessSirah(order))
       throw new SirahError(

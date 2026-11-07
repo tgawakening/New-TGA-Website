@@ -21,6 +21,10 @@ export const sirahRegistrationSchema = z
     countryCode: country,
     plan: z.enum(["MONTHLY", "ANNUAL"]),
     requestKey: z.uuid(),
+    method: z
+      .enum(["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"])
+      .nullable()
+      .optional(),
   })
   .strict()
   .superRefine((value, ctx) => {

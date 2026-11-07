@@ -466,6 +466,7 @@ model SirahOrder {
   audits                 SirahAudit[]
   events                 SirahPaymentEvent[]
   notifications          SirahNotification[]
+  resumeLinks            SirahResumeLink[]
 
   @@unique([userId, courseId, batchCode])
   @@index([paymentState, enrolmentState, createdAt])
@@ -527,4 +528,17 @@ model SirahNotification {
   order       SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
   @@index([state, lockedUntil])
+}
+
+
+// Scoped payment-resume grants; these never create a general account session.
+model SirahResumeLink {
+  id        String     @id @default(cuid())
+  tokenHash String     @unique
+  orderId   String
+  expiresAt DateTime
+  createdAt DateTime   @default(now())
+  order     SirahOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
 }

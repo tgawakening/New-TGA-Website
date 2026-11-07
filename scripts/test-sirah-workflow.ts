@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { PDFDocument } from "pdf-lib";
 import { handleSirahStripeWebhook as handleStripeWebhook } from "../services/sirah-stripe-webhook.service";
 import { handleSirahPaypalWebhook } from "../services/sirah-webhooks.service";
+import { resolveSirahResumeToken, resumeHash } from "../lib/sirah/resume";
 import { prisma } from "../lib/prisma";
 import {
   catalogue,
@@ -50,6 +51,7 @@ import {
 import {
   dispatchSirahNotifications,
   queuePendingInvitations,
+  queueSirahNotice,
 } from "../services/sirah-notifications.service";
 const db = new URL(process.env.DATABASE_URL || "mysql://invalid");
 assert.equal(
@@ -1399,4 +1401,110 @@ test("Pakistan monthly selection switches server payable totals and card Checkou
     fake,
   );
   assert.equal(chargedMinor, 300000);
+});
+
+test("pending payment email has an expiring scoped link, is deduplicated and resolves the same paid registration", async () => {
+  process.env.NEXT_PUBLIC_APP_URL = "https://example.test";
+  const result = await create();
+  const notice = await prisma.sirahNotification.findFirstOrThrow({
+    where: {
+      orderId: result.orderId,
+      kind: "REGISTERED",
+      toEmail: result.input.email,
+    },
+  });
+  const mail = notice.payload as {
+    subject: string;
+    text: string;
+    html: string;
+  };
+  assert.equal(mail.subject, "Complete your Sīrah registration");
+  assert.match(mail.html, />Complete my payment<\/a>/);
+  const token = mail.text.match(/#payment=([A-Za-z0-9_-]{43})/)![1];
+  assert.ok(token);
+  assert.equal(mail.text.includes(`?email=`), false);
+  const grant = await resolveSirahResumeToken(token);
+  assert.equal(grant?.orderId, result.orderId);
+  assert.equal(grant?.order.userId, result.userId);
+  assert.equal(grant?.tokenHash, resumeHash(token));
+  assert.notEqual(grant?.tokenHash, token);
+  assert.equal(await resolveSirahResumeToken(token + "bad"), null);
+  await registerSirah(result.input, result.userId);
+  assert.equal(
+    await prisma.sirahResumeLink.count({ where: { orderId: result.orderId } }),
+    1,
+  );
+  assert.equal(
+    await prisma.sirahNotification.count({
+      where: {
+        orderId: result.orderId,
+        kind: "REGISTERED",
+        toEmail: result.input.email,
+      },
+    }),
+    1,
+  );
+  await prisma.$transaction((tx) =>
+    queueSirahNotice(tx, result.orderId, "PAYMENT_RESUME", "test-hour"),
+  );
+  await prisma.$transaction((tx) =>
+    queueSirahNotice(tx, result.orderId, "PAYMENT_RESUME", "test-hour"),
+  );
+  assert.equal(
+    await prisma.sirahNotification.count({
+      where: { orderId: result.orderId, kind: "PAYMENT_RESUME" },
+    }),
+    1,
+  );
+  assert.equal(await prisma.sirahOrder.count(), 1);
+  await prisma.sirahOrder.update({
+    where: { id: result.orderId },
+    data: { paymentState: "PAID" },
+  });
+  assert.equal(
+    (await resolveSirahResumeToken(token))?.order.paymentState,
+    "PAID",
+  );
+  await dispatchSirahNotifications(result.orderId);
+  assert.equal(
+    (
+      await prisma.sirahNotification.findUniqueOrThrow({
+        where: { id: notice.id },
+      })
+    ).state,
+    "SUPERSEDED",
+  );
+  await prisma.$transaction((tx) =>
+    queueSirahNotice(tx, result.orderId, "PAYMENT_RESUME", "later-hour"),
+  );
+  assert.equal(
+    await prisma.sirahNotification.count({
+      where: { orderId: result.orderId, kind: "PAYMENT_RESUME" },
+    }),
+    1,
+  );
+  await prisma.sirahResumeLink.updateMany({
+    where: { orderId: result.orderId },
+    data: { expiresAt: new Date(Date.now() - 1000) },
+  });
+  assert.equal(await resolveSirahResumeToken(token), null);
+});
+
+test("combined registration uses server method-specific pricing and rejects unapproved methods before creating an account", async () => {
+  const invalid = { ...payload(), method: "STRIPE" as const };
+  await assert.rejects(() => registerSirah(invalid), /no longer available/);
+  assert.equal(await prisma.user.count(), 0);
+  enableManual();
+  const input = { ...payload(), method: "BANK_TRANSFER" as const };
+  const result = await registerSirah(input);
+  const order = await publicSirahOrder(result.orderId, result.userId);
+  assert.equal(order.method, "BANK_TRANSFER");
+  assert.equal(order.amountMinor, 350000);
+  assert.equal(order.terms?.version, approvedTestTerms.version);
+  assert.equal(order.paymentState, "UNPAID");
+  assert.equal(order.enrolmentState, "PENDING");
+  assert.equal(await prisma.registration.count(), 0);
+  const again = await registerSirah(input, result.userId);
+  assert.equal(again.orderId, order.id);
+  assert.equal(await prisma.sirahOrder.count(), 1);
 });

@@ -17,7 +17,7 @@ export async function POST(
 ) {
   try {
     checkSirahOrigin(request);
-    const user = await sirahUser();
+    const user = await sirahUser((await params).id);
     const order = await ownedSirahOrder((await params).id, user.id);
     const input = z
       .object({

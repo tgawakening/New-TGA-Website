@@ -723,3 +723,26 @@
 .planNotes:empty {
   display: none;
 }
+
+.paymentOptions {
+  grid-column: 1 / -1;
+  border-top: 1px solid #c6bea4;
+  padding-top: 16px;
+}
+.paymentOptions p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.savedDetails,
+.resumeHelp {
+  margin: 16px 0;
+  border: 1px solid #b8af91;
+  padding: 12px;
+  border-radius: 4px;
+}
+.savedDetails summary,
+.resumeHelp summary {
+  cursor: pointer;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}

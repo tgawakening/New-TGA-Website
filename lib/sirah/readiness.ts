@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 export async function sirahSchemaAvailable() {
   try {
     await prisma.sirahOrder.findFirst({ select: { id: true } });
+    await prisma.sirahResumeLink.findFirst({ select: { id: true } });
     return true;
   } catch (error) {
     if (
