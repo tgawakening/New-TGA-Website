@@ -62,6 +62,13 @@ assert.equal(
 );
 assert.equal(db.pathname, "/sirah_test");
 const originalFetch = global.fetch;
+const paypalSignatureHeaders = {
+  "paypal-auth-algo": "SHA256withRSA",
+  "paypal-cert-url": "https://api.paypal.com/v1/notifications/certs/SYNTHETIC",
+  "paypal-transmission-id": "synthetic-transmission",
+  "paypal-transmission-sig": "synthetic-signature",
+  "paypal-transmission-time": "2026-11-07T00:00:00Z",
+};
 const approvedTestTerms = {
   version: "TEST-ONLY-TERMS-v1",
   commitment: "Synthetic test terms; not production policy",
@@ -126,7 +133,7 @@ async function evidence(
     userId,
     {
       revision: order.revision,
-      method: "BANK_TRANSFER",
+      method: order.method as "BANK_TRANSFER" | "JAZZCASH",
       route,
       payerName: "Synthetic Payer",
       transactionReference: "student-provided-unverified",
@@ -1052,6 +1059,7 @@ test("the PayPal webhook rejects failed signature verification and re-verifies c
   const request = () =>
     new Request("https://example.test/api/sirah/webhooks/paypal", {
       method: "POST",
+      headers: paypalSignatureHeaders,
       body,
     });
   await assert.rejects(() => handleSirahPaypalWebhook(request()), /signature/);
@@ -1817,6 +1825,7 @@ test("a verified PayPal order-approval webhook uses existing capture checks and 
   const request = () =>
     new Request("https://example.test/api/sirah/webhooks/paypal", {
       method: "POST",
+      headers: paypalSignatureHeaders,
       body: JSON.stringify({
         id: "EVENT-APPROVED-HOOK",
         event_type: "CHECKOUT.ORDER.APPROVED",
@@ -1836,4 +1845,94 @@ test("a verified PayPal order-approval webhook uses existing capture checks and 
     await prisma.enrollment.count({ where: { userId: result.userId } }),
     1,
   );
+});
+
+for (const method of ["BANK_TRANSFER", "JAZZCASH"] as const) {
+  test(`saved ${method} proof remains private and reviewable after new-payment approval is disabled`, async () => {
+    const saved = await manualOrder();
+    const locked = method === "JAZZCASH"
+      ? await repriceSirah(saved.orderId, saved.userId, saved.order.revision, "PK", "MONTHLY", method)
+      : saved.order;
+    process.env.SIRAH_MANUAL_ACCOUNTS_VERIFIED = "false";
+    delete process.env.SIRAH_MONTHLY_TERMS_JSON;
+    const current = await publicSirahOrder(locked.id, saved.userId);
+    assert.equal(current.manualEvidenceAllowed, true);
+    assert.equal(current.terms?.version, approvedTestTerms.version);
+    assert.deepEqual(current.methods, []);
+    assert.deepEqual(current.manualAccounts, []);
+    await assert.rejects(() => publicSirahOrder(locked.id, "unrelated-student"), /not found/);
+    await assert.rejects(() => repriceSirah(locked.id, saved.userId, current.revision, "PK", "MONTHLY", method), /not approved/);
+    const usersBefore = await prisma.user.count();
+    await assert.rejects(() => registerSirah({ ...payload(), method }), /no longer available/);
+    assert.equal(await prisma.user.count(), usersBefore);
+    const unselected = await create();
+    const newOrder = await publicSirahOrder(unselected.orderId, unselected.userId);
+    assert.equal(newOrder.manualEvidenceAllowed, false);
+    assert.deepEqual(newOrder.methods, []);
+    assert.deepEqual(newOrder.manualAccounts, []);
+
+    await assert.rejects(() => evidence(current, "unrelated-student"), /not found/);
+    const submitted = await evidence(current, saved.userId);
+    assert.equal(submitted.paymentState, "AWAITING_REVIEW");
+    assert.equal(submitted.enrolmentState, "PENDING");
+    await assert.rejects(() => evidence(current, saved.userId), /already being reviewed/);
+    assert.equal(await prisma.sirahReceipt.count({ where: { orderId: locked.id } }), 1);
+    assert.equal(await prisma.enrollment.count(), 0);
+    assert.equal(canAccessSirah(await prisma.sirahOrder.findUniqueOrThrow({where:{id:locked.id}})), false);
+    await assert.rejects(() => readSirahReceipt(submitted.receipts[0].id, "unrelated-student", false), /not found/);
+    const dashboard = await listSirahAdmin(new URLSearchParams({ payment: "AWAITING_REVIEW" }));
+    assert.ok(dashboard.rows.some(row => row.id === locked.id));
+    await actOnSirahOrder({orderId: locked.id, revision: submitted.revision, action: "REJECT", note: "Please upload a clearer receipt"}, "admin:test");
+    const rejected = await publicSirahOrder(locked.id, saved.userId);
+    assert.equal(rejected.paymentState, "REJECTED");
+    assert.equal(rejected.manualEvidenceAllowed, true);
+    const notice = await prisma.sirahNotification.findFirstOrThrow({where:{orderId:locked.id, kind:"REJECTED", toEmail:{endsWith:"@example.test"}}});
+    assert.match(JSON.stringify(notice.payload), /clearer receipt/);
+    const replacement = await evidence(rejected, saved.userId);
+    assert.equal(replacement.receipts.length, 2);
+    const outcomes = await Promise.allSettled([approve(replacement, "old-transfer-a", "admin:A"), approve(replacement, "old-transfer-b", "admin:B")]);
+    assert.equal(outcomes.filter(result => result.status === "fulfilled").length, 1);
+    const paid = await publicSirahOrder(locked.id, saved.userId);
+    assert.equal(paid.paymentState, "PAID");
+    assert.equal(paid.enrolmentState, "ACTIVE");
+    assert.equal(await prisma.enrollment.count({where:{userId:saved.userId}}), 1);
+    assert.equal(await prisma.enrollment.count({where:{userId:unselected.userId}}), 0);
+  });
+}
+
+test("unsigned or malformed PayPal deliveries are rejected before contacting a provider", async () => {
+  let providerCalls = 0;
+  global.fetch = async () => { providerCalls++; throw Error("Provider must not be called"); };
+  const validBody = JSON.stringify({id:"SYNTHETIC",event_type:"CHECKOUT.ORDER.APPROVED",resource:{id:"SYNTHETIC"}});
+  for (const missing of Object.keys(paypalSignatureHeaders)) {
+    const headers = new Headers(paypalSignatureHeaders);
+    headers.delete(missing);
+    await assert.rejects(() => handleSirahPaypalWebhook(new Request("https://example.test/webhook",{method:"POST",headers,body:validBody})), {status:400});
+  }
+  for (const body of ["not-json", "null", '"string"', "{}", JSON.stringify({id:"EVENT",event_type:"CHECKOUT.ORDER.APPROVED",resource:[]})]) {
+    await assert.rejects(() => handleSirahPaypalWebhook(new Request("https://example.test/webhook",{method:"POST",headers:paypalSignatureHeaders,body})), {status:400});
+  }
+  assert.equal(providerCalls,0);
+  assert.equal(await prisma.sirahPaymentEvent.count(),0);
+  assert.equal(await prisma.enrollment.count(),0);
+});
+
+test("manual receiving accounts can be approved independently without changing legacy shared approval", () => {
+  enableManual();
+  process.env.SIRAH_MANUAL_ACCOUNTS_VERIFIED = "false";
+  process.env.SIRAH_BANK_TRANSFER_VERIFIED = "true";
+  process.env.SIRAH_JAZZCASH_VERIFIED = "false";
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "MONTHLY"), true);
+  assert.equal(methodAvailable("JAZZCASH", "PK", "PKR", "MONTHLY"), false);
+  assert.equal(methodAvailable("BANK_TRANSFER", "GB", "GBP", "MONTHLY"), false);
+  process.env.SIRAH_BANK_TRANSFER_VERIFIED = "false";
+  process.env.SIRAH_JAZZCASH_VERIFIED = "true";
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "MONTHLY"), false);
+  assert.equal(methodAvailable("JAZZCASH", "PK", "PKR", "MONTHLY"), true);
+  process.env.SIRAH_MANUAL_ACCOUNTS_VERIFIED = "true";
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "MONTHLY"), false);
+  delete process.env.SIRAH_BANK_TRANSFER_VERIFIED;
+  delete process.env.SIRAH_JAZZCASH_VERIFIED;
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "MONTHLY"), true);
+  assert.equal(methodAvailable("JAZZCASH", "PK", "PKR", "MONTHLY"), true);
 });

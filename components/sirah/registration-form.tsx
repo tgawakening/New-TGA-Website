@@ -1393,6 +1393,14 @@ export function SirahRegistrationForm({
                 </p>
               )}
           </div>
+          {order.paymentState === "REJECTED" && order.manualEvidenceAllowed && (
+            <p className={styles.notice} role="status">
+              Your previous payment evidence was not accepted. Check TGA’s
+              review email for details, then submit a corrected or clearer
+              receipt below, or contact payment support. Your earlier receipts
+              remain on this registration.
+            </p>
+          )}
           {["PROCESSING", "REFUND_PENDING"].includes(order.paymentState) ? (
             <div className={styles.notice}>
               <p>
@@ -1441,6 +1449,13 @@ export function SirahRegistrationForm({
                     }
                   >
                     <option value="">Choose a verified payment route</option>
+                    {order.manualEvidenceAllowed &&
+                      !selectedRouteAvailable &&
+                      order.method && (
+                        <option value={order.method} disabled>
+                          {methodLabel(order.method as SirahMethod)} · saved instructions only
+                        </option>
+                      )}
                     {order.methods.map((method) => (
                       <option value={method} key={method}>
                         {method === "BANK_TRANSFER"
@@ -1462,14 +1477,23 @@ export function SirahRegistrationForm({
                   </p>
                 )}
                 {order.method === "STRIPE" && <p>No Stripe account needed.</p>}
-                {selectedRouteAvailable && (
+                {(selectedRouteAvailable || order.manualEvidenceAllowed) && (
                   <Terms
                     order={order}
                     accepted={accepted}
                     onChange={setAccepted}
                   />
                 )}
-                {!order.methods.length && (
+                {order.manualEvidenceAllowed && !selectedRouteAvailable && (
+                  <p className={styles.notice} role="status">
+                    This method is closed to new payments. If you already
+                    transferred using the instructions issued for this
+                    registration, accept your saved terms and submit your
+                    receipt below. Do not make another transfer; contact TGA if
+                    you need help.
+                  </p>
+                )}
+                {!order.methods.length && !order.manualEvidenceAllowed && (
                   <p className={styles.notice}>
                     Your registration is saved. Payment is pending until an
                     approved method is available for this country and plan.
@@ -1562,12 +1586,12 @@ export function SirahRegistrationForm({
                           {formatSirahMoney(order.amountMinor, order.currency)}
                         </p>
                         <p>
-                          Add SIRAH BEYOND CHRONOLOGY and your registration
-                          reference in the payment remarks. After paying, upload
-                          your receipt here or send it to 03262055614 on
-                          WhatsApp. Include your full name, registered email and
-                          registration reference. We’ll confirm your enrolment
-                          after reviewing your payment.
+                          {selectedRouteAvailable
+                            ? "Add SIRAH BEYOND CHRONOLOGY and your registration reference in the payment remarks. After paying, upload your receipt here or send it to the payment-support WhatsApp."
+                            : "Use the reference below when submitting proof of a transfer you already made."}{" "}
+                          Include your full name, registered email and
+                          registration reference. Staff must verify receipt
+                          before enrolment is confirmed.
                         </p>
                         <p>
                           <strong>
