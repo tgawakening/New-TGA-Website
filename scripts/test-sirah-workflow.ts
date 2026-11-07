@@ -1360,6 +1360,7 @@ test("legacy credentials never enable dedicated Sīrah cards and live needs both
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_old_batch_only";
   process.env.SIRAH_STRIPE_ACCOUNT_ID = "acct_synthetic";
   process.env.SIRAH_STRIPE_MONTHLY_CURRENCIES = "GBP";
+  process.env.SIRAH_STRIPE_MONTHLY_COUNTRIES = "GB";
   assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), false);
   process.env.SIRAH_STRIPE_SECRET_KEY = "sk_live_synthetic_only";
   process.env.SIRAH_STRIPE_WEBHOOK_SECRET = "whsec_synthetic_only";
@@ -2642,4 +2643,55 @@ test("an early failed-renewal notice never shortens the already paid month", asy
     canAccessSirah(current, new Date(paidUntil.getTime() - 1)),
     true,
   );
+});
+
+test("live currency approval cannot activate unverified default-GBP countries or the other plan", () => {
+  enableManual();
+  Object.assign(process.env, {
+    SIRAH_LIVE_PAYMENTS_APPROVED: "true",
+    SIRAH_STRIPE_SANDBOX_VERIFIED: "true",
+    SIRAH_STRIPE_SECRET_KEY: "sk_live_synthetic_not_a_credential",
+    SIRAH_STRIPE_WEBHOOK_SECRET: "synthetic",
+    SIRAH_STRIPE_ACCOUNT_ID: "acct_synthetic",
+    SIRAH_STRIPE_ANNUAL_CURRENCIES: "GBP",
+    PAYPAL_ENV: "live",
+    PAYPAL_CLIENT_ID: "synthetic",
+    PAYPAL_CLIENT_SECRET: "synthetic",
+    SIRAH_PAYPAL_MERCHANT_ID: "MERCHANT_TEST",
+    SIRAH_PAYPAL_WEBHOOK_ID: "WH_TEST",
+    SIRAH_PAYPAL_ANNUAL_CURRENCIES: "GBP",
+  });
+  for (const provider of ["STRIPE", "PAYPAL"] as const) {
+    assert.equal(methodAvailable(provider, "GB", "GBP", "ANNUAL"), false);
+    process.env[`SIRAH_${provider}_ANNUAL_COUNTRIES`] = "GB";
+    assert.equal(methodAvailable(provider, "GB", "GBP", "ANNUAL"), true);
+    assert.equal(methodAvailable(provider, "AF", "GBP", "ANNUAL"), false);
+    assert.equal(methodAvailable(provider, "GB", "GBP", "MONTHLY"), false);
+    delete process.env[`SIRAH_${provider}_ANNUAL_COUNTRIES`];
+    assert.equal(methodAvailable(provider, "GB", "GBP", "ANNUAL"), false);
+  }
+});
+
+test("pricing withholds new receiving instructions until the selected plan and each route are approved", async () => {
+  const { POST } = await import("../app/api/pricing/route");
+  process.env.SIRAH_BANK_TRANSFER_VERIFIED = "true";
+  process.env.SIRAH_JAZZCASH_VERIFIED = "true";
+  const quote = async () => {
+    const response = await POST(new Request("http://localhost/api/pricing", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseSlug: SIRAH_SLUG, countryCode: "PK", plan: "MONTHLY", method: null }),
+    }));
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  let result = await quote();
+  assert.deepEqual(result.methods, []);
+  assert.deepEqual(result.manualAccounts, []);
+  enableManual();
+  result = await quote();
+  assert.deepEqual(result.manualAccounts.map((a: {method: string}) => a.method), ["BANK_TRANSFER", "JAZZCASH"]);
+  assert.equal(result.pricing.amountMinor, 350000);
+  process.env.SIRAH_JAZZCASH_VERIFIED = "false";
+  result = await quote();
+  assert.deepEqual(result.manualAccounts.map((a: {method: string}) => a.method), ["BANK_TRANSFER"]);
 });

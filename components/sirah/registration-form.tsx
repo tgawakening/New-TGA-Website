@@ -1093,8 +1093,9 @@ export function SirahRegistrationForm({
                 quote?.plan === plan &&
                 !quote.methods.length && (
                   <p>
-                    Payment options are being finalised. You can save your
-                    registration; no payment will be taken.
+                    {billing !== "PK" && "PayPal is currently unavailable for your selected country or billing currency. "}
+                    You can save your registration and complete payment later;
+                    no payment will be taken.
                   </p>
                 )}
               {["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) &&
@@ -1516,6 +1517,7 @@ export function SirahRegistrationForm({
                 )}
                 {!order.methods.length && !order.manualEvidenceAllowed && (
                   <p className={styles.notice}>
+                    {order.countryCode !== "PK" && "PayPal is currently unavailable for your selected country or billing currency. "}
                     Your registration is saved. Payment is pending until an
                     approved method is available for this country and plan.
                     Return using the secure “Complete my payment” email link or

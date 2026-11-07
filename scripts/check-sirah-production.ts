@@ -34,6 +34,30 @@ async function main() {
     } catch { /* Old/inaccessible records cannot establish current merchant identity. */ }
   }
   report.paypalMerchant = { inspectedOrders, matchesExistingProviderRecord: merchantVerified };
+  const notices = await prisma.emailLog.findMany({
+    where: { emailType: { startsWith: "SIRAH_" }, status: "SENT", providerId: { not: null } },
+    select: { id: true, providerId: true, emailType: true, toEmail: true },
+    orderBy: { createdAt: "desc" }, take: 10,
+  });
+  const notificationDelivery = [];
+  for (const notice of notices) {
+    let delivery = "unverified";
+    if (process.env.RESEND_API_KEY) {
+      const response = await fetch(`https://api.resend.com/emails/${encodeURIComponent(notice.providerId!)}`, {
+        headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+      });
+      delivery = response.ok ? (await response.json()).last_event || "accepted" : `lookup HTTP ${response.status}`;
+    }
+    notificationDelivery.push({
+      id: notice.id, providerId: notice.providerId, emailType: notice.emailType,
+      recipientRole: (process.env.ADMIN_NOTIFICATION_EMAIL || "").split(",")
+        .some(email => email.trim().toLowerCase() === notice.toEmail.toLowerCase()) ? "ADMIN" : "STUDENT",
+      delivery,
+    });
+    // Resend's default read rate limit is shared with the live mailer.
+    await new Promise(resolve => setTimeout(resolve, 600));
+  }
+  report.existingNotificationDelivery = notificationDelivery;
   const runId = process.env.SIRAH_OPERATIONS_RUN_ID;
   if (process.env.SIRAH_OPERATIONS_SEND_EMAIL === "true") {
     if (!runId || !/^[a-zA-Z0-9_-]{8,80}$/.test(runId)) throw Error("Explicit operational run ID is required.");
