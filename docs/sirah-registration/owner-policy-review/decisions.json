@@ -1,13 +1,11 @@
 {
-  "source": "Owner confirmations and proposed policy settings supplied in this conversation; reviewed 8 November 2026",
+  "source": "Owner commercial-policy and Pakistan annual launch decisions supplied in the continuation conversation; no independent legal or accountant approval claimed",
   "publicationApproved": false,
   "legalReviewCompleted": false,
   "ownerConfirmed": {
     "monthlyRenewalsVoluntary": true,
     "compulsoryTwelvePayments": false,
-    "annualRefundPrinciple": "Actual verified upfront amount times eligible unused months divided by twelve; statutory rights preserved"
-  },
-  "proposedForFinalApproval": {
+    "annualRefundPrinciple": "Actual verified upfront amount times eligible unused months divided by twelve; statutory rights preserved",
     "annualEligibleMonths": "FULLY_UNUSED_ONLY",
     "partlyCompletedMonth": "USED",
     "cancelledUpfrontAccess": "END_OF_CURRENT_PAID_MONTH",
@@ -16,13 +14,25 @@
     "recordingsAccess": "Only while paid access is active; no extension beyond original programme expiry",
     "failedRenewalGraceCalendarDays": 7,
     "failedAfterGrace": "PAUSE",
-    "recovery": "Restore only after verified successful payment; reuse original subscription"
+    "recovery": "Restore only after verified successful payment; reuse original subscription",
+    "seller": "Global Awakening CIC",
+    "courseStartFullRefundProtectionDays": 14,
+    "statutoryCancellationRightsPreserved": true,
+    "effectiveDate": "Actual publication date; prospective only",
+    "commercialPolicyDirectionApproved": true
   },
   "tax": {
-    "ownerStatedPosition": "Not applicable to advertised course fees",
+    "ownerStatedPosition": "No additional tax charged to students; formal UK/Pakistan merchant-specific determination not supplied",
     "merchantServicesAndJurisdictionsVerified": false,
     "automaticTaxAdded": false,
-    "accountantConfirmationReceived": false
+    "accountantConfirmationReceived": false,
+    "firstLaunchMarket": "Pakistan",
+    "firstLaunchMethods": [
+      "BANK_TRANSFER",
+      "JAZZCASH"
+    ],
+    "annualFinalStudentFacingPKR": 32400,
+    "additionalStudentChargeAuthorised": false
   },
   "monthlyTermsConfigurationAfterApproval": {
     "version": null,

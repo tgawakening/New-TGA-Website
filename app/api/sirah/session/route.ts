@@ -7,7 +7,7 @@ export async function GET() {
     const signedIn = await getCurrentUser();
     const grant = signedIn ? null : await currentSirahResumeGrant();
     const user = signedIn || grant?.order.user;
-    return privateJson({
+    const response = privateJson({
       resumeOrderId: grant?.orderId || null,
       available: await sirahSchemaAvailable(),
       user:
@@ -20,6 +20,8 @@ export async function GET() {
             }
           : null,
     });
+    response.headers.set("X-Sirah-Checkout-Version", "paid-period-routes-v1");
+    return response;
   } catch (error) {
     return sirahResponseError(error);
   }

@@ -197,7 +197,15 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
         programmeStart: start,
         programmeEnd: end,
         nextBillingAt: terminal ? null : next,
-        ...(!terminal ? { accessEndsAt: null } : {}),
+        ...(!terminal
+          ? {
+              accessEndsAt:
+                order.plan === "MONTHLY" &&
+                ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "")
+                  ? addMonthsClamped(start, order.paidCount + 1)
+                  : null,
+            }
+          : {}),
         ...(!order.paidCount && !terminal
           ? {
               invitationState: getGroupInvitation(order.countryCode)
@@ -242,10 +250,25 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
 export function canAccessSirah(
   order: Pick<SirahOrder, "enrolmentState" | "paidCount" | "programmeEnd"> & {
     accessEndsAt?: Date | null;
+    plan?: SirahOrder["plan"];
+    method?: SirahOrder["method"];
+    programmeStart?: Date | null;
   },
   now = new Date(),
 ) {
+  // Also protect pre-fix rows with a null/overlong accessEndsAt. A receipt
+  // buys a month of the original programme schedule, never the whole year.
+  const manualEnd =
+    order.plan === "MONTHLY" &&
+    ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "") &&
+    order.programmeStart
+      ? addMonthsClamped(
+          order.programmeStart,
+          Math.min(order.paidCount, SIRAH_MONTHS),
+        )
+      : null;
   return (
+    (!manualEnd || manualEnd > now) &&
     order.paidCount > 0 &&
     ["ACTIVE", "COMPLETED"].includes(order.enrolmentState) &&
     (!order.programmeEnd || order.programmeEnd > now) &&

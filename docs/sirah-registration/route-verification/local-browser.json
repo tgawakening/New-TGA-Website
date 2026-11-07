@@ -1,0 +1,32 @@
+[
+  {
+    "method": "BANK_TRANSFER",
+    "width": 1350,
+    "oldProofEnabled": true,
+    "accountDetailsHidden": true,
+    "scopedResume": true,
+    "reviewRequired": true,
+    "rejectedProofReplaced": true,
+    "singleApproval": true
+  },
+  {
+    "method": "JAZZCASH",
+    "width": 390,
+    "oldProofEnabled": true,
+    "accountDetailsHidden": true,
+    "scopedResume": true,
+    "reviewRequired": true,
+    "rejectedProofReplaced": true,
+    "singleApproval": true
+  },
+  {
+    "width": 390,
+    "newApplicantManualUnavailable": true,
+    "pendingSaveAvailable": true
+  },
+  {
+    "width": 1350,
+    "newApplicantManualUnavailable": true,
+    "pendingSaveAvailable": true
+  }
+]

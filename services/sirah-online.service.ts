@@ -115,6 +115,7 @@ export async function startSirahCheckout(
       order.countryCode,
       order.currency,
       order.plan as SirahPlan,
+      { id: order.id, amountMinor: order.amountMinor },
     )
   )
     throw new SirahError("This checkout route is not currently enabled.");

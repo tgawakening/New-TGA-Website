@@ -89,6 +89,9 @@ const approvedTestTerms = {
 };
 function enableManual() {
   process.env.SIRAH_MANUAL_ACCOUNTS_VERIFIED = "true";
+  for (const method of ["BANK_TRANSFER", "JAZZCASH"])
+    for (const plan of ["ANNUAL", "MONTHLY"])
+      process.env[`SIRAH_${method}_${plan}_VERIFIED_ROUTES`] = "PK:PKR";
   process.env.SIRAH_MONTHLY_TERMS_JSON = JSON.stringify(approvedTestTerms);
   process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify(approvedTestTerms);
 }
@@ -1354,7 +1357,7 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
   }
 });
 
-test("legacy credentials never enable dedicated Sīrah cards and live needs both approvals", () => {
+test("legacy credentials never enable Sīrah cards and live needs exact route verification", () => {
   enableManual();
   process.env.STRIPE_SECRET_KEY = "sk_test_old_batch_only";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_old_batch_only";
@@ -1366,7 +1369,7 @@ test("legacy credentials never enable dedicated Sīrah cards and live needs both
   process.env.SIRAH_STRIPE_WEBHOOK_SECRET = "whsec_synthetic_only";
   process.env.SIRAH_LIVE_PAYMENTS_APPROVED = "true";
   assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), false);
-  process.env.SIRAH_STRIPE_SANDBOX_VERIFIED = "true";
+  process.env.SIRAH_STRIPE_MONTHLY_VERIFIED_ROUTES = "GB:GBP";
   assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), true);
   delete process.env.SIRAH_LIVE_PAYMENTS_APPROVED;
   assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), false);
@@ -2664,6 +2667,7 @@ test("live currency approval cannot activate unverified default-GBP countries or
   for (const provider of ["STRIPE", "PAYPAL"] as const) {
     assert.equal(methodAvailable(provider, "GB", "GBP", "ANNUAL"), false);
     process.env[`SIRAH_${provider}_ANNUAL_COUNTRIES`] = "GB";
+    process.env[`SIRAH_${provider}_ANNUAL_VERIFIED_ROUTES`] = "GB:GBP";
     assert.equal(methodAvailable(provider, "GB", "GBP", "ANNUAL"), true);
     assert.equal(methodAvailable(provider, "AF", "GBP", "ANNUAL"), false);
     assert.equal(methodAvailable(provider, "GB", "GBP", "MONTHLY"), false);
@@ -2694,4 +2698,298 @@ test("pricing withholds new receiving instructions until the selected plan and e
   process.env.SIRAH_JAZZCASH_VERIFIED = "false";
   result = await quote();
   assert.deepEqual(result.manualAccounts.map((a: {method: string}) => a.method), ["BANK_TRANSFER"]);
+});
+
+test("manual monthly receipts buy only paid months, legacy access is capped and duplicate approval cannot extend it", async () => {
+  for (const method of ["BANK_TRANSFER", "JAZZCASH"] as const) {
+    enableManual();
+    const saved = await create();
+    let order = await repriceSirah(
+      saved.orderId,
+      saved.userId,
+      0,
+      "PK",
+      "MONTHLY",
+      method,
+    );
+    order = await evidence(order, saved.userId);
+    await approve(order, `first-${method}`);
+    const first = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    const end = addMonthsClamped(first.programmeStart!, 1);
+    assert.equal(first.accessEndsAt?.getTime(), end.getTime());
+    assert.equal(canAccessSirah(first, new Date(end.getTime() - 1)), true);
+    assert.equal(canAccessSirah(first, end), false);
+    assert.equal(canAccessSirah({ ...first, accessEndsAt: null }, end), false);
+    await approve(order, `first-${method}`);
+    assert.equal(
+      (await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } }))
+        .paidCount,
+      1,
+    );
+    // Exercise maintenance on a historical pre-fix row and a real next receipt.
+    const start = addMonthsClamped(new Date(), -1);
+    start.setUTCDate(start.getUTCDate() - 1);
+    await prisma.sirahOrder.update({
+      where: { id: order.id },
+      data: {
+        programmeStart: start,
+        programmeEnd: addMonthsClamped(start, 12),
+        accessEndsAt: null,
+        nextBillingAt: addMonthsClamped(start, 1),
+      },
+    });
+    await maintainSirahOrders();
+    let current = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    assert.equal(current.enrolmentState, "PENDING");
+    assert.equal(current.paymentState, "UNPAID");
+    assert.equal(canAccessSirah(current), false);
+    order = await evidence(
+      await publicSirahOrder(order.id, saved.userId),
+      saved.userId,
+    );
+    await approve(order, `second-${method}`);
+    current = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    assert.equal(current.paidCount, 2);
+    assert.equal(
+      current.accessEndsAt?.getTime(),
+      addMonthsClamped(start, 2).getTime(),
+    );
+    assert.equal(canAccessSirah(current), true);
+    assert.equal(current.registrationId, first.registrationId);
+    assert.equal(
+      await prisma.sirahNotification.count({
+        where: { orderId: order.id, kind: "RENEWED" },
+      }),
+      2,
+    );
+    // The next unpaid boundary pauses instead of completing the programme.
+    await prisma.sirahOrder.update({
+      where: { id: order.id },
+      data: {
+        programmeStart: addMonthsClamped(start, -1),
+        accessEndsAt: addMonthsClamped(start, 1),
+        nextBillingAt: addMonthsClamped(start, 1),
+      },
+    });
+    await maintainSirahOrders();
+    current = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    assert.equal(current.enrolmentState, "PENDING");
+    assert.equal(current.paymentState, "UNPAID");
+  }
+});
+
+test("manual annual entitlement and cancelled manual monthly dates survive later confirmations", async () => {
+  enableManual();
+  const saved = await create("PK", "ANNUAL");
+  let annual = await repriceSirah(
+    saved.orderId,
+    saved.userId,
+    0,
+    "PK",
+    "ANNUAL",
+    "BANK_TRANSFER",
+  );
+  annual = await evidence(annual, saved.userId);
+  await approve(annual, "annual-only");
+  const paid = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: annual.id },
+  });
+  assert.equal(paid.accessEndsAt, null);
+  assert.equal(
+    canAccessSirah(paid, addMonthsClamped(paid.programmeStart!, 11)),
+    true,
+  );
+  const monthly = await manualOrder();
+  const proof = await evidence(monthly.order, monthly.userId);
+  await approve(proof, "monthly-cancel");
+  const original = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: proof.id },
+  });
+  await prisma.sirahOrder.update({
+    where: { id: proof.id },
+    data: { cancelledAt: new Date(), enrolmentState: "CANCELLED" },
+  });
+  await confirmSirahPayment({
+    orderId: proof.id,
+    eventId: "manual:late-after-cancel",
+    provider: "BANK_TRANSFER",
+    amountMinor: original.amountMinor,
+    currency: original.currency,
+    actor: "admin:test",
+  });
+  const cancelled = await prisma.sirahOrder.findUniqueOrThrow({
+    where: { id: proof.id },
+  });
+  assert.equal(
+    cancelled.accessEndsAt?.getTime(),
+    original.accessEndsAt?.getTime(),
+  );
+  assert.equal(canAccessSirah(cancelled), false);
+});
+
+test("upfront route verification is independent of monthly, provider, country and currency", () => {
+  enableManual();
+  Object.assign(process.env, {
+    SIRAH_LIVE_PAYMENTS_APPROVED: "true",
+    SIRAH_STRIPE_SANDBOX_VERIFIED: "false",
+    SIRAH_STRIPE_SECRET_KEY: "sk_live_synthetic",
+    SIRAH_STRIPE_ACCOUNT_ID: "acct_test",
+    SIRAH_STRIPE_WEBHOOK_SECRET: "synthetic",
+    SIRAH_STRIPE_ANNUAL_COUNTRIES: "GB,US",
+    SIRAH_STRIPE_ANNUAL_CURRENCIES: "GBP,USD",
+    SIRAH_STRIPE_ANNUAL_VERIFIED_ROUTES: "GB:GBP",
+  });
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "ANNUAL"), true);
+  assert.equal(methodAvailable("STRIPE", "US", "USD", "ANNUAL"), false);
+  assert.equal(methodAvailable("STRIPE", "US", "GBP", "ANNUAL"), false);
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "MONTHLY"), false);
+  assert.equal(methodAvailable("PAYPAL", "GB", "GBP", "ANNUAL"), false);
+  delete process.env.SIRAH_BANK_TRANSFER_MONTHLY_VERIFIED_ROUTES;
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "ANNUAL"), true);
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "MONTHLY"), false);
+  delete process.env.SIRAH_ANNUAL_TERMS_JSON;
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "ANNUAL"), false);
+  assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "ANNUAL"), false);
+});
+
+test("closed verification permits only the authorised saved order and amount, retaining all approvals", async () => {
+  enableManual();
+  Object.assign(process.env, {
+    SIRAH_LIVE_PAYMENTS_APPROVED: "true",
+    SIRAH_STRIPE_SECRET_KEY: "sk_live_synthetic",
+    SIRAH_STRIPE_WEBHOOK_SECRET: "synthetic",
+    SIRAH_STRIPE_ACCOUNT_ID: "acct_test",
+    SIRAH_STRIPE_ANNUAL_COUNTRIES: "GB",
+    SIRAH_STRIPE_ANNUAL_CURRENCIES: "GBP",
+  });
+  const saved = await create("GB", "ANNUAL");
+  const price = priceFor("GB", "ANNUAL", "STRIPE");
+  const grant = {
+    orderId: saved.orderId,
+    method: "STRIPE",
+    plan: "ANNUAL",
+    country: "GB",
+    currency: "GBP",
+    amountMinor: price.amountMinor,
+    expiresAt: new Date(Date.now() + 60000).toISOString(),
+  };
+  process.env.SIRAH_CLOSED_VERIFICATION_CHECKOUTS = JSON.stringify([grant]);
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "ANNUAL"), false);
+  assert.equal(
+    methodAvailable("STRIPE", "GB", "GBP", "ANNUAL", {
+      id: saved.orderId,
+      amountMinor: price.amountMinor + 1,
+    }),
+    false,
+  );
+  const other = await create("GB", "ANNUAL");
+  await assert.rejects(
+    repriceSirah(other.orderId, other.userId, 0, "GB", "ANNUAL", "STRIPE"),
+  );
+  const selected = await repriceSirah(
+    saved.orderId,
+    saved.userId,
+    0,
+    "GB",
+    "ANNUAL",
+    "STRIPE",
+  );
+  assert.equal(selected.method, "STRIPE");
+  // Merchant must still be authenticated before any Checkout session is made.
+  const stripe = {
+    accounts: { retrieve: async () => ({ id: "acct_wrong" }) },
+  } as unknown as Stripe;
+  await assert.rejects(
+    startSirahCheckout(
+      saved.orderId,
+      saved.userId,
+      selected.revision,
+      approvedTestTerms.version,
+      stripe,
+    ),
+    /merchant identity/,
+  );
+  assert.equal(
+    canAccessSirah(
+      await prisma.sirahOrder.findUniqueOrThrow({
+        where: { id: saved.orderId },
+      }),
+    ),
+    false,
+  );
+  let sessions = 0;
+  const verifiedMerchant = {
+    accounts: { retrieve: async () => ({ id: "acct_test" }) },
+    checkout: {
+      sessions: {
+        create: async (params: Stripe.Checkout.SessionCreateParams) => {
+          sessions++;
+          assert.equal(params.mode, "payment");
+          assert.equal(
+            params.line_items![0].price_data!.unit_amount,
+            price.amountMinor,
+          );
+          return {
+            id: "cs_closed_only",
+            url: "https://checkout.stripe.com/synthetic-only",
+          };
+        },
+      },
+    },
+  } as unknown as Stripe;
+  await startSirahCheckout(
+    saved.orderId,
+    saved.userId,
+    selected.revision,
+    approvedTestTerms.version,
+    verifiedMerchant,
+  );
+  assert.equal(sessions, 1);
+  assert.equal(
+    (
+      await prisma.sirahOrder.findUniqueOrThrow({
+        where: { id: saved.orderId },
+      })
+    ).paidCount,
+    0,
+  );
+
+  for (const override of [
+    { expiresAt: new Date(0).toISOString() },
+    { amountMinor: price.amountMinor + 1 },
+  ]) {
+    process.env.SIRAH_CLOSED_VERIFICATION_CHECKOUTS = JSON.stringify([
+      { ...grant, ...override },
+    ]);
+    await assert.rejects(
+      startSirahCheckout(
+        saved.orderId,
+        saved.userId,
+        selected.revision,
+        approvedTestTerms.version,
+        stripe,
+      ),
+      /not currently enabled/,
+    );
+  }
+  process.env.SIRAH_CLOSED_VERIFICATION_CHECKOUTS = JSON.stringify([grant]);
+  delete process.env.SIRAH_LIVE_PAYMENTS_APPROVED;
+  await assert.rejects(
+    startSirahCheckout(
+      saved.orderId,
+      saved.userId,
+      selected.revision,
+      approvedTestTerms.version,
+      stripe,
+    ),
+    /not currently enabled/,
+  );
 });

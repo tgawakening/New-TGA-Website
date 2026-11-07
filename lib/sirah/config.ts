@@ -60,10 +60,14 @@ export function termsFor(plan: SirahPlan): SirahTerms | null {
       ["IMMEDIATE", "PERIOD_END"].includes(value.cancellationTiming) &&
       ["KEEP", "PAUSE"].includes(value.failedPaymentAccess) &&
       (value.failedPaymentGraceDays === undefined ||
-        (Number.isInteger(value.failedPaymentGraceDays) && value.failedPaymentGraceDays >= 0 && value.failedPaymentGraceDays <= 30)) &&
+        (Number.isInteger(value.failedPaymentGraceDays) &&
+          value.failedPaymentGraceDays >= 0 &&
+          value.failedPaymentGraceDays <= 30)) &&
       ["KEEP", "REVOKE"].includes(value.refundAccess) &&
-      (value.annualRefundBasis === undefined || value.annualRefundBasis === "FULL_UNUSED_MONTHS") &&
-      (value.refundAccessTiming === undefined || value.refundAccessTiming === "CURRENT_MONTH_END") &&
+      (value.annualRefundBasis === undefined ||
+        value.annualRefundBasis === "FULL_UNUSED_MONTHS") &&
+      (value.refundAccessTiming === undefined ||
+        value.refundAccessTiming === "CURRENT_MONTH_END") &&
       ["CANCEL", "CONTINUE"].includes(value.refundBilling) &&
       [
         "version",
@@ -126,19 +130,54 @@ function configuredCurrencies(provider: string, plan: SirahPlan) {
       .filter(Boolean),
   );
 }
+// Closed verification is an expiring authorisation for one saved order and
+// exact amount. It never enables a public quote or bypasses terms/merchant gates.
+function closedVerificationAllowed(
+  method: SirahMethod,
+  country: string,
+  currency: string,
+  plan: SirahPlan,
+  order?: { id: string; amountMinor: number },
+) {
+  if (!order) return false;
+  try {
+    const entries: unknown = JSON.parse(
+      process.env.SIRAH_CLOSED_VERIFICATION_CHECKOUTS || "[]",
+    );
+    return (
+      Array.isArray(entries) &&
+      entries.some(
+        (entry) =>
+          entry &&
+          entry.orderId === order.id &&
+          entry.method === method &&
+          entry.country === country &&
+          entry.currency === currency &&
+          entry.plan === plan &&
+          Number.isSafeInteger(entry.amountMinor) &&
+          entry.amountMinor > 0 &&
+          entry.amountMinor === order.amountMinor &&
+          typeof entry.expiresAt === "string" &&
+          Date.parse(entry.expiresAt) > Date.now(),
+      )
+    );
+  } catch {
+    return false;
+  }
+}
 export function methodAvailable(
   method: SirahMethod,
   country: string,
   currency: string,
   plan: SirahPlan,
+  verificationOrder?: { id: string; amountMinor: number },
 ) {
   if (method === "PAYPAL" && country === "PK") return false;
   if (!termsFor(plan)) return false;
   if (
     method === "STRIPE" &&
     !/^(sk|rk)_test_/.test(process.env.SIRAH_STRIPE_SECRET_KEY || "") &&
-    (process.env.SIRAH_LIVE_PAYMENTS_APPROVED !== "true" ||
-      process.env.SIRAH_STRIPE_SANDBOX_VERIFIED !== "true")
+    process.env.SIRAH_LIVE_PAYMENTS_APPROVED !== "true"
   )
     return false;
   if (
@@ -150,19 +189,42 @@ export function methodAvailable(
   if (method === "BANK_TRANSFER" || method === "JAZZCASH")
     return (
       country === "PK" &&
+      currency === "PKR" &&
+      (process.env[`SIRAH_${method}_${plan}_VERIFIED_ROUTES`] || "")
+        .split(",")
+        .map((value) => value.trim().toUpperCase())
+        .includes("PK:PKR") &&
       manualAccounts().some((account) => account.method === method)
     );
   // A verified GBP checkout must not enable every unlisted country billed in GBP.
-  const live = method === "PAYPAL"
-    ? process.env.PAYPAL_ENV === "live"
-    : !/^(sk|rk)_test_/.test(process.env.SIRAH_STRIPE_SECRET_KEY || "");
+  const live =
+    method === "PAYPAL"
+      ? process.env.PAYPAL_ENV === "live"
+      : !/^(sk|rk)_test_/.test(process.env.SIRAH_STRIPE_SECRET_KEY || "");
   const approvedCountries = new Set(
     (process.env[`SIRAH_${method}_${plan}_COUNTRIES`] || "")
       .split(",")
-      .map(value => value.trim().toUpperCase())
-      .filter(value => /^[A-Z]{2}$/.test(value)),
+      .map((value) => value.trim().toUpperCase())
+      .filter((value) => /^[A-Z]{2}$/.test(value)),
   );
   if (live && !approvedCountries.has(country.toUpperCase())) return false;
+  const verifiedRoutes = new Set(
+    (process.env[`SIRAH_${method}_${plan}_VERIFIED_ROUTES`] || "")
+      .split(",")
+      .map((value) => value.trim().toUpperCase()),
+  );
+  if (
+    live &&
+    !verifiedRoutes.has(`${country.toUpperCase()}:${currency.toUpperCase()}`) &&
+    !closedVerificationAllowed(
+      method,
+      country,
+      currency,
+      plan,
+      verificationOrder,
+    )
+  )
+    return false;
   if (
     country === "PK" &&
     plan === "MONTHLY" &&
@@ -173,20 +235,20 @@ export function methodAvailable(
   if (method === "STRIPE")
     return Boolean(
       process.env.SIRAH_STRIPE_SECRET_KEY &&
-      process.env.SIRAH_STRIPE_WEBHOOK_SECRET &&
-      process.env.SIRAH_STRIPE_ACCOUNT_ID,
+        process.env.SIRAH_STRIPE_WEBHOOK_SECRET &&
+        process.env.SIRAH_STRIPE_ACCOUNT_ID,
     );
   return (
     PAYPAL_CURRENCIES.has(currency) &&
     currencyScale(currency) === 2 &&
     Boolean(
       process.env.PAYPAL_CLIENT_ID &&
-      process.env.PAYPAL_CLIENT_SECRET &&
-      process.env.SIRAH_PAYPAL_MERCHANT_ID &&
-      process.env.SIRAH_PAYPAL_WEBHOOK_ID &&
-      (plan === "ANNUAL" ||
-        (process.env.SIRAH_PAYPAL_PRODUCT_ID &&
-          process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${currency}`])),
+        process.env.PAYPAL_CLIENT_SECRET &&
+        process.env.SIRAH_PAYPAL_MERCHANT_ID &&
+        process.env.SIRAH_PAYPAL_WEBHOOK_ID &&
+        (plan === "ANNUAL" ||
+          (process.env.SIRAH_PAYPAL_PRODUCT_ID &&
+            process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${currency}`])),
     )
   );
 }
