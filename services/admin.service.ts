@@ -1,3 +1,4 @@
+import { SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import {
   EnrollmentStatus,
@@ -254,10 +255,11 @@ type GenMuminFeedResponse = {
 
 export type AdminNotificationItem = {
   id: string;
-  kind: "ORDER" | "ENROLLMENT" | "FEE_WAIVER" | "MISSION_SUPPORT";
+  kind: "ORDER" | "ENROLLMENT" | "FEE_WAIVER" | "MISSION_SUPPORT" | "SIRAH";
   title: string;
   message: string;
   createdAt: string;
+  href?: string;
 };
 
 function formatAmount(amount: number, currency: string) {
@@ -476,10 +478,11 @@ async function getGenMuminOverview() {
 
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
   const currentSchema = await sirahSchemaAvailable();
+  const legacy = currentSchema ? { sirahOrder: null } : {};
   const [registrations, users, applications, missionSupport, genMumin] =
     await Promise.all([
       prisma.registration.findMany({
-        where: currentSchema ? { sirahOrder: null } : {},
+        where: legacy,
         include: {
           user: true,
           course: true,
@@ -494,15 +497,23 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
         orderBy: { createdAt: "desc" },
       }),
       prisma.user.findMany({
-        where: { role: "STUDENT" },
+        where: {
+          role: "STUDENT",
+          ...(currentSchema ? {
+            OR: [
+              { sirahOrders: { none: {} } },
+              { registrations: { some: legacy } },
+            ],
+          } : {}),
+        },
         include: {
           studentProfile: true,
           registrations: {
-            where: currentSchema ? { sirahOrder: null } : {},
+            where: legacy,
             include: { payment: true, course: true },
             orderBy: { createdAt: "desc" },
           },
-          enrollments: true,
+          enrollments: { where: { registration: legacy } },
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -788,52 +799,138 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
   };
 }
 
-export async function getAdminNotifications(
-  limit = 20,
-): Promise<AdminNotificationItem[]> {
-  const snapshot = await getAdminDashboardSnapshot();
+const sirahNotificationTitles: Record<string, string> = {
+  REGISTERED: "New Sīrah registration",
+  CONFIRMED: "New Sīrah enrolment",
+  PAYMENT_VERIFIED: "Sīrah payment verified",
+  EVIDENCE_SUBMITTED: "Sīrah payment evidence submitted",
+  CANCELLED: "Sīrah cancellation recorded",
+  COMPLETED: "Sīrah course marked complete",
+};
+
+async function getSirahAdminNotifications(limit: number): Promise<AdminNotificationItem[]> {
+  // Use committed audit and confirmation records so email delivery and retries
+  // cannot create, duplicate, or suppress admin updates.
+  const order = { course: { slug: SIRAH_SLUG } };
+  const orderDetails = { select: { reference: true, user: { select: { fullName: true } } } };
+  const [audits, confirmations] = await Promise.all([
+    prisma.sirahAudit.findMany({
+      where: {
+        order,
+        OR: [
+          { action: { in: ["REGISTERED", "EVIDENCE_SUBMITTED", "PAYMENT_VERIFIED"] } },
+          {
+            action: { in: ["CANCELLED", "COMPLETED"] },
+            OR: [{ actor: { startsWith: "admin:" } }, { actor: { startsWith: "admin-api:" } }],
+          },
+        ],
+      },
+      select: { id: true, action: true, createdAt: true, order: orderDetails },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit,
+    }),
+    prisma.sirahNotification.groupBy({
+      by: ["orderId"],
+      where: { order, kind: "CONFIRMED" },
+      _min: { createdAt: true },
+      orderBy: [{ _min: { createdAt: "desc" } }, { orderId: "desc" }],
+      take: limit,
+    }),
+  ]);
+
+  // One confirmation is queued per email recipient. Show only one enrolment
+  // notification for the order, even when several recipients are configured.
+  const confirmedOrders = await prisma.sirahOrder.findMany({
+    where: { id: { in: confirmations.map(({ orderId }) => orderId) } },
+    select: { id: true, ...orderDetails.select },
+  });
+  const confirmedAt = new Map(confirmations.map(({ orderId, _min }) => [orderId, _min.createdAt!]));
+
+  return [
+    ...audits.map((event) => ({
+      id: `sirah-audit-${event.id}`,
+      title: sirahNotificationTitles[event.action],
+      order: event.order,
+      createdAt: event.createdAt,
+    })),
+    ...confirmedOrders.map((confirmed) => ({
+      id: `sirah-enrolment-${confirmed.id}`,
+      title: sirahNotificationTitles.CONFIRMED,
+      order: confirmed,
+      createdAt: confirmedAt.get(confirmed.id)!,
+    })),
+  ].map((event) => ({
+    id: event.id,
+    kind: "SIRAH",
+    title: event.title,
+    message: event.order.user.fullName,
+    createdAt: event.createdAt.toISOString(),
+    href: `/admin/sirah?order=${encodeURIComponent(event.order.reference)}`,
+  }));
+}
+
+export async function getAdminNotifications(limit = 20): Promise<AdminNotificationItem[]> {
+  const currentSchema = await sirahSchemaAvailable();
+  const legacy = currentSchema ? { sirahOrder: null } : {};
+  const contact = { select: { fullName: true } };
+  const registrationFields = { id: true, createdAt: true, user: contact, course: { select: { title: true } } };
+
+  const [sirah, registrations, enrolments, applications, donations] = await Promise.all([
+    currentSchema ? getSirahAdminNotifications(limit) : [],
+    prisma.registration.findMany({
+      where: legacy, select: registrationFields, orderBy: { createdAt: "desc" }, take: limit,
+    }),
+    prisma.enrollment.findMany({
+      where: { status: "ACTIVE", activatedAt: { not: null }, registration: legacy },
+      select: { activatedAt: true, registration: { select: registrationFields } },
+      orderBy: { activatedAt: "desc" }, take: limit,
+    }),
+    prisma.freeWarriorApplication.findMany({
+      select: { id: true, fullName: true, createdAt: true },
+      orderBy: { createdAt: "desc" }, take: limit,
+    }),
+    prisma.missionSupportDonation.findMany({
+      select: { id: true, fullName: true, createdAt: true },
+      orderBy: { createdAt: "desc" }, take: limit,
+    }).catch((error: unknown) => {
+      if (isMissingDatabaseStructureError(error)) return [];
+      throw error;
+    }),
+  ]);
 
   const notifications: AdminNotificationItem[] = [
-    ...snapshot.registrations.map((row) => ({
+    ...sirah,
+    ...registrations.map((row) => ({
       id: `order-${row.id}`,
       kind: "ORDER" as const,
       title: "New order received",
-      message: `${row.fullName} placed an order for ${row.courseTitle}.`,
-      createdAt: row.createdAt,
+      message: `${row.user.fullName} placed an order for ${row.course.title}.`,
+      createdAt: row.createdAt.toISOString(),
     })),
-    ...snapshot.registrations
-      .filter(
-        (row) => row.enrollmentStatus === "ACTIVE" && row.enrollmentActivatedAt,
-      )
-      .map((row) => ({
-        id: `enrollment-${row.id}`,
-        kind: "ENROLLMENT" as const,
-        title: "New student enrolled",
-        message: `${row.fullName} is now enrolled in ${row.courseTitle}.`,
-        createdAt: row.enrollmentActivatedAt as string,
-      })),
-    ...snapshot.freeWarriorApplications.map((row) => ({
+    ...enrolments.map(({ registration: row, activatedAt }) => ({
+      id: `enrollment-${row.id}`,
+      kind: "ENROLLMENT" as const,
+      title: "New student enrolled",
+      message: `${row.user.fullName} is now enrolled in ${row.course.title}.`,
+      createdAt: activatedAt!.toISOString(),
+    })),
+    ...applications.map((row) => ({
       id: `fee-waiver-${row.id}`,
       kind: "FEE_WAIVER" as const,
       title: "New Fee Waiver application",
       message: `${row.fullName} submitted a Fee Waiver application.`,
-      createdAt: row.createdAt,
+      createdAt: row.createdAt.toISOString(),
     })),
-    ...snapshot.missionSupportDonations.map((row) => ({
+    ...donations.map((row) => ({
       id: `mission-support-${row.id}`,
       kind: "MISSION_SUPPORT" as const,
       title: "New mission support submission",
       message: `${row.fullName} submitted a mission support contribution.`,
-      createdAt: row.createdAt,
+      createdAt: row.createdAt.toISOString(),
     })),
   ];
 
-  return notifications
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
-    .slice(0, limit);
+  return notifications.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
 }
 
 export async function adminUpdateRegistrationRecord(

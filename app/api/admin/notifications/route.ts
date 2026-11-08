@@ -8,7 +8,7 @@ export async function GET(request: Request) {
 
   try {
     const notifications = await getAdminNotifications();
-    return NextResponse.json({ notifications });
+    return NextResponse.json({ notifications }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Could not load admin notifications." },
