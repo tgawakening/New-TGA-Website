@@ -1,0 +1,59 @@
+.summary {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: inherit;
+  width: 100%;
+  container-type: inline-size;
+}
+.summary .rate {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.summary .rate s {
+  font-size: 1rem;
+  color: #645c46;
+}
+.summary .equivalent {
+  font: 500 clamp(1.8rem, 4vw, 2.8rem)/1.15 Georgia, serif;
+  font-size: clamp(1.55rem, 9cqi, 2.8rem);
+  color: inherit;
+}
+.summary .label {
+  display: block;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #494b3d;
+}
+.summary .savings {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.summary .badge {
+  display: inline-block;
+  border: 1px solid #bd9d4c;
+  border-radius: 999px;
+  background: #ead69d;
+  padding: 3px 9px;
+  color: #42330c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.summary .totals {
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid #c6b991;
+  padding-top: 10px;
+}
+.summary .upfront {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.summary .upfront strong {
+  font: 500 1.35rem/1.3 Georgia, serif;
+}
