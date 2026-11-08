@@ -3,6 +3,7 @@ import { calculateSirahAnnualUnusedMonths } from "@/lib/sirah/annual-refund";
 import { quoteSirahAnnualRefund } from "./sirah-refunds.service";
 import { paidSirahPeriodEnd } from "@/lib/sirah/subscription-access";
 import { createHash } from "node:crypto";
+import { countries } from "countries-list";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -39,11 +40,35 @@ export async function listSirahAdmin(search: URLSearchParams) {
   const payment = search.get("payment") || "";
   const enrolment = search.get("enrolment") || "";
   const batch = search.get("batch") || "";
+  const country = (search.get("country") || "").trim().toUpperCase();
+  const method = (search.get("method") || "").trim().toUpperCase();
+  if (country && !(country in countries))
+    throw new SirahError("Choose a valid country.");
+  if (
+    method &&
+    ![
+      "STRIPE",
+      "PAYPAL",
+      "BANK_TRANSFER",
+      "JAZZCASH",
+      "MANUAL",
+      "UNSELECTED",
+    ].includes(method)
+  )
+    throw new SirahError("Choose a valid payment method.");
   const where: Prisma.SirahOrderWhereInput = {
     course: { slug: SIRAH_SLUG },
     ...(payment ? { paymentState: payment } : {}),
     ...(enrolment ? { enrolmentState: enrolment } : {}),
     ...(batch ? { batchCode: batch } : {}),
+    ...(country ? { countryCode: country } : {}),
+    ...(method === "MANUAL"
+      ? { method: { in: ["BANK_TRANSFER", "JAZZCASH"] } }
+      : method === "UNSELECTED"
+        ? { method: null }
+        : method
+          ? { method }
+          : {}),
     ...(q
       ? {
           OR: [
@@ -238,20 +263,40 @@ export async function recordSirahRefund(
       terms?.refundAccess === "KEEP" &&
       !order.cancelledAt &&
       !["CANCELLED", "COMPLETED"].includes(order.enrolmentState);
-    const refundEnd = terms?.refundAccessTiming === "CURRENT_MONTH_END" &&
-      order.plan === "ANNUAL" && terms.annualRefundBasis === "FULL_UNUSED_MONTHS" && order.programmeStart
-      ? order.accessEndsAt || calculateSirahAnnualUnusedMonths(order.programmeStart,order.cancelledAt || new Date()).paidThrough : null;
+    const refundEnd =
+      terms?.refundAccessTiming === "CURRENT_MONTH_END" &&
+      order.plan === "ANNUAL" &&
+      terms.annualRefundBasis === "FULL_UNUSED_MONTHS" &&
+      order.programmeStart
+        ? order.accessEndsAt ||
+          calculateSirahAnnualUnusedMonths(
+            order.programmeStart,
+            order.cancelledAt || new Date(),
+          ).paidThrough
+        : null;
     await tx.sirahOrder.update({
       where: { id: orderId },
       data: {
         refundedMinor: { increment: amountMinor },
         paymentState: all ? "REFUNDED" : "PAID",
         ...(terms?.refundAccess === "REVOKE"
-          ? all && order.plan === "ANNUAL" && terms.requiresConfirmedCommencement
-            ? { enrolmentState: "CANCELLED", cancelledAt: order.cancelledAt || new Date(), accessEndsAt: new Date() }
-            : refundEnd ? {cancelledAt:order.cancelledAt || new Date(),accessEndsAt:refundEnd,
-              ...(refundEnd <= new Date() ? {enrolmentState:"CANCELLED"} : {})}
-            : { enrolmentState: "CANCELLED" }
+          ? all &&
+            order.plan === "ANNUAL" &&
+            terms.requiresConfirmedCommencement
+            ? {
+                enrolmentState: "CANCELLED",
+                cancelledAt: order.cancelledAt || new Date(),
+                accessEndsAt: new Date(),
+              }
+            : refundEnd
+              ? {
+                  cancelledAt: order.cancelledAt || new Date(),
+                  accessEndsAt: refundEnd,
+                  ...(refundEnd <= new Date()
+                    ? { enrolmentState: "CANCELLED" }
+                    : {}),
+                }
+              : { enrolmentState: "CANCELLED" }
           : releaseHold
             ? {
                 enrolmentState: "ACTIVE",
@@ -339,22 +384,30 @@ export async function actOnSirahOrder(
     if (
       order.revision !== input.revision ||
       order.paymentState !== "PROCESSING" ||
-      !input.providerReference
+      !(
+        input.providerReference ||
+        order.providerOrderId ||
+        order.providerSubscriptionId
+      )
     )
       throw new SirahError(
         "Choose the unchanged processing order and its actual provider reference.",
         409,
       );
+    const providerReference =
+      input.providerReference ||
+      order.providerOrderId ||
+      order.providerSubscriptionId!;
     await prisma.$transaction((tx) =>
       auditSirah(tx, order.id, actor, "PROVIDER_RECONCILIATION_REQUESTED", {
-        reference: input.providerReference,
+        reference: providerReference,
         note: input.note || null,
       }),
     );
     if (order.method === "STRIPE")
-      return verifySirahStripeSession(order.id, input.providerReference);
+      return verifySirahStripeSession(order.id, providerReference);
     if (order.method === "PAYPAL")
-      return verifySirahPaypal(order.id, input.providerReference, false);
+      return verifySirahPaypal(order.id, providerReference, false);
     throw new SirahError("This record is not an online checkout.");
   }
   if (input.action === "APPROVE") {
@@ -362,19 +415,44 @@ export async function actOnSirahOrder(
       throw new SirahError(
         "Online payments cannot be approved through a display-status change.",
       );
-    const amount = decimalToMinor(
-      input.verifiedAmount!,
-      input.currency!.toUpperCase(),
-    );
-    const eventId = `manual:${order.method}:${createHash("sha256").update(input.transactionReference!.trim()).digest("hex")}`;
+    if (input.verifiedTransfer !== true)
+      throw new SirahError(
+        "Confirm that the funds were received in the merchant account.",
+      );
+    const evidence = await prisma.sirahAudit.findFirst({
+      where: { orderId: order.id, action: "EVIDENCE_SUBMITTED" },
+      orderBy: { createdAt: "desc" },
+      select: { detail: true },
+    });
+    const detail = evidence?.detail as {
+      transactionReference?: unknown;
+    } | null;
+    const submittedReference =
+      typeof detail?.transactionReference === "string"
+        ? detail.transactionReference.trim()
+        : "";
+    const reference =
+      input.transactionReference?.trim() ||
+      submittedReference ||
+      `TGA-REVIEW-${order.id}-${input.revision}`;
+    const source = input.transactionReference?.trim()
+      ? "admin-entered transfer reference"
+      : submittedReference
+        ? "submitted receipt reference reviewed by staff"
+        : "internal review reference (no bank reference supplied)";
+    const currency = input.currency?.toUpperCase() || order.currency;
+    const amount = input.verifiedAmount
+      ? decimalToMinor(input.verifiedAmount, currency)
+      : order.amountMinor;
+    const eventId = `manual:${order.method}:${createHash("sha256").update(reference).digest("hex")}`;
     return confirmSirahPayment({
       orderId: order.id,
       eventId,
       provider: order.method as "BANK_TRANSFER" | "JAZZCASH",
       amountMinor: amount,
-      currency: input.currency!.toUpperCase(),
+      currency,
       actor,
-      note: `${input.note || ""} Verified transaction: ${input.transactionReference}`,
+      note: `${input.note || "Staff confirmed the received funds against this registration."} Reference source: ${source}. Reference: ${reference}`,
       expectedRevision: input.revision,
       allowCancelledTransfer:
         order.enrolmentState === "CANCELLED" &&
@@ -387,8 +465,58 @@ export async function actOnSirahOrder(
       "Another admin or student changed this record. Reload first.",
       409,
     );
+  if (input.action === "PENDING") {
+    if (
+      !["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "") ||
+      order.paidCount ||
+      order.paidMinor ||
+      order.enrolmentState !== "PENDING" ||
+      order.cancelledAt ||
+      !["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState)
+    )
+      throw new SirahError(
+        "Only an unpaid manual registration can return to pending review.",
+        409,
+      );
+    const evidence = await prisma.sirahAudit.findFirst({
+      where: { orderId: order.id, action: "EVIDENCE_SUBMITTED" },
+      select: { id: true },
+    });
+    await serializable(async (tx) => {
+      const changed = await tx.sirahOrder.updateMany({
+        where: {
+          id: order.id,
+          revision: input.revision,
+          paidCount: 0,
+          paidMinor: 0,
+          enrolmentState: "PENDING",
+          cancelledAt: null,
+        },
+        data: {
+          paymentState: evidence ? "AWAITING_REVIEW" : "UNPAID",
+          revision: { increment: 1 },
+        },
+      });
+      if (!changed.count)
+        throw new SirahError(
+          "This record changed. Reload before reviewing it.",
+          409,
+        );
+      await auditSirah(tx, order.id, actor, "RETURNED_TO_PENDING", {
+        note:
+          input.note ||
+          "Admin returned the unpaid manual registration to pending review.",
+      });
+    });
+    return { updated: true };
+  }
   if (input.action === "QUOTE_ANNUAL_REFUND")
-    return quoteSirahAnnualRefund(order.id, input.revision, input.unusedEligibleMonths!, actor);
+    return quoteSirahAnnualRefund(
+      order.id,
+      input.revision,
+      input.unusedEligibleMonths!,
+      actor,
+    );
   if (input.action === "REFUND") {
     if (!input.verifiedAmount || !input.currency)
       throw new SirahError(
@@ -489,12 +617,21 @@ export async function actOnSirahOrder(
     if (order.paidCount && !terms)
       throw new SirahError("Approved cancellation terms are not configured.");
     const timing = terms?.cancellationTiming || "IMMEDIATE";
-    const paidUntil = timing !== "PERIOD_END" ? null
-      : order.plan === "ANNUAL" && terms?.annualRefundBasis === "FULL_UNUSED_MONTHS" && order.programmeStart
-        ? order.accessEndsAt || calculateSirahAnnualUnusedMonths(order.programmeStart,new Date()).paidThrough
-        : paidSirahPeriodEnd(order);
+    const paidUntil =
+      timing !== "PERIOD_END"
+        ? null
+        : order.plan === "ANNUAL" &&
+            terms?.annualRefundBasis === "FULL_UNUSED_MONTHS" &&
+            order.programmeStart
+          ? order.accessEndsAt ||
+            calculateSirahAnnualUnusedMonths(order.programmeStart, new Date())
+              .paidThrough
+          : paidSirahPeriodEnd(order);
     if (timing === "PERIOD_END" && order.paidCount && !paidUntil)
-      throw new SirahError("The verified paid-period expiry needs reconciliation before cancellation.", 409);
+      throw new SirahError(
+        "The verified paid-period expiry needs reconciliation before cancellation.",
+        409,
+      );
     await cancelSirahProvider(order, timing);
     await serializable(async (tx) => {
       const changed = await tx.sirahOrder.updateMany({
@@ -515,7 +652,7 @@ export async function actOnSirahOrder(
         );
       await auditSirah(tx, order.id, actor, "CANCELLED", {
         timing,
-        note: input.note,
+        note: input.note || "Cancelled by admin.",
       });
       await queueSirahNotice(
         tx,
@@ -544,7 +681,11 @@ export async function actOnSirahOrder(
       });
       if (!changed.count)
         throw new SirahError("Submission already reviewed.", 409);
-      await auditSirah(tx, order.id, actor, "REJECTED", { reason: input.note });
+      await auditSirah(tx, order.id, actor, "REJECTED", {
+        reason:
+          input.note ||
+          "Payment evidence requires correction following staff review.",
+      });
       await queueSirahNotice(
         tx,
         order.id,
