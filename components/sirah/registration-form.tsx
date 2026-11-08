@@ -41,6 +41,7 @@ const methodLabel = (method: SirahMethod) =>
 const draftKey = "tga-sirah-registration-draft-v1";
 class ApiError extends Error {
   fields?: Record<string, string[]>;
+  status?: number;
 }
 import type { publicSirahOrder } from "@/services/sirah-registration.service";
 import styles from "./registration.module.css";
@@ -67,6 +68,7 @@ async function api(path: string, init?: RequestInit) {
   const result = await response.json();
   if (!response.ok) {
     const error = new ApiError(result.error || "Please try again.");
+    error.status = response.status;
     error.fields =
       result.fields ||
       (response.status === 409 && /email/i.test(result.error || "")
@@ -91,24 +93,21 @@ function Terms({
 }) {
   return order.terms ? (
     <div className={styles.terms}>
-      <h3>Before making a payment</h3>
-      {["commitment", "cancellation", "refund", "access", "tax"].map((key) => (
-        <p key={key}>
-          <strong>{key[0].toUpperCase() + key.slice(1)}: </strong>
-          {order.terms![key as keyof typeof order.terms]}
-        </p>
-      ))}
-      {order.plan === "MONTHLY" && (
-        <p>
-          Monthly payments are voluntary renewals, not an obligation to make
-          twelve payments. The programme has a maximum of twelve monthly billing
-          cycles. Cancel future renewals from this saved registration using
-          “Cancel future payments”. Cancellation does not automatically refund
-          completed monthly periods; statutory rights still apply.
-          {order.terms.cancellationTiming === "PERIOD_END" &&
-            " Your verified current paid period remains accessible until its scheduled expiry."}
-        </p>
-      )}
+      <details className={styles.policyDetails}>
+        <summary>Payment, cancellation and refund policy</summary>
+        {(["commitment", "cancellation", "refund", "access", "tax"] as const).map((key) => (
+          <p key={key}>
+            <strong>{key[0].toUpperCase() + key.slice(1)}: </strong>
+            {order.terms![key]}
+          </p>
+        ))}
+        {order.plan === "MONTHLY" && (
+          <p>
+            Monthly payments are voluntary renewals. The programme has up to twelve monthly billing cycles. Use “Cancel future payments” in your saved registration to stop future renewals. Cancellation does not automatically refund completed monthly periods. Statutory rights still apply.
+            {order.terms.cancellationTiming === "PERIOD_END" && " Your verified paid period remains accessible until its scheduled expiry."}
+          </p>
+        )}
+      </details>
       {order.terms.earlyServiceRequestText && (
         <label className={styles.check}>
           <input type="checkbox" checked={accessConsents.earlyServiceRequested === true}
@@ -124,7 +123,7 @@ function Terms({
         </label>
       )}
       {(order.terms.earlyServiceRequestText || order.terms.digitalContentConsentText) && (
-        <p>You can leave these choices unticked and save a pending registration without choosing a payment method. Contact course support to arrange a later start; do not transfer until the arrangements are confirmed. These choices do not remove TGA’s additional course-start full-refund protection or other mandatory remedies.</p>
+        <p>To arrange a later start, save without a payment method and contact course support before paying. These choices do not remove TGA’s course-start refund protection or statutory rights.</p>
       )}
       <label className={styles.check}>
         <input
@@ -132,14 +131,12 @@ function Terms({
           checked={accepted}
           onChange={(event) => onChange(event.target.checked)}
         />
-        I have read and agree to these payment and access terms (version{" "}
-        {order.terms.version}).
+        I agree to the payment and access terms.
       </label>
     </div>
   ) : (
     <p className={styles.notice}>
-      Payment methods will open after their payment, cancellation, refund and
-      access terms are approved. Your registration can still be recorded.
+      Payment is unavailable. You can save your registration.
     </p>
   );
 }
@@ -194,6 +191,9 @@ export function SirahRegistrationForm({
     ),
   );
   const [fields, setFields] = useState<Record<string, string[]>>({});
+  const [existingAccount, setExistingAccount] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const comparison = billing ? annualSirahSavings(billing) : null;
   const [quote, setQuote] = useState<{
     country: string;
     method: SirahMethod | "";
@@ -211,6 +211,7 @@ export function SirahRegistrationForm({
   const [resumeProblem, setResumeProblem] = useState(false);
   const [quoteError, setQuoteError] = useState("");
   const [plan, setPlan] = useState<SirahPlan>(initialPlan || "MONTHLY");
+  const signInUrl = `/login?next=${encodeURIComponent(`/seerah/register?country=${billing}&plan=${plan}`)}`;
   const [available, setAvailable] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -325,6 +326,17 @@ export function SirahRegistrationForm({
     billingEdited,
     selectedMethod,
   ]);
+  function reportFields(next: Record<string, string[]>) {
+    setFields(next);
+    setError("Please check the highlighted fields.");
+    const first = Array.from(formRef.current?.elements || []).find(
+      (element): element is HTMLInputElement | HTMLSelectElement =>
+        ((element instanceof HTMLInputElement && !element.readOnly) ||
+          element instanceof HTMLSelectElement) &&
+        Boolean(next[element.name] || (element.name === "phone" && next.phoneCountry)),
+    );
+    first?.focus();
+  }
   function fieldError(key: string) {
     return fields[key]?.[0];
   }
@@ -533,8 +545,11 @@ export function SirahRegistrationForm({
       await work();
     } catch (cause) {
       if (cause instanceof ApiError && cause.fields && !order) {
-        setFields(cause.fields);
-        setError("");
+        const accountConflict = cause.status === 409 && Boolean(cause.fields.email);
+        setExistingAccount(accountConflict);
+        reportFields(accountConflict
+          ? { ...cause.fields, email: ["Sign in to continue with this email."] }
+          : cause.fields);
       } else
         setError(
           cause instanceof Error
@@ -561,13 +576,6 @@ export function SirahRegistrationForm({
   }
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!residenceConfirmed) {
-      setFields({
-        countryCode: ["Please confirm your current country of residence."],
-      });
-      return;
-    }
-    saveResidence(billing);
     const data = new FormData(event.currentTarget);
     requestKey.current ||= crypto.randomUUID();
     const input = {
@@ -588,16 +596,17 @@ export function SirahRegistrationForm({
       method: selectedMethod || null,
     };
     const parsed = sirahRegistrationSchema.safeParse(input);
-    if (!parsed.success) {
-      const next = parsed.error.flatten().fieldErrors;
-      setFields(next);
+    if (!parsed.success || !residenceConfirmed) {
+      reportFields({
+        ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
+        ...(billing && !residenceConfirmed
+          ? { residenceConfirmation: ["Confirm your country of residence."] }
+          : {}),
+      });
       setPhoneError("");
-      const first = event.currentTarget.querySelector<HTMLElement>(
-        `[name="${Object.keys(next)[0]}"]`,
-      );
-      first?.focus();
       return;
     }
+    saveResidence(billing);
     setFields({});
     setPhoneError("");
     await run(async () => {
@@ -820,21 +829,20 @@ export function SirahRegistrationForm({
       </p>
       <h2>Sīrah | Beyond Chronology</h2>
       <p className={styles.introduction}>
-        Create your account and choose your payment plan.
+        Enter your details and choose a payment plan.
       </p>
       {ready && (order?.cohort || quote?.cohort) && (
         <div className={styles.notice} role="status">
-          <strong>First paid class: </strong>
+          <strong>First teaching session: </strong>
           {(order?.cohort || quote?.cohort)?.commencementDate
             ? new Date(`${(order?.cohort || quote?.cohort)!.commencementDate}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
             : "Pending publication of the confirmed cohort date."}
+          {(order?.cohort || quote?.cohort)?.commencementDate === "2026-11-14" &&
+            (order?.plan || plan) === "MONTHLY" && (
+              <p>November’s full monthly fee covers three teaching sessions and registration. No separate registration fee or prorating.</p>
+            )}
           {order?.terms?.cohortCommencementDate && order.terms.cohortCommencementDate !== order.cohort.commencementDate && (
-            <p>This saved booking retains {order.terms.cohortCommencementDate} for its recorded refund protection. A schedule correction does not shorten that protection.</p>
-          )}
-          {(order?.cohort || quote?.cohort)?.confirmed ? (
-            <p>The additional course-start full-refund protection runs through {(order?.cohort || quote?.cohort)!.courseStartFullRefundThrough} inclusive (Pakistan calendar date). Any applicable statutory cancellation rights remain separate.</p>
-          ) : (
-            <p>The free orientation is separate. You can save a pending registration; payments requiring the teaching date remain closed until the confirmed schedule is available here.</p>
+            <p>Your saved refund protection still uses {order.terms.cohortCommencementDate}.</p>
           )}
         </div>
       )}
@@ -842,7 +850,7 @@ export function SirahRegistrationForm({
         <p className={styles.signIn}>
           Already have an account?{" "}
           <a
-            href={`/login?next=${encodeURIComponent(`/seerah/register?country=${billing}&plan=${plan}`)}`}
+            href={signInUrl}
           >
             Sign in
           </a>
@@ -888,6 +896,7 @@ export function SirahRegistrationForm({
             </div>
           )}
           <form
+            ref={formRef}
             onSubmit={register}
             noValidate
             className={`${styles.form} ${styles.compactForm}`}
@@ -925,6 +934,7 @@ export function SirahRegistrationForm({
                 readOnly={!!user}
                 onChange={(event) => {
                   setEmail(event.target.value);
+                  setExistingAccount(false);
                   clearField("email");
                 }}
                 autoComplete="email"
@@ -935,6 +945,7 @@ export function SirahRegistrationForm({
                 }
               />
               {errorText("email")}
+              {existingAccount && <a href={signInUrl}>Sign in to enrol</a>}
             </label>
             {!user && (
               <PasswordFields
@@ -990,7 +1001,7 @@ export function SirahRegistrationForm({
                   }
                 >
                   <option value="" disabled>
-                    Select your billing country
+                    Select your country of residence
                   </option>
                   {residenceCountries.map((c) => (
                     <option value={c.code} key={c.code}>
@@ -999,109 +1010,66 @@ export function SirahRegistrationForm({
                   ))}
                 </select>
               </span>
+              <small>Please select your actual country of residence. Fees and payment options depend on your selection. Providing accurate information is an amanah (trust).</small>
               {errorText("countryCode")}
             </label>
             <label className={styles.residenceConfirmation}>
               <span>
                 <input
                   type="checkbox"
+                  name="residenceConfirmation"
                   checked={residenceConfirmed}
-                  onChange={(event) =>
-                    setResidenceConfirmed(event.target.checked)
-                  }
+                  onChange={(event) => {
+                    setResidenceConfirmed(event.target.checked);
+                    clearField("residenceConfirmation");
+                  }}
+                  aria-invalid={!!fieldError("residenceConfirmation")}
+                  aria-describedby={fieldError("residenceConfirmation") ? "sirah-error-residenceConfirmation" : undefined}
                   required
                 />{" "}
-                I confirm that{" "}
-                {billing && countries[billing as keyof typeof countries]?.name}{" "}
-                is my current country of residence.
+                I confirm this is my current country of residence.
               </span>
+              {errorText("residenceConfirmation")}
             </label>
-            <div className={styles.planChoice}>
-              <label>
-                Payment plan
-                <select
-                  name="plan"
-                  aria-label="Payment plan"
-                  value={plan}
-                  onChange={(event) => {
-                    setAccepted(false);
-                    setPlan(event.target.value as SirahPlan);
-                    clearField("plan");
-                  }}
-                >
-                  <option value="MONTHLY">Monthly payment</option>
-                  <option value="ANNUAL">Annual upfront · 12 months</option>
-                </select>
-                {errorText("plan")}
-              </label>
-              <div
-                className={styles.pricePreview}
-                role="status"
-                aria-live="polite"
-              >
-                {billing && plan === "ANNUAL" && (
-                  <>
-                    <s>
-                      {formatSirahMoney(
-                        priceFor(billing, "MONTHLY", "STRIPE").amountMinor * 12,
-                        priceFor(billing, "ANNUAL", null).currency,
-                      )}
-                    </s>
-                  </>
-                )}
-                {quote?.country === billing &&
-                quote.plan === plan &&
-                quote.method === selectedMethod ? (
-                  <>
-                    <strong>
-                      {formatSirahMoney(quote.amountMinor, quote.currency)}
-                    </strong>
-                    <span>Charge currency: {quote.currency}</span>
-                    <span>
-                      {plan === "ANNUAL"
-                        ? "One payment · 12 months"
-                        : billing === "PK"
-                          ? selectedMethod === "BANK_TRANSFER" ||
-                            selectedMethod === "JAZZCASH" ||
-                            (!selectedMethod && !quote.cardAvailable)
-                            ? "Per month · manual payment"
-                            : "Per month · automatic card"
-                          : "Per month"}
+            <fieldset className={styles.planChoice}>
+              <legend>Payment plan</legend>
+              {(["MONTHLY", "ANNUAL"] as const).map((option) => {
+                const manual = billing === "PK" &&
+                  (selectedMethod === "BANK_TRANSFER" || selectedMethod === "JAZZCASH" ||
+                    (!selectedMethod && !(quote?.country === billing && quote.cardAvailable)));
+                const price = billing ? priceFor(billing, option, manual ? "BANK_TRANSFER" : null) : null;
+                const annual = option === "ANNUAL";
+                const amount = quote?.country === billing && quote.plan === option &&
+                  quote.method === selectedMethod ? quote.amountMinor : price?.amountMinor;
+                return (
+                  <label key={option} className={styles.pricePreview} data-selected={plan === option}>
+                    <span className={styles.planLabel}>
+                      <input type="radio" name="plan" value={option} checked={plan === option}
+                        onChange={() => {
+                          setAccepted(false);
+                          setPlan(option);
+                          clearField("plan");
+                        }} />
+                      {annual ? "Annual upfront" : "Monthly"}
                     </span>
-                  </>
-                ) : (
-                  <span>
-                    {quoteError ||
-                      (billing
-                        ? `${formatSirahMoney(priceFor(billing, plan, billing === "PK" ? "BANK_TRANSFER" : null).amountMinor, priceFor(billing, plan, null).currency)} · confirming fee…`
-                        : "Choose your billing country")}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className={styles.planNotes} aria-live="polite">
-              {billing && plan === "ANNUAL" && (
-                <p>
-                  Save {formatSirahMoney(annualSirahSavings(billing).savingMinor, annualSirahSavings(billing).currency)} — approximately {annualSirahSavings(billing).approximatePercent}% compared with 12 online monthly payments. Pay once for 12 months.
-                </p>
-              )}
-              {quote?.country === billing && quote.plan === plan && (
-                <>
-                  {plan === "MONTHLY" && (
-                    <p>
-                      {formatSirahMoney(quote.totalMinor, quote.currency)}{" "}
-                      across 12 months.
-                    </p>
-                  )}
-                  {!quote.cardAvailable && (
-                    <p>
-                      Card payments are currently unavailable for this
-                      selection.
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
+                    {price && amount !== undefined && (
+                      <>
+                        <strong>{formatSirahMoney(amount, price.currency)}</strong>
+                        <span>{annual ? "One payment for 12 months" : billing === "GB" ? "Per month · includes any applicable VAT" : "Per month"}</span>
+                        {annual && comparison && (
+                          <>
+                            <span>{formatSirahMoney(comparison.effectiveMonthlyMinor, price.currency)} per month equivalent</span>
+                            {comparison.savingMinor > 0 && <span>Save {formatSirahMoney(comparison.savingMinor, price.currency)} vs 12 online monthly payments</span>}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </label>
+                );
+              })}
+              {errorText("plan")}
+              {quoteError && <small role="status">{quoteError}</small>}
+            </fieldset>
             <div className={styles.paymentOptions}>
               <label>
                 Payment method
@@ -1130,37 +1098,17 @@ export function SirahRegistrationForm({
                 </select>
               </label>
               {selectedMethod === "STRIPE" && <p>No Stripe account needed.</p>}
-              {billing === "PK" && plan === "MONTHLY" && selectedMethod && (
-                <p>
-                  Automatic card: PKR 3,000 per month. Manual transfer: PKR
-                  3,500 per month, subject to receipt verification.
-                </p>
-              )}
               {quote?.country === billing &&
-                quote?.plan === plan &&
-                !quote.methods.length && (
-                  <p>
-                    {billing !== "PK" && "PayPal is currently unavailable for your selected country or billing currency. "}
-                    You can save your registration and complete payment later;
-                    no payment will be taken.
-                  </p>
+                quote?.plan === plan && !quote.methods.length && (
+                  <p>No payment method is available. Save now and pay later.</p>
                 )}
-              {["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) &&
-                quote?.manualAccounts
+              {quote?.country === billing && quote?.plan === plan &&
+                quote?.method === selectedMethod && quote.manualAccounts
                   .filter((account) => account.method === selectedMethod)
                   .map((account) => (
-                    <div className={styles.notice} key={account.method}>
-                      <strong>{account.service}</strong>
-                      <p>
-                        {account.holder} · {account.account}
-                        {account.iban ? ` · ${account.iban}` : ""}
-                      </p>
-                      <p>
-                        Save your registration to get your payment reference and
-                        submit transfer details. Enrolment follows TGA’s receipt
-                        verification.
-                      </p>
-                    </div>
+                    <p key={account.method}>
+                      {account.service}: save your registration for transfer details and a payment reference.
+                    </p>
                   ))}
               {selectedMethod &&
                 quote?.country === billing &&
@@ -1195,8 +1143,9 @@ export function SirahRegistrationForm({
                 : selectedMethod &&
                     ["STRIPE", "PAYPAL"].includes(selectedMethod)
                   ? "Save registration & continue to payment"
-                  : "Save registration & continue"}
+                  : "Save registration"}
             </button>
+            {error && <p className={styles.error} role="alert">{error}</p>}
           </form>
         </>
       ) : (
@@ -1382,7 +1331,7 @@ export function SirahRegistrationForm({
                 }
               >
                 <option value="" disabled>
-                  Select your billing country
+                  Select your country of residence
                 </option>
                 {residenceCountries.map((c) => (
                   <option value={c.code} key={c.code}>
@@ -1443,27 +1392,9 @@ export function SirahRegistrationForm({
                 ? "Your bank’s local conversion may vary."
                 : "Fixed regional fee."}
             </p>
-            {order.plan === "MONTHLY" ? (
-              <p>
-                12-payment comparison:{" "}
-                {formatSirahMoney(order.totalMinor, order.currency)}. This
-                comparison does not define cancellation or commitment terms.
-              </p>
-            ) : (
-              <p>
-                Save {formatSirahMoney(annualSirahSavings(order.countryCode).savingMinor, order.currency)} — approximately {annualSirahSavings(order.countryCode).approximatePercent}% compared with 12 online monthly payments.
-              </p>
+            {order.plan === "ANNUAL" && (
+              <p>{formatSirahMoney(Math.round(order.amountMinor / 12), order.currency)} per month equivalent.</p>
             )}
-            {order.countryCode === "PK" &&
-              order.plan === "MONTHLY" &&
-              !order.methods.includes("STRIPE") &&
-              !order.methods.includes("PAYPAL") && (
-                <p>
-                  Pakistan’s manual monthly rate is shown. The PKR 3,000
-                  recurring option remains unavailable until verified for the
-                  configured billing route.
-                </p>
-              )}
           </div>
           {order.paymentState === "REJECTED" && order.manualEvidenceAllowed && (
             <p className={styles.notice} role="status">
@@ -1505,11 +1436,6 @@ export function SirahRegistrationForm({
                   Available payment method
                   <select
                     aria-label="Available payment method"
-                    aria-describedby={
-                      order.countryCode === "PK" && order.plan === "MONTHLY"
-                        ? "sirah-pk-method-pricing"
-                        : undefined
-                    }
                     value={order.method || ""}
                     disabled={busy || !order.methods.length}
                     onChange={(event) =>
@@ -1541,13 +1467,6 @@ export function SirahRegistrationForm({
                     ))}
                   </select>
                 </label>
-                {order.countryCode === "PK" && order.plan === "MONTHLY" && (
-                  <p className={styles.notice} id="sirah-pk-method-pricing">
-                    Automatic card payments are PKR 3,000 per month. Manual bank
-                    transfer or JazzCash payments are PKR 3,500 per month. Your
-                    amount updates when you select a payment method.
-                  </p>
-                )}
                 {order.method === "STRIPE" && <p>No Stripe account needed.</p>}
                 {(selectedRouteAvailable || order.manualEvidenceAllowed) && (
                   <Terms
@@ -1569,12 +1488,7 @@ export function SirahRegistrationForm({
                 )}
                 {!order.methods.length && !order.manualEvidenceAllowed && (
                   <p className={styles.notice}>
-                    {order.countryCode !== "PK" && "PayPal is currently unavailable for your selected country or billing currency. "}
-                    Your registration is saved. Payment is pending until an
-                    approved method is available for this country and plan.
-                    Return using the secure “Complete my payment” email link or
-                    open this saved registration again. Enrolment follows
-                    verified payment.
+                    Registration saved. Return using your “Complete my payment” email when payment is available.
                   </p>
                 )}
                 {selectedRouteAvailable && !order.hasBillingProfile &&
@@ -1594,13 +1508,6 @@ export function SirahRegistrationForm({
                   order.manualEvidenceAllowed && (
                     <>
                       <div className={styles.notice}>
-                        {order.countryCode === "PK" &&
-                          order.plan === "MONTHLY" && (
-                            <p>
-                              Manual payments are PKR 3,500 per month. The PKR
-                              3,000 rate applies to automatic card payments.
-                            </p>
-                          )}
                         <label className={styles.residenceConfirmation}>
                           <span>
                             <input
@@ -1662,11 +1569,8 @@ export function SirahRegistrationForm({
                         </p>
                         <p>
                           {selectedRouteAvailable
-                            ? "Add SIRAH BEYOND CHRONOLOGY and your registration reference in the payment remarks. After paying, upload your private receipt here. WhatsApp is available if you need payment support."
-                            : "Use the reference below when submitting proof of a transfer you already made."}{" "}
-                          Include your full name, registered email and
-                          registration reference. Staff must verify receipt
-                          before enrolment is confirmed.
+                            ? "Use the reference below when paying, then upload your receipt. TGA will verify payment before confirming enrolment."
+                            : "Use the reference below when submitting proof of a transfer you already made."}
                         </p>
                         <p>
                           <strong>
@@ -1878,7 +1782,7 @@ export function SirahRegistrationForm({
           </button>
         </form>
       </details>
-      {error && (
+      {error && order && (
         <p className={styles.error} role="alert">
           {error}
         </p>

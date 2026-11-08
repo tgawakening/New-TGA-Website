@@ -334,7 +334,7 @@ function Plan({
       </p>
       {plan ? (
         <>
-          {annual && (
+          {annual && annualSirahSavings(country).savingMinor > 0 && (
             <p>
               <s>
                 {formatSirahMoney(
@@ -376,7 +376,7 @@ function Plan({
           </p>
         </>
       )}
-      {annual && plan && (
+      {annual && plan && annualSirahSavings(country).savingMinor > 0 && (
         <p className={styles.planNote}>
           Save {formatSirahMoney(annualSirahSavings(country).savingMinor, plan.currency)} — approximately {annualSirahSavings(country).approximatePercent}% compared with 12 online monthly payments. Pay once for 12 months.
         </p>

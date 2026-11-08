@@ -341,21 +341,45 @@
   font-weight: 400;
 }
 .planChoice {
-  grid-column: 1/-1;
+  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
-  gap: 16px;
-  padding-top: 4px;
-  align-items: end;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.planChoice legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
 }
 .pricePreview {
-  padding: 10px 13px;
-  border: 1px solid #b8ae8a;
-  background: #e9e3cf;
-  min-height: 66px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  padding: 10px 12px;
+  border: 1px solid #b8ae8a;
+  background: #f8f4e9;
+  cursor: pointer;
+}
+.pricePreview[data-selected="true"] {
+  border-color: #8e702a;
+  background: #e9e3cf;
+}
+.pricePreview .planLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.experience .pricePreview input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: #735719;
 }
 .pricePreview strong {
   font:
@@ -506,13 +530,6 @@
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  .pricePreview {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    min-height: 54px;
-  }
   .phonePicker {
     width: 100%;
   }
@@ -650,11 +667,6 @@
   .compactForm {
     grid-template-columns: minmax(0, 1fr);
   }
-  .pricePreview {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-  }
 }
 .closedRegistration {
   position: fixed;
@@ -708,20 +720,21 @@
   margin-left: 6px;
   font-size: inherit;
 }
-.planNotes {
+.policyDetails summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.experience .terms {
+  padding: 12px;
+  margin: 10px 0 0;
+}
+.compactForm > .error,
+.planChoice > small {
   grid-column: 1 / -1;
-  font-size: 12px;
-  line-height: 1.55;
-  color: #41463a;
-}
-.experience .planNotes p {
   margin: 0;
-}
-.experience .planNotes p + p {
-  margin-top: 4px;
-}
-.planNotes:empty {
-  display: none;
 }
 
 .paymentOptions {
