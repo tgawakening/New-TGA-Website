@@ -48,6 +48,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
       ? {
           OR: [
             { reference: { contains: q } },
+            { id: q },
             { user: { email: { contains: q } } },
             { user: { fullName: { contains: q } } },
             { phoneE164: { contains: q } },
@@ -83,6 +84,8 @@ export async function listSirahAdmin(search: URLSearchParams) {
         programmeStart: true,
         programmeEnd: true,
         nextBillingAt: true,
+        cancelledAt: true,
+        accessEndsAt: true,
         paidCount: true,
         createdAt: true,
         user: { select: { fullName: true, email: true } },

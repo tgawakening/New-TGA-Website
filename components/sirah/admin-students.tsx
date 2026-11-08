@@ -1,406 +1,365 @@
 "use client";
-import { SirahAdminCohort } from "./admin-cohort";
-import { useEffect, useState, type FormEvent } from "react";
+
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import AdminNotificationBell from "@/components/admin/admin-notification-bell";
+import type { AdminNotificationItem } from "@/services/admin.service";
 import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
-import styles from "./registration.module.css";
+import { SirahAdminCohort } from "./admin-cohort";
+import styles from "./admin-students.module.css";
+
 type Snapshot = Awaited<ReturnType<typeof listSirahAdmin>>;
+type Student = Snapshot["rows"][number];
+
+const paymentStates = ["UNPAID", "PROCESSING", "AWAITING_REVIEW", "PAID", "REJECTED", "FAILED", "REFUND_PENDING", "REFUNDED"];
+const enrolmentStates = ["PENDING", "ACTIVE", "CANCELLED", "COMPLETED"];
+const actionLabels = {
+  APPROVE: "Approve verified manual transfer",
+  REJECT: "Reject manual evidence",
+  CANCEL: "Cancel enrolment / provider billing",
+  COMPLETE: "Mark course completed",
+  RECONCILE_PROVIDER: "Reconcile provider checkout",
+  REFUND: "Issue / record verified refund",
+  RETRY_NOTIFICATIONS: "Retry email delivery",
+};
+type Action = keyof typeof actionLabels;
+
+function label(value: string) {
+  if (value === "BANK_TRANSFER") return "Bank transfer";
+  if (value === "PAYPAL") return "PayPal";
+  if (value === "JAZZCASH") return "JazzCash";
+  return value[0] + value.slice(1).toLowerCase().replaceAll("_", " ");
+}
+
+function date(value: Date | string | null) {
+  return value ? new Date(value).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "Not scheduled";
+}
+
+function Status({ value }: { value: string }) {
+  const tone = ["PAID", "ACTIVE", "COMPLETED"].includes(value) ? "completed"
+    : ["CANCELLED", "FAILED", "REJECTED"].includes(value) ? "cancelled"
+      : "pending";
+  return <span className={`ga-admin-status is-${tone}`}>{label(value)}</span>;
+}
+
+async function readSnapshot(query: string, signal?: AbortSignal): Promise<Snapshot> {
+  const response = await fetch(`/api/admin/sirah?${query}`, { signal, cache: "no-store" });
+  const result = await response.json();
+  if (!response.ok) throw Error(result.error || "Could not load students.");
+  return result;
+}
+
 export function SirahAdminStudents({
   initialOrder = "",
+  initialNotifications,
 }: {
   initialOrder?: string;
+  initialNotifications: AdminNotificationItem[];
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
   const [payment, setPayment] = useState("");
   const [enrolment, setEnrolment] = useState("");
   const [page, setPage] = useState(1);
+  const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const query = new URLSearchParams({
-    q,
-    payment,
-    enrolment,
-    page: String(page),
-  }).toString();
+  const [reload, setReload] = useState(0);
+  const [refreshBell, setRefreshBell] = useState(0);
+  const [selected, setSelected] = useState<Student | null>(null);
+  const [detailStale, setDetailStale] = useState(false);
+  const selectedId = selected?.id;
+  const [action, setAction] = useState<Action | "">("");
+  const dialog = useRef<HTMLDialogElement>(null);
+  const query = new URLSearchParams({ q, payment, enrolment, page: String(page) }).toString();
+
   useEffect(() => {
     const controller = new AbortController();
-    const timer = setTimeout(() => {
-      void fetch(`/api/admin/sirah?${query}`, { signal: controller.signal })
-        .then(async (response) => {
-          const result = await response.json();
-          if (!response.ok)
-            throw Error(result.error || "Could not load students.");
-          setData(result);
-          setError("");
-        })
-        .catch((cause) => {
-          if (cause.name !== "AbortError") setError(cause.message);
-        });
+    const timer = setTimeout(async () => {
+      try {
+        const snapshot = await readSnapshot(query, controller.signal);
+        if (!controller.signal.aborted) {
+          setData(snapshot);
+          setLoadError("");
+        }
+      } catch (cause) {
+        if (!controller.signal.aborted) {
+          setLoadError(cause instanceof Error ? cause.message : "Could not load students.");
+        }
+      }
     }, 200);
     return () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query]);
-  async function act(
-    event: FormEvent<HTMLFormElement>,
-    row: Snapshot["rows"][number],
-  ) {
+  }, [query, reload]);
+
+  useEffect(() => {
+    if (selectedId && dialog.current && !dialog.current.open) dialog.current.showModal();
+  }, [selectedId]);
+
+  function open(student: Student, nextAction: Action | "" = "") {
+    setError("");
+    setMessage("");
+    setDetailStale(false);
+    setAction(nextAction);
+    setSelected(student);
+  }
+
+  async function act(event: FormEvent<HTMLFormElement>, student: Student) {
     event.preventDefault();
+    if (!action || busy) return;
     const form = new FormData(event.currentTarget);
-    const action = String(form.get("action"));
-    if (
-      !window.confirm(
-        `${action} registration ${row.reference}? Payment and enrolment status are separate.`,
-      )
-    )
-      return;
+    const field = (name: string) => String(form.get(name) || "").trim() || undefined;
+    if (!window.confirm(`${actionLabels[action]} for ${student.user.fullName}?`)) return;
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      const body = {
-        orderId: row.id,
-        revision: row.revision,
-        action,
-        note: String(form.get("note") || "") || undefined,
-        verifiedAmount: String(form.get("verifiedAmount") || "") || undefined,
-        currency: String(form.get("currency") || "") || undefined,
-        transactionReference:
-          String(form.get("transactionReference") || "") || undefined,
-        refundReference: String(form.get("refundReference") || "") || undefined,
-        paymentEventId: String(form.get("paymentEventId") || "") || undefined,
-        providerReference:
-          String(form.get("providerReference") || "") || undefined,
-        verifiedTransfer: form.get("verifiedTransfer") === "on",
-      };
       const response = await fetch("/api/admin/sirah", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          orderId: student.id,
+          revision: student.revision,
+          action,
+          note: field("note"),
+          verifiedAmount: field("verifiedAmount"),
+          currency: field("currency"),
+          transactionReference: field("transactionReference"),
+          refundReference: field("refundReference"),
+          paymentEventId: field("paymentEventId"),
+          providerReference: field("providerReference"),
+          verifiedTransfer: form.get("verifiedTransfer") === "on",
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw Error(result.error || "Action failed.");
-      setMessage("Action recorded. Status and audit history refreshed.");
-      const fresh = await fetch(`/api/admin/sirah?${query}`).then((r) =>
-        r.json(),
-      );
-      setData(fresh);
+      setRefreshBell((key) => key + 1);
+      setMessage(result.duplicate ? "This payment was already recorded." : "Action recorded.");
+      setAction("");
+      // Fetch the open registration separately so a status change does not
+      // remove its detail dialog when the list has a status filter applied.
+      setReload((key) => key + 1);
+      try {
+        const detail = await readSnapshot(new URLSearchParams({ q: student.reference }).toString());
+        setSelected(detail.rows.find((entry) => entry.id === student.id) ?? null);
+      } catch {
+        setError("Action recorded. Reopen this registration to see the updated details.");
+        setDetailStale(true);
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Action failed.");
     } finally {
       setBusy(false);
     }
   }
+
   return (
-    <div className={`${styles.experience} ${styles.adminPage}`}>
-      <h1>Sīrah | Beyond Chronology Students</h1>
-      <p>
-        Current batch registrations, verified payment ledger, protected receipt
-        evidence and notification delivery.
-      </p>
-      <p>
-        <a href="/api/admin/sirah/legacy">
-          Historical Sīrah records (read-only, original agreed amounts)
+    <div className={`ga-admin-shell ${styles.shell}`}>
+      <header className={`ga-admin-topbar ${styles.topbar}`}>
+        <a href="/admin" className="ga-admin-brand">
+          <span className="ga-admin-brand-mark">TGA</span>
+          <span className="ga-admin-brand-title">Admin workspace</span>
         </a>
-      </p>
-      <p>
-        <a href="/admin">← Main admin dashboard</a> ·{" "}
-        <a href={`/api/admin/sirah?${query}&format=csv`}>
-          Export this results page (CSV)
-        </a>
-      </p>
-      <SirahAdminCohort />
-      <div className={styles.filters}>
-        <label>
-          Search name, email, phone or reference
-          <input
-            type="search"
-            value={q}
-            onChange={(event) => {
+        <nav className="ga-admin-nav" aria-label="Sīrah admin">
+          <a href="/admin" className="ga-admin-nav-pill">Dashboard</a>
+          <a href="/admin/sirah" className="ga-admin-nav-pill is-active" aria-current="page">Sīrah enrolments</a>
+        </nav>
+        <div className="ga-admin-topbar-actions">
+          <AdminNotificationBell initialNotifications={initialNotifications} refreshKey={refreshBell} />
+          <button type="button" className="ga-admin-ghost-btn" onClick={() => {
+            setReload((key) => key + 1);
+            setRefreshBell((key) => key + 1);
+          }}>Refresh</button>
+        </div>
+      </header>
+
+      <section className="ga-admin-workspace-card">
+        <div className="ga-admin-workspace-head">
+          <div>
+            <p className="ga-admin-kicker">Current batch</p>
+            <h2>Sīrah | Beyond Chronology enrolments</h2>
+          </div>
+          <div className="ga-admin-actions ga-admin-actions-inline">
+            <a className="ga-admin-outline-btn" href={`/api/admin/sirah?${query}&format=csv`}>Export this page (CSV)</a>
+            <a className="ga-admin-outline-btn" href="/api/admin/sirah/legacy">Historical records</a>
+          </div>
+        </div>
+
+        <SirahAdminCohort />
+        <div className={`ga-admin-filter-row ${styles.filters}`}>
+          <label>
+            Search students
+            <input className="ga-admin-search" type="search" placeholder="Name, email, phone or reference" value={q} onChange={(event) => {
               setQ(event.target.value);
               setPage(1);
-            }}
-          />
-        </label>
-        <label>
-          Payment status
-          <select
-            value={payment}
-            onChange={(event) => {
+            }} />
+          </label>
+          <label>
+            Payment status
+            <select value={payment} onChange={(event) => {
               setPayment(event.target.value);
               setPage(1);
-            }}
-          >
-            <option value="">All payments</option>
-            {[
-              "UNPAID",
-              "PROCESSING",
-              "AWAITING_REVIEW",
-              "PAID",
-              "REJECTED",
-              "FAILED",
-              "REFUNDED",
-            ].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Enrolment status
-          <select
-            value={enrolment}
-            onChange={(event) => {
+            }}>
+              <option value="">All payments</option>
+              {paymentStates.map((value) => <option key={value} value={value}>{label(value)}</option>)}
+            </select>
+          </label>
+          <label>
+            Enrolment status
+            <select value={enrolment} onChange={(event) => {
               setEnrolment(event.target.value);
               setPage(1);
-            }}
-          >
-            <option value="">All enrolments</option>
-            {["PENDING", "ACTIVE", "CANCELLED", "COMPLETED"].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      )}
-      {message && (
-        <p className={styles.notice} role="status">
-          {message}
-        </p>
-      )}
-      {!data ? (
-        <p role="status">Loading students…</p>
-      ) : (
-        <>
-          <p>
-            {data.total} registrations · Page {data.page}
-          </p>
-          <div className={styles.tableWrap}>
-            <table className={styles.adminTable}>
-              <thead>
-                <tr>
-                  <th>Student / reference</th>
-                  <th>Plan / amount</th>
-                  <th>States</th>
-                  <th>Evidence and actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <strong>{row.user.fullName}</strong>
-                      <p>
-                        {row.user.email}
-                        <br />
-                        {row.phoneE164}
-                        <br />
-                        {row.countryName}
-                      </p>
-                      <code>{row.reference}</code>
-                      <p>{row.batchCode}</p>
-                    </td>
-                    <td>
-                      <strong>{row.plan}</strong>
-                      <p>{row.method || "Method not selected"}</p>
-                      <p>
-                        Expected:{" "}
-                        {formatSirahMoney(row.amountMinor, row.currency)}
-                        <br />
-                        Paid: {formatSirahMoney(row.paidMinor, row.currency)}
-                        <br />
-                        Refunded:{" "}
-                        {formatSirahMoney(row.refundedMinor, row.currency)}
-                      </p>
-                      <p>
-                        Payments: {row.paidCount}
-                        <br />
-                        Next billing:{" "}
-                        {row.nextBillingAt
-                          ? new Date(row.nextBillingAt).toLocaleString()
-                          : "Not scheduled"}
-                        <br />
-                        Programme end:{" "}
-                        {row.programmeEnd
-                          ? new Date(row.programmeEnd).toLocaleString()
-                          : "Not started"}
-                      </p>
-                      <code>{row.pricingVersion}</code>
-                    </td>
-                    <td>
-                      Payment: <strong>{row.paymentState}</strong>
-                      <p>
-                        Enrolment: <strong>{row.enrolmentState}</strong>
-                      </p>
-                    </td>
-                    <td>
-                      {row.receipts.map((receipt) => (
-                        <p key={receipt.id}>
-                          <a href={`/api/sirah/receipts/${receipt.id}`}>
-                            Receipt v{receipt.revision}: {receipt.filename}
-                          </a>
-                        </p>
-                      ))}
-                      <details>
-                        <summary>Review / update registration</summary>
-                        <form onSubmit={(event) => void act(event, row)}>
-                          <label>
-                            Action
-                            <select name="action">
-                              <option value="APPROVE">
-                                Approve a verified manual transfer
-                              </option>
-                              <option value="REJECT">
-                                Reject manual evidence
-                              </option>
-                              <option value="CANCEL">
-                                Cancel enrolment / provider billing
-                              </option>
-                              <option value="COMPLETE">
-                                Mark course completed (does not mark payment
-                                paid)
-                              </option>
-                              <option value="RECONCILE_PROVIDER">
-                                Reconcile an existing provider checkout
-                                (verifies actual settlement)
-                              </option>
-                              <option value="REFUND">
-                                Issue / record verified refund
-                              </option>
-                              <option value="RETRY_NOTIFICATIONS">
-                                Retry notification delivery
-                              </option>
-                            </select>
-                          </label>
-                          <label>
-                            Verified amount
-                            <input
-                              name="verifiedAmount"
-                              inputMode="decimal"
-                              defaultValue={minorToDecimal(
-                                row.amountMinor,
-                                row.currency,
-                              )}
-                            />
-                          </label>
-                          <label>
-                            Currency
-                            <input
-                              name="currency"
-                              defaultValue={row.currency}
-                              maxLength={3}
-                            />
-                          </label>
-                          <label>
-                            Verified transfer transaction reference
-                            <input
-                              name="transactionReference"
-                              maxLength={150}
-                            />
-                          </label>
-                          <label className={styles.check}>
-                            <input name="verifiedTransfer" type="checkbox" />I
-                            independently verified this transfer in the merchant
-                            account. The receipt alone is not proof.
-                          </label>
-                          <label>
-                            Online payment to refund
-                            <select name="paymentEventId">
-                              <option value="">
-                                Choose a verified payment
-                              </option>
-                              {row.events
-                                .filter((e) =>
-                                  ["FIRST", "RENEWAL"].includes(e.kind),
-                                )
-                                .map((e) => (
-                                  <option key={e.id} value={e.id}>
-                                    {e.id} ·{" "}
-                                    {formatSirahMoney(
-                                      e.amountMinor,
-                                      e.currency,
-                                    )}
-                                  </option>
-                                ))}
-                            </select>
-                          </label>
-                          <label>
-                            Actual provider checkout / subscription reference
-                            <input name="providerReference" />
-                          </label>
-                          <label>
-                            Real manual refund reference, if applicable
-                            <input name="refundReference" />
-                          </label>
-                          <label>
-                            Reason / review note
-                            <textarea name="note" maxLength={1500} />
-                          </label>
-                          <button
-                            className={styles.primary}
-                            type="submit"
-                            disabled={busy}
-                          >
-                            Record authorised action
-                          </button>
-                        </form>
-                      </details>
-                      <details>
-                        <summary>
-                          Email delivery ({row.notifications.length})
-                        </summary>
-                        {row.notifications.map((n) => (
-                          <p key={n.id}>
-                            {n.kind}: <strong>{n.state}</strong> · Attempts{" "}
-                            {n.attempts}
-                            {n.error ? ` · ${n.error}` : ""}
-                          </p>
-                        ))}
-                      </details>
-                      <details>
-                        <summary>Audit history</summary>
-                        <div className={styles.history}>
-                          {row.audits.map((a, i) => (
-                            <div key={i}>
-                              <strong>{a.action}</strong> · {a.actor} ·{" "}
-                              {new Date(a.createdAt).toLocaleString()}
-                              <pre>{JSON.stringify(a.detail, null, 2)}</pre>
-                            </div>
+            }}>
+              <option value="">All enrolments</option>
+              {enrolmentStates.map((value) => <option key={value} value={value}>{label(value)}</option>)}
+            </select>
+          </label>
+        </div>
+        {loadError && <p className="ga-admin-error-banner" role="alert">{loadError}</p>}
+        {!data && !loadError && <p role="status">Loading students…</p>}
+        {data && (
+          <>
+            <p className={styles.resultCount}>{data.total} registrations · Page {data.page}</p>
+            <div className="ga-admin-data-table">
+              <div className="ga-admin-table-head ga-admin-table-head-students" aria-hidden="true">
+                <span>Student</span><span>Plan</span><span>Payment</span><span>Enrolment</span><span>Actions</span>
+              </div>
+              {data.rows.map((student) => (
+                <article key={student.id} className={`ga-admin-table-row ga-admin-table-row-students ${styles.row}`}>
+                  <div><strong>{student.user.fullName}</strong><p>{student.user.email}</p><p>{student.countryName}</p></div>
+                  <div><strong>{label(student.plan)}</strong><p>{formatSirahMoney(student.amountMinor, student.currency)}</p></div>
+                  <div><Status value={student.paymentState} /><p>{student.method ? label(student.method) : "No method selected"}</p></div>
+                  <div><Status value={student.enrolmentState} /></div>
+                  <div className="ga-admin-actions ga-admin-actions-inline">
+                    <button type="button" className="ga-admin-outline-btn" onClick={() => open(student)}>View details</button>
+                    {student.paymentState === "AWAITING_REVIEW" && ["BANK_TRANSFER", "JAZZCASH"].includes(student.method ?? "") && (
+                      <button type="button" className="ga-admin-primary-btn" onClick={() => open(student, "APPROVE")}>Review payment</button>
+                    )}
+                  </div>
+                </article>
+              ))}
+              {data.rows.length === 0 && <p className="ga-admin-empty-state">No registrations match these filters.</p>}
+            </div>
+            {data.total > data.pageSize && (
+              <div className={styles.pager}>
+                <button className="ga-admin-outline-btn" type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</button>
+                <span>Page {data.page} of {Math.ceil(data.total / data.pageSize)}</span>
+                <button className="ga-admin-outline-btn" type="button" disabled={page * data.pageSize >= data.total} onClick={() => setPage(page + 1)}>Next</button>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {selectedId && selected && (
+        <dialog ref={dialog} className="ga-admin-donation-dialog" aria-labelledby="sirah-student-title" onClose={() => setSelected(null)}
+          onCancel={(event) => { if (busy) event.preventDefault(); }}
+          onClick={(event) => { if (!busy && event.target === event.currentTarget) dialog.current?.close(); }}>
+          <section className={`ga-admin-modal ${styles.modal}`}>
+            <div className="ga-admin-modal-head">
+              <div><p className="ga-admin-kicker">Registration details</p><h3 id="sirah-student-title">{selected.user.fullName}</h3></div>
+              <button type="button" className="ga-admin-notification-close" disabled={busy} onClick={() => dialog.current?.close()}>Close</button>
+            </div>
+            <div className="ga-admin-modal-grid">
+              <p><strong>Email:</strong> {selected.user.email}</p>
+              <p><strong>Phone:</strong> {selected.phoneE164}</p>
+              <p><strong>Country:</strong> {selected.countryName}</p>
+              <p><strong>Registered:</strong> {date(selected.createdAt)}</p>
+              <p><strong>Reference:</strong> {selected.reference}</p>
+              <p><strong>Batch:</strong> {selected.batchCode}</p>
+              <p><strong>Payment:</strong> <Status value={selected.paymentState} /></p>
+              <p><strong>Enrolment:</strong> <Status value={selected.enrolmentState} /></p>
+              <p><strong>Plan:</strong> {label(selected.plan)} · {selected.method ? label(selected.method) : "No method selected"}</p>
+              <p><strong>Expected:</strong> {formatSirahMoney(selected.amountMinor, selected.currency)}</p>
+              <p><strong>Paid:</strong> {formatSirahMoney(selected.paidMinor, selected.currency)} ({selected.paidCount})</p>
+              <p><strong>Refunded:</strong> {formatSirahMoney(selected.refundedMinor, selected.currency)}</p>
+              <p><strong>Next billing:</strong> {date(selected.nextBillingAt)}</p>
+              <p><strong>Programme end:</strong> {date(selected.programmeEnd)}</p>
+              {selected.cancelledAt && <p><strong>Cancellation recorded:</strong> {date(selected.cancelledAt)}</p>}
+              {selected.accessEndsAt && <p><strong>Access ends:</strong> {date(selected.accessEndsAt)}</p>}
+              <p><strong>Pricing version:</strong> {selected.pricingVersion}</p>
+            </div>
+
+            <section className="ga-admin-modal-section">
+              <h4>Admin actions</h4>
+              <form className={styles.form} onSubmit={(event) => void act(event, selected)}>
+                <label>Action
+                  <select value={action} onChange={(event) => {
+                    setAction(event.target.value as Action | "");
+                    setError("");
+                    setMessage("");
+                  }} disabled={busy || detailStale}>
+                    <option value="">Choose an action</option>
+                    {Object.entries(actionLabels).map(([value, title]) => <option key={value} value={value}>{title}</option>)}
+                  </select>
+                </label>
+                {action && (
+                  <fieldset key={action} disabled={busy} className={styles.form}>
+                    <legend className="sr-only">{actionLabels[action]}</legend>
+                    {(action === "APPROVE" || action === "REFUND") && (
+                      <div className={styles.amountFields}>
+                        <label>Verified amount<input name="verifiedAmount" inputMode="decimal" required defaultValue={action === "APPROVE" ? minorToDecimal(selected.amountMinor, selected.currency) : undefined} /></label>
+                        <label>Currency<input name="currency" required defaultValue={selected.currency} minLength={3} maxLength={3} /></label>
+                      </div>
+                    )}
+                    {action === "APPROVE" && (
+                      <>
+                        <label>Transfer transaction reference<input name="transactionReference" maxLength={150} required /></label>
+                        <label className={styles.check}><input name="verifiedTransfer" type="checkbox" required />I verified the transfer in the merchant account.</label>
+                      </>
+                    )}
+                    {action === "REFUND" && (["STRIPE", "PAYPAL"].includes(selected.method ?? "") ? (
+                      <label>Verified payment to refund
+                        <select name="paymentEventId" required>
+                          <option value="">Choose a payment</option>
+                          {selected.events.filter((entry) => ["FIRST", "RENEWAL"].includes(entry.kind)).map((entry) => (
+                            <option key={entry.id} value={entry.id}>{date(entry.createdAt)} · {formatSirahMoney(entry.amountMinor, entry.currency)} · {entry.id}</option>
                           ))}
-                        </div>
-                      </details>
-                    </td>
-                  </tr>
+                        </select>
+                      </label>
+                    ) : <label>Manual refund reference<input name="refundReference" required maxLength={150} /></label>)}
+                    {action === "RECONCILE_PROVIDER" && <label>Provider checkout / subscription reference<input name="providerReference" required maxLength={200} /></label>}
+                    {action === "COMPLETE" && <p>Completion updates the enrolment status. Payment status stays as recorded.</p>}
+                    {action !== "RETRY_NOTIFICATIONS" && <label>Reason / review note<textarea name="note" maxLength={1500} required={["REJECT", "CANCEL", "REFUND", "RECONCILE_PROVIDER"].includes(action) || (action === "APPROVE" && selected.enrolmentState === "CANCELLED")} /></label>}
+                    <button type="submit" className="ga-admin-primary-btn">{busy ? "Saving…" : actionLabels[action]}</button>
+                  </fieldset>
+                )}
+                {error && <p className="ga-admin-error-banner" role="alert">{error}</p>}
+                {message && <p className="ga-admin-success-banner" role="status">{message}</p>}
+              </form>
+            </section>
+
+            <div className={`ga-admin-modal-section ${styles.records}`}>
+              <details>
+                <summary>Receipt evidence ({selected.receipts.length})</summary>
+                {selected.receipts.map((receipt) => (
+                  <p key={receipt.id}><a href={`/api/sirah/receipts/${receipt.id}`} target="_blank" rel="noreferrer">Receipt v{receipt.revision}: {receipt.filename}</a></p>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          <div className={styles.pager}>
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              Previous page
-            </button>
-            <span>
-              Page {page} / {Math.max(1, Math.ceil(data.total / data.pageSize))}
-            </span>
-            <button
-              type="button"
-              disabled={page * data.pageSize >= data.total}
-              onClick={() => setPage(page + 1)}
-            >
-              Next page
-            </button>
-          </div>
-        </>
+              </details>
+              <details>
+                <summary>Payment history ({selected.events.length})</summary>
+                {selected.events.map((entry) => (
+                  <p key={entry.id}>{label(entry.kind)} · {formatSirahMoney(entry.amountMinor, entry.currency)} · {date(entry.createdAt)}<br /><code>{entry.id}</code></p>
+                ))}
+              </details>
+              <details>
+                <summary>Email delivery ({selected.notifications.length})</summary>
+                {selected.notifications.map((entry) => (
+                  <p key={entry.id}>{label(entry.kind)} · {label(entry.state)} · {entry.attempts} attempts{entry.error ? ` · ${entry.error}` : ""}</p>
+                ))}
+              </details>
+              <details>
+                <summary>Audit history ({selected.audits.length})</summary>
+                {selected.audits.map((entry, index) => (
+                  <div key={index}><strong>{label(entry.action)}</strong> · {entry.actor} · {date(entry.createdAt)}<pre>{JSON.stringify(entry.detail, null, 2)}</pre></div>
+                ))}
+              </details>
+            </div>
+          </section>
+        </dialog>
       )}
     </div>
   );

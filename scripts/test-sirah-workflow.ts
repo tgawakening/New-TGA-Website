@@ -15,6 +15,7 @@ import { handleSirahPaypalWebhook } from "../services/sirah-webhooks.service";
 import { resolveSirahResumeToken, resumeHash } from "../lib/sirah/resume";
 import { sirahOriginAllowed } from "../lib/sirah/origin";
 import { prisma } from "../lib/prisma";
+import { getAdminNotifications } from "../services/admin.service";
 import {
   catalogue,
   priceFor,
@@ -369,6 +370,37 @@ test("manual upload is awaiting review; two admins cannot confirm the same submi
     1,
   );
 });
+test("the admin bell reports Sīrah enrolment and completed admin actions once per event", async () => {
+  const { order, userId } = await manualOrder();
+  const href = `/admin/sirah?order=${order.reference}`;
+  const updates = async () => (await getAdminNotifications()).filter((entry) => entry.href === href);
+  assert.deepEqual((await updates()).map((entry) => entry.title), ["New Sīrah registration"]);
+
+  const submitted = await evidence(order, userId);
+  await approve(submitted, "verified-bell-payment", "admin:test");
+  const paid = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  assert.ok(await prisma.sirahNotification.count({ where: { orderId: order.id, kind: "CONFIRMED" } }) >= 2);
+  assert.equal((await updates()).filter((entry) => entry.title === "New Sīrah enrolment").length, 1);
+
+  await assert.rejects(
+    () => actOnSirahOrder({ orderId: order.id, revision: submitted.revision, action: "CANCEL", note: "Stale action" }, "admin:test"),
+    /changed/,
+  );
+  assert.equal((await updates()).some((entry) => entry.title === "Sīrah cancellation recorded"), false);
+  await actOnSirahOrder({ orderId: order.id, revision: paid.revision, action: "COMPLETE" }, "admin:test");
+  await actOnSirahOrder({ orderId: order.id, revision: paid.revision + 1, action: "CANCEL", note: "Verified synthetic cancellation" }, "admin:test");
+
+  const final = await updates();
+  assert.equal(new Set(final.map((entry) => entry.id)).size, 5);
+  assert.deepEqual(final.map((entry) => entry.title).sort(), [
+    "New Sīrah enrolment",
+    "New Sīrah registration",
+    "Sīrah cancellation recorded",
+    "Sīrah course marked complete",
+    "Sīrah manual payment approved",
+  ].sort());
+});
+
 test("WhatsApp evidence, rejection and replacement retain the receipt audit trail and ownership checks", async () => {
   const { order, userId } = await manualOrder();
   let submitted = await evidence(order, userId, "WHATSAPP");

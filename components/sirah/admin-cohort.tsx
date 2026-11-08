@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, type FormEvent } from "react";
 import type { publicSirahCohort } from "@/services/sirah-cohort.service";
-import styles from "./registration.module.css";
+import styles from "./admin-students.module.css";
 type Cohort = Awaited<ReturnType<typeof publicSirahCohort>>;
 export function SirahAdminCohort() {
   const [cohort, setCohort] = useState<Cohort | null>(null);
@@ -60,7 +60,7 @@ export function SirahAdminCohort() {
     }
   }
   return (
-    <details className={styles.notice}>
+    <details className={styles.cohort}>
       <summary>
         Paid teaching commencement:{" "}
         {cohort?.commencementDate || "Pending confirmation"}
@@ -77,7 +77,7 @@ export function SirahAdminCohort() {
           registration remains available.
         </p>
       )}
-      <form onSubmit={save}>
+      <form className={styles.form} onSubmit={save}>
         <label>
           First paid class date
           <input
@@ -103,7 +103,7 @@ export function SirahAdminCohort() {
           Reason for confirming or correcting this setting
           <textarea name="reason" required minLength={10} maxLength={1000} />
         </label>
-        <button type="submit" disabled={busy || !cohort?.schemaAvailable}>
+        <button type="submit" className="ga-admin-primary-btn" disabled={busy || !cohort?.schemaAvailable}>
           {busy ? "Saving…" : "Save confirmed cohort date"}
         </button>
       </form>
