@@ -2,7 +2,6 @@ import {
   CommunityCta,
   ConnectAkhiraTimeline,
   CoursesCarousel,
-  FeeWaiverSection,
   Footer,
   GenMuminsTimeline,
   Header,
@@ -25,7 +24,6 @@ export default function HomePage() {
         <CoursesCarousel />
         <UpcomingCoursesSection />
         <CommunityCta />
-        <FeeWaiverSection />
       </main>
       <Footer />
     </div>
