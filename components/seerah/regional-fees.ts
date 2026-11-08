@@ -46,8 +46,7 @@ export const regionalFees: Market[] = rates.map(
       false,
       "Automatic card billing, where available",
     ),
-    // The client's revised UK annual fee is pending; keep its old quote unpublished.
-    annual: code === "GB" ? null : plan(
+    annual: plan(
       annual,
       currency,
       true,

@@ -1346,7 +1346,7 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
     );
     assert.equal(
       captured!.line_items![0].price_data!.unit_amount,
-      plan === "MONTHLY" ? 2499 : 32389,
+      plan === "MONTHLY" ? 2999 : 32389,
     );
     assert.equal(
       captured!.line_items![0].price_data!.recurring?.interval,
@@ -1614,7 +1614,7 @@ test("PayPal reuses only a fully matching Sīrah plan and leaves incompatible pr
         total_cycles: 12,
         frequency: { interval_unit: "MONTH", interval_count: 1 },
         pricing_scheme: {
-          fixed_price: { currency_code: "GBP", value: "24.99" },
+          fixed_price: { currency_code: "GBP", value: "29.99" },
         },
       },
     ],
@@ -1991,7 +1991,7 @@ async function voluntaryPaypalOrder() {
     eventId: "paypal:sale:first",
     provider: "PAYPAL",
     currency: "GBP",
-    amountMinor: 2499,
+    amountMinor: 2999,
     actor: "provider:test",
   });
   return {
@@ -2160,7 +2160,7 @@ test("failed renewals have a non-extending seven-day grace and recover only afte
     eventId: "paypal:sale:renewal",
     provider: "PAYPAL" as const,
     currency: "GBP",
-    amountMinor: 2499,
+    amountMinor: 2999,
     actor: "provider:test",
   };
   await confirmSirahPayment(payment);
@@ -2555,7 +2555,7 @@ test("PayPal failed-subscription recovery reuses the approved plan, verifies act
         total_cycles: 12,
         frequency: { interval_unit: "MONTH", interval_count: 1 },
         pricing_scheme: {
-          fixed_price: { currency_code: "GBP", value: "24.99" },
+          fixed_price: { currency_code: "GBP", value: "29.99" },
         },
       },
     ],
