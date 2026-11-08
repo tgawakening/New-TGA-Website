@@ -124,7 +124,7 @@ export async function POST(request: Request) {
       v.method || defaultPriceMethod(v.countryCode, v.plan),
     );
     const cohort = await publicSirahCohort();
-    const commencementReady = cohortAllowsPayment(termsFor(v.plan), cohort);
+    const commencementReady = cohortAllowsPayment(termsFor(v.plan, v.countryCode), cohort);
     return NextResponse.json({
       cohort,
       pricing: price,
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
         ? commencementReady &&
           methodAvailable(v.method, v.countryCode, price.currency, v.plan)
         : false,
-      terms: snapshotSirahCohort(termsFor(v.plan), cohort),
+      terms: snapshotSirahCohort(termsFor(v.plan, v.countryCode), cohort),
     });
   } catch {
     return NextResponse.json(

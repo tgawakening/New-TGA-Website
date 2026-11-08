@@ -53,14 +53,17 @@ export type SirahTerms = {
   refundAccessTiming?: "CURRENT_MONTH_END";
   refundBilling: "CANCEL" | "CONTINUE";
 };
-export function termsFor(plan: SirahPlan): SirahTerms | null {
+export function termsFor(plan: SirahPlan, country?: string): SirahTerms | null {
   try {
+    const regionalKey = country && /^[A-Z]{2}$/.test(country.toUpperCase())
+      ? `SIRAH_${country.toUpperCase()}_${plan}_TERMS_JSON`
+      : null;
     const value = JSON.parse(
-      process.env[
+      (regionalKey ? process.env[regionalKey] : undefined) ?? process.env[
         plan === "ANNUAL"
           ? "SIRAH_ANNUAL_TERMS_JSON"
           : "SIRAH_MONTHLY_TERMS_JSON"
-      ] || "null",
+      ] ?? "null",
     );
     return value &&
       (value.approvedRoutes === undefined ||
@@ -204,20 +207,32 @@ export function methodAvailable(
   country = country.toUpperCase();
   currency = currency.toUpperCase();
   if (method === "PAYPAL" && country === "PK") return false;
-  const terms = termsFor(plan);
+  const terms = termsFor(plan, country);
   if (!terms) return false;
+  // Offering checkout is an operator authorisation, not evidence of settlement
+  // or a completed test. Exact routes replace the overlapping global/country/
+  // currency/test switches only when this route's terms explicitly permit it.
+  const checkoutAuthorised =
+    (method === "STRIPE" || method === "PAYPAL") &&
+    terms.approvedRoutes?.includes(`${method}:${country}:${currency}`) === true &&
+    (process.env[`SIRAH_${method}_${plan}_CHECKOUT_ROUTES`] || "")
+      .split(",")
+      .map((route) => route.trim().toUpperCase())
+      .includes(`${country}:${currency}`);
   if (
     terms.approvedRoutes &&
     !terms.approvedRoutes.includes(`${method}:${country}:${currency}`)
   )
     return false;
   if (
+    !checkoutAuthorised &&
     method === "STRIPE" &&
     !/^(sk|rk)_test_/.test(process.env.SIRAH_STRIPE_SECRET_KEY || "") &&
     process.env.SIRAH_LIVE_PAYMENTS_APPROVED !== "true"
   )
     return false;
   if (
+    !checkoutAuthorised &&
     method === "PAYPAL" &&
     process.env.PAYPAL_ENV === "live" &&
     process.env.SIRAH_LIVE_PAYMENTS_APPROVED !== "true"
@@ -244,7 +259,7 @@ export function methodAvailable(
       .map((value) => value.trim().toUpperCase())
       .filter((value) => /^[A-Z]{2}$/.test(value)),
   );
-  if (live && !approvedCountries.has(country.toUpperCase())) return false;
+  if (live && !checkoutAuthorised && !approvedCountries.has(country)) return false;
   const verifiedRoutes = new Set(
     (process.env[`SIRAH_${method}_${plan}_VERIFIED_ROUTES`] || "")
       .split(",")
@@ -252,6 +267,7 @@ export function methodAvailable(
   );
   if (
     live &&
+    !checkoutAuthorised &&
     !verifiedRoutes.has(`${country.toUpperCase()}:${currency.toUpperCase()}`) &&
     !closedVerificationAllowed(
       method,
@@ -268,7 +284,8 @@ export function methodAvailable(
     process.env.SIRAH_PK_RECURRING_VERIFIED !== "true"
   )
     return false;
-  if (!configuredCurrencies(method, plan).has(currency)) return false;
+  if (!checkoutAuthorised && !configuredCurrencies(method, plan).has(currency))
+    return false;
   if (method === "STRIPE")
     return Boolean(
       process.env.SIRAH_STRIPE_SECRET_KEY &&
