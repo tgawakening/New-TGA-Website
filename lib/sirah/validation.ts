@@ -6,6 +6,10 @@ const country = z
   .length(2)
   .toUpperCase()
   .refine((value) => value in countries, "Choose a valid country.");
+const sirahPaymentMethod = z.enum(["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"], {
+  error: "Choose an available payment method.",
+});
+
 export const sirahRegistrationSchema = z
   .object({
     fullName: z.string().trim().min(2).max(120),
@@ -21,10 +25,7 @@ export const sirahRegistrationSchema = z
     countryCode: country,
     plan: z.enum(["MONTHLY", "ANNUAL"]),
     requestKey: z.uuid(),
-    method: z
-      .enum(["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"])
-      .nullable()
-      .optional(),
+    method: sirahPaymentMethod.nullable().optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -45,6 +46,12 @@ export const sirahRegistrationSchema = z
       });
     }
   });
+// The public registration form requires a selection. Older saved orders
+// without a method are still handled by the existing resume and quote routes.
+export const sirahRegistrationWithPaymentSchema = sirahRegistrationSchema.safeExtend({
+  method: sirahPaymentMethod,
+});
+
 export const sirahRepriceSchema = z
   .object({
     revision: z.number().int().nonnegative(),

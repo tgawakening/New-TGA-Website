@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, attachSessionCookie } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { SIRAH_SLUG } from "@/lib/sirah/catalog";
-import { sirahRegistrationSchema } from "@/lib/sirah/validation";
+import { sirahRegistrationWithPaymentSchema } from "@/lib/sirah/validation";
 import {
   registerSirah,
   publicSirahOrder,
@@ -19,12 +19,7 @@ import {
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
-    if (!(await sirahSchemaAvailable()))
-      throw new SirahError(
-        "Registration setup is being completed. Please enquire on WhatsApp while registration is unavailable.",
-        503,
-      );
-    const parsed = sirahRegistrationSchema.safeParse(await request.json());
+    const parsed = sirahRegistrationWithPaymentSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(
         {
@@ -32,6 +27,11 @@ export async function POST(request: Request) {
           fields: parsed.error.flatten().fieldErrors,
         },
         { status: 400 },
+      );
+    if (!(await sirahSchemaAvailable()))
+      throw new SirahError(
+        "Registration setup is being completed. Please enquire on WhatsApp while registration is unavailable.",
+        503,
       );
     const user = await getCurrentUser();
     if (user && user.status !== "ACTIVE")
