@@ -80,7 +80,7 @@ export async function registerSirah(
   const cohort = await publicSirahCohort();
   const initialTerms = snapshotSirahCohort(termsFor(input.plan, input.countryCode), cohort);
   if (input.method && !cohortAllowsPayment(termsFor(input.plan, input.countryCode), cohort))
-    throw new SirahError("The first paid teaching date is pending owner confirmation. Save a pending registration without payment.");
+    throw new SirahError("The first paid teaching date is pending owner confirmation. Please contact the course team.");
   if (
     input.method &&
     !methodAvailable(

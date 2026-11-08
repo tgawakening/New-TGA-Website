@@ -24,7 +24,7 @@ import {
   type SirahPlan,
   type SirahMethod,
 } from "@/lib/sirah/catalog";
-import { sirahRegistrationSchema } from "@/lib/sirah/validation";
+import { sirahRegistrationWithPaymentSchema } from "@/lib/sirah/validation";
 import { ConsultationAction } from "@/components/seerah/consultation-action";
 import { PasswordFields } from "./password-fields";
 import { AnnualPriceSummary } from "./annual-price-summary";
@@ -193,7 +193,6 @@ export function SirahRegistrationForm({
         : suggestedResidence) as CountryCode,
     ),
   );
-  const [deferPayment, setDeferPayment] = useState(false);
   const [manualConfirmed, setManualConfirmed] = useState(false);
   const [passwordForManager, setPasswordForManager] = useState("");
   const [user, setUser] = useState<User | null>(null);
@@ -332,20 +331,9 @@ export function SirahRegistrationForm({
       .then((result) => {
         if (!controller.signal.aborted) {
           setQuoteError("");
-          if (
-            (!selectedMethod || !result.methods?.includes(selectedMethod)) &&
-            !deferPayment
-          ) {
-            setSelectedMethod(
-              result.methods?.includes("STRIPE")
-                ? "STRIPE"
-                : result.methods?.[0] || "",
-            );
-          } else if (
-            selectedMethod &&
-            !result.methods?.includes(selectedMethod)
-          ) {
+          if (selectedMethod && !result.methods?.includes(selectedMethod)) {
             setSelectedMethod("");
+            setAccepted(false);
           }
           setQuote({
             country: billing,
@@ -366,7 +354,7 @@ export function SirahRegistrationForm({
         if (!controller.signal.aborted) setQuoteError(cause.message);
       });
     return () => controller.abort();
-  }, [ready, order, billing, plan, selectedMethod, deferPayment]);
+  }, [ready, order, billing, plan, selectedMethod]);
   useEffect(() => {
     if (!ready || order) return;
     try {
@@ -381,8 +369,6 @@ export function SirahRegistrationForm({
           plan,
           billingEdited,
           residenceOverride,
-          deferPayment,
-          selectedMethod,
         }),
       );
     } catch {}
@@ -397,8 +383,6 @@ export function SirahRegistrationForm({
     plan,
     billingEdited,
     residenceOverride,
-    deferPayment,
-    selectedMethod,
   ]);
   function fieldError(key: string) {
     return fields[key]?.[0];
@@ -455,7 +439,6 @@ export function SirahRegistrationForm({
               setResidenceOverride(true);
               setBilling(saved.billing);
             }
-            if (saved.deferPayment === true) setDeferPayment(true);
             if (
               !initialCountry &&
               !requireBillingCountry &&
@@ -466,12 +449,6 @@ export function SirahRegistrationForm({
               setBilling(saved.billing);
             if (!initialPlan && ["MONTHLY", "ANNUAL"].includes(saved.plan))
               setPlan(saved.plan);
-            if (
-              ["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"].includes(
-                saved.selectedMethod,
-              )
-            )
-              setSelectedMethod(saved.selectedMethod);
             if (saved.billingEdited) setBillingEdited(true);
           }
         } catch {}
@@ -643,6 +620,17 @@ export function SirahRegistrationForm({
     setPhoneError("");
     clearField("phone");
   }
+  const paymentMethodReady = Boolean(
+    selectedMethod &&
+    quote?.country === billing &&
+    quote.plan === plan &&
+    quote.method === selectedMethod &&
+    quote.methods.includes(selectedMethod) &&
+    !quoteError
+  );
+
+  const paymentTermsReady = accepted && sirahAccessConsentsComplete(quote?.terms || null, accessConsents);
+
   async function register(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!residenceConfirmed) {
@@ -651,6 +639,12 @@ export function SirahRegistrationForm({
       });
       return;
     }
+    if (!paymentMethodReady) {
+      setFields({ method: ["Choose an available payment method to continue."] });
+      event.currentTarget.querySelector<HTMLInputElement>('input[name^="payment-method-"]')?.focus();
+      return;
+    }
+    if (!paymentTermsReady) return;
     saveResidence(billing);
     const data = new FormData(event.currentTarget);
     requestKey.current ||= crypto.randomUUID();
@@ -669,9 +663,9 @@ export function SirahRegistrationForm({
       countryCode: billing,
       plan,
       requestKey: requestKey.current,
-      method: selectedMethod || null,
+      method: selectedMethod,
     };
-    const parsed = sirahRegistrationSchema.safeParse(input);
+    const parsed = sirahRegistrationWithPaymentSchema.safeParse(input);
     if (!parsed.success) {
       const next = parsed.error.flatten().fieldErrors;
       setFields(next);
@@ -1261,17 +1255,15 @@ export function SirahRegistrationForm({
                 disabled={
                   busy || quote?.country !== billing || quote?.plan !== plan
                 }
+                required
+                describedBy={fieldError("method") ? "sirah-error-method" : undefined}
                 onChange={(method) => {
                   setSelectedMethod(method);
-                  setDeferPayment(false);
                   setAccepted(false);
-                }}
-                onDefer={() => {
-                  setSelectedMethod("");
-                  setDeferPayment(true);
-                  setAccepted(false);
+                  clearField("method");
                 }}
               />
+              {errorText("method")}
               {selectedMethod === "STRIPE" && <p>No Stripe account needed.</p>}
               {billing === "PK" && plan === "MONTHLY" && selectedMethod && (
                 <p>
@@ -1283,15 +1275,12 @@ export function SirahRegistrationForm({
                 quote?.plan === plan &&
                 !quote.methods.length && (
                   <p>
-                    You can save your registration and complete payment later;
-                    no payment will be taken.
+                    Contact the course team if you need help paying from your country.
                   </p>
                 )}
               {["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) && (
                 <p>
-                  Transfer instructions and your payment reference follow after
-                  saving. Upload your receipt there; enrolment stays pending
-                  until TGA verifies receipt.
+                  Continue to see transfer details and upload your receipt on this page.
                 </p>
               )}
               {selectedMethod &&
@@ -1312,25 +1301,11 @@ export function SirahRegistrationForm({
               disabled={
                 busy ||
                 !ready ||
-                Boolean(
-                  selectedMethod &&
-                  (!accepted ||
-                    !sirahAccessConsentsComplete(
-                      quote?.terms || null,
-                      accessConsents,
-                    ) ||
-                    quote?.country !== billing ||
-                    quote?.plan !== plan ||
-                    quote?.method !== selectedMethod),
-                )
+                !paymentMethodReady ||
+                !paymentTermsReady
               }
             >
-              {busy
-                ? "Creating your registration…"
-                : selectedMethod &&
-                    ["STRIPE", "PAYPAL"].includes(selectedMethod)
-                  ? "Save registration & continue to payment"
-                  : "Save registration & continue"}
+              {busy ? "Preparing payment…" : "Continue to payment"}
             </button>
           </form>
         </>

@@ -17,14 +17,14 @@ export function PaymentMethods({
   onChange,
   disabled,
   describedBy,
-  onDefer,
+  required,
 }: {
   methods: SirahMethod[];
   value: SirahMethod | "";
   onChange: (method: SirahMethod) => void;
   disabled?: boolean;
   describedBy?: string;
-  onDefer?: () => void;
+  required?: boolean;
 }) {
   const id = useId();
   return (
@@ -43,6 +43,7 @@ export function PaymentMethods({
           >
             <input
               type="radio"
+              required={required}
               name={`payment-method-${id}`}
               value={method}
               checked={value === method}
@@ -88,11 +89,6 @@ export function PaymentMethods({
         <small>
           No verified payment method is available for this selection.
         </small>
-      )}
-      {onDefer && value && (
-        <button type="button" className={styles.paymentLater} onClick={onDefer}>
-          Save now and pay later
-        </button>
       )}
     </fieldset>
   );
