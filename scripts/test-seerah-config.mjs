@@ -68,7 +68,7 @@ test("all guide prices stay fixed; unapproved payment routes and Pakistan recurr
   const expected = {
     PK: [3000, 32400],
     IN: [1500, 16200],
-    GB: [29.99, 323.89],
+    GB: [24.99, 323.89],
     US: [39.99, 431.89],
     SA: [85, 918],
     QA: [85, 918],
@@ -188,10 +188,11 @@ test("annual savings use online minor-unit prices for every catalogue market", (
   for (const [country] of catalogue) {
     const result = annualSirahSavings(country);
     assert.equal(result.standardMinor, priceFor(country, "MONTHLY", "STRIPE").amountMinor * 12);
-    assert.equal(result.savingMinor + result.upfrontMinor, result.standardMinor);
-    assert.equal(result.approximatePercent, 10);
+    assert.equal(result.savingMinor, Math.max(0, result.standardMinor - result.upfrontMinor));
+    assert.equal(result.approximatePercent, country === "GB" ? 0 : 10);
   }
-  assert.equal(annualSirahSavings("GB").savingMinor, 3599);
+  assert.equal(annualSirahSavings("GB").savingMinor, 0);
+  assert.equal(annualSirahSavings("GB").effectiveMonthlyMinor, 2699);
   assert.equal(annualSirahSavings("PK").savingMinor, 360000);
   assert.equal(annualSirahSavings("BH").savingMinor, 10200);
 });

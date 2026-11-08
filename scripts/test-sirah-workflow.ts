@@ -224,6 +224,56 @@ test("phone countries and shared calling prefixes are validated with E.164 norma
   );
   assert.throws(() => normalizeSirahPhone("CA", "+1", "2025550123"));
 });
+test("an existing TGA student reuses their account and gets one Sīrah registration", async () => {
+  const input = payload("GB");
+  const user = await prisma.user.create({
+    data: {
+      fullName: input.fullName,
+      email: input.email,
+      phoneCountryCode: input.callingCode,
+      phoneNumber: input.phone,
+      passwordHash: "synthetic-existing-account",
+    },
+  });
+  const otherCourse = await prisma.course.upsert({
+    where: { slug: "synthetic-existing-tga-course" },
+    create: {
+      slug: "synthetic-existing-tga-course",
+      title: "Synthetic existing TGA course",
+      basePrice: 1000,
+      currency: "GBP",
+    },
+    update: {},
+  });
+  const otherRegistration = await prisma.registration.create({
+    data: {
+      userId: user.id,
+      courseId: otherCourse.id,
+      selectedCountryCode: "GB",
+      selectedCountryName: "United Kingdom",
+      selectedCurrency: "GBP",
+      baseAmount: 1000,
+      finalAmount: 1000,
+      paymentMethod: "STRIPE",
+      status: "ACTIVE",
+      pricingSnapshot: {},
+    },
+  });
+  await assert.rejects(registerSirah(input), /Please sign in/);
+  const signedInInput = { ...input, password: undefined, confirmPassword: undefined };
+  const first = await registerSirah(signedInInput, user.id);
+  const retry = await registerSirah({ ...signedInInput, requestKey: randomUUID() }, user.id);
+  assert.equal(retry.orderId, first.orderId);
+  assert.equal(retry.existing, true);
+  const order = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: first.orderId } });
+  assert.equal(order.amountMinor, 2499);
+  assert.equal(order.countryCode, "GB");
+  assert.equal(order.phoneCountry, "PK");
+  assert.equal((await prisma.registration.findUniqueOrThrow({
+    where: { id: otherRegistration.id },
+  })).status, "ACTIVE");
+});
+
 test("the authoritative guide covers all markets, exact decimal precision and explicit GBP fallbacks", () => {
   assert.equal(catalogue.length, 19);
   for (const row of catalogue) {
@@ -1346,7 +1396,7 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
     );
     assert.equal(
       captured!.line_items![0].price_data!.unit_amount,
-      plan === "MONTHLY" ? 2999 : 32389,
+      plan === "MONTHLY" ? 2499 : 32389,
     );
     assert.equal(
       captured!.line_items![0].price_data!.recurring?.interval,
@@ -1614,7 +1664,7 @@ test("PayPal reuses only a fully matching Sīrah plan and leaves incompatible pr
         total_cycles: 12,
         frequency: { interval_unit: "MONTH", interval_count: 1 },
         pricing_scheme: {
-          fixed_price: { currency_code: "GBP", value: "29.99" },
+          fixed_price: { currency_code: "GBP", value: "24.99" },
         },
       },
     ],
@@ -1991,7 +2041,7 @@ async function voluntaryPaypalOrder() {
     eventId: "paypal:sale:first",
     provider: "PAYPAL",
     currency: "GBP",
-    amountMinor: 2999,
+    amountMinor: 2499,
     actor: "provider:test",
   });
   return {
@@ -2160,7 +2210,7 @@ test("failed renewals have a non-extending seven-day grace and recover only afte
     eventId: "paypal:sale:renewal",
     provider: "PAYPAL" as const,
     currency: "GBP",
-    amountMinor: 2999,
+    amountMinor: 2499,
     actor: "provider:test",
   };
   await confirmSirahPayment(payment);
@@ -2555,7 +2605,7 @@ test("PayPal failed-subscription recovery reuses the approved plan, verifies act
         total_cycles: 12,
         frequency: { interval_unit: "MONTH", interval_count: 1 },
         pricing_scheme: {
-          fixed_price: { currency_code: "GBP", value: "29.99" },
+          fixed_price: { currency_code: "GBP", value: "24.99" },
         },
       },
     ],

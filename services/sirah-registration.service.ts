@@ -128,7 +128,7 @@ export async function registerSirah(
       create: {
         slug: SIRAH_SLUG,
         title: SIRAH_TITLE,
-        basePrice: 2999,
+        basePrice: priceFor("GB", "MONTHLY", null).amountMinor,
         currency: "GBP",
         isActive: true,
       },
