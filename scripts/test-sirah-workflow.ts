@@ -1339,7 +1339,7 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
       captured!.mode,
       plan === "MONTHLY" ? "subscription" : "payment",
     );
-    assert.deepEqual(captured!.payment_method_types, ["card"]);
+    assert.equal(captured!.payment_method_types, undefined);
     assert.equal(
       captured!.line_items![0].price_data!.unit_amount,
       plan === "MONTHLY" ? 2999 : 32389,

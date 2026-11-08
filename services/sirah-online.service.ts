@@ -44,6 +44,8 @@ async function verifyStripeMerchant(stripe: Stripe) {
     throw new SirahError(
       "Stripe merchant identity does not match the configured account.",
     );
+  if (account.charges_enabled === false)
+    throw new SirahError("The configured Stripe merchant cannot accept charges.", 503);
 }
 const paypalBase = () =>
   process.env.PAYPAL_ENV === "live"
@@ -122,7 +124,7 @@ export async function startSirahCheckout(
     )
   )
     throw new SirahError("This checkout route is not currently enabled.");
-  const terms = termsFor(order.plan as SirahPlan);
+  const terms = termsFor(order.plan as SirahPlan, order.countryCode);
   if (
     !terms ||
     terms.version !== acceptedVersion ||
@@ -244,7 +246,6 @@ export async function startSirahCheckout(
     const session = await stripe.checkout.sessions.create(
       {
         mode: order.plan === "ANNUAL" ? "payment" : "subscription",
-        payment_method_types: ["card"],
         client_reference_id: order.id,
         success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${checkoutBase}/seerah/register?order=${order.id}`,
@@ -831,7 +832,7 @@ export async function resumeSirahPaypalRenewals(
       amountMinor: order.amountMinor,
     }) ||
     terms?.version !== acceptedTermsVersion ||
-    termsFor("MONTHLY")?.version !== acceptedTermsVersion
+    termsFor("MONTHLY", order.countryCode)?.version !== acceptedTermsVersion
   )
     throw new SirahError(
       "Review the currently approved renewal terms before resuming.",

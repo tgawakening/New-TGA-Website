@@ -78,8 +78,8 @@ export async function registerSirah(
     input.method || defaultPriceMethod(input.countryCode, input.plan),
   );
   const cohort = await publicSirahCohort();
-  const initialTerms = snapshotSirahCohort(termsFor(input.plan), cohort);
-  if (input.method && !cohortAllowsPayment(termsFor(input.plan), cohort))
+  const initialTerms = snapshotSirahCohort(termsFor(input.plan, input.countryCode), cohort);
+  if (input.method && !cohortAllowsPayment(termsFor(input.plan, input.countryCode), cohort))
     throw new SirahError("The first paid teaching date is pending owner confirmation. Save a pending registration without payment.");
   if (
     input.method &&
@@ -201,7 +201,7 @@ export async function ownedSirahOrder(orderId: string, userId: string) {
 export async function publicSirahOrder(orderId: string, userId: string) {
   const order = await ownedSirahOrder(orderId, userId);
   const cohort = await publicSirahCohort();
-  const commencementReady = cohortAllowsPayment(termsFor(order.plan as SirahPlan), cohort);
+  const commencementReady = cohortAllowsPayment(termsFor(order.plan as SirahPlan, order.countryCode), cohort);
   const methods = (
     ["BANK_TRANSFER", "JAZZCASH", "STRIPE", "PAYPAL"] as SirahMethod[]
   ).filter((method) =>
@@ -246,7 +246,7 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     hasBillingProfile: !!order.providerSubscriptionId,
     receipts: order.receipts,
     terms:
-      (order.terms as SirahTerms | null) || termsFor(order.plan as SirahPlan),
+      (order.terms as SirahTerms | null) || termsFor(order.plan as SirahPlan, order.countryCode),
     manualEvidenceAllowed:
       ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "") &&
       !!order.terms,
@@ -274,8 +274,8 @@ export async function repriceSirah(
     method || defaultPriceMethod(countryCode, plan),
   );
   const cohort = await publicSirahCohort();
-  const selectedTerms = snapshotSirahCohort(termsFor(plan), cohort);
-  if (method && !cohortAllowsPayment(termsFor(plan), cohort))
+  const selectedTerms = snapshotSirahCohort(termsFor(plan, countryCode), cohort);
+  if (method && !cohortAllowsPayment(termsFor(plan, countryCode), cohort))
     throw new SirahError("The first paid teaching date is pending owner confirmation. Payment remains closed.");
   if (
     method &&
