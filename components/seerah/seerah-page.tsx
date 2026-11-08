@@ -1,7 +1,8 @@
 "use client";
 
 import { countries } from "countries-list";
-import { resolveMarket, priceFor, formatSirahMoney, annualSirahSavings } from "@/lib/sirah/catalog";
+import { AnnualPriceSummary } from "@/components/sirah/annual-price-summary";
+import { resolveMarket, priceFor, decimalToMinor } from "@/lib/sirah/catalog";
 import {
   useResidenceSelection,
   saveResidence,
@@ -328,44 +329,41 @@ function Plan({
   country: string;
 }) {
   return (
-    <article className={`${styles.plan} ${annual ? styles.annual : ""}`}>
+    <article className={`${styles.plan} ${annual ? styles.annual : ""}`} aria-label={annual ? "Annual upfront payment plan" : "Monthly payment plan"}>
       <p className={styles.eyebrow}>
         {annual ? "Annual upfront" : "Monthly plan"}
       </p>
       {plan ? (
         <>
-          {annual && (
-            <p>
-              <s>
-                {formatSirahMoney(
-                  priceFor(country, "MONTHLY", "STRIPE").amountMinor * 12,
-                  plan.currency,
-                )}
-              </s>{" "}
-              12 online monthly payments
-            </p>
+          {annual ? (
+            <AnnualPriceSummary
+              country={country}
+              currency={plan.currency}
+              amountMinor={decimalToMinor(String(plan.amount), plan.currency)}
+            />
+          ) : (
+            <h3>
+              {country === "PK" && (
+                <s
+                  className={styles.manualComparison}
+                  aria-label="Manual monthly price"
+                >
+                  {formatFee(
+                    priceFor("PK", "MONTHLY", "BANK_TRANSFER").amountMinor / 100,
+                    "PKR",
+                  )}
+                </s>
+              )}
+              {formatFee(plan.amount, plan.currency)}
+              <small>{plan.frequency}</small>
+            </h3>
           )}
-          <h3>
-            {country === "PK" && !annual && (
-              <s
-                className={styles.manualComparison}
-                aria-label="Manual monthly price"
-              >
-                {formatFee(
-                  priceFor("PK", "MONTHLY", "BANK_TRANSFER").amountMinor / 100,
-                  "PKR",
-                )}
-              </s>
-            )}
-            {formatFee(plan.amount, plan.currency)}
-            <small>{plan.frequency}</small>
-          </h3>
           <p>Charge currency: {plan.currency}</p>
-          <p>{plan.method}</p>
+          {!annual && <p>{plan.method}</p>}
           {!annual && country === "PK" && !pakistanOnlineAvailable && (
             <p>Automatic card payments are currently unavailable</p>
           )}
-          {plan.total && <p>{plan.total}</p>}
+          {!annual && plan.total && <p>{plan.total}</p>}
         </>
       ) : (
         <>
@@ -375,11 +373,6 @@ function Plan({
             here.
           </p>
         </>
-      )}
-      {annual && plan && (
-        <p className={styles.planNote}>
-          Save {formatSirahMoney(annualSirahSavings(country).savingMinor, plan.currency)} — approximately {annualSirahSavings(country).approximatePercent}% compared with 12 online monthly payments. Pay once for 12 months.
-        </p>
       )}
       {available === false && (
         <p className={styles.paymentNotice}>

@@ -18,7 +18,6 @@ import {
 } from "libphonenumber-js/max";
 import {
   formatSirahMoney,
-  annualSirahSavings,
   type SirahPlan,
   type SirahMethod,
 } from "@/lib/sirah/catalog";
@@ -26,6 +25,7 @@ import { sirahRegistrationSchema } from "@/lib/sirah/validation";
 import Image from "next/image";
 import { ConsultationAction } from "@/components/seerah/consultation-action";
 import { PasswordFields } from "./password-fields";
+import { AnnualPriceSummary } from "./annual-price-summary";
 import { priceFor } from "@/lib/sirah/catalog";
 import { PhoneControl, countryFlagImage } from "./phone-control";
 export type RegistrationControls = {
@@ -1039,35 +1039,29 @@ export function SirahRegistrationForm({
                 role="status"
                 aria-live="polite"
               >
-                {billing && plan === "ANNUAL" && (
-                  <>
-                    <s>
-                      {formatSirahMoney(
-                        priceFor(billing, "MONTHLY", "STRIPE").amountMinor * 12,
-                        priceFor(billing, "ANNUAL", null).currency,
-                      )}
-                    </s>
-                  </>
-                )}
                 {quote?.country === billing &&
                 quote.plan === plan &&
                 quote.method === selectedMethod ? (
                   <>
-                    <strong>
-                      {formatSirahMoney(quote.amountMinor, quote.currency)}
-                    </strong>
+                    {plan === "ANNUAL" ? (
+                      <AnnualPriceSummary
+                        country={billing}
+                        currency={quote.currency}
+                        amountMinor={quote.amountMinor}
+                      />
+                    ) : (
+                      <strong>{formatSirahMoney(quote.amountMinor, quote.currency)}</strong>
+                    )}
                     <span>Charge currency: {quote.currency}</span>
-                    <span>
-                      {plan === "ANNUAL"
-                        ? "One payment · 12 months"
-                        : billing === "PK"
+                    {plan === "MONTHLY" && <span>
+                      {billing === "PK"
                           ? selectedMethod === "BANK_TRANSFER" ||
                             selectedMethod === "JAZZCASH" ||
                             (!selectedMethod && !quote.cardAvailable)
                             ? "Per month · manual payment"
                             : "Per month · automatic card"
                           : "Per month"}
-                    </span>
+                    </span>}
                   </>
                 ) : (
                   <span>
@@ -1080,11 +1074,6 @@ export function SirahRegistrationForm({
               </div>
             </div>
             <div className={styles.planNotes} aria-live="polite">
-              {billing && plan === "ANNUAL" && (
-                <p>
-                  Save {formatSirahMoney(annualSirahSavings(billing).savingMinor, annualSirahSavings(billing).currency)} — approximately {annualSirahSavings(billing).approximatePercent}% compared with 12 online monthly payments. Pay once for 12 months.
-                </p>
-              )}
               {quote?.country === billing && quote.plan === plan && (
                 <>
                   {plan === "MONTHLY" && (
@@ -1140,7 +1129,6 @@ export function SirahRegistrationForm({
                 quote?.plan === plan &&
                 !quote.methods.length && (
                   <p>
-                    {billing !== "PK" && "PayPal is currently unavailable for your selected country or billing currency. "}
                     You can save your registration and complete payment later;
                     no payment will be taken.
                   </p>
@@ -1429,29 +1417,26 @@ export function SirahRegistrationForm({
                 {new Date(order.programmeEnd).toLocaleDateString()}.
               </p>
             )}
-            <h3>
-              {formatSirahMoney(order.amountMinor, order.currency)}{" "}
-              <small>
-                {order.plan === "ANNUAL"
-                  ? "one payment for 12 months"
-                  : "per month"}
-              </small>
-            </h3>
+            {order.plan === "ANNUAL" ? (
+              <AnnualPriceSummary
+                country={order.countryCode}
+                currency={order.currency}
+                amountMinor={order.amountMinor}
+              />
+            ) : (
+              <h3>{formatSirahMoney(order.amountMinor, order.currency)} <small>per month</small></h3>
+            )}
             <p>
               Charge currency: {order.currency}.{" "}
               {order.marketCode === "OTHER"
                 ? "Your bank’s local conversion may vary."
                 : "Fixed regional fee."}
             </p>
-            {order.plan === "MONTHLY" ? (
+            {order.plan === "MONTHLY" && (
               <p>
                 12-payment comparison:{" "}
                 {formatSirahMoney(order.totalMinor, order.currency)}. This
                 comparison does not define cancellation or commitment terms.
-              </p>
-            ) : (
-              <p>
-                Save {formatSirahMoney(annualSirahSavings(order.countryCode).savingMinor, order.currency)} — approximately {annualSirahSavings(order.countryCode).approximatePercent}% compared with 12 online monthly payments.
               </p>
             )}
             {order.countryCode === "PK" &&
@@ -1569,7 +1554,6 @@ export function SirahRegistrationForm({
                 )}
                 {!order.methods.length && !order.manualEvidenceAllowed && (
                   <p className={styles.notice}>
-                    {order.countryCode !== "PK" && "PayPal is currently unavailable for your selected country or billing currency. "}
                     Your registration is saved. Payment is pending until an
                     approved method is available for this country and plan.
                     Return using the secure “Complete my payment” email link or

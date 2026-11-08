@@ -195,3 +195,27 @@ test("annual savings use online minor-unit prices for every catalogue market", (
   assert.equal(annualSirahSavings("PK").savingMinor, 360000);
   assert.equal(annualSirahSavings("BH").savingMinor, 10200);
 });
+
+
+test("annual monthly equivalents preserve each regional upfront charge and currency precision", () => {
+  const { load } = fixture();
+  const { annualSirahSavings, priceFor } = load("@/lib/sirah/catalog");
+  const equivalents = { PK:270000, IN:135000, GB:2699, US:3599, SA:7650, QA:7650, BH:7650, KW:6300, CA:5039, EURO:3239, CH:2969, SE:35550, NO:33210, DK:24210, PL:14310, CZ:78750, HU:1179000, RO:17280, OTHER:2699 };
+  for (const [country, equivalent] of Object.entries(equivalents)) {
+    const result = annualSirahSavings(country);
+    assert.equal(result.monthlyEquivalentMinor, equivalent, country);
+    assert.equal(result.originalMonthlyMinor, priceFor(country,"MONTHLY","STRIPE").amountMinor);
+    assert.equal(result.upfrontMinor, priceFor(country,"ANNUAL","STRIPE").amountMinor);
+    assert.ok(Math.abs(result.monthlyEquivalentMinor * 12 - result.upfrontMinor) <= 6);
+  }
+  const uk = annualSirahSavings("GB");
+  assert.equal(uk.monthlyEquivalentMinor,2699);
+  assert.equal(uk.standardMinor,35988);
+  assert.equal(uk.upfrontMinor,32389);
+  assert.equal(uk.savingMinor,3599);
+  const saved = annualSirahSavings("GB",30000);
+  assert.equal(saved.upfrontMinor,30000,"Saved agreements must not be silently repriced for display");
+  assert.equal(saved.monthlyEquivalentMinor,2500);
+  assert.throws(()=>annualSirahSavings("GB",-1));
+  assert.throws(()=>annualSirahSavings("GB",1.5));
+});
