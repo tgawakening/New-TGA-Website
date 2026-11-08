@@ -119,15 +119,20 @@ test("UK terms do not replace Pakistan terms; invalid regional overrides fail cl
 });
 
 
-test("UK VAT-inclusive monthly revision is isolated from other GBP markets and plans", async () => {
-  const { priceFor } = await import("../lib/sirah/catalog");
-  assert.equal(priceFor("GB", "MONTHLY", "STRIPE").amountMinor, 2499);
-  assert.equal(priceFor("GB", "MONTHLY", "PAYPAL").amountMinor, 2499);
+test("UK reconfirmed price produces the correct annual comparison and reuses the GBP plan", async () => {
+  const { priceFor, annualSirahSavings } = await import("../lib/sirah/catalog");
+  assert.equal(priceFor("GB", "MONTHLY", "STRIPE").amountMinor, 2999);
+  assert.equal(priceFor("GB", "MONTHLY", "PAYPAL").amountMinor, 2999);
   assert.equal(priceFor("NZ", "MONTHLY", "PAYPAL").amountMinor, 2999);
   process.env.SIRAH_PAYPAL_MONTHLY_PLAN_GBP = "P-EXISTING-2999";
-  process.env.SIRAH_PAYPAL_MONTHLY_PLAN_GB_GBP = "P-UK-2499";
-  assert.equal(paypalMonthlyPlanId("GB", "GBP"), "P-UK-2499");
+  process.env.SIRAH_PAYPAL_MONTHLY_PLAN_GB_GBP = "P-EXISTING-2999";
+  assert.equal(paypalMonthlyPlanId("GB", "GBP"), "P-EXISTING-2999");
   assert.equal(paypalMonthlyPlanId("NZ", "GBP"), "P-EXISTING-2999");
+  const savings = annualSirahSavings("GB");
+  assert.equal(savings.standardMinor, 35988);
+  assert.equal(savings.upfrontMinor, 32389);
+  assert.equal(savings.savingMinor, 3599);
+  assert.equal(savings.approximatePercent, 10);
   process.env.SIRAH_GB_ANNUAL_TERMS_JSON = JSON.stringify({ ...terms, approvedRoutes: [] });
   process.env.SIRAH_STRIPE_ANNUAL_CHECKOUT_ROUTES = "GB:GBP";
   assert.equal(methodAvailable("STRIPE", "GB", "GBP", "ANNUAL"), false);
