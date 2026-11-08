@@ -1,0 +1,318 @@
+[
+  {
+    "country": "PK",
+    "plan": "ANNUAL",
+    "currency": "PKR",
+    "amountMinor": 3240000,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "IN",
+    "plan": "ANNUAL",
+    "currency": "INR",
+    "amountMinor": 1620000,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "PK",
+    "plan": "MONTHLY",
+    "currency": "PKR",
+    "amountMinor": 300000,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "GB",
+    "plan": "ANNUAL",
+    "currency": "GBP",
+    "amountMinor": 32389,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "GB",
+    "plan": "MONTHLY",
+    "currency": "GBP",
+    "amountMinor": 2999,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "IN",
+    "plan": "MONTHLY",
+    "currency": "INR",
+    "amountMinor": 150000,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "US",
+    "plan": "ANNUAL",
+    "currency": "USD",
+    "amountMinor": 43189,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "SA",
+    "plan": "ANNUAL",
+    "currency": "SAR",
+    "amountMinor": 91800,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "US",
+    "plan": "MONTHLY",
+    "currency": "USD",
+    "amountMinor": 3999,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "QA",
+    "plan": "MONTHLY",
+    "currency": "QAR",
+    "amountMinor": 8500,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "BH",
+    "plan": "ANNUAL",
+    "currency": "BHD",
+    "available": false,
+    "reason": "Not supported by existing GB Stripe account"
+  },
+  {
+    "country": "BH",
+    "plan": "MONTHLY",
+    "currency": "BHD",
+    "available": false,
+    "reason": "Not supported by existing GB Stripe account"
+  },
+  {
+    "country": "KW",
+    "plan": "ANNUAL",
+    "currency": "KWD",
+    "available": false,
+    "reason": "Not supported by existing GB Stripe account"
+  },
+  {
+    "country": "KW",
+    "plan": "MONTHLY",
+    "currency": "KWD",
+    "available": false,
+    "reason": "Not supported by existing GB Stripe account"
+  },
+  {
+    "country": "SA",
+    "plan": "MONTHLY",
+    "currency": "SAR",
+    "amountMinor": 8500,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "QA",
+    "plan": "ANNUAL",
+    "currency": "QAR",
+    "amountMinor": 91800,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "DE",
+    "plan": "ANNUAL",
+    "currency": "EUR",
+    "amountMinor": 38869,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "CA",
+    "plan": "MONTHLY",
+    "currency": "CAD",
+    "amountMinor": 5599,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "CA",
+    "plan": "ANNUAL",
+    "currency": "CAD",
+    "amountMinor": 60469,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "DE",
+    "plan": "MONTHLY",
+    "currency": "EUR",
+    "amountMinor": 3599,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "CH",
+    "plan": "ANNUAL",
+    "currency": "CHF",
+    "amountMinor": 35629,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "CH",
+    "plan": "MONTHLY",
+    "currency": "CHF",
+    "amountMinor": 3299,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "SE",
+    "plan": "ANNUAL",
+    "currency": "SEK",
+    "amountMinor": 426600,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "NO",
+    "plan": "ANNUAL",
+    "currency": "NOK",
+    "amountMinor": 398520,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "SE",
+    "plan": "MONTHLY",
+    "currency": "SEK",
+    "amountMinor": 39500,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "NO",
+    "plan": "MONTHLY",
+    "currency": "NOK",
+    "amountMinor": 36900,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "DK",
+    "plan": "MONTHLY",
+    "currency": "DKK",
+    "amountMinor": 26900,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "DK",
+    "plan": "ANNUAL",
+    "currency": "DKK",
+    "amountMinor": 290520,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "PL",
+    "plan": "ANNUAL",
+    "currency": "PLN",
+    "amountMinor": 171720,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "CZ",
+    "plan": "ANNUAL",
+    "currency": "CZK",
+    "amountMinor": 945000,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "PL",
+    "plan": "MONTHLY",
+    "currency": "PLN",
+    "amountMinor": 15900,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "CZ",
+    "plan": "MONTHLY",
+    "currency": "CZK",
+    "amountMinor": 87500,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "HU",
+    "plan": "ANNUAL",
+    "currency": "HUF",
+    "amountMinor": 14148000,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "HU",
+    "plan": "MONTHLY",
+    "currency": "HUF",
+    "amountMinor": 1310000,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "RO",
+    "plan": "ANNUAL",
+    "currency": "RON",
+    "amountMinor": 207360,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  },
+  {
+    "country": "RO",
+    "plan": "MONTHLY",
+    "currency": "RON",
+    "amountMinor": 19200,
+    "available": true,
+    "checkoutCreatedAndExpired": true,
+    "settlementTested": false
+  }
+]
