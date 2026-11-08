@@ -1365,6 +1365,105 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
   }
 });
 
+test("embedded Sīrah checkout preserves monthly and annual prices and reuses its session", async () => {
+  process.env.NEXT_PUBLIC_APP_URL = "https://www.tga-awakening.com/";
+  for (const plan of ["MONTHLY", "ANNUAL"] as const) {
+    process.env.SIRAH_STRIPE_SECRET_KEY = "sk_test_synthetic";
+    process.env.SIRAH_STRIPE_PUBLISHABLE_KEY = "pk_test_synthetic";
+    process.env.SIRAH_STRIPE_WEBHOOK_SECRET = "whsec_synthetic";
+    process.env.SIRAH_STRIPE_ACCOUNT_ID = "acct_synthetic";
+    process.env.SIRAH_STRIPE_MONTHLY_CURRENCIES = "GBP";
+    process.env.SIRAH_STRIPE_ANNUAL_CURRENCIES = "GBP";
+    enableManual();
+    const result = await create("GB", plan);
+    const order = await repriceSirah(
+      result.orderId,
+      result.userId,
+      0,
+      "GB",
+      plan,
+      "STRIPE",
+    );
+    let creates = 0;
+    let captured: Stripe.Checkout.SessionCreateParams | undefined;
+    const fake = {
+      accounts: { retrieve: async () => ({ id: "acct_synthetic" }) },
+      checkout: {
+        sessions: {
+          retrieve: async () => ({
+            id: `cs_${plan}`,
+            ui_mode: "embedded",
+            client_secret: "synthetic-client-secret",
+            metadata: captured!.metadata,
+            client_reference_id: order.id,
+            status: "open",
+            payment_status: "unpaid",
+          }),
+          create: async (params: Stripe.Checkout.SessionCreateParams) => {
+            creates++;
+            captured = params;
+            return {
+              id: `cs_${plan}`,
+              ui_mode: "embedded",
+              client_secret: "synthetic-client-secret",
+            };
+          },
+        },
+      },
+    } as unknown as Stripe;
+    const checkout = await startSirahCheckout(
+      order.id,
+      result.userId,
+      order.revision,
+      approvedTestTerms.version,
+      fake,
+      "https://tga-awakening.com",
+      {},
+      true,
+    );
+    assert.equal(captured!.ui_mode, "embedded");
+    assert.equal(captured!.redirect_on_completion, "if_required");
+    assert.equal(new URL(captured!.return_url!).origin, "https://tga-awakening.com");
+    assert.equal(captured!.success_url, undefined);
+    assert.equal(captured!.cancel_url, undefined);
+    assert.deepEqual(checkout, {
+      stripeEmbedded: { publishableKey: "pk_test_synthetic", clientSecret: "synthetic-client-secret" },
+    });
+    const reopened = await startSirahCheckout(
+      order.id, result.userId, order.revision + 1, approvedTestTerms.version, fake,
+    );
+    assert.deepEqual(reopened, checkout);
+    assert.equal(creates, 1);
+    assert.equal(
+      captured!.mode,
+      plan === "MONTHLY" ? "subscription" : "payment",
+    );
+    assert.equal(captured!.payment_method_types, undefined);
+    assert.deepEqual(
+      (captured as Stripe.Checkout.SessionCreateParams & { managed_payments: { enabled: boolean } }).managed_payments,
+      { enabled: false },
+    );
+    assert.equal(
+      captured!.line_items![0].price_data!.unit_amount,
+      plan === "MONTHLY" ? 2999 : 32389,
+    );
+    assert.equal(
+      captured!.line_items![0].price_data!.recurring?.interval,
+      plan === "MONTHLY" ? "month" : undefined,
+    );
+    assert.equal(
+      (await publicSirahOrder(order.id, result.userId)).paymentState,
+      "PROCESSING",
+    );
+    assert.equal(
+      canAccessSirah(
+        await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } }),
+      ),
+      false,
+    );
+  }
+});
+
 test("legacy credentials never enable Sīrah cards and live needs exact route verification", () => {
   enableManual();
   process.env.STRIPE_SECRET_KEY = "sk_test_old_batch_only";

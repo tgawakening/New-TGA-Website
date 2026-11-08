@@ -5,7 +5,7 @@ import {
   sirahResponseError,
   privateJson,
 } from "@/lib/sirah/http";
-import { startSirahCheckout } from "@/services/sirah-online.service";
+import { resumeSirahCheckout, startSirahCheckout } from "@/services/sirah-online.service";
 import { SirahError } from "@/services/sirah-registration.service";
 export async function POST(
   request: Request,
@@ -13,21 +13,26 @@ export async function POST(
 ) {
   try {
     const returnOrigin = checkSirahOrigin(request);
-    const user = await sirahUser((await params).id);
+    const { id } = await params;
+    const user = await sirahUser(id);
+    const body: unknown = await request.json();
+    if (z.object({ resume: z.literal(true) }).strict().safeParse(body).success)
+      return privateJson(await resumeSirahCheckout(id, user.id, returnOrigin));
     const input = z
       .object({
         revision: z.number().int().nonnegative(),
         acceptedTermsVersion: z.string().min(1),
         earlyServiceRequested: z.boolean().optional(),
         digitalContentConsented: z.boolean().optional(),
+        embeddedStripe: z.boolean().optional(),
       })
       .strict()
-      .safeParse(await request.json());
+      .safeParse(body);
     if (!input.success)
       throw new SirahError("Review and accept the payment terms.");
     return privateJson(
       await startSirahCheckout(
-        (await params).id,
+        id,
         user.id,
         input.data.revision,
         input.data.acceptedTermsVersion,
@@ -37,6 +42,7 @@ export async function POST(
           earlyServiceRequested: input.data.earlyServiceRequested,
           digitalContentConsented: input.data.digitalContentConsented,
         },
+        input.data.embeddedStripe,
       ),
     );
   } catch (error) {
