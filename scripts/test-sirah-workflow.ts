@@ -1340,6 +1340,10 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
       plan === "MONTHLY" ? "subscription" : "payment",
     );
     assert.equal(captured!.payment_method_types, undefined);
+    assert.deepEqual(
+      (captured as Stripe.Checkout.SessionCreateParams & { managed_payments: { enabled: boolean } }).managed_payments,
+      { enabled: false },
+    );
     assert.equal(
       captured!.line_items![0].price_data!.unit_amount,
       plan === "MONTHLY" ? 2999 : 32389,

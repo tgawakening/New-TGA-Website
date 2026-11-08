@@ -1,0 +1,232 @@
+{
+  "provider": "Stripe",
+  "mode": "test",
+  "accountId": "acct_1UYuUHLfETexupIv",
+  "environment": "Existing TGA account test mode; isolated local sirah_test database; Stripe CLI signed-event forwarding",
+  "liveChargesPerformed": false,
+  "liveWebhookDeliveryClaimed": false,
+  "newLiveProductsOrPlansCreated": false,
+  "scenarios": [
+    {
+      "orderId": "cmw74oner0004s1803ex40btn",
+      "country": "GB",
+      "plan": "ANNUAL",
+      "currency": "GBP",
+      "amountMinor": 32389,
+      "sessionId": "cs_test_a1Llvl0iipj2F0a9nTbdvNAY1ti39OCp9W4Esv4addEqio0e3PKgmbGdCL",
+      "paymentState": "PAID",
+      "enrolmentState": "ACTIVE",
+      "paidCount": 1,
+      "paidMinor": 32389,
+      "subscriptionId": null,
+      "payments": [
+        {
+          "id": "stripe:payment:pi_3UZKXTLfETexupIv17XXQTW5",
+          "amountMinor": 32389,
+          "kind": "FIRST"
+        }
+      ]
+    },
+    {
+      "orderId": "cmw74rab90014s180meut0xal",
+      "country": "GB",
+      "plan": "MONTHLY",
+      "currency": "GBP",
+      "amountMinor": 2999,
+      "sessionId": "cs_test_a1zv3Qh5irlGmTxoKFXj9wS6UQXqcoWZ5N9sFib9YaCZKN8G1BsGGF0ss2",
+      "paymentState": "PAID",
+      "enrolmentState": "ACTIVE",
+      "paidCount": 2,
+      "paidMinor": 5998,
+      "subscriptionId": "sub_1UZKYCLfETexupIv1SoViLur",
+      "payments": [
+        {
+          "id": "stripe:invoice:in_1UZKYBLfETexupIvUBbqpHPT",
+          "amountMinor": 2999,
+          "kind": "FIRST"
+        },
+        {
+          "id": "stripe:invoice:in_1UZKYWLfETexupIvTVpejWTU",
+          "amountMinor": 2999,
+          "kind": "RENEWAL"
+        }
+      ]
+    },
+    {
+      "orderId": "cmw74rcgd001ns180bkj9ea5n",
+      "country": "PK",
+      "plan": "MONTHLY",
+      "currency": "PKR",
+      "amountMinor": 300000,
+      "sessionId": "cs_test_a1ec5guOCg9kUXszu6AoI4KnIvcbqzzoeAaCK5FyVUtfMUVb9yCk065QtV",
+      "paymentState": "PAID",
+      "enrolmentState": "ACTIVE",
+      "paidCount": 2,
+      "paidMinor": 600000,
+      "subscriptionId": "sub_1UZKYCLfETexupIvWNBVImch",
+      "payments": [
+        {
+          "id": "stripe:invoice:in_1UZKYBLfETexupIvzFxPfhE7",
+          "amountMinor": 300000,
+          "kind": "FIRST"
+        },
+        {
+          "id": "stripe:invoice:in_1UZKYXLfETexupIvFbgnkHje",
+          "amountMinor": 300000,
+          "kind": "RENEWAL"
+        }
+      ]
+    }
+  ],
+  "reconciliation": [
+    {
+      "country": "GB",
+      "plan": "ANNUAL",
+      "idempotencyVerified": true,
+      "paidCount": 1
+    },
+    {
+      "country": "GB",
+      "plan": "MONTHLY",
+      "idempotencyVerified": true,
+      "paidCount": 2,
+      "cancellationVerified": true
+    },
+    {
+      "country": "PK",
+      "plan": "MONTHLY",
+      "idempotencyVerified": true,
+      "paidCount": 2,
+      "cancellationVerified": true
+    }
+  ],
+  "emailDelivery": [
+    {
+      "country": "GB",
+      "plan": "ANNUAL",
+      "kind": "CONFIRMED",
+      "providerId": "01a1b8af-e75b-761a-8fa8-024b7fec00fc",
+      "delivery": "delivered"
+    },
+    {
+      "country": "GB",
+      "plan": "MONTHLY",
+      "kind": "CONFIRMED",
+      "providerId": "01a1b8b0-9eeb-7554-a213-a663a4726d80",
+      "delivery": "delivered"
+    },
+    {
+      "country": "GB",
+      "plan": "MONTHLY",
+      "kind": "RENEWED",
+      "providerId": "01a1b8b1-288b-7e1e-9c72-cccb29651915",
+      "delivery": "delivered"
+    },
+    {
+      "country": "PK",
+      "plan": "MONTHLY",
+      "kind": "CONFIRMED",
+      "providerId": "01a1b8b0-9ef7-763a-b921-d5273e0f230b",
+      "delivery": "delivered"
+    },
+    {
+      "country": "PK",
+      "plan": "MONTHLY",
+      "kind": "RENEWED",
+      "providerId": "01a1b8b1-289b-7923-b7ed-cfe9fd0d79b9",
+      "delivery": "delivered"
+    }
+  ],
+  "signedEvents": [
+    {
+      "id": "evt_1UZKXULfETexupIvMbG6jSJ8",
+      "type": "checkout.session.completed",
+      "orderId": "cmw74oner0004s1803ex40btn",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYGLfETexupIveXoT04M7",
+      "type": "customer.subscription.updated",
+      "orderId": "cmw74rcgd001ns180bkj9ea5n",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYGLfETexupIvZ4pbqimo",
+      "type": "customer.subscription.updated",
+      "orderId": "cmw74rab90014s180meut0xal",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYELfETexupIvJGOXT316",
+      "type": "checkout.session.completed",
+      "orderId": "cmw74rab90014s180meut0xal",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYELfETexupIvJxJHWfjM",
+      "type": "checkout.session.completed",
+      "orderId": "cmw74rcgd001ns180bkj9ea5n",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYELfETexupIvC8kuDnEl",
+      "type": "invoice.paid",
+      "orderId": "cmw74rab90014s180meut0xal",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYDLfETexupIvRCYS8MYy",
+      "type": "invoice.paid",
+      "orderId": "cmw74rcgd001ns180bkj9ea5n",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYXLfETexupIvztVtKdmE",
+      "type": "customer.subscription.updated",
+      "orderId": "cmw74rab90014s180meut0xal",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYYLfETexupIv8hMkXC8M",
+      "type": "customer.subscription.updated",
+      "orderId": "cmw74rcgd001ns180bkj9ea5n",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYoLfETexupIvjHB2AxIq",
+      "type": "invoice.paid",
+      "orderId": "cmw74rab90014s180meut0xal",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKYoLfETexupIvKM9YfPrn",
+      "type": "invoice.paid",
+      "orderId": "cmw74rcgd001ns180bkj9ea5n",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKZGLfETexupIvHdDhKrdL",
+      "type": "customer.subscription.updated",
+      "orderId": "cmw74rcgd001ns180bkj9ea5n",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKZGLfETexupIv6IsusoB7",
+      "type": "customer.subscription.updated",
+      "orderId": "cmw74rab90014s180meut0xal",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKZrLfETexupIvFicUaE3h",
+      "type": "customer.subscription.deleted",
+      "orderId": "cmw74rab90014s180meut0xal",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZKZsLfETexupIvmWtCUm50",
+      "type": "customer.subscription.deleted",
+      "orderId": "cmw74rcgd001ns180bkj9ea5n",
+      "signatureVerified": true
+    }
+  ]
+}
