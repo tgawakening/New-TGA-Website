@@ -197,6 +197,10 @@ function closedVerificationAllowed(
     return false;
   }
 }
+export function paypalMonthlyPlanId(country: string, currency: string) {
+  return process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${country.toUpperCase()}_${currency.toUpperCase()}`] ||
+    process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${currency.toUpperCase()}`];
+}
 export function methodAvailable(
   method: SirahMethod,
   country: string,
@@ -302,7 +306,7 @@ export function methodAvailable(
         process.env.SIRAH_PAYPAL_WEBHOOK_ID &&
         (plan === "ANNUAL" ||
           (process.env.SIRAH_PAYPAL_PRODUCT_ID &&
-            process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${currency}`])),
+            paypalMonthlyPlanId(country, currency))),
     )
   );
 }

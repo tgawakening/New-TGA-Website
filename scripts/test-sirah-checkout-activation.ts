@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { beforeEach } from "node:test";
-import { methodAvailable, termsFor } from "../lib/sirah/config";
+import { methodAvailable, termsFor, paypalMonthlyPlanId } from "../lib/sirah/config";
 
 const terms = {
   version: "TEST-ONLY",
@@ -116,4 +116,19 @@ test("UK terms do not replace Pakistan terms; invalid regional overrides fail cl
   process.env.SIRAH_GB_ANNUAL_TERMS_JSON = "invalid";
   assert.equal(methodAvailable("STRIPE", "GB", "GBP", "ANNUAL"), false);
   assert.deepEqual(termsFor("ANNUAL", "PK"), manualBefore);
+});
+
+
+test("UK VAT-inclusive monthly revision is isolated from other GBP markets and plans", async () => {
+  const { priceFor } = await import("../lib/sirah/catalog");
+  assert.equal(priceFor("GB", "MONTHLY", "STRIPE").amountMinor, 2499);
+  assert.equal(priceFor("GB", "MONTHLY", "PAYPAL").amountMinor, 2499);
+  assert.equal(priceFor("NZ", "MONTHLY", "PAYPAL").amountMinor, 2999);
+  process.env.SIRAH_PAYPAL_MONTHLY_PLAN_GBP = "P-EXISTING-2999";
+  process.env.SIRAH_PAYPAL_MONTHLY_PLAN_GB_GBP = "P-UK-2499";
+  assert.equal(paypalMonthlyPlanId("GB", "GBP"), "P-UK-2499");
+  assert.equal(paypalMonthlyPlanId("NZ", "GBP"), "P-EXISTING-2999");
+  process.env.SIRAH_GB_ANNUAL_TERMS_JSON = JSON.stringify({ ...terms, approvedRoutes: [] });
+  process.env.SIRAH_STRIPE_ANNUAL_CHECKOUT_ROUTES = "GB:GBP";
+  assert.equal(methodAvailable("STRIPE", "GB", "GBP", "ANNUAL"), false);
 });

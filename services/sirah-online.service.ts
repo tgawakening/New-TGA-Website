@@ -13,7 +13,7 @@ import {
   decimalToMinor,
   type SirahPlan,
 } from "@/lib/sirah/catalog";
-import { methodAvailable, termsFor } from "@/lib/sirah/config";
+import { methodAvailable, termsFor, paypalMonthlyPlanId } from "@/lib/sirah/config";
 import {
   ownedSirahOrder,
   auditSirah,
@@ -343,8 +343,7 @@ export async function startSirahCheckout(
     currency: order.currency,
     amountMinor: order.amountMinor,
   };
-  const preferredPlanId =
-    process.env[`SIRAH_PAYPAL_MONTHLY_PLAN_${order.currency}`];
+  const preferredPlanId = paypalMonthlyPlanId(order.countryCode, order.currency);
   if (!planId) {
     if (!preferredPlanId)
       throw new SirahError("A verified reusable PayPal plan is not configured for this currency.", 409);
@@ -556,6 +555,8 @@ export async function verifySirahPaypal(
       throw new SirahError("PayPal order ownership mismatch.");
     let payment = await paypalRequest(`/v2/checkout/orders/${providerId}`);
     if (payment.status === "APPROVED" && capture) {
+      if (order.cancelledAt || order.enrolmentState === "CANCELLED")
+        throw new SirahError("This registration was withdrawn before payment. No PayPal capture was initiated.", 409);
       const quote = payment.purchase_units?.[0];
       if (
         payment.purchase_units?.length !== 1 ||

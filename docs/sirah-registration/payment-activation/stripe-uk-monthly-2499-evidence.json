@@ -1,0 +1,93 @@
+{
+  "provider": "Stripe",
+  "mode": "test",
+  "accountId": "acct_1UYuUHLfETexupIv",
+  "scope": "UK monthly GBP 24.99 including applicable VAT; no live charge",
+  "country": "GB",
+  "plan": "MONTHLY",
+  "amountMinor": 2499,
+  "paidMinor": 4998,
+  "paidCount": 2,
+  "paymentState": "PAID",
+  "enrolmentState": "ACTIVE",
+  "sessionId": "cs_test_a1hRmNrFcqT3CpBbBkqJ1O0Ai62yl9rjzbNiFWTAH6gwmNgA8TGUmrMxvV",
+  "subscriptionId": "sub_1UZLAQLfETexupIvlWVE18JZ",
+  "paymentRecords": [
+    {
+      "id": "stripe:invoice:in_1UZLAPLfETexupIvEOBUiY6x",
+      "amountMinor": 2499,
+      "kind": "FIRST"
+    },
+    {
+      "id": "stripe:invoice:in_1UZLB7LfETexupIv9eyzRHcd",
+      "amountMinor": 2499,
+      "kind": "RENEWAL"
+    }
+  ],
+  "signedEvents": [
+    {
+      "id": "evt_1UZLAVLfETexupIvYBlhialO",
+      "type": "customer.subscription.updated",
+      "orderId": "cmw7669w80004s1fw748bw3dx",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZLASLfETexupIvWIyQmezF",
+      "type": "checkout.session.completed",
+      "orderId": "cmw7669w80004s1fw748bw3dx",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZLB8LfETexupIvgnt74KuO",
+      "type": "customer.subscription.updated",
+      "orderId": "cmw7669w80004s1fw748bw3dx",
+      "signatureVerified": true
+    },
+    {
+      "id": "evt_1UZLBlLfETexupIvxfqr2Rap",
+      "type": "invoice.paid",
+      "orderId": "cmw7669w80004s1fw748bw3dx",
+      "signatureVerified": true
+    }
+  ],
+  "notificationRecords": [
+    {
+      "kind": "CONFIRMED",
+      "state": "SENT",
+      "providerId": "01a1b8d4-cce3-7758-9dfe-191777e58566",
+      "error": null
+    },
+    {
+      "kind": "CONFIRMED",
+      "state": "SENT",
+      "providerId": "01a1b8d4-cdd1-7169-9637-26c5d1afd02b",
+      "error": null
+    },
+    {
+      "kind": "RENEWED",
+      "state": "SENT",
+      "providerId": "01a1b8d6-0480-704e-a39d-f400d09615bc",
+      "error": null
+    },
+    {
+      "kind": "RENEWED",
+      "state": "SENT",
+      "providerId": "01a1b8d6-05ab-75c7-83d4-ef0d4c9f2523",
+      "error": null
+    }
+  ],
+  "liveChargesInitiated": false,
+  "PayPalPaymentTested": false,
+  "emailDelivery": [
+    {
+      "kind": "CONFIRMED",
+      "providerId": "01a1b8d4-cce3-7758-9dfe-191777e58566",
+      "delivery": "delivered"
+    },
+    {
+      "kind": "RENEWED",
+      "providerId": "01a1b8d6-0480-704e-a39d-f400d09615bc",
+      "delivery": "delivered"
+    }
+  ]
+}

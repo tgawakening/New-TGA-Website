@@ -62,13 +62,13 @@ test("orientation expires at the end of the one-hour session; explicit enrolment
   assert.equal(activeCampaign(Date.parse("2026-11-06T12:00:00Z")), "enrolment");
 });
 
-test("all guide prices stay fixed; unapproved payment routes and Pakistan recurring billing stay disabled", () => {
+test("regional prices preserve the UK revision and keep unapproved routes disabled", () => {
   const { courseConfig } = fixture().load("course-config");
-  // Client guide, 2 November 2026. Values are in major currency units.
+  // Client guide plus the approved 8 November UK monthly revision. Major units.
   const expected = {
     PK: [3000, 32400],
     IN: [1500, 16200],
-    GB: [29.99, 323.89],
+    GB: [24.99, 323.89],
     US: [39.99, 431.89],
     SA: [85, 918],
     QA: [85, 918],
@@ -90,10 +90,11 @@ test("all guide prices stay fixed; unapproved payment routes and Pakistan recurr
   assert.equal(courseConfig.markets.length, Object.keys(expected).length);
   for (const market of courseConfig.markets) {
     assert.equal(market.monthly.amount, expected[market.code][0], market.code);
-    assert.equal(market.annual.amount, expected[market.code][1], market.code);
+    if (market.code === "GB") assert.equal(market.annual, null);
+    else assert.equal(market.annual.amount, expected[market.code][1], market.code);
     assert.equal(market.monthly.total, null);
     assert.equal(market.monthly.checkoutUrl, null);
-    assert.equal(market.annual.checkoutUrl, null);
+    assert.equal(market.annual?.checkoutUrl ?? null, null);
     assert.equal(market.terms, null);
   }
   const pakistan = courseConfig.markets.find((market) => market.code === "PK");
@@ -188,10 +189,15 @@ test("annual savings use online minor-unit prices for every catalogue market", (
   for (const [country] of catalogue) {
     const result = annualSirahSavings(country);
     assert.equal(result.standardMinor, priceFor(country, "MONTHLY", "STRIPE").amountMinor * 12);
-    assert.equal(result.savingMinor + result.upfrontMinor, result.standardMinor);
-    assert.equal(result.approximatePercent, 10);
+    if (country === "GB") {
+      assert.equal(result.savingMinor, 0);
+      assert.equal(result.approximatePercent, 0);
+    } else {
+      assert.equal(result.savingMinor + result.upfrontMinor, result.standardMinor);
+      assert.equal(result.approximatePercent, 10);
+    }
   }
-  assert.equal(annualSirahSavings("GB").savingMinor, 3599);
+  assert.equal(annualSirahSavings("GB").savingMinor, 0);
   assert.equal(annualSirahSavings("PK").savingMinor, 360000);
   assert.equal(annualSirahSavings("BH").savingMinor, 10200);
 });

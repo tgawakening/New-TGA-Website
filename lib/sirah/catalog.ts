@@ -1,10 +1,12 @@
 /** Authoritative fixed catalogue: SIRAH Website Pricing Team Guide, 2 Nov 2026.
+ * UK monthly revised by client to GBP 24.99 including applicable VAT, 8 Nov 2026.
+ * UK annual remains a historical quote only until separately approved for checkout.
  * Public display data only. Server quotes always resolve these values again. */
 export const SIRAH_SLUG = "seerah-course";
 export const SIRAH_TITLE =
   "SĪRAH | BEYOND CHRONOLOGY: Law, Power, Leadership & Movement";
 export const SIRAH_BATCH = "beyond-chronology-2026";
-export const SIRAH_PRICING_VERSION = "sirah-2026-11-02-v1";
+export const SIRAH_PRICING_VERSION = "sirah-2026-11-08-uk-monthly-v2";
 export const SIRAH_MONTHS = 12;
 export type SirahPlan = "MONTHLY" | "ANNUAL";
 export type SirahMethod = "STRIPE" | "PAYPAL" | "BANK_TRANSFER" | "JAZZCASH";
@@ -34,7 +36,7 @@ export const EUROZONE = new Set([
 export const catalogue = [
   ["PK", "Pakistan", "PKR", "3000", "3500", "32400"],
   ["IN", "India", "INR", "1500", "1500", "16200"],
-  ["GB", "United Kingdom", "GBP", "29.99", "29.99", "323.89"],
+  ["GB", "United Kingdom", "GBP", "24.99", "24.99", "323.89"],
   ["US", "United States", "USD", "39.99", "39.99", "431.89"],
   ["SA", "Saudi Arabia", "SAR", "85", "85", "918"],
   ["QA", "Qatar", "QAR", "85", "85", "918"],
@@ -123,7 +125,7 @@ export function annualSirahSavings(country: string) {
   const monthly = priceFor(country, "MONTHLY", "STRIPE");
   const upfront = priceFor(country, "ANNUAL", "STRIPE");
   const standardMinor = monthly.amountMinor * SIRAH_MONTHS;
-  const savingMinor = standardMinor - upfront.amountMinor;
+  const savingMinor = Math.max(0, standardMinor - upfront.amountMinor);
   return {
     currency: upfront.currency,
     standardMinor,

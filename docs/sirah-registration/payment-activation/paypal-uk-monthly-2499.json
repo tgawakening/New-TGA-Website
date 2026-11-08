@@ -1,0 +1,19 @@
+{
+  "merchantMatches": true,
+  "productId": "PROD-4MG49974LK7417127",
+  "planId": "P-1X5189279B9854425NLX5GHI",
+  "created": true,
+  "amount": "24.99",
+  "currency": "GBP",
+  "VATIncludedInPublishedAmount": true,
+  "additionalTaxAtCheckout": false,
+  "frequency": "MONTH",
+  "totalCycles": 12,
+  "autoBillOutstanding": false,
+  "originalGBP2999PlanId": "P-5G5453210K002963YNLXYNBA",
+  "originalPlanUnchanged": true,
+  "subscriptionsCreated": 0,
+  "chargesMade": 0,
+  "websiteActivated": false,
+  "configurationKey": "SIRAH_PAYPAL_MONTHLY_PLAN_GB_GBP"
+}
