@@ -312,6 +312,11 @@ export function SirahRegistrationForm({
     }
   }, [phoneCountry, residenceOverride, order]);
   useEffect(() => {
+    // A late location suggestion must never inherit confirmation of another residence.
+    setResidenceConfirmed(false);
+    setAccepted(false);
+  }, [billing]);
+  useEffect(() => {
     if (!ready || order || !billing || !(billing in countries)) return;
     const controller = new AbortController();
     void api("/api/pricing", {
