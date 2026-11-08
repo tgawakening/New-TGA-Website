@@ -1,10 +1,21 @@
+import { redirect } from "next/navigation";
 import AdminDashboard from "@/components/admin/admin-dashboard";
 import AdminLogin from "@/components/admin/admin-login";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
-import { getAdminDashboardSnapshot, getAdminNotifications } from "@/services/admin.service";
-import { processDueManualSubscriptions, reconcileMissingStripeSubscriptions } from "@/services/payment.service";
+import {
+  getAdminDashboardSnapshot,
+  getAdminNotifications,
+} from "@/services/admin.service";
+import {
+  processDueManualSubscriptions,
+  reconcileMissingStripeSubscriptions,
+} from "@/services/payment.service";
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ workspace?: string }>;
+}) {
   const admin = await getCurrentAdmin();
 
   if (!admin) {
@@ -19,6 +30,8 @@ export default async function AdminPage() {
     );
   }
 
+  if ((await searchParams).workspace !== "overview") redirect("/admin/sirah");
+
   await processDueManualSubscriptions();
   await reconcileMissingStripeSubscriptions();
 
@@ -31,7 +44,11 @@ export default async function AdminPage() {
     <main className="ga-admin-page">
       <section className="ga-admin-page-section">
         <div className="ga-admin-container">
-          <AdminDashboard data={data} adminEmail={admin.email} initialNotifications={notifications} />
+          <AdminDashboard
+            data={data}
+            adminEmail={admin.email}
+            initialNotifications={notifications}
+          />
         </div>
       </section>
     </main>

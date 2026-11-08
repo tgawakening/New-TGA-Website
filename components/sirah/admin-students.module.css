@@ -148,3 +148,33 @@
     grid-column: 1 / -1;
   }
 }
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(200px, 2fr) repeat(4, minmax(145px, 1fr)) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+.filters :is(input, select) {
+  width: 100%;
+  min-width: 0;
+}
+@media (max-width: 1200px) {
+  .filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 680px) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Keep small student-card labels readable against their status backgrounds. */
+.row p { color: #526477; }
+.row :global(.ga-admin-pill),
+.row :global(.ga-admin-status.is-completed),
+.row :global(.ga-admin-status.is-approved),
+.row :global(.ga-admin-status.is-succeeded),
+.row :global(.ga-admin-status.is-confirmed) { color: #17664b; }
+.row :global(.ga-admin-status.is-pending) { color: #805900; }

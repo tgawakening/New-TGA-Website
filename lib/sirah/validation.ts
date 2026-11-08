@@ -78,6 +78,7 @@ export const sirahAdminActionSchema = z
     revision: z.number().int().nonnegative(),
     action: z.enum([
       "APPROVE",
+      "PENDING",
       "REJECT",
       "CANCEL",
       "COMPLETE",
@@ -105,26 +106,25 @@ export const sirahAdminActionSchema = z
   })
   .strict()
   .superRefine((v, ctx) => {
-    if (v.action === "QUOTE_ANNUAL_REFUND" && v.unusedEligibleMonths === undefined)
-      ctx.addIssue({code:"custom",path:["unusedEligibleMonths"],message:"Specify the staff-reviewed whole unused eligible months."});
     if (
-      ["REJECT", "CANCEL", "REFUND", "RECONCILE_PROVIDER"].includes(v.action) &&
-      !v.note
+      v.action === "QUOTE_ANNUAL_REFUND" &&
+      v.unusedEligibleMonths === undefined
     )
+      ctx.addIssue({
+        code: "custom",
+        path: ["unusedEligibleMonths"],
+        message: "Specify the staff-reviewed whole unused eligible months.",
+      });
+    if (["REFUND"].includes(v.action) && !v.note)
       ctx.addIssue({
         code: "custom",
         path: ["note"],
         message: "A reason is required.",
       });
-    if (
-      v.action === "APPROVE" &&
-      (!v.verifiedAmount ||
-        !v.currency ||
-        !v.transactionReference ||
-        !v.verifiedTransfer)
-    )
+    if (v.action === "APPROVE" && v.verifiedTransfer !== true)
       ctx.addIssue({
         code: "custom",
-        message: "Verified amount and currency are required.",
+        path: ["verifiedTransfer"],
+        message: "Confirm that the funds were received.",
       });
   });

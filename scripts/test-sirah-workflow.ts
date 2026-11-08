@@ -1,3 +1,4 @@
+import { sirahAdminActionSchema } from "../lib/sirah/validation";
 import { sirahPaymentRegistrationSchema, sirahRequiredEvidenceSchema } from "../lib/sirah/registration-payment";
 import { calculateSirahAnnualRefund, calculateSirahAnnualUnusedMonths } from "../lib/sirah/annual-refund";
 import { quoteSirahAnnualRefund, requestSirahAnnualRefund } from "../services/sirah-refunds.service";
@@ -3785,4 +3786,67 @@ test("new registration does not create an account when payment consent is missin
   );
   assert.equal(await prisma.user.count(), 0);
   assert.equal(await prisma.sirahOrder.count(), 0);
+});
+
+
+test("admin manual approval uses the saved fee and submitted reference without retyping", async()=>{
+ const r=await manualOrder();const order=await evidence(r.order,r.userId);
+ assert.equal(sirahAdminActionSchema.safeParse({orderId:order.id,revision:order.revision,action:"APPROVE",verifiedTransfer:true}).success,true);
+ await actOnSirahOrder({orderId:order.id,revision:order.revision,action:"APPROVE",verifiedTransfer:true},"admin:review-test");
+ const paid=await publicSirahOrder(order.id,r.userId);assert.equal(paid.paymentState,"PAID");assert.equal(paid.enrolmentState,"ACTIVE");assert.equal(paid.paidMinor,350000);assert.equal((await prisma.sirahOrder.findUniqueOrThrow({where:{id:order.id}})).paidCount,1);
+ const audit=await prisma.sirahAudit.findFirstOrThrow({where:{orderId:order.id,action:"PAYMENT_VERIFIED"}});
+ assert.match(String((audit.detail as Record<string,unknown>).note),/submitted receipt reference/);
+ const repeated=await actOnSirahOrder({orderId:order.id,revision:order.revision,action:"APPROVE",verifiedTransfer:true},"admin:retry");assert.ok("duplicate" in repeated && repeated.duplicate);
+ assert.equal(await prisma.sirahPaymentEvent.count({where:{orderId:order.id}}),1);
+});
+
+test("optional approval fields never remove staff confirmation or exact amount checks",async()=>{
+ const r=await manualOrder();const order=await evidence(r.order,r.userId);
+ assert.equal(sirahAdminActionSchema.safeParse({orderId:order.id,revision:order.revision,action:"APPROVE"}).success,false);
+ await assert.rejects(actOnSirahOrder({orderId:order.id,revision:order.revision,action:"APPROVE"},"admin:test"),/funds were received/);
+ await assert.rejects(actOnSirahOrder({orderId:order.id,revision:order.revision,action:"APPROVE",verifiedTransfer:true,verifiedAmount:"1",currency:"PKR"},"admin:test"),/does not match/);
+ assert.equal((await publicSirahOrder(order.id,r.userId)).paidMinor,0);
+ assert.equal(sirahAdminActionSchema.safeParse({orderId:order.id,revision:order.revision,action:"CANCEL"}).success,true);
+ assert.equal(sirahAdminActionSchema.safeParse({orderId:order.id,revision:order.revision,action:"REFUND",verifiedAmount:"3500",currency:"PKR"}).success,false);
+});
+
+test("missing bank references use an auditable internal review reference without duplicate credits",async()=>{
+ const r=await manualOrder();const order=await evidence(r.order,r.userId);
+ const old=await prisma.sirahAudit.findFirstOrThrow({where:{orderId:order.id,action:"EVIDENCE_SUBMITTED"}});
+ await prisma.sirahAudit.update({where:{id:old.id},data:{detail:{...(old.detail as Record<string,string>),transactionReference:null}}});
+ const action={orderId:order.id,revision:order.revision,action:"APPROVE" as const,verifiedTransfer:true};
+ await actOnSirahOrder(action,"admin:no-reference");await actOnSirahOrder(action,"admin:retry");
+ const audit=await prisma.sirahAudit.findFirstOrThrow({where:{orderId:order.id,action:"PAYMENT_VERIFIED"}});
+ const note=String((audit.detail as Record<string,unknown>).note);assert.match(note,/internal review reference \(no bank reference supplied\)/);assert.match(note,/TGA-REVIEW-/);
+ assert.equal(await prisma.sirahPaymentEvent.count({where:{orderId:order.id}}),1);
+});
+
+test("automatically reused receipt references still prevent one bank payment crediting two registrations",async()=>{
+ const a=await manualOrder();const first=await evidence(a.order,a.userId);
+ const b=await manualOrder();const second=await evidence(b.order,b.userId);
+ await actOnSirahOrder({orderId:first.id,revision:first.revision,action:"APPROVE",verifiedTransfer:true},"admin:a");
+ await assert.rejects(actOnSirahOrder({orderId:second.id,revision:second.revision,action:"APPROVE",verifiedTransfer:true},"admin:b"),/identity mismatch/);
+ assert.equal((await prisma.sirahOrder.findUniqueOrThrow({where:{id:second.id}})).paidCount,0);
+});
+
+test("country and manual/Stripe/PayPal filters constrain totals, rows and CSV together",async()=>{
+ const a=await manualOrder();const b=await manualOrder();await prisma.sirahOrder.update({where:{id:b.order.id},data:{method:"JAZZCASH"}});
+ const gb=await create("GB");await prisma.sirahOrder.update({where:{id:gb.orderId},data:{method:"STRIPE"}});
+ const us=await create("US");await prisma.sirahOrder.update({where:{id:us.orderId},data:{method:"PAYPAL"}});
+ const manual=await listSirahAdmin(new URLSearchParams({country:"PK",method:"MANUAL"}));assert.equal(manual.total,2);assert.ok(manual.rows.every(x=>x.countryCode==="PK"&&["BANK_TRANSFER","JAZZCASH"].includes(x.method!)));
+ const stripe=await listSirahAdmin(new URLSearchParams({country:"GB",method:"STRIPE"}));assert.equal(stripe.total,1);assert.equal(stripe.rows[0].id,gb.orderId);
+ const pp=await listSirahAdmin(new URLSearchParams({country:"US",method:"PAYPAL"}));assert.equal(pp.total,1);assert.equal(pp.rows[0].id,us.orderId);
+ const {sirahCsv}=await import("../services/sirah-admin.service");const csv=sirahCsv(stripe);assert.ok(csv.includes(stripe.rows[0].reference));assert.ok(!csv.includes(a.order.reference));
+ await assert.rejects(listSirahAdmin(new URLSearchParams({country:"ZZ"})),/valid country/);
+ await assert.rejects(listSirahAdmin(new URLSearchParams({method:"FAKE"})),/valid payment method/);
+});
+
+test("staff can return rejected manual evidence to pending, but cannot reset a paid ledger",async()=>{
+ const r=await manualOrder();let order=await evidence(r.order,r.userId);
+ await actOnSirahOrder({orderId:order.id,revision:order.revision,action:"REJECT"},"admin:review");order=await publicSirahOrder(order.id,r.userId);
+ await actOnSirahOrder({orderId:order.id,revision:order.revision,action:"PENDING"},"admin:review");order=await publicSirahOrder(order.id,r.userId);
+ assert.equal(order.paymentState,"AWAITING_REVIEW");assert.equal(order.paidMinor,0);assert.equal(order.enrolmentState,"PENDING");assert.equal(order.receipts.length,1);
+ await actOnSirahOrder({orderId:order.id,revision:order.revision,action:"APPROVE",verifiedTransfer:true},"admin:review");order=await publicSirahOrder(order.id,r.userId);
+ await assert.rejects(actOnSirahOrder({orderId:order.id,revision:order.revision,action:"PENDING"},"admin:review"),/unpaid manual/);
+ assert.equal((await publicSirahOrder(order.id,r.userId)).paidMinor,350000);
 });
