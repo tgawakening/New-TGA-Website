@@ -5,6 +5,7 @@ import {
 } from "@/lib/sirah/access-consent";
 import { useResidence, saveResidence } from "@/lib/sirah/use-residence";
 import {
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -28,6 +29,7 @@ import { sirahRegistrationWithPaymentSchema } from "@/lib/sirah/validation";
 import { ConsultationAction } from "@/components/seerah/consultation-action";
 import { PasswordFields } from "./password-fields";
 import { AnnualPriceSummary } from "./annual-price-summary";
+import { EmbeddedStripeCheckout } from "./embedded-stripe-checkout";
 import { PaymentMethods } from "./payment-methods";
 import { priceFor } from "@/lib/sirah/catalog";
 import { PhoneControl } from "./phone-control";
@@ -256,6 +258,16 @@ export function SirahRegistrationForm({
   useEffect(() => {
     setAccessConsents({});
   }, [order?.id, order?.terms?.version, billing, plan, selectedMethod]);
+  const [paymentPanel, setPaymentPanel] = useState<
+    | { orderId: string; kind: "stripe"; publishableKey: string; clientSecret: string }
+    | { orderId: string; kind: "paypal"; url: string }
+    | null
+  >(null);
+  const [verificationAttempt, setVerificationAttempt] = useState(0);
+  const finishCardEntry = useCallback(() => {
+    setPaymentPanel(null);
+    setVerificationAttempt((attempt) => attempt + 1);
+  }, []);
   const [evidenceRoute, setEvidenceRoute] = useState("UPLOAD");
   const [invitation, setInvitation] = useState<{
     message: string;
@@ -552,13 +564,25 @@ export function SirahRegistrationForm({
   const selectedRouteAvailable = Boolean(
     order?.method && order.methods.includes(order.method as SirahMethod),
   );
+  const currentPaymentPanel =
+    order?.paymentState === "PROCESSING" && paymentPanel?.orderId === order.id
+      ? paymentPanel
+      : null;
+  useEffect(() => {
+    if (currentPaymentPanel?.kind !== "paypal") return;
+    function recheckOnReturn() {
+      setVerificationAttempt((attempt) => attempt + 1);
+    }
+    window.addEventListener("focus", recheckOnReturn);
+    return () => window.removeEventListener("focus", recheckOnReturn);
+  }, [currentPaymentPanel?.kind]);
   const processingOrderId =
     order?.paymentState === "PROCESSING" &&
     ["STRIPE", "PAYPAL"].includes(order.method || "")
       ? order.id
       : null;
   useEffect(() => {
-    if (!processingOrderId) return;
+    if (!processingOrderId || currentPaymentPanel?.kind === "stripe") return;
     let active = true;
     let attempts = 0;
     let timer: ReturnType<typeof setTimeout>;
@@ -583,7 +607,7 @@ export function SirahRegistrationForm({
       active = false;
       clearTimeout(timer);
     };
-  }, [processingOrderId]);
+  }, [processingOrderId, verificationAttempt, currentPaymentPanel?.kind]);
   async function run(work: () => Promise<void>) {
     if (submitLock.current) return;
     submitLock.current = true;
@@ -768,21 +792,52 @@ export function SirahRegistrationForm({
       );
     });
   }
+  async function showCheckout(saved: Order, request: Record<string, unknown>) {
+    const result = await api(`/api/sirah/orders/${saved.id}/checkout`, {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+    if (result.stripeEmbedded && saved.method === "STRIPE") {
+      const current = await api(`/api/sirah/orders/${saved.id}`);
+      setOrder(current.order);
+      setPaymentPanel({ orderId: saved.id, kind: "stripe", ...result.stripeEmbedded });
+      return;
+    }
+    if (result.url) {
+      const url = new URL(result.url);
+      if (url.origin === window.location.origin && url.pathname === "/seerah/register") {
+        const current = await api(`/api/sirah/orders/${saved.id}`);
+        setOrder(current.order);
+        setVerificationAttempt((attempt) => attempt + 1);
+        return;
+      }
+      if (url.protocol === "https:" && saved.method === "STRIPE" && url.hostname === "checkout.stripe.com") {
+        window.location.assign(url.href);
+        return;
+      }
+      if (
+        url.protocol === "https:" &&
+        saved.method === "PAYPAL" &&
+        ["www.paypal.com", "www.sandbox.paypal.com"].includes(url.hostname)
+      ) {
+        const current = await api(`/api/sirah/orders/${saved.id}`);
+        setOrder(current.order);
+        setPaymentPanel({ orderId: saved.id, kind: "paypal", url: url.href });
+        return;
+      }
+    }
+    throw Error("No secure payment destination is available yet.");
+  }
   async function openCheckout(saved: Order, acceptedTermsVersion: string) {
     try {
-      const result = await api(`/api/sirah/orders/${saved.id}/checkout`, {
-        method: "POST",
-        body: JSON.stringify({
-          revision: saved.revision,
-          acceptedTermsVersion,
-          ...accessConsents,
-        }),
+      await showCheckout(saved, {
+        revision: saved.revision,
+        acceptedTermsVersion,
+        ...accessConsents,
+        embeddedStripe: true,
       });
-      if (!result.url) throw Error("No payment destination is available yet.");
-      window.location.assign(result.url);
     } catch (cause) {
-      // A lost response can still mean the provider created a checkout. Reconcile the
-      // saved status before displaying another attempt; the server also locks retries.
+      // A lost response can still mean the provider created a checkout.
       try {
         const current = await api(`/api/sirah/orders/${saved.id}`);
         setOrder(current.order);
@@ -808,6 +863,7 @@ export function SirahRegistrationForm({
         body: "{}",
       });
       setOrder(result.order);
+      setPaymentPanel(null);
       setAccepted(false);
       setManualConfirmed(false);
       setMessage(
@@ -1583,12 +1639,46 @@ export function SirahRegistrationForm({
               remain on this registration.
             </p>
           )}
+          {currentPaymentPanel?.kind === "stripe" && (
+            <section className={styles.notice} aria-label="Secure card payment">
+              <h3>Pay by card</h3>
+              <EmbeddedStripeCheckout
+                publishableKey={currentPaymentPanel.publishableKey}
+                clientSecret={currentPaymentPanel.clientSecret}
+                onComplete={finishCardEntry}
+              />
+            </section>
+          )}
+          {currentPaymentPanel?.kind === "paypal" && (
+            <div className={styles.notice}>
+              <a
+                href={currentPaymentPanel.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.primary}
+                onClick={() => setVerificationAttempt((attempt) => attempt + 1)}
+              >
+                Approve payment on PayPal (opens in a new tab)
+              </a>
+              <p>Return here after approving your payment.</p>
+            </div>
+          )}
           {["PROCESSING", "REFUND_PENDING"].includes(order.paymentState) ? (
             <div className={styles.notice}>
-              <p>
-                Payment pending. We’re waiting for confirmation from the payment
-                provider.
-              </p>
+              {!currentPaymentPanel && (
+                <p>Payment pending. Course access follows verified payment.</p>
+              )}
+              {!currentPaymentPanel &&
+                order.paymentState === "PROCESSING" &&
+                ["STRIPE", "PAYPAL"].includes(order.method || "") && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void run(() => showCheckout(order, { resume: true }))}
+                  >
+                    Resume secure payment
+                  </button>
+                )}
               <button
                 type="button"
                 disabled={busy}

@@ -95,6 +95,115 @@ export function paypalDecimal(amount: number, currency: string) {
   }
   return minorToDecimal(amount, currency);
 }
+function sirahStripePublishableKey() {
+  const key = process.env.SIRAH_STRIPE_PUBLISHABLE_KEY?.trim();
+  const secret = process.env.SIRAH_STRIPE_SECRET_KEY || "";
+  const mode = /^(?:sk|rk)_(live|test)_/.exec(secret)?.[1];
+  return mode && key?.startsWith(`pk_${mode}_`) ? key : undefined;
+}
+
+function stripeEmbeddedResponse(session: Stripe.Checkout.Session) {
+  const publishableKey = sirahStripePublishableKey();
+  if (!publishableKey || !session.client_secret)
+    throw new SirahError("The card form is unavailable. Close this unpaid checkout before starting again.", 503);
+  return { stripeEmbedded: { publishableKey, clientSecret: session.client_secret } };
+}
+
+async function existingSirahCheckout(
+  order: Awaited<ReturnType<typeof ownedSirahOrder>>,
+  checkoutBase: string,
+  stripeOverride?: Stripe,
+) {
+  const method = order.method;
+  // A saved provider reference is retrieved, never recreated after an
+  // idempotency key expires. Unknown attempts require reconciliation after 20h.
+  if (method === "STRIPE" && order.providerOrderId) {
+    const stripe = stripeOverride || stripeClient();
+    await verifyStripeMerchant(stripe);
+    const existing = await stripe.checkout.sessions.retrieve(
+      order.providerOrderId,
+    );
+    if (
+      existing.metadata?.sirahOrderId !== order.id ||
+      existing.metadata.checkoutToken !== order.checkoutToken ||
+      existing.client_reference_id !== order.id
+    )
+      throw new SirahError("Checkout ownership mismatch.");
+    if (existing.payment_status === "paid") {
+      await verifySirahStripeSession(order.id, existing.id, stripe);
+      return { url: `${checkoutBase}/seerah/register?order=${order.id}` };
+    }
+    if (existing.status === "expired")
+      throw new SirahError(
+        "This checkout has expired. Close the unpaid checkout before changing payment method.",
+        409,
+      );
+    if (existing.ui_mode === "embedded" && existing.status === "open")
+      return stripeEmbeddedResponse(existing);
+    if (!existing.url)
+      throw new SirahError(
+        "The provider is processing the payment. Check verified status instead.",
+        409,
+      );
+    return { url: existing.url };
+  }
+  if (
+    method === "PAYPAL" &&
+    (order.providerOrderId || order.providerSubscriptionId)
+  ) {
+    const existing = await paypalRequest(
+      order.providerOrderId
+        ? `/v2/checkout/orders/${order.providerOrderId}`
+        : `/v1/billing/subscriptions/${order.providerSubscriptionId}`,
+    );
+    const url = existing.links?.find(
+      (link: { rel: string }) => link.rel === "approve",
+    )?.href;
+    return {
+      url:
+        url ||
+        `${checkoutBase}/seerah/register?order=${order.id}&payment=processing`,
+    };
+  }
+  return null;
+}
+
+export async function resumeSirahCheckout(id: string, userId: string, returnOrigin: string) {
+  const order = await ownedSirahOrder(id, userId);
+  if (order.paymentState !== "PROCESSING" || !order.checkoutToken || order.cancelledAt ||
+      !["PENDING", "ACTIVE"].includes(order.enrolmentState))
+    throw new SirahError("This payment is no longer open. Refresh the registration to see its current status.", 409);
+  if (
+    (order.method !== "STRIPE" && order.method !== "PAYPAL") ||
+    !methodAvailable(order.method, order.countryCode, order.currency, order.plan as SirahPlan, {
+      id: order.id,
+      amountMinor: order.amountMinor,
+    })
+  )
+    throw new SirahError("This checkout route is not currently enabled.", 409);
+  const result = await existingSirahCheckout(order, returnOrigin);
+  if (result) return result;
+
+  // A request may have been interrupted after committing consent but before
+  // storing the provider reference. Recover using the original attempt.
+  const attempt = await prisma.sirahAudit.findFirst({
+    where: { orderId: id, action: "TERMS_ACCEPTED" },
+    orderBy: { createdAt: "desc" },
+  });
+  const accepted = attempt?.detail as {
+    checkoutToken?: string;
+    version?: string;
+    earlyServiceRequested?: boolean;
+    digitalContentConsented?: boolean;
+  } | null;
+  if (!accepted?.version || accepted.checkoutToken !== order.checkoutToken)
+    throw new SirahError("This checkout needs reconciliation. Please contact support.", 409);
+  return startSirahCheckout(id, userId, order.revision, accepted.version, undefined, returnOrigin, {
+    earlyServiceRequested: accepted.earlyServiceRequested,
+    digitalContentConsented: accepted.digitalContentConsented,
+  });
+}
+
 export async function startSirahCheckout(
   id: string,
   userId: string,
@@ -103,6 +212,7 @@ export async function startSirahCheckout(
   stripeOverride?: Stripe,
   requestedReturnOrigin?: string,
   accessConsents: SirahAccessConsents = {},
+  preferEmbeddedStripe = false,
 ) {
   if (
     requestedReturnOrigin &&
@@ -111,6 +221,8 @@ export async function startSirahCheckout(
     throw new SirahError("This payment return address is not approved.", 403);
   const checkoutBase = requestedReturnOrigin || appUrl();
   let order = await ownedSirahOrder(id, userId);
+  if (order.cancelledAt || !["PENDING", "ACTIVE"].includes(order.enrolmentState))
+    throw new SirahError("This registration is closed to payments.", 409);
   if (!["STRIPE", "PAYPAL"].includes(order.method || ""))
     throw new SirahError("Select an available online method first.");
   const method = order.method as "STRIPE" | "PAYPAL";
@@ -141,87 +253,43 @@ export async function startSirahCheckout(
     throw new SirahError("Please make the separate service-start and recording-access choices before checkout.");
   if (order.paymentState !== "PROCESSING") {
     const token = randomUUID();
-    const result = await prisma.sirahOrder.updateMany({
-      where: {
-        id,
-        userId,
-        revision,
-        paymentState: { in: ["UNPAID", "FAILED"] },
-        providerOrderId: null,
-        providerSubscriptionId: null,
-      },
-      data: {
-        checkoutToken: token,
-        paymentState: "PROCESSING",
-        revision: { increment: 1 },
-      },
-    });
-    if (result.count !== 1)
-      throw new SirahError(
-        "This order has changed or is already paid. Reload to continue.",
-        409,
-      );
-    order = await ownedSirahOrder(id, userId);
-    await prisma.$transaction((tx) =>
-      auditSirah(tx, id, `student:${userId}`, "TERMS_ACCEPTED", {
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.sirahOrder.updateMany({
+        where: {
+          id,
+          userId,
+          revision,
+          paymentState: { in: ["UNPAID", "FAILED"] },
+          enrolmentState: { in: ["PENDING", "ACTIVE"] },
+          cancelledAt: null,
+          providerOrderId: null,
+          providerSubscriptionId: null,
+        },
+        data: {
+          checkoutToken: token,
+          paymentState: "PROCESSING",
+          revision: { increment: 1 },
+        },
+      });
+      if (result.count !== 1)
+        throw new SirahError("This order has changed or is already paid. Reload to continue.", 409);
+      await auditSirah(tx, id, `student:${userId}`, "TERMS_ACCEPTED", {
         version: acceptedVersion,
         earlyServiceRequested: accessConsents.earlyServiceRequested === true,
         digitalContentConsented: accessConsents.digitalContentConsented === true,
         earlyServiceRequestText: terms.earlyServiceRequestText || null,
         digitalContentConsentText: terms.digitalContentConsentText || null,
         checkoutToken: token,
-      }),
-    );
+        stripeEmbedded: method === "STRIPE" && preferEmbeddedStripe && Boolean(sirahStripePublishableKey()),
+        checkoutOrigin: checkoutBase,
+      });
+    });
+    order = await ownedSirahOrder(id, userId);
   }
   if (!order.checkoutToken)
     throw new SirahError("Checkout is awaiting reconciliation.", 409);
-  // A saved provider reference is retrieved, never recreated after an
-  // idempotency key expires. Unknown attempts require reconciliation after 20h.
-  if (method === "STRIPE" && order.providerOrderId) {
-    const stripe = stripeOverride || stripeClient();
-    await verifyStripeMerchant(stripe);
-    const existing = await stripe.checkout.sessions.retrieve(
-      order.providerOrderId,
-    );
-    if (
-      existing.metadata?.sirahOrderId !== order.id ||
-      existing.metadata.checkoutToken !== order.checkoutToken
-    )
-      throw new SirahError("Checkout ownership mismatch.");
-    if (existing.payment_status === "paid") {
-      await verifySirahStripeSession(order.id, existing.id, stripe);
-      return { url: `${checkoutBase}/seerah/register?order=${order.id}` };
-    }
-    if (existing.status === "expired")
-      throw new SirahError(
-        "This checkout has expired. Close the unpaid checkout before changing payment method.",
-        409,
-      );
-    if (!existing.url)
-      throw new SirahError(
-        "The provider is processing the payment. Check verified status instead.",
-        409,
-      );
-    return { url: existing.url };
-  }
-  if (
-    method === "PAYPAL" &&
-    (order.providerOrderId || order.providerSubscriptionId)
-  ) {
-    const existing = await paypalRequest(
-      order.providerOrderId
-        ? `/v2/checkout/orders/${order.providerOrderId}`
-        : `/v1/billing/subscriptions/${order.providerSubscriptionId}`,
-    );
-    const url = existing.links?.find(
-      (link: { rel: string }) => link.rel === "approve",
-    )?.href;
-    return {
-      url:
-        url ||
-        `${checkoutBase}/seerah/register?order=${order.id}&payment=processing`,
-    };
-  }
+  const existing = await existingSirahCheckout(order, checkoutBase, stripeOverride);
+  if (existing) return existing;
   const attempt = await prisma.sirahAudit.findFirst({
     where: { orderId: order.id, action: "TERMS_ACCEPTED" },
     orderBy: { createdAt: "desc" },
@@ -239,7 +307,12 @@ export async function startSirahCheckout(
       409,
     );
   }
-  const returnUrl = `${checkoutBase}/seerah/register?order=${order.id}&payment=processing`;
+  // Stripe idempotency requires identical parameters across retries.
+  const savedAttempt = attempt?.detail as { stripeEmbedded?: boolean; checkoutOrigin?: string; checkoutToken?: string } | null;
+  const matchingAttempt = savedAttempt?.checkoutToken === order.checkoutToken ? savedAttempt : null;
+  const returnBase = matchingAttempt?.checkoutOrigin || checkoutBase;
+  const returnUrl = `${returnBase}/seerah/register?order=${order.id}&payment=processing`;
+  const cancelUrl = `${returnBase}/seerah/register?order=${order.id}`;
   if (method === "STRIPE") {
     const stripe = stripeOverride || stripeClient();
     await verifyStripeMerchant(stripe);
@@ -250,8 +323,16 @@ export async function startSirahCheckout(
         ...{ managed_payments: { enabled: false } },
         mode: order.plan === "ANNUAL" ? "payment" : "subscription",
         client_reference_id: order.id,
-        success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${checkoutBase}/seerah/register?order=${order.id}`,
+        ...(matchingAttempt?.stripeEmbedded
+          ? {
+              ui_mode: "embedded" as const,
+              redirect_on_completion: "if_required" as const,
+              return_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
+            }
+          : {
+              success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,
+              cancel_url: cancelUrl,
+            }),
         metadata: {
           sirahOrderId: order.id,
           checkoutToken: order.checkoutToken,
@@ -301,7 +382,7 @@ export async function startSirahCheckout(
           : {}),
       },
     });
-    return { url: session.url };
+    return matchingAttempt?.stripeEmbedded ? stripeEmbeddedResponse(session) : { url: session.url };
   }
   if (order.plan === "ANNUAL") {
     const payment = await paypalRequest(
@@ -323,7 +404,7 @@ export async function startSirahCheckout(
         ],
         application_context: {
           return_url: returnUrl,
-          cancel_url: `${checkoutBase}/seerah/register?order=${order.id}`,
+          cancel_url: cancelUrl,
         },
       },
       `sirah-${order.checkoutToken}`,
@@ -386,7 +467,7 @@ export async function startSirahCheckout(
       application_context: {
         brand_name: "The Global Awakening",
         return_url: returnUrl,
-        cancel_url: `${checkoutBase}/seerah/register?order=${order.id}`,
+        cancel_url: cancelUrl,
         shipping_preference: "NO_SHIPPING",
         user_action: "SUBSCRIBE_NOW",
       },
