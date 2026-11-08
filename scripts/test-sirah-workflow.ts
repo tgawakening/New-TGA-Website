@@ -748,7 +748,12 @@ test("failed email delivery is persisted and retried without duplicating success
     "PAID",
   );
   succeed = true;
+  // Failed deliveries wait for their retry lease instead of retrying on every request.
   await dispatchSirahNotifications(order.id);
+  const deferredCalls = keys.length;
+  await prisma.sirahNotification.updateMany({ where: { orderId: order.id, state: "FAILED" }, data: { lockedUntil: new Date(0) } });
+  await dispatchSirahNotifications(order.id);
+  assert.ok(keys.length > deferredCalls);
   const calls = keys.length;
   await dispatchSirahNotifications(order.id);
   assert.equal(keys.length, calls);
@@ -3508,4 +3513,61 @@ test("withdrawn PayPal verification cannot capture an approved order, but real p
   assert.equal(after.paidMinor,32389);
   assert.equal(after.enrolmentState,"CANCELLED");
   assert.equal(canAccessSirah(after),false);
+});
+
+
+test("routine registration copies are student-only while payment reviews still reach staff", async () => {
+  process.env.ADMIN_NOTIFICATION_EMAIL = "Admin@Example.test, admin@example.test";
+  const result = await create();
+  const notices = await prisma.sirahNotification.findMany({ where: { orderId: result.orderId, kind: "REGISTERED" } });
+  assert.equal(notices.length, 1);
+  assert.notEqual(notices[0].toEmail, "admin@example.test");
+  await prisma.$transaction(tx => queueSirahNotice(tx, result.orderId, "CHECKOUT_REVIEW", "test-review"));
+  const reviews = await prisma.sirahNotification.findMany({ where: { orderId: result.orderId, kind: "CHECKOUT_REVIEW" } });
+  assert.deepEqual(reviews.map(n => n.toEmail), ["admin@example.test"]);
+  await prisma.$transaction(tx => queueSirahNotice(tx, result.orderId, "SUBMITTED", "test-submitted"));
+  assert.equal(await prisma.sirahNotification.count({ where: { orderId: result.orderId, kind: "SUBMITTED" } }), 2);
+});
+
+test("previously queued routine admin copies are suppressed without sending or losing the audit record", async () => {
+  const result = await create();
+  await prisma.sirahNotification.create({ data: { key: randomUUID(), orderId: result.orderId, toEmail: "admin@example.test", kind: "REGISTERED", payload: { subject: "Old copy", text: "old", html: "old" } } });
+  process.env.RESEND_API_KEY = "synthetic";
+  process.env.EMAIL_FROM = "sender@example.test";
+  const recipients: string[] = [];
+  global.fetch = async (_url, init) => { recipients.push(...JSON.parse(String(init?.body)).to); return Response.json({ id: "synthetic-mail" }); };
+  await dispatchSirahNotifications(result.orderId);
+  assert.ok(!recipients.includes("admin@example.test"));
+  assert.equal(await prisma.sirahNotification.count({ where: { orderId: result.orderId, state: "SUPPRESSED", toEmail: "admin@example.test" } }), 1);
+});
+
+test("provider quota errors retain essential notices and respect Retry-After without a retry storm", async () => {
+  const result = await create();
+  await prisma.$transaction(tx => queueSirahNotice(tx, result.orderId, "SUBMITTED", "quota-test"));
+  process.env.RESEND_API_KEY = "synthetic";
+  process.env.EMAIL_FROM = "sender@example.test";
+  let calls = 0;
+  global.fetch = async () => { calls++; return Response.json({ name: "daily_quota_exceeded" }, { status: 429, headers: { "Retry-After": "7200" } }); };
+  await dispatchSirahNotifications(result.orderId);
+  const firstCalls = calls;
+  assert.equal(firstCalls, 1);
+  const deferred = await prisma.sirahNotification.findFirstOrThrow({ where: { orderId: result.orderId, state: "FAILED" } });
+  assert.ok(deferred.lockedUntil!.getTime() > Date.now() + 7100000);
+  await dispatchSirahNotifications(result.orderId);
+  assert.equal(calls, firstCalls);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: result.orderId } })).paymentState, "UNPAID");
+});
+
+
+test("routine operational test emails do not consume student delivery quota", async () => {
+  const { sendTransactionalEmail } = await import("../lib/email");
+  delete process.env.ALLOW_OPERATIONAL_TEST_EMAILS;
+  process.env.RESEND_API_KEY = "synthetic";
+  process.env.EMAIL_FROM = "sender@example.test";
+  let calls = 0;
+  global.fetch = async () => { calls++; return Response.json({ id: "unexpected" }); };
+  const result = await sendTransactionalEmail({ to: "admin@example.test", emailType: "SIRAH_OPS_test-run", subject: "Diagnostic", text: "test", html: "test" });
+  assert.equal(result.status, "SKIPPED");
+  assert.equal(calls, 0);
+  assert.equal(await prisma.emailLog.count({ where: { emailType: "SIRAH_OPS_test-run", status: "SKIPPED" } }), 1);
 });
