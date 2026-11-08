@@ -17,14 +17,12 @@ export function PaymentMethods({
   onChange,
   disabled,
   describedBy,
-  onDefer,
 }: {
   methods: SirahMethod[];
   value: SirahMethod | "";
   onChange: (method: SirahMethod) => void;
   disabled?: boolean;
   describedBy?: string;
-  onDefer?: () => void;
 }) {
   const id = useId();
   return (
@@ -88,11 +86,6 @@ export function PaymentMethods({
         <small>
           No verified payment method is available for this selection.
         </small>
-      )}
-      {onDefer && value && (
-        <button type="button" className={styles.paymentLater} onClick={onDefer}>
-          Save now and pay later
-        </button>
       )}
     </fieldset>
   );

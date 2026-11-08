@@ -1,3 +1,4 @@
+import { sirahPaymentRegistrationSchema, sirahRequiredEvidenceSchema } from "../lib/sirah/registration-payment";
 import { calculateSirahAnnualRefund, calculateSirahAnnualUnusedMonths } from "../lib/sirah/annual-refund";
 import { quoteSirahAnnualRefund, requestSirahAnnualRefund } from "../services/sirah-refunds.service";
 import { maintainSirahOrders } from "../services/sirah-maintenance.service";
@@ -3508,4 +3509,217 @@ test("withdrawn PayPal verification cannot capture an approved order, but real p
   assert.equal(after.paidMinor,32389);
   assert.equal(after.enrolmentState,"CANCELLED");
   assert.equal(canAccessSirah(after),false);
+});
+
+
+test("new public registrations require a method, current consent and complete manual sender details", () => {
+  const base = {
+    ...payload(),
+    acceptedTermsVersion: approvedTestTerms.version,
+    residenceConfirmed: true,
+  };
+  assert.equal(sirahPaymentRegistrationSchema.safeParse(base).success, false);
+  assert.equal(
+    sirahPaymentRegistrationSchema.safeParse({ ...base, method: null }).success,
+    false,
+  );
+  assert.equal(
+    sirahPaymentRegistrationSchema.safeParse({
+      ...base,
+      method: "BANK_TRANSFER",
+    }).success,
+    false,
+  );
+  const sender = {
+    payerName: "Synthetic Sender",
+    senderAccount: "TEST-12345678",
+    transactionReference: "TEST-REF-123",
+    paymentDate: "2026-11-08",
+  };
+  const manual = {
+    ...base,
+    method: "BANK_TRANSFER",
+    manualPayment: sender,
+    manualAmountConfirmed: true,
+  };
+  assert.equal(sirahPaymentRegistrationSchema.safeParse(manual).success, true);
+  for (const key of [
+    "payerName",
+    "senderAccount",
+    "transactionReference",
+    "paymentDate",
+  ]) {
+    assert.equal(
+      sirahPaymentRegistrationSchema.safeParse({
+        ...manual,
+        manualPayment: { ...sender, [key]: "" },
+      }).success,
+      false,
+      key,
+    );
+  }
+  assert.equal(
+    sirahPaymentRegistrationSchema.safeParse({
+      ...manual,
+      manualAmountConfirmed: false,
+    }).success,
+    false,
+  );
+  assert.equal(
+    sirahPaymentRegistrationSchema.safeParse({
+      ...manual,
+      residenceConfirmed: false,
+    }).success,
+    false,
+  );
+  assert.equal(
+    sirahPaymentRegistrationSchema.safeParse({ ...manual, method: "STRIPE" })
+      .success,
+    false,
+  );
+  assert.equal(
+    sirahPaymentRegistrationSchema.safeParse({ ...base, method: "STRIPE" })
+      .success,
+    true,
+  );
+  assert.equal(
+    sirahRequiredEvidenceSchema.safeParse({
+      revision: 0,
+      method: "BANK_TRANSFER",
+      route: "WHATSAPP",
+      ...sender,
+    }).success,
+    false,
+  );
+  assert.equal(
+    sirahRequiredEvidenceSchema.safeParse({
+      revision: 0,
+      method: "BANK_TRANSFER",
+      route: "UPLOAD",
+      ...sender,
+    }).success,
+    true,
+  );
+});
+
+async function initialManualPayment() {
+  const data = await sharp({
+    create: { width: 2, height: 2, channels: 3, background: "#fff" },
+  })
+    .png()
+    .toBuffer();
+  return {
+    acceptedTermsVersion: approvedTestTerms.version,
+    accessConsents: {},
+    manual: {
+      receipt: await validateSirahReceipt(data, "initial-receipt.png"),
+      details: {
+        payerName: "Synthetic Sender",
+        senderAccount: "TEST-12345678",
+        transactionReference: "TEST-REF-123",
+        paymentDate: "2026-11-08",
+      },
+    },
+  };
+}
+
+test("new manual registration commits its receipt and review state together for both approved methods and plans", async () => {
+  enableManual();
+  for (const method of ["BANK_TRANSFER", "JAZZCASH"] as const)
+    for (const plan of ["MONTHLY", "ANNUAL"] as const) {
+      const payment = await initialManualPayment();
+      const created = await registerSirah(
+        { ...payload("PK", plan), method },
+        undefined,
+        payment,
+      );
+      const order = await publicSirahOrder(created.orderId, created.userId);
+      assert.equal(order.method, method);
+      assert.equal(order.paymentState, "AWAITING_REVIEW");
+      assert.equal(order.enrolmentState, "PENDING");
+      assert.equal(order.paidMinor, 0);
+      assert.equal(order.receipts.length, 1);
+      assert.equal(order.amountMinor, plan === "MONTHLY" ? 350000 : 3240000);
+      const evidence = await prisma.sirahAudit.findFirstOrThrow({
+        where: { orderId: order.id, action: "EVIDENCE_SUBMITTED" },
+      });
+      const detail = evidence.detail as Record<string, unknown>;
+      assert.equal(detail.senderAccount, "TEST-12345678");
+      assert.equal(detail.transactionReference, "TEST-REF-123");
+      assert.equal(detail.receiptHash, payment.manual.receipt.sha256);
+      assert.equal(
+        await prisma.sirahNotification.count({
+          where: { orderId: order.id, kind: "REGISTERED" },
+        }),
+        0,
+      );
+      assert.ok(
+        (await prisma.sirahNotification.count({
+          where: { orderId: order.id, kind: "SUBMITTED" },
+        })) > 0,
+      );
+      assert.equal(
+        canAccessSirah(
+          await prisma.sirahOrder.findUniqueOrThrow({
+            where: { id: created.orderId },
+          }),
+        ),
+        false,
+      );
+    }
+});
+
+test("manual receipt storage failure rolls back the account and registration", async () => {
+  enableManual();
+  const payment = await initialManualPayment();
+  // Inject a database storage failure after user/order creation inside the transaction.
+  payment.manual.receipt.filename = "x".repeat(300);
+  await assert.rejects(
+    registerSirah(
+      { ...payload(), method: "BANK_TRANSFER" },
+      undefined,
+      payment,
+    ),
+  );
+  assert.equal(await prisma.user.count(), 0);
+  assert.equal(await prisma.sirahOrder.count(), 0);
+  assert.equal(await prisma.sirahReceipt.count(), 0);
+});
+
+test("retrying a submitted manual registration reuses its order and receipt without duplicate review notices", async () => {
+  enableManual();
+  const input = { ...payload(), method: "BANK_TRANSFER" as const };
+  const payment = await initialManualPayment();
+  const first = await registerSirah(input, undefined, payment);
+  const count = await prisma.sirahNotification.count();
+  const retry = await registerSirah(input, first.userId, payment);
+  assert.equal(retry.orderId, first.orderId);
+  assert.equal(retry.existing, true);
+  assert.equal(await prisma.sirahOrder.count(), 1);
+  assert.equal(await prisma.sirahReceipt.count(), 1);
+  assert.equal(await prisma.sirahNotification.count(), count);
+});
+
+test("new registration does not create an account when payment consent is missing or stale", async () => {
+  enableManual();
+  const input = { ...payload(), method: "BANK_TRANSFER" as const };
+  const payment = await initialManualPayment();
+  await assert.rejects(
+    registerSirah(input, undefined, {
+      ...payment,
+      acceptedTermsVersion: "STALE-TERMS",
+    }),
+    /current payment/,
+  );
+  const explicit = {
+    ...approvedTestTerms,
+    earlyServiceRequestText: "Synthetic express consent",
+  };
+  process.env.SIRAH_MONTHLY_TERMS_JSON = JSON.stringify(explicit);
+  await assert.rejects(
+    registerSirah(input, undefined, payment),
+    /required service-start/,
+  );
+  assert.equal(await prisma.user.count(), 0);
+  assert.equal(await prisma.sirahOrder.count(), 0);
 });
