@@ -61,6 +61,7 @@ export const sirahEvidenceSchema = z
     method: z.enum(["BANK_TRANSFER", "JAZZCASH"]),
     route: z.enum(["UPLOAD", "WHATSAPP"]),
     payerName: z.string().trim().min(2).max(120).optional().or(z.literal("")),
+    senderAccount: z.string().trim().min(4).max(80).optional(),
     transactionReference: z.string().trim().max(120).optional(),
     paymentDate: z.string().date().optional().or(z.literal("")),
     amount: z

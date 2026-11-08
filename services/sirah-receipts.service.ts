@@ -1,5 +1,8 @@
 import "server-only";
-import { sirahAccessConsentsComplete, type SirahAccessConsents } from "@/lib/sirah/access-consent";
+import {
+  sirahAccessConsentsComplete,
+  type SirahAccessConsents,
+} from "@/lib/sirah/access-consent";
 import type { SirahTerms } from "@/lib/sirah/config";
 import { createHash } from "node:crypto";
 import { fileTypeFromBuffer } from "file-type";
@@ -72,11 +75,18 @@ export async function submitSirahEvidence(
     throw new SirahError(
       "Review and accept your locked payment terms before submitting evidence.",
     );
-  if (terms.requiresConfirmedCommencement &&
-      (!terms.cohortCommencementDate || !Number.isFinite(Date.parse(terms.cohortCommencementDate))))
-    throw new SirahError("A confirmed course commencement date is required before a new payment submission. Contact support if you already transferred.");
+  if (
+    terms.requiresConfirmedCommencement &&
+    (!terms.cohortCommencementDate ||
+      !Number.isFinite(Date.parse(terms.cohortCommencementDate)))
+  )
+    throw new SirahError(
+      "A confirmed course commencement date is required before a new payment submission. Contact support if you already transferred.",
+    );
   if (!sirahAccessConsentsComplete(terms, accessConsents))
-    throw new SirahError("Please make the separate service-start and recording-access choices before submitting payment evidence.");
+    throw new SirahError(
+      "Please make the separate service-start and recording-access choices before submitting payment evidence.",
+    );
   if (input.route === "UPLOAD" && !file)
     throw new SirahError(
       "Choose a receipt file, or select the WhatsApp submission route.",
@@ -117,6 +127,8 @@ export async function submitSirahEvidence(
       digitalContentConsentText: terms.digitalContentConsentText || null,
       route: input.route,
       payerName: input.payerName || null,
+      senderAccount:
+        "senderAccount" in input ? input.senderAccount || null : null,
       transactionReference: input.transactionReference || null,
       paymentDate: input.paymentDate || null,
       claimedAmountMinor: claimedAmount,

@@ -4,12 +4,10 @@ import {
   sirahResponseError,
   privateJson,
 } from "@/lib/sirah/http";
-import {
-  submitSirahEvidence,
-  MAX_SIRAH_RECEIPT_BYTES,
-} from "@/services/sirah-receipts.service";
+import { submitSirahEvidence } from "@/services/sirah-receipts.service";
 import { SirahError } from "@/services/sirah-registration.service";
-import { sirahEvidenceSchema } from "@/lib/sirah/validation";
+import { sirahRequiredEvidenceSchema } from "@/lib/sirah/registration-payment";
+import { readSirahMultipart } from "@/lib/sirah/multipart";
 export const runtime = "nodejs";
 export async function POST(
   request: Request,
@@ -18,25 +16,11 @@ export async function POST(
   try {
     checkSirahOrigin(request);
     const user = await sirahUser((await params).id);
-    const reader = request.body?.getReader();
-    if (!reader) throw new SirahError("Missing upload.");
-    let length = 0;
-    const chunks: Uint8Array[] = [];
-    while (true) {
-      const part = await reader.read();
-      if (part.done) break;
-      length += part.value.byteLength;
-      if (length > MAX_SIRAH_RECEIPT_BYTES + 65536) {
-        await reader.cancel();
-        throw new SirahError("The upload exceeds 4 MB.", 413);
-      }
-      chunks.push(part.value);
-    }
-    const body = await new Response(Buffer.concat(chunks), {
-      headers: { "Content-Type": request.headers.get("content-type") || "" },
-    }).formData();
+    const body = await readSirahMultipart(request).catch(() => {
+      throw new SirahError("Upload a JPG, PNG or PDF receipt up to 4 MB.", 413);
+    });
     const input = JSON.parse(String(body.get("details") || "{}"));
-    const parsed = sirahEvidenceSchema.safeParse(input);
+    const parsed = sirahRequiredEvidenceSchema.safeParse(input);
     if (!parsed.success)
       throw new SirahError("Please check the payment-submission fields.");
     const file = body.get("receipt");
@@ -44,6 +28,7 @@ export async function POST(
       file instanceof File && file.size
         ? { data: new Uint8Array(await file.arrayBuffer()), name: file.name }
         : null;
+    if (!content) throw new SirahError("A payment receipt is required.");
     return privateJson(
       await submitSirahEvidence(
         (await params).id,

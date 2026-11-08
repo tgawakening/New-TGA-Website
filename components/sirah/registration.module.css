@@ -874,3 +874,21 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 135px), 1fr));
   }
 }
+
+.manualPayment,
+.manualFields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.experience .manualPayment .notice {
+  margin: 8px 0;
+  padding: 12px;
+}
+.experience .manualFields label {
+  margin: 0;
+}
+.manualFields input[type="file"] {
+  max-width: 100%;
+  font-size: 13px;
+}

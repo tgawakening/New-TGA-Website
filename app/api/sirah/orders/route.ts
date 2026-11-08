@@ -4,7 +4,10 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, attachSessionCookie } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { SIRAH_SLUG } from "@/lib/sirah/catalog";
-import { sirahRegistrationSchema } from "@/lib/sirah/validation";
+import { sirahPaymentRegistrationSchema } from "@/lib/sirah/registration-payment";
+import { readSirahMultipart } from "@/lib/sirah/multipart";
+import { validateSirahReceipt } from "@/services/sirah-receipts.service";
+import type { SirahInitialPayment } from "@/services/sirah-manual-submission.service";
 import {
   registerSirah,
   publicSirahOrder,
@@ -16,6 +19,7 @@ import {
   sirahResponseError,
   privateJson,
 } from "@/lib/sirah/http";
+export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
@@ -24,7 +28,40 @@ export async function POST(request: Request) {
         "Registration setup is being completed. Please enquire on WhatsApp while registration is unavailable.",
         503,
       );
-    const parsed = sirahRegistrationSchema.safeParse(await request.json());
+    const multipart = request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .startsWith("multipart/form-data");
+    const form = multipart
+      ? await readSirahMultipart(request).catch(() => {
+          throw new SirahError(
+            "Upload a JPG, PNG or PDF receipt up to 4 MB.",
+            413,
+          );
+        })
+      : null;
+    let input: unknown;
+    try {
+      input = form
+        ? JSON.parse(String(form.get("details") || "{}"))
+        : await request.json();
+    } catch {
+      throw new SirahError("Please check the registration fields.");
+    }
+    const parsed = sirahPaymentRegistrationSchema.safeParse(input);
+    if (
+      !parsed.success &&
+      input &&
+      typeof input === "object" &&
+      (!("residenceConfirmed" in input) || !("acceptedTermsVersion" in input))
+    )
+      return NextResponse.json(
+        {
+          error:
+            "Registration requirements have changed. Reload this page to choose a payment method and complete the payment details.",
+        },
+        { status: 409 },
+      );
     if (!parsed.success)
       return NextResponse.json(
         {
@@ -33,15 +70,42 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    const payment: SirahInitialPayment = {
+      acceptedTermsVersion: parsed.data.acceptedTermsVersion,
+      accessConsents: {
+        earlyServiceRequested: parsed.data.earlyServiceRequested,
+        digitalContentConsented: parsed.data.digitalContentConsented,
+      },
+    };
+    if (parsed.data.manualPayment) {
+      const file = form?.get("receipt");
+      if (!(file instanceof File) || !file.size)
+        return NextResponse.json(
+          {
+            error: "Upload your payment receipt.",
+            fields: { receipt: ["A payment receipt is required."] },
+          },
+          { status: 400 },
+        );
+      payment.manual = {
+        receipt: await validateSirahReceipt(
+          new Uint8Array(await file.arrayBuffer()),
+          file.name,
+        ),
+        details: parsed.data.manualPayment,
+      };
+    }
     const user = await getCurrentUser();
     if (user && user.status !== "ACTIVE")
       throw new SirahError("Your account is not active.", 403);
-    const result = await registerSirah(parsed.data, user?.id);
+    const result = await registerSirah(parsed.data, user?.id, payment);
     const response = privateJson({
       order: await publicSirahOrder(result.orderId, result.userId),
       message: result.existing
         ? "Your saved course registration already exists. Its current payment and enrolment status are shown below."
-        : "Registration created. Payment is outstanding; enrolment is not yet confirmed.",
+        : payment.manual
+          ? "Transfer evidence received. Enrolment is pending TGA’s receipt verification."
+          : "Details saved. Complete payment to confirm your enrolment.",
     });
     if (!user) await attachSessionCookie(response, result.userId);
     return response;

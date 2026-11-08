@@ -1,6 +1,15 @@
 import { defaultPriceMethod } from "@/lib/sirah/payment-display";
 import "server-only";
-import { publicSirahCohort, cohortAllowsPayment, snapshotSirahCohort } from "./sirah-cohort.service";
+import { sirahAccessConsentsComplete } from "@/lib/sirah/access-consent";
+import {
+  recordInitialSirahEvidence,
+  type SirahInitialPayment,
+} from "./sirah-manual-submission.service";
+import {
+  publicSirahCohort,
+  cohortAllowsPayment,
+  snapshotSirahCohort,
+} from "./sirah-cohort.service";
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
@@ -52,6 +61,7 @@ export async function auditSirah(
 export async function registerSirah(
   input: z.infer<typeof sirahRegistrationSchema>,
   signedInUserId?: string,
+  payment?: SirahInitialPayment,
 ) {
   const phone = normalizeSirahPhone(
     input.phoneCountry,
@@ -78,9 +88,17 @@ export async function registerSirah(
     input.method || defaultPriceMethod(input.countryCode, input.plan),
   );
   const cohort = await publicSirahCohort();
-  const initialTerms = snapshotSirahCohort(termsFor(input.plan, input.countryCode), cohort);
-  if (input.method && !cohortAllowsPayment(termsFor(input.plan, input.countryCode), cohort))
-    throw new SirahError("The first paid teaching date is pending owner confirmation. Save a pending registration without payment.");
+  const initialTerms = snapshotSirahCohort(
+    termsFor(input.plan, input.countryCode),
+    cohort,
+  );
+  if (
+    input.method &&
+    !cohortAllowsPayment(termsFor(input.plan, input.countryCode), cohort)
+  )
+    throw new SirahError(
+      "The first paid teaching date is pending owner confirmation. Contact TGA before registering.",
+    );
   if (
     input.method &&
     !methodAvailable(
@@ -93,6 +111,25 @@ export async function registerSirah(
     throw new SirahError(
       "This payment method is no longer available. Please review the current options.",
     );
+  if (payment) {
+    if (
+      !input.method ||
+      !initialTerms ||
+      payment.acceptedTermsVersion !== initialTerms.version
+    )
+      throw new SirahError(
+        "Review the current payment method and accept its terms.",
+      );
+    if (!sirahAccessConsentsComplete(initialTerms, payment.accessConsents))
+      throw new SirahError(
+        "Please make the required service-start and recording-access choices.",
+      );
+    const manual = ["BANK_TRANSFER", "JAZZCASH"].includes(input.method);
+    if (manual !== Boolean(payment.manual))
+      throw new SirahError(
+        "Manual payments require transfer details and a valid receipt.",
+      );
+  }
   const result = await prisma.$transaction(async (tx) => {
     if (userId) {
       const user = await tx.user.findUniqueOrThrow({
@@ -168,6 +205,9 @@ export async function registerSirah(
         currency: initial.currency,
         amountMinor: initial.amountMinor,
         totalMinor: initial.totalMinor,
+        ...(payment?.manual
+          ? { paymentState: "AWAITING_REVIEW", revision: 1 }
+          : {}),
       },
     });
     await auditSirah(tx, order.id, `student:${userId}`, "REGISTERED", {
@@ -175,7 +215,11 @@ export async function registerSirah(
       phoneCountry: phone.phoneCountry,
       pricingVersion: initial.pricingVersion,
     });
-    await queueSirahNotice(tx, order.id, "REGISTERED", "created");
+    if (payment?.manual && initialTerms) {
+      await recordInitialSirahEvidence(tx, order, initialTerms, payment);
+    } else {
+      await queueSirahNotice(tx, order.id, "REGISTERED", "created");
+    }
     return { userId: userId!, orderId: order.id, existing: false };
   });
   await dispatchSirahNotifications(result.orderId).catch(() => {});
@@ -201,16 +245,21 @@ export async function ownedSirahOrder(orderId: string, userId: string) {
 export async function publicSirahOrder(orderId: string, userId: string) {
   const order = await ownedSirahOrder(orderId, userId);
   const cohort = await publicSirahCohort();
-  const commencementReady = cohortAllowsPayment(termsFor(order.plan as SirahPlan, order.countryCode), cohort);
+  const commencementReady = cohortAllowsPayment(
+    termsFor(order.plan as SirahPlan, order.countryCode),
+    cohort,
+  );
   const methods = (
     ["BANK_TRANSFER", "JAZZCASH", "STRIPE", "PAYPAL"] as SirahMethod[]
-  ).filter((method) =>
-    commencementReady && methodAvailable(
-      method,
-      order.countryCode,
-      order.currency,
-      order.plan as SirahPlan,
-    ),
+  ).filter(
+    (method) =>
+      commencementReady &&
+      methodAvailable(
+        method,
+        order.countryCode,
+        order.currency,
+        order.plan as SirahPlan,
+      ),
   );
   const student = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
@@ -246,7 +295,8 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     hasBillingProfile: !!order.providerSubscriptionId,
     receipts: order.receipts,
     terms:
-      (order.terms as SirahTerms | null) || termsFor(order.plan as SirahPlan, order.countryCode),
+      (order.terms as SirahTerms | null) ||
+      termsFor(order.plan as SirahPlan, order.countryCode),
     manualEvidenceAllowed:
       ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "") &&
       !!order.terms,
@@ -254,7 +304,7 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     manualAccounts:
       order.countryCode === "PK" &&
       methods.some((m) => ["BANK_TRANSFER", "JAZZCASH"].includes(m))
-        ? manualAccounts().filter(account => methods.includes(account.method))
+        ? manualAccounts().filter((account) => methods.includes(account.method))
         : [],
     paymentSupportUrl: PAYMENT_SUPPORT_URL,
     // Deliberately no course-group URL. The confirmed endpoint checks entitlement.
@@ -274,9 +324,14 @@ export async function repriceSirah(
     method || defaultPriceMethod(countryCode, plan),
   );
   const cohort = await publicSirahCohort();
-  const selectedTerms = snapshotSirahCohort(termsFor(plan, countryCode), cohort);
+  const selectedTerms = snapshotSirahCohort(
+    termsFor(plan, countryCode),
+    cohort,
+  );
   if (method && !cohortAllowsPayment(termsFor(plan, countryCode), cohort))
-    throw new SirahError("The first paid teaching date is pending owner confirmation. Payment remains closed.");
+    throw new SirahError(
+      "The first paid teaching date is pending owner confirmation. Payment remains closed.",
+    );
   if (
     method &&
     !methodAvailable(method, countryCode, price.currency, plan, {

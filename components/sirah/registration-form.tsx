@@ -21,6 +21,7 @@ import {
 } from "libphonenumber-js/max";
 import {
   formatSirahMoney,
+  minorToDecimal,
   type SirahPlan,
   type SirahMethod,
 } from "@/lib/sirah/catalog";
@@ -29,6 +30,8 @@ import { ConsultationAction } from "@/components/seerah/consultation-action";
 import { PasswordFields } from "./password-fields";
 import { AnnualPriceSummary } from "./annual-price-summary";
 import { PaymentMethods } from "./payment-methods";
+import { ManualPaymentFields } from "./manual-payment-fields";
+import { sirahManualSenderSchema } from "@/lib/sirah/registration-payment";
 import { priceFor } from "@/lib/sirah/catalog";
 import { PhoneControl } from "./phone-control";
 export type RegistrationControls = {
@@ -150,9 +153,8 @@ function Terms({
       {(order.terms.earlyServiceRequestText ||
         order.terms.digitalContentConsentText) && (
         <small>
-          To arrange a later start, save without a payment method and contact
-          TGA before paying. Your statutory rights and course-start refund
-          protection are unchanged.
+          Contact TGA before paying if you need a later start. Your statutory
+          rights and course-start refund protection are unchanged.
         </small>
       )}
       <label className={styles.check}>
@@ -166,8 +168,8 @@ function Terms({
     </div>
   ) : (
     <p className={styles.notice}>
-      Payment methods will open after their payment, cancellation, refund and
-      access terms are approved. Your registration can still be recorded.
+      Payment is not available for this selection. Contact TGA before
+      registering.
     </p>
   );
 }
@@ -193,7 +195,6 @@ export function SirahRegistrationForm({
         : suggestedResidence) as CountryCode,
     ),
   );
-  const [deferPayment, setDeferPayment] = useState(false);
   const [manualConfirmed, setManualConfirmed] = useState(false);
   const [passwordForManager, setPasswordForManager] = useState("");
   const [user, setUser] = useState<User | null>(null);
@@ -256,8 +257,8 @@ export function SirahRegistrationForm({
   const [accessConsents, setAccessConsents] = useState<SirahAccessConsents>({});
   useEffect(() => {
     setAccessConsents({});
+    setManualConfirmed(false);
   }, [order?.id, order?.terms?.version, billing, plan, selectedMethod]);
-  const [evidenceRoute, setEvidenceRoute] = useState("UPLOAD");
   const [invitation, setInvitation] = useState<{
     message: string;
     groupUrl: string | null;
@@ -332,20 +333,12 @@ export function SirahRegistrationForm({
       .then((result) => {
         if (!controller.signal.aborted) {
           setQuoteError("");
-          if (
-            (!selectedMethod || !result.methods?.includes(selectedMethod)) &&
-            !deferPayment
-          ) {
+          if (!selectedMethod || !result.methods?.includes(selectedMethod)) {
             setSelectedMethod(
               result.methods?.includes("STRIPE")
                 ? "STRIPE"
                 : result.methods?.[0] || "",
             );
-          } else if (
-            selectedMethod &&
-            !result.methods?.includes(selectedMethod)
-          ) {
-            setSelectedMethod("");
           }
           setQuote({
             country: billing,
@@ -366,7 +359,7 @@ export function SirahRegistrationForm({
         if (!controller.signal.aborted) setQuoteError(cause.message);
       });
     return () => controller.abort();
-  }, [ready, order, billing, plan, selectedMethod, deferPayment]);
+  }, [ready, order, billing, plan, selectedMethod]);
   useEffect(() => {
     if (!ready || order) return;
     try {
@@ -381,7 +374,6 @@ export function SirahRegistrationForm({
           plan,
           billingEdited,
           residenceOverride,
-          deferPayment,
           selectedMethod,
         }),
       );
@@ -397,7 +389,6 @@ export function SirahRegistrationForm({
     plan,
     billingEdited,
     residenceOverride,
-    deferPayment,
     selectedMethod,
   ]);
   function fieldError(key: string) {
@@ -455,7 +446,6 @@ export function SirahRegistrationForm({
               setResidenceOverride(true);
               setBilling(saved.billing);
             }
-            if (saved.deferPayment === true) setDeferPayment(true);
             if (
               !initialCountry &&
               !requireBillingCountry &&
@@ -651,8 +641,47 @@ export function SirahRegistrationForm({
       });
       return;
     }
+    if (!selectedMethod) {
+      setFields({ method: ["Choose an available payment method."] });
+      return;
+    }
+    if (
+      !quote?.terms ||
+      quote.country !== billing ||
+      quote.plan !== plan ||
+      quote.method !== selectedMethod ||
+      !accepted ||
+      !sirahAccessConsentsComplete(quote.terms, accessConsents)
+    ) {
+      setError(
+        "Review your selected fee and accept the required payment and access choices.",
+      );
+      return;
+    }
+    const manual = ["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod);
+    if (manual && !manualConfirmed) {
+      setError("Confirm the manual payment amount.");
+      return;
+    }
     saveResidence(billing);
     const data = new FormData(event.currentTarget);
+    const manualResult = manual
+      ? sirahManualSenderSchema.safeParse({
+          payerName: data.get("payerName"),
+          senderAccount: data.get("senderAccount"),
+          transactionReference: data.get("transactionReference"),
+          paymentDate: data.get("paymentDate"),
+        })
+      : null;
+    if (manualResult && !manualResult.success) {
+      setFields(manualResult.error.flatten().fieldErrors);
+      return;
+    }
+    const receipt = data.get("receipt");
+    if (manual && (!(receipt instanceof File) || !receipt.size)) {
+      setFields({ receipt: ["Upload your payment receipt."] });
+      return;
+    }
     requestKey.current ||= crypto.randomUUID();
     const input = {
       fullName: name,
@@ -685,10 +714,23 @@ export function SirahRegistrationForm({
     setFields({});
     setPhoneError("");
     await run(async () => {
-      const result = await api("/api/sirah/orders", {
-        method: "POST",
-        body: JSON.stringify(parsed.data),
-      });
+      const details = {
+        ...parsed.data,
+        residenceConfirmed: true,
+        acceptedTermsVersion: quote.terms!.version,
+        ...accessConsents,
+        ...(manualResult?.success
+          ? { manualPayment: manualResult.data, manualAmountConfirmed: true }
+          : {}),
+      };
+      let body: string | FormData = JSON.stringify(details);
+      if (manual && receipt instanceof File) {
+        const multipart = new FormData();
+        multipart.set("details", JSON.stringify(details));
+        multipart.set("receipt", receipt);
+        body = multipart;
+      }
+      const result = await api("/api/sirah/orders", { method: "POST", body });
       try {
         sessionStorage.removeItem(draftKey);
       } catch {}
@@ -905,8 +947,9 @@ export function SirahRegistrationForm({
       const details = {
         revision: order.revision,
         method: order.method,
-        route: evidenceRoute,
+        route: "UPLOAD",
         payerName: data.get("payerName"),
+        senderAccount: data.get("senderAccount"),
         transactionReference: data.get("transactionReference") || undefined,
         paymentDate: data.get("paymentDate") || undefined,
         amount: data.get("amount") || undefined,
@@ -1263,12 +1306,6 @@ export function SirahRegistrationForm({
                 }
                 onChange={(method) => {
                   setSelectedMethod(method);
-                  setDeferPayment(false);
-                  setAccepted(false);
-                }}
-                onDefer={() => {
-                  setSelectedMethod("");
-                  setDeferPayment(true);
                   setAccepted(false);
                 }}
               />
@@ -1283,17 +1320,66 @@ export function SirahRegistrationForm({
                 quote?.plan === plan &&
                 !quote.methods.length && (
                   <p>
-                    You can save your registration and complete payment later;
-                    no payment will be taken.
+                    Registration cannot be submitted until an approved payment
+                    method is available for this country and plan. Contact TGA
+                    for help.
                   </p>
                 )}
-              {["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) && (
-                <p>
-                  Transfer instructions and your payment reference follow after
-                  saving. Upload your receipt there; enrolment stays pending
-                  until TGA verifies receipt.
-                </p>
-              )}
+              {errorText("method")}
+              {["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) &&
+                quote?.country === billing &&
+                quote.plan === plan &&
+                quote.method === selectedMethod && (
+                  <div className={styles.manualPayment}>
+                    {quote.manualAccounts
+                      .filter((account) => account.method === selectedMethod)
+                      .map((account) => (
+                        <div className={styles.notice} key={account.method}>
+                          <strong>{account.service}</strong>
+                          <p>
+                            Account holder: <strong>{account.holder}</strong>
+                            <br />
+                            Account number: <strong>{account.account}</strong>
+                            {account.iban && (
+                              <>
+                                <br />
+                                IBAN: <strong>{account.iban}</strong>
+                              </>
+                            )}
+                          </p>
+                          <p>
+                            Transfer{" "}
+                            {formatSirahMoney(
+                              quote.amountMinor,
+                              quote.currency,
+                            )}
+                            . Include SIRAH BEYOND CHRONOLOGY and your full name
+                            in the payment remarks.
+                          </p>
+                        </div>
+                      ))}
+                    <ManualPaymentFields
+                      payerName={name}
+                      amount={minorToDecimal(quote.amountMinor, quote.currency)}
+                      errors={fields}
+                    />
+                    <label className={styles.residenceConfirmation}>
+                      <span>
+                        <input
+                          type="checkbox"
+                          required
+                          checked={manualConfirmed}
+                          onChange={(event) =>
+                            setManualConfirmed(event.target.checked)
+                          }
+                        />
+                        I confirm the manual payment amount of{" "}
+                        {formatSirahMoney(quote.amountMinor, quote.currency)}
+                        {plan === "MONTHLY" ? " per month" : " upfront"}.
+                      </span>
+                    </label>
+                  </div>
+                )}
               {selectedMethod &&
                 quote?.country === billing &&
                 quote?.plan === plan && (
@@ -1312,32 +1398,43 @@ export function SirahRegistrationForm({
               disabled={
                 busy ||
                 !ready ||
-                Boolean(
-                  selectedMethod &&
-                  (!accepted ||
-                    !sirahAccessConsentsComplete(
-                      quote?.terms || null,
-                      accessConsents,
-                    ) ||
-                    quote?.country !== billing ||
-                    quote?.plan !== plan ||
-                    quote?.method !== selectedMethod),
-                )
+                !selectedMethod ||
+                !residenceConfirmed ||
+                !accepted ||
+                !sirahAccessConsentsComplete(
+                  quote?.terms || null,
+                  accessConsents,
+                ) ||
+                quote?.country !== billing ||
+                quote?.plan !== plan ||
+                quote?.method !== selectedMethod ||
+                (["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) &&
+                  !manualConfirmed)
               }
             >
               {busy
-                ? "Creating your registration…"
-                : selectedMethod &&
-                    ["STRIPE", "PAYPAL"].includes(selectedMethod)
-                  ? "Save registration & continue to payment"
-                  : "Save registration & continue"}
+                ? "Submitting registration & payment…"
+                : !selectedMethod
+                  ? "Choose an available payment method"
+                  : ["STRIPE", "PAYPAL"].includes(selectedMethod)
+                    ? "Continue to secure payment"
+                    : "Submit registration & transfer receipt"}
             </button>
           </form>
         </>
       ) : (
         <section aria-label="Your course registration">
           <p>
-            <strong>Registration saved · {order.reference}</strong>
+            <strong>
+              {order.paymentState === "AWAITING_REVIEW"
+                ? "Transfer submitted for verification"
+                : ["UNPAID", "PROCESSING", "FAILED", "REJECTED"].includes(
+                      order.paymentState,
+                    ) && ["PENDING", "ACTIVE"].includes(order.enrolmentState)
+                  ? "Payment required"
+                  : "Your registration"}{" "}
+              · {order.reference}
+            </strong>
           </p>
           <div className={styles.status}>
             <p>
@@ -1823,62 +1920,13 @@ export function SirahRegistrationForm({
                         Payment support on WhatsApp ↗
                       </a>
                       <form onSubmit={submitEvidence} className={styles.form}>
-                        <label>
-                          Submission route
-                          <select
-                            aria-label="Submission route"
-                            value={evidenceRoute}
-                            onChange={(event) =>
-                              setEvidenceRoute(event.target.value)
-                            }
-                          >
-                            <option value="UPLOAD">
-                              Upload a private receipt
-                            </option>
-                            <option value="WHATSAPP">
-                              I will send / have sent the screenshot on WhatsApp
-                            </option>
-                          </select>
-                        </label>
-                        {evidenceRoute === "UPLOAD" && (
-                          <label>
-                            Receipt (JPG, PNG or PDF, up to 4 MB)
-                            <input
-                              type="file"
-                              name="receipt"
-                              accept="image/jpeg,image/png,application/pdf"
-                              required
-                            />
-                          </label>
-                        )}
-                        <label>
-                          Payer name, if available
-                          <input
-                            name="payerName"
-                            defaultValue={user?.fullName || name}
-                            required
-                            minLength={2}
-                            maxLength={120}
-                          />
-                        </label>
-                        <div className={styles.grid}>
-                          <label>
-                            Payment date, if available
-                            <input type="date" name="paymentDate" />
-                          </label>
-                          <label>
-                            Amount sent, if available
-                            <input
-                              name="amount"
-                              inputMode="decimal"
-                              pattern="[0-9]+([.][0-9]{1,3})?"
-                            />
-                          </label>
-                        </div>
-                        <label>
-                          Transaction reference, if available
-                          <input name="transactionReference" maxLength={120} />
-                        </label>
+                        <ManualPaymentFields
+                          payerName={user?.fullName || name}
+                          amount={minorToDecimal(
+                            order.amountMinor,
+                            order.currency,
+                          )}
+                        />
                         <label>
                           Notes, if needed
                           <textarea name="note" maxLength={1500} />
