@@ -50,7 +50,7 @@ async function main() {
       if (issue || verified.id !== planId) throw Error(issue || "Created plan identity mismatch.");
       existing.push(verified);
     }
-    results.push({ currency: quote.currency, amount: paypalDecimal(quote.amountMinor, quote.currency), planId: planId || null, status: planId ? "ACTIVE_COMPATIBLE" : "MISSING_COMPATIBLE_PLAN", action: matched ? "REUSE" : planId ? "CREATED" : "NO_CHANGE", configurationKey: `SIRAH_PAYPAL_MONTHLY_PLAN_${quote.currency}`, websiteEnabled: false, settlementVerified: false });
+    results.push({ currency: quote.currency, amount: paypalDecimal(quote.amountMinor, quote.currency), planId: planId || null, status: planId ? "ACTIVE_COMPATIBLE" : "MISSING_COMPATIBLE_PLAN", action: matched ? "REUSE" : planId ? "CREATED" : "NO_CHANGE", configurationKey: market === "GB" ? `SIRAH_PAYPAL_MONTHLY_PLAN_GB_${quote.currency}` : `SIRAH_PAYPAL_MONTHLY_PLAN_${quote.currency}`, websiteEnabled: false, settlementVerified: false });
   }
   console.log(JSON.stringify({ mode: apply ? "apply" : "inspect", productId, results }, null, 2));
 }

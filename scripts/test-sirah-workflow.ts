@@ -1346,7 +1346,7 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
     );
     assert.equal(
       captured!.line_items![0].price_data!.unit_amount,
-      plan === "MONTHLY" ? 2999 : 32389,
+      plan === "MONTHLY" ? 2499 : 32389,
     );
     assert.equal(
       captured!.line_items![0].price_data!.recurring?.interval,
@@ -1614,7 +1614,7 @@ test("PayPal reuses only a fully matching Sīrah plan and leaves incompatible pr
         total_cycles: 12,
         frequency: { interval_unit: "MONTH", interval_count: 1 },
         pricing_scheme: {
-          fixed_price: { currency_code: "GBP", value: "29.99" },
+          fixed_price: { currency_code: "GBP", value: "24.99" },
         },
       },
     ],
@@ -1991,7 +1991,7 @@ async function voluntaryPaypalOrder() {
     eventId: "paypal:sale:first",
     provider: "PAYPAL",
     currency: "GBP",
-    amountMinor: 2999,
+    amountMinor: 2499,
     actor: "provider:test",
   });
   return {
@@ -2160,7 +2160,7 @@ test("failed renewals have a non-extending seven-day grace and recover only afte
     eventId: "paypal:sale:renewal",
     provider: "PAYPAL" as const,
     currency: "GBP",
-    amountMinor: 2999,
+    amountMinor: 2499,
     actor: "provider:test",
   };
   await confirmSirahPayment(payment);
@@ -2555,7 +2555,7 @@ test("PayPal failed-subscription recovery reuses the approved plan, verifies act
         total_cycles: 12,
         frequency: { interval_unit: "MONTH", interval_count: 1 },
         pricing_scheme: {
-          fixed_price: { currency_code: "GBP", value: "29.99" },
+          fixed_price: { currency_code: "GBP", value: "24.99" },
         },
       },
     ],
@@ -3477,4 +3477,35 @@ test("Pakistan-only approved terms cannot approve unrelated online routes even w
     process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify({ ...terms, approvedRoutes });
     assert.equal(methodAvailable("BANK_TRANSFER", "PK", "PKR", "ANNUAL"), false);
   }
+});
+
+
+test("withdrawn PayPal verification cannot capture an approved order, but real prior settlement is reconciled", async () => {
+  enableManual();
+  Object.assign(process.env, {
+    PAYPAL_ENV: "sandbox", PAYPAL_CLIENT_ID: "synthetic", PAYPAL_CLIENT_SECRET: "synthetic",
+    SIRAH_PAYPAL_MERCHANT_ID: "MERCHANT_TEST", SIRAH_PAYPAL_WEBHOOK_ID: "WH_TEST",
+    SIRAH_PAYPAL_ANNUAL_CURRENCIES: "GBP",
+  });
+  const result = await create("GB", "ANNUAL");
+  await repriceSirah(result.orderId, result.userId, 0, "GB", "ANNUAL", "PAYPAL");
+  await prisma.sirahOrder.update({where: {id:result.orderId},data:{providerOrderId:"ORDER_WITHDRAWN",checkoutToken:"withdrawn-token",paymentState:"PROCESSING",cancelledAt:new Date(),enrolmentState:"CANCELLED"}});
+  let settled = false;
+  let captures = 0;
+  global.fetch = async (raw) => {
+    const url = String(raw);
+    if (url.endsWith("/oauth2/token")) return Response.json({access_token:"synthetic"});
+    if (url.endsWith("/capture")) { captures++; throw Error("No capture may be initiated"); }
+    return Response.json({status:settled?"COMPLETED":"APPROVED",purchase_units:[{custom_id:result.orderId,payee:{merchant_id:"MERCHANT_TEST"},amount:{currency_code:"GBP",value:"323.89"},...(settled?{payments:{captures:[{id:"CAPTURE_PRIOR",status:"COMPLETED",amount:{currency_code:"GBP",value:"323.89"}}]}}:{})}]});
+  };
+  await assert.rejects(()=>verifySirahPaypal(result.orderId,"ORDER_WITHDRAWN",true),/withdrawn/);
+  assert.equal(captures,0);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({where:{id:result.orderId}})).paidMinor,0);
+  settled=true;
+  await verifySirahPaypal(result.orderId,"ORDER_WITHDRAWN",true);
+  const after=await prisma.sirahOrder.findUniqueOrThrow({where:{id:result.orderId}});
+  assert.equal(captures,0);
+  assert.equal(after.paidMinor,32389);
+  assert.equal(after.enrolmentState,"CANCELLED");
+  assert.equal(canAccessSirah(after),false);
 });
