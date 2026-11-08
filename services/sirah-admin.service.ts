@@ -324,7 +324,7 @@ export async function actOnSirahOrder(
   actor: string,
 ) {
   const order = await prisma.sirahOrder.findUnique({
-    where: { id: input.orderId },
+    where: { id: input.orderId, course: { slug: SIRAH_SLUG } },
     include: { events: { where: { kind: { in: ["FIRST", "RENEWAL"] } } } },
   });
   if (!order) throw new SirahError("Registration not found.", 404);

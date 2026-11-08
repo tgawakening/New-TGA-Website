@@ -14,15 +14,54 @@ type Student = Snapshot["rows"][number];
 const paymentStates = ["UNPAID", "PROCESSING", "AWAITING_REVIEW", "PAID", "REJECTED", "FAILED", "REFUND_PENDING", "REFUNDED"];
 const enrolmentStates = ["PENDING", "ACTIVE", "CANCELLED", "COMPLETED"];
 const actionLabels = {
-  APPROVE: "Approve verified manual transfer",
-  REJECT: "Reject manual evidence",
-  CANCEL: "Cancel enrolment / provider billing",
-  COMPLETE: "Mark course completed",
+  APPROVE: "Approve",
+  REJECT: "Reject",
+  CANCEL: "Cancel",
+  COMPLETE: "Complete",
   RECONCILE_PROVIDER: "Reconcile provider checkout",
   REFUND: "Issue / record verified refund",
   RETRY_NOTIFICATIONS: "Retry email delivery",
 };
 type Action = keyof typeof actionLabels;
+
+const actionResults: Record<Action, string> = {
+  APPROVE: "Verified payment recorded.",
+  REJECT: "Payment evidence rejected.",
+  CANCEL: "Cancellation recorded. Check the access end date for any remaining paid access.",
+  COMPLETE: "Enrolment marked complete.",
+  RECONCILE_PROVIDER: "Provider status checked. See payment status below.",
+  REFUND: "Refund recorded.",
+  RETRY_NOTIFICATIONS: "Email delivery checked. See delivery history.",
+};
+
+function availableActions(student: Student): Action[] {
+  const manual = student.method === "BANK_TRANSFER" || student.method === "JAZZCASH";
+  const online = student.method === "STRIPE" || student.method === "PAYPAL";
+  const review = manual && student.paymentState === "AWAITING_REVIEW";
+  const actions: Action[] = [];
+  if (review || (manual && student.enrolmentState === "CANCELLED" && !student.paidCount))
+    actions.push("APPROVE");
+  if (review) actions.push("REJECT");
+  if (!student.cancelledAt && (
+    ["PENDING", "ACTIVE"].includes(student.enrolmentState) ||
+    (student.enrolmentState === "COMPLETED" && student.nextBillingAt)
+  )) actions.push("CANCEL");
+  if (!student.cancelledAt && student.paymentState === "PAID" && student.enrolmentState === "ACTIVE")
+    actions.push("COMPLETE");
+  if (online && student.paymentState === "PROCESSING") actions.push("RECONCILE_PROVIDER");
+  if (student.paidMinor > student.refundedMinor &&
+    (manual || (online && student.events.some((entry) => ["FIRST", "RENEWAL"].includes(entry.kind)))))
+    actions.push("REFUND");
+  if (student.notifications.some((entry) => ["PENDING", "FAILED"].includes(entry.state)))
+    actions.push("RETRY_NOTIFICATIONS");
+  return actions;
+}
+
+function actionClass(action: Action) {
+  if (action === "APPROVE" || action === "COMPLETE") return "ga-admin-primary-btn";
+  if (action === "REJECT" || action === "CANCEL" || action === "REFUND") return "ga-admin-outline-btn is-danger";
+  return "ga-admin-outline-btn";
+}
 
 function label(value: string) {
   if (value === "BANK_TRANSFER") return "Bank transfer";
@@ -70,6 +109,7 @@ export function SirahAdminStudents({
   const [selected, setSelected] = useState<Student | null>(null);
   const [detailStale, setDetailStale] = useState(false);
   const selectedId = selected?.id;
+  const actions = selected ? availableActions(selected) : [];
   const [action, setAction] = useState<Action | "">("");
   const dialog = useRef<HTMLDialogElement>(null);
   const query = new URLSearchParams({ q, payment, enrolment, page: String(page) }).toString();
@@ -109,10 +149,13 @@ export function SirahAdminStudents({
 
   async function act(event: FormEvent<HTMLFormElement>, student: Student) {
     event.preventDefault();
-    if (!action || busy) return;
+    if (!action || busy || detailStale || !availableActions(student).includes(action)) return;
     const form = new FormData(event.currentTarget);
     const field = (name: string) => String(form.get(name) || "").trim() || undefined;
-    if (!window.confirm(`${actionLabels[action]} for ${student.user.fullName}?`)) return;
+    const confirmation = action === "REFUND" && ["STRIPE", "PAYPAL"].includes(student.method ?? "")
+      ? `Issue a refund of ${field("currency")} ${field("verifiedAmount")} for ${student.user.fullName}?`
+      : `${actionLabels[action]} for ${student.user.fullName}?`;
+    if (!window.confirm(confirmation)) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -137,7 +180,7 @@ export function SirahAdminStudents({
       const result = await response.json();
       if (!response.ok) throw Error(result.error || "Action failed.");
       setRefreshBell((key) => key + 1);
-      setMessage(result.duplicate ? "This payment was already recorded." : "Action recorded.");
+      setMessage(result.duplicate ? "This payment was already recorded." : actionResults[action]);
       setAction("");
       // Fetch the open registration separately so a status change does not
       // remove its detail dialog when the list has a status filter applied.
@@ -224,20 +267,23 @@ export function SirahAdminStudents({
           <>
             <p className={styles.resultCount}>{data.total} registrations · Page {data.page}</p>
             <div className="ga-admin-data-table">
-              <div className="ga-admin-table-head ga-admin-table-head-students" aria-hidden="true">
-                <span>Student</span><span>Plan</span><span>Payment</span><span>Enrolment</span><span>Actions</span>
+              <div className="ga-admin-table-head" aria-hidden="true">
+                <span>Order</span><span>Customer</span><span>Amount</span><span>Payment</span>
+                <span>Status</span><span>Date</span><span>Actions</span>
               </div>
               {data.rows.map((student) => (
-                <article key={student.id} className={`ga-admin-table-row ga-admin-table-row-students ${styles.row}`}>
-                  <div><strong>{student.user.fullName}</strong><p>{student.user.email}</p><p>{student.countryName}</p></div>
-                  <div><strong>{label(student.plan)}</strong><p>{formatSirahMoney(student.amountMinor, student.currency)}</p></div>
-                  <div><Status value={student.paymentState} /><p>{student.method ? label(student.method) : "No method selected"}</p></div>
-                  <div><Status value={student.enrolmentState} /></div>
-                  <div className="ga-admin-actions ga-admin-actions-inline">
-                    <button type="button" className="ga-admin-outline-btn" onClick={() => open(student)}>View details</button>
-                    {student.paymentState === "AWAITING_REVIEW" && ["BANK_TRANSFER", "JAZZCASH"].includes(student.method ?? "") && (
-                      <button type="button" className="ga-admin-primary-btn" onClick={() => open(student, "APPROVE")}>Review payment</button>
-                    )}
+                <article key={student.id} className={`ga-admin-table-row ${styles.row}`}>
+                  <div><span className="ga-admin-pill">Sīrah</span><strong>{student.reference}</strong><p>Beyond Chronology</p></div>
+                  <div><strong>{student.user.fullName}</strong><p>{student.user.email}</p><p>{student.phoneE164}</p></div>
+                  <div><strong>{formatSirahMoney(student.amountMinor, student.currency)}</strong><p>{student.countryName}</p></div>
+                  <div><strong>{student.method ? label(student.method) : "No method selected"}</strong><p>{label(student.plan)}</p><Status value={student.paymentState} /></div>
+                  <div><Status value={student.enrolmentState} />{student.cancelledAt && student.enrolmentState === "ACTIVE" && <p>Cancellation scheduled</p>}</div>
+                  <div><strong>{date(student.createdAt)}</strong></div>
+                  <div className="ga-admin-actions">
+                    <button type="button" className="ga-admin-outline-btn" onClick={() => open(student)}>View Details</button>
+                    {availableActions(student).filter((option) => ["APPROVE", "REJECT", "CANCEL", "COMPLETE"].includes(option)).map((option) => (
+                      <button key={option} type="button" className={actionClass(option)} onClick={() => open(student, option)}>{actionLabels[option]}</button>
+                    ))}
                   </div>
                 </article>
               ))}
@@ -263,40 +309,50 @@ export function SirahAdminStudents({
               <div><p className="ga-admin-kicker">Registration details</p><h3 id="sirah-student-title">{selected.user.fullName}</h3></div>
               <button type="button" className="ga-admin-notification-close" disabled={busy} onClick={() => dialog.current?.close()}>Close</button>
             </div>
-            <div className="ga-admin-modal-grid">
-              <p><strong>Email:</strong> {selected.user.email}</p>
-              <p><strong>Phone:</strong> {selected.phoneE164}</p>
-              <p><strong>Country:</strong> {selected.countryName}</p>
-              <p><strong>Registered:</strong> {date(selected.createdAt)}</p>
-              <p><strong>Reference:</strong> {selected.reference}</p>
-              <p><strong>Batch:</strong> {selected.batchCode}</p>
-              <p><strong>Payment:</strong> <Status value={selected.paymentState} /></p>
-              <p><strong>Enrolment:</strong> <Status value={selected.enrolmentState} /></p>
-              <p><strong>Plan:</strong> {label(selected.plan)} · {selected.method ? label(selected.method) : "No method selected"}</p>
-              <p><strong>Expected:</strong> {formatSirahMoney(selected.amountMinor, selected.currency)}</p>
-              <p><strong>Paid:</strong> {formatSirahMoney(selected.paidMinor, selected.currency)} ({selected.paidCount})</p>
-              <p><strong>Refunded:</strong> {formatSirahMoney(selected.refundedMinor, selected.currency)}</p>
-              <p><strong>Next billing:</strong> {date(selected.nextBillingAt)}</p>
-              <p><strong>Programme end:</strong> {date(selected.programmeEnd)}</p>
-              {selected.cancelledAt && <p><strong>Cancellation recorded:</strong> {date(selected.cancelledAt)}</p>}
-              {selected.accessEndsAt && <p><strong>Access ends:</strong> {date(selected.accessEndsAt)}</p>}
-              <p><strong>Pricing version:</strong> {selected.pricingVersion}</p>
-            </div>
+            <section className="ga-admin-modal-section">
+              <h4>Student information</h4>
+              <div className="ga-admin-modal-grid">
+                <p><strong>Email:</strong> {selected.user.email}</p>
+                <p><strong>Phone:</strong> {selected.phoneE164}</p>
+                <p><strong>Country:</strong> {selected.countryName}</p>
+                <p><strong>Registered:</strong> {date(selected.createdAt)}</p>
+                <p><strong>Reference:</strong> {selected.reference}</p>
+                <p><strong>Batch:</strong> {selected.batchCode}</p>
+              </div>
+            </section>
+            <section className="ga-admin-modal-section">
+              <h4>Payment and enrolment</h4>
+              <div className="ga-admin-modal-grid">
+                <p><strong>Payment:</strong> <Status value={selected.paymentState} /></p>
+                <p><strong>Enrolment:</strong> <Status value={selected.enrolmentState} /></p>
+                <p><strong>Plan:</strong> {label(selected.plan)} · {selected.method ? label(selected.method) : "No method selected"}</p>
+                <p><strong>Expected:</strong> {formatSirahMoney(selected.amountMinor, selected.currency)}</p>
+                <p><strong>Paid:</strong> {formatSirahMoney(selected.paidMinor, selected.currency)} ({selected.paidCount})</p>
+                <p><strong>Refunded:</strong> {formatSirahMoney(selected.refundedMinor, selected.currency)}</p>
+                <p><strong>Next billing:</strong> {date(selected.nextBillingAt)}</p>
+                <p><strong>Programme end:</strong> {date(selected.programmeEnd)}</p>
+                {selected.cancelledAt && <p><strong>Cancellation recorded:</strong> {date(selected.cancelledAt)}</p>}
+                {selected.accessEndsAt && <p><strong>Access ends:</strong> {date(selected.accessEndsAt)}</p>}
+                <p><strong>Pricing version:</strong> {selected.pricingVersion}</p>
+              </div>
+            </section>
 
             <section className="ga-admin-modal-section">
               <h4>Admin actions</h4>
+              <div className="ga-admin-actions ga-admin-actions-inline">
+                {actions.map((option) => (
+                  <button key={option} type="button" className={actionClass(option)}
+                    aria-pressed={action === option} disabled={busy || detailStale}
+                    onClick={() => {
+                      setAction(action === option ? "" : option);
+                      setError("");
+                      setMessage("");
+                    }}>{actionLabels[option]}</button>
+                ))}
+                {!actions.length && <p>No actions available for this status.</p>}
+              </div>
               <form className={styles.form} onSubmit={(event) => void act(event, selected)}>
-                <label>Action
-                  <select value={action} onChange={(event) => {
-                    setAction(event.target.value as Action | "");
-                    setError("");
-                    setMessage("");
-                  }} disabled={busy || detailStale}>
-                    <option value="">Choose an action</option>
-                    {Object.entries(actionLabels).map(([value, title]) => <option key={value} value={value}>{title}</option>)}
-                  </select>
-                </label>
-                {action && (
+                {action && actions.includes(action) && (
                   <fieldset key={action} disabled={busy} className={styles.form}>
                     <legend className="sr-only">{actionLabels[action]}</legend>
                     {(action === "APPROVE" || action === "REFUND") && (
@@ -322,9 +378,11 @@ export function SirahAdminStudents({
                       </label>
                     ) : <label>Manual refund reference<input name="refundReference" required maxLength={150} /></label>)}
                     {action === "RECONCILE_PROVIDER" && <label>Provider checkout / subscription reference<input name="providerReference" required maxLength={200} /></label>}
-                    {action === "COMPLETE" && <p>Completion updates the enrolment status. Payment status stays as recorded.</p>}
+                    {action === "COMPLETE" && <p>Completion updates enrolment only. Use Cancel to stop future billing.</p>}
+                    {action === "CANCEL" && <p>Cancellation follows the agreed billing and access terms. Refunds are handled separately.</p>}
+                    {action === "APPROVE" && selected.enrolmentState === "CANCELLED" && <p>Record this transfer only if it settled. This does not reopen the enrolment.</p>}
                     {action !== "RETRY_NOTIFICATIONS" && <label>Reason / review note<textarea name="note" maxLength={1500} required={["REJECT", "CANCEL", "REFUND", "RECONCILE_PROVIDER"].includes(action) || (action === "APPROVE" && selected.enrolmentState === "CANCELLED")} /></label>}
-                    <button type="submit" className="ga-admin-primary-btn">{busy ? "Saving…" : actionLabels[action]}</button>
+                    <button type="submit" className={actionClass(action)}>{busy ? "Saving…" : `Confirm ${actionLabels[action].toLowerCase()}`}</button>
                   </fieldset>
                 )}
                 {error && <p className="ga-admin-error-banner" role="alert">{error}</p>}

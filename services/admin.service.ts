@@ -478,10 +478,11 @@ async function getGenMuminOverview() {
 
 export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapshot> {
   const currentSchema = await sirahSchemaAvailable();
+  const legacy = currentSchema ? { sirahOrder: null } : {};
   const [registrations, users, applications, missionSupport, genMumin] =
     await Promise.all([
       prisma.registration.findMany({
-        where: currentSchema ? { sirahOrder: null } : {},
+        where: legacy,
         include: {
           user: true,
           course: true,
@@ -496,15 +497,23 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
         orderBy: { createdAt: "desc" },
       }),
       prisma.user.findMany({
-        where: { role: "STUDENT" },
+        where: {
+          role: "STUDENT",
+          ...(currentSchema ? {
+            OR: [
+              { sirahOrders: { none: {} } },
+              { registrations: { some: legacy } },
+            ],
+          } : {}),
+        },
         include: {
           studentProfile: true,
           registrations: {
-            where: currentSchema ? { sirahOrder: null } : {},
+            where: legacy,
             include: { payment: true, course: true },
             orderBy: { createdAt: "desc" },
           },
-          enrollments: true,
+          enrollments: { where: { registration: legacy } },
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -793,7 +802,8 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
 const sirahNotificationTitles: Record<string, string> = {
   REGISTERED: "New Sīrah registration",
   CONFIRMED: "New Sīrah enrolment",
-  PAYMENT_VERIFIED: "Sīrah manual payment approved",
+  PAYMENT_VERIFIED: "Sīrah payment verified",
+  EVIDENCE_SUBMITTED: "Sīrah payment evidence submitted",
   CANCELLED: "Sīrah cancellation recorded",
   COMPLETED: "Sīrah course marked complete",
 };
@@ -808,9 +818,9 @@ async function getSirahAdminNotifications(limit: number): Promise<AdminNotificat
       where: {
         order,
         OR: [
-          { action: "REGISTERED" },
+          { action: { in: ["REGISTERED", "EVIDENCE_SUBMITTED", "PAYMENT_VERIFIED"] } },
           {
-            action: { in: ["PAYMENT_VERIFIED", "CANCELLED", "COMPLETED"] },
+            action: { in: ["CANCELLED", "COMPLETED"] },
             OR: [{ actor: { startsWith: "admin:" } }, { actor: { startsWith: "admin-api:" } }],
           },
         ],
