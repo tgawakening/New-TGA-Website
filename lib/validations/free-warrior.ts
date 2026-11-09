@@ -1,7 +1,34 @@
 import { z } from "zod";
+import { SIRAH_SCHOLARSHIP_BATCH } from "@/lib/sirah/scholarship";
+
+const response = z.string().trim().min(20, "Please provide a little more detail (at least 20 characters).").max(2000, "Please keep your answer within 2,000 characters.");
+export const sirahScholarshipDetailsSchema = z.object({
+  seerahReflection: response,
+  arabicLevel: z.enum(["STARTING", "FOUNDATIONAL", "INTERMEDIATE", "ADVANCED"]),
+  arabicExperience: response,
+  deenUnderstanding: response,
+  communityContribution: response,
+  missionSupport: response,
+  skillsResources: response,
+  skillsStatus: z.enum(["CURRENT_SKILLS", "LEARNING_REQUIRED"]),
+  skillLearningPlan: z.string().trim().max(2000).optional().default(""),
+  skillsLearningCommitment: z.literal(true, "Please confirm your commitment to developing useful skills where needed."),
+  actionPlan: response,
+  weeklyHours: z.coerce.number().min(0.5, "Please indicate your weekly time commitment.").max(80),
+  missionCommitment: z.literal(true, "Please confirm your commitment to learning and service."),
+  selectionAcknowledgement: z.literal(true, "Please acknowledge the ten-place selection process."),
+}).superRefine((value, ctx) => {
+  if (value.skillsStatus === "LEARNING_REQUIRED" && value.skillLearningPlan.length < 20) {
+    ctx.addIssue({ code: "custom", path: ["skillLearningPlan"], message: "Please describe a useful skill you will start learning and your first step (at least 20 characters)." });
+  }
+});
+export type SirahScholarshipDetails = z.infer<typeof sirahScholarshipDetailsSchema>;
+
 
 export const freeWarriorApplicationSchema = z
   .object({
+    scholarshipBatch: z.literal(SIRAH_SCHOLARSHIP_BATCH),
+    scholarshipDetails: sirahScholarshipDetailsSchema,
     fullName: z.string().trim().min(2, "Name is required."),
     email: z.email("Valid email is required.").transform((value) => value.toLowerCase()),
     whatsapp: z
@@ -12,7 +39,7 @@ export const freeWarriorApplicationSchema = z
     cityCountry: z.string().trim().min(3, "City and country are required."),
     occupation: z.string().trim().min(2, "Occupation is required."),
     knowledgeLevel: z.string().trim().min(2, "Knowledge level is required."),
-    previousSeerahStudy: z.string().trim().optional().or(z.literal("")),
+    previousSeerahStudy: response,
     currentInvolvement: z.string().trim().optional().or(z.literal("")),
     whatDrawsYou: z.string().trim().min(1, "Please share what draws you to this course."),
     howItBenefits: z.string().trim().min(1, "Please explain how this course will benefit you."),

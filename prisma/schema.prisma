@@ -383,6 +383,8 @@ model MissionSupportManualSubmission {
 }
 
 model FreeWarriorApplication {
+  scholarshipBatch     String?
+  scholarshipDetails   Json?
   id                   String                       @id @default(cuid())
   fullName             String
   email                String
@@ -417,6 +419,7 @@ model FreeWarriorApplication {
 
   @@index([email, status])
   @@index([approvedUserId])
+  @@index([scholarshipBatch, status])
 }
 
 // Additive current-campaign records. Historical Registration/Payment amounts are untouched.

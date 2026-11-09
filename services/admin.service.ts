@@ -1,3 +1,4 @@
+import type { SirahScholarshipDetails } from "@/lib/validations/free-warrior";
 import { SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import {
@@ -123,6 +124,8 @@ export type AdminDashboardSnapshot = {
     }>;
   }>;
   freeWarriorApplications: Array<{
+    scholarshipBatch: string | null;
+    scholarshipDetails: SirahScholarshipDetails | null;
     id: string;
     fullName: string;
     email: string;
@@ -706,6 +709,8 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       const contribution = parseFreeWarriorContribution(item.reasonForWaiver);
       return {
         id: item.id,
+        scholarshipBatch: item.scholarshipBatch,
+        scholarshipDetails: item.scholarshipDetails as SirahScholarshipDetails | null,
         fullName: item.fullName,
         email: item.email,
         whatsapp: item.whatsapp,
