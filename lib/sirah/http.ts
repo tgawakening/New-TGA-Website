@@ -1,3 +1,4 @@
+import { SirahDiscountError } from "./manual-discount";
 import "server-only";
 import { sirahOriginAllowed } from "@/lib/sirah/origin";
 import { currentSirahResumeGrant } from "@/lib/sirah/resume";
@@ -11,12 +12,12 @@ export function sirahResponseError(error: unknown) {
   return NextResponse.json(
     {
       error:
-        error instanceof SirahError
+        error instanceof SirahError || error instanceof SirahDiscountError
           ? error.message
           : "The request could not be completed. Please try again or contact support.",
     },
     {
-      status: error instanceof SirahError ? error.status : 503,
+      status: error instanceof SirahError ? error.status : error instanceof SirahDiscountError ? 400 : 503,
       headers: { "Cache-Control": "private, no-store" },
     },
   );

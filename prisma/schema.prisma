@@ -436,7 +436,24 @@ model FreeWarriorApplication {
 }
 
 // Additive current-campaign records. Historical Registration/Payment amounts are untouched.
+model SirahManualDiscount {
+  id          String @id @default(cuid())
+  codeHash    String @unique
+  email       String
+  batchCode   String
+  countryCode String
+  plan        String
+  currency    String
+  amountMinor Int
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([email, batchCode, isActive])
+}
+
 model SirahOrder {
+  discount               Json?
   id                     String              @id @default(cuid())
   userId                 String
   courseId               String

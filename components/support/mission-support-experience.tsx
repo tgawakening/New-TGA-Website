@@ -75,6 +75,8 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
       if (typeof saved?.customAmount === "string") setCustomAmount(saved.customAmount.slice(0, 12));
       if (missionPurposes.some(p => p.id === saved?.purpose)) setPurpose(saved.purpose);
     } catch { /* Browser storage is optional. */ }
+    const requestedPurpose = new URLSearchParams(window.location.search).get("purpose");
+    if (missionPurposes.some(p => p.id === requestedPurpose)) setPurpose(requestedPurpose as MissionPurpose);
     setRestored(true);
   }, []);
 
@@ -195,7 +197,9 @@ export default function MissionSupportExperience({ config }: { config: MissionSu
 
   const givingPurposes = [
     { id: "WHERE_NEEDED", label: "Where most needed" },
+    ...missionPurposes.filter(item => ["GEN_MUMIN", "SIRAH_BEYOND_CHRONOLOGY"].includes(item.id)),
     ...fundingAreas.map(area => ({ id: area.id, label: area.title })),
+    ...missionPurposes.filter(item => ["EXISTING_PROGRAMMES", "NEW_INITIATIVES"].includes(item.id)),
   ];
   const faqs = [
     ["What does my contribution support?", "Scholarships, worldwide learning access and related educational costs. Your preference guides allocation; if funds are redirected, TGA will notify you by email. Specific restrictions must be agreed in writing before payment."],

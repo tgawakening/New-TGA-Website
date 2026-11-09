@@ -1,4 +1,5 @@
 "use client";
+import { PersonalDiscount } from "./personal-discount";
 import {
   sirahAccessConsentsComplete,
   type SirahAccessConsents,
@@ -210,6 +211,10 @@ export function SirahRegistrationForm({
   >([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [discountAttempt, setDiscountAttempt] = useState(0);
+  const pricingEmail = couponCode ? email.trim().toLowerCase() : "";
+
   const [phoneCountry, setPhoneCountry] = useState<CountryCode>(
     initialCountry && getCountries().includes(initialCountry as CountryCode)
       ? (initialCountry as CountryCode)
@@ -233,6 +238,9 @@ export function SirahRegistrationForm({
   const [fields, setFields] = useState<Record<string, string[]>>({});
   const [quote, setQuote] = useState<{
     country: string;
+    email: string;
+    couponCode: string;
+    discount: { label: string; originalAmountMinor: number; amountMinor: number } | null;
     method: SirahMethod | "";
     plan: SirahPlan;
     currency: string;
@@ -248,6 +256,7 @@ export function SirahRegistrationForm({
   const [resumeProblem, setResumeProblem] = useState(false);
   const [quoteError, setQuoteError] = useState("");
   const [plan, setPlan] = useState<SirahPlan>(initialPlan || "MONTHLY");
+  useEffect(() => { setCouponCode(""); }, [email, billing, plan, selectedMethod]);
   const [available, setAvailable] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -320,6 +329,7 @@ export function SirahRegistrationForm({
   useEffect(() => {
     if (!ready || order || !billing || !(billing in countries)) return;
     const controller = new AbortController();
+    setQuote(null);
     void api("/api/pricing", {
       method: "POST",
       signal: controller.signal,
@@ -328,6 +338,7 @@ export function SirahRegistrationForm({
         countryCode: billing,
         plan,
         method: selectedMethod || null,
+        ...(couponCode ? { email: pricingEmail, couponCode } : {}),
       }),
     })
       .then((result) => {
@@ -342,6 +353,9 @@ export function SirahRegistrationForm({
           }
           setQuote({
             country: billing,
+            email: pricingEmail,
+            couponCode,
+            discount: result.pricing.discount || null,
             method: selectedMethod,
             plan,
             currency: result.pricing.currency,
@@ -359,7 +373,7 @@ export function SirahRegistrationForm({
         if (!controller.signal.aborted) setQuoteError(cause.message);
       });
     return () => controller.abort();
-  }, [ready, order, billing, plan, selectedMethod]);
+  }, [ready, order, billing, plan, selectedMethod, pricingEmail, couponCode, discountAttempt]);
   useEffect(() => {
     if (!ready || order) return;
     try {
@@ -650,6 +664,8 @@ export function SirahRegistrationForm({
       quote.country !== billing ||
       quote.plan !== plan ||
       quote.method !== selectedMethod ||
+      quote.couponCode !== couponCode ||
+      (Boolean(couponCode) && quote.email !== email.trim().toLowerCase()) ||
       !accepted ||
       !sirahAccessConsentsComplete(quote.terms, accessConsents)
     ) {
@@ -699,6 +715,7 @@ export function SirahRegistrationForm({
       plan,
       requestKey: requestKey.current,
       method: selectedMethod || null,
+      ...(couponCode ? { couponCode } : {}),
     };
     const parsed = sirahRegistrationSchema.safeParse(input);
     if (!parsed.success) {
@@ -776,6 +793,7 @@ export function SirahRegistrationForm({
     countryCode: string,
     nextPlan: SirahPlan,
     method: SirahMethod | null,
+    code?: string,
   ) {
     if (!order) return;
     await run(async () => {
@@ -786,6 +804,7 @@ export function SirahRegistrationForm({
           countryCode,
           plan: nextPlan,
           method,
+          ...(code ? { couponCode: code } : {}),
         }),
       });
       setOrder(result.order);
@@ -1007,10 +1026,9 @@ export function SirahRegistrationForm({
             )}
           {(order?.cohort || quote?.cohort)?.confirmed ? (
             <p>
-              The additional course-start full-refund protection runs through{" "}
+              Course-start full-refund protection through{" "}
               {(order?.cohort || quote?.cohort)!.courseStartFullRefundThrough}{" "}
-              inclusive (Pakistan calendar date). Any applicable statutory
-              cancellation rights remain separate.
+              inclusive (Pakistan date). Statutory rights remain unchanged.
             </p>
           ) : (
             <p>
@@ -1309,11 +1327,11 @@ export function SirahRegistrationForm({
                   setAccepted(false);
                 }}
               />
-              {selectedMethod === "STRIPE" && <p>No Stripe account needed. Google Pay and Apple Pay appear in secure checkout only when your device, browser, region and saved card are eligible. You can enter debit or credit card details instead.</p>}
+              <PersonalDiscount email={email} country={billing} plan={plan} method={selectedMethod} applied={Boolean(quote?.discount)} disabled={busy} onApply={code => { setCouponCode(code); setDiscountAttempt(value => value + 1); setAccepted(false); setManualConfirmed(false); }} />
+              {selectedMethod === "STRIPE" && <p>No Stripe account needed. Wallets appear on eligible devices.</p>}
               {billing === "PK" && plan === "MONTHLY" && selectedMethod && (
                 <p>
-                  Automatic card: PKR 3,000 per month. Manual transfer: PKR
-                  3,500 per month, subject to receipt verification.
+                  Manual transfers require receipt verification.
                 </p>
               )}
               {quote?.country === billing &&
@@ -1408,6 +1426,9 @@ export function SirahRegistrationForm({
                 quote?.country !== billing ||
                 quote?.plan !== plan ||
                 quote?.method !== selectedMethod ||
+                quote?.couponCode !== couponCode ||
+                (Boolean(couponCode) && quote?.email !== email.trim().toLowerCase()) ||
+                Boolean(quoteError) ||
                 (["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) &&
                   !manualConfirmed)
               }
@@ -1646,15 +1667,7 @@ export function SirahRegistrationForm({
             </label>
           </div>
           <div className={styles.summary}>
-            <p>
-              Next billing date:{" "}
-              {order.nextBillingAt
-                ? new Date(order.nextBillingAt).toLocaleDateString()
-                : order.paymentState === "UNPAID"
-                  ? "Shown before payment is confirmed"
-                  : "No further billing date is scheduled"}
-              .
-            </p>
+            {order.nextBillingAt && <p>Next renewal: {new Date(order.nextBillingAt).toLocaleDateString()}.</p>}
             {order.programmeEnd && (
               <p>
                 Programme access end:{" "}
@@ -1677,13 +1690,12 @@ export function SirahRegistrationForm({
               Charge currency: {order.currency}.{" "}
               {order.marketCode === "OTHER"
                 ? "Your bank’s local conversion may vary."
-                : "Fixed regional fee."}
+                : order.discount ? "Personal discount applied." : "Fixed regional fee."}
             </p>
             {order.plan === "MONTHLY" && (
               <p>
                 12-payment comparison:{" "}
-                {formatSirahMoney(order.totalMinor, order.currency)}. This
-                comparison does not define cancellation or commitment terms.
+                {formatSirahMoney(order.totalMinor, order.currency)}. Renewals are voluntary.
               </p>
             )}
             {order.countryCode === "PK" &&
@@ -1750,6 +1762,7 @@ export function SirahRegistrationForm({
                     )
                   }
                 />
+                <PersonalDiscount email={order.email} country={order.countryCode} plan={order.plan} method={order.method || ""} applied={Boolean(order.discount)} disabled={busy} onApply={code => { void reprice(order.countryCode, order.plan as SirahPlan, order.method as SirahMethod, code); }} />
                 {order.manualEvidenceAllowed &&
                   !selectedRouteAvailable &&
                   order.method && (
@@ -1760,12 +1773,10 @@ export function SirahRegistrationForm({
                   )}
                 {order.countryCode === "PK" && order.plan === "MONTHLY" && (
                   <p className={styles.notice} id="sirah-pk-method-pricing">
-                    Automatic card payments are PKR 3,000 per month. Manual bank
-                    transfer or JazzCash payments are PKR 3,500 per month. Your
-                    amount updates when you select a payment method.
+                    Your selected fee is shown above. Manual transfers require receipt verification.
                   </p>
                 )}
-                {order.method === "STRIPE" && <p>No Stripe account needed. Google Pay and Apple Pay appear in secure checkout only when your device, browser, region and saved card are eligible. You can enter debit or credit card details instead.</p>}
+                {order.method === "STRIPE" && <p>No Stripe account needed. Wallets appear on eligible devices.</p>}
                 {(selectedRouteAvailable || order.manualEvidenceAllowed) && (
                   <Terms
                     order={order}

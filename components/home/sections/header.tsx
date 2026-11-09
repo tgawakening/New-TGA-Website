@@ -28,7 +28,9 @@ function PillButton({
 
 export function Header({
   enrolmentAction,
+  supportAction,
 }: {
+  supportAction?: { href: string; label: string };
   enrolmentAction?: {
     href: string;
     label: string;
@@ -112,10 +114,10 @@ export function Header({
 
         <div className="flex items-center gap-3">
           <Link
-            href="/support-our-mission"
+            href={supportAction?.href || "/support-our-mission"}
             className="ga-btn ga-header-cta ga-cta-signin ga-header-support"
           >
-            Support Our Mission
+            {supportAction?.label || "Support Our Mission"}
           </Link>
           <span className="hidden md:inline-flex">
             <Link

@@ -1,3 +1,5 @@
+import { withManualDiscountTerms } from "@/lib/sirah/discount-terms";
+import { personalSirahPrice } from "@/lib/sirah/manual-discount";
 import { defaultPriceMethod } from "@/lib/sirah/payment-display";
 import "server-only";
 import { sirahAccessConsentsComplete } from "@/lib/sirah/access-consent";
@@ -20,7 +22,6 @@ import {
   SIRAH_SLUG,
   SIRAH_TITLE,
   SIRAH_BATCH,
-  priceFor,
   type SirahMethod,
   type SirahPlan,
 } from "@/lib/sirah/catalog";
@@ -82,16 +83,18 @@ export async function registerSirah(
     !userId && input.password ? await bcrypt.hash(input.password, 12) : null;
   if (!userId && !hash)
     throw new SirahError("Create an account password or sign in.");
-  const initial = priceFor(
+  const initial = await personalSirahPrice(
     input.countryCode,
     input.plan,
     input.method || defaultPriceMethod(input.countryCode, input.plan),
+    input.email,
+    input.couponCode,
   );
   const cohort = await publicSirahCohort();
-  const initialTerms = snapshotSirahCohort(
+  const initialTerms = withManualDiscountTerms(snapshotSirahCohort(
     termsFor(input.plan, input.countryCode),
     cohort,
-  );
+  ), initial.discount);
   if (
     input.method &&
     !cohortAllowsPayment(termsFor(input.plan, input.countryCode), cohort)
@@ -201,6 +204,7 @@ export async function registerSirah(
           input.method && initialTerms
             ? jsonValue(initialTerms)
             : Prisma.DbNull,
+        discount: initial.discount ? jsonValue(initial.discount) : Prisma.DbNull,
         pricingVersion: initial.pricingVersion,
         currency: initial.currency,
         amountMinor: initial.amountMinor,
@@ -284,6 +288,7 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     amountMinor: order.amountMinor,
     totalMinor: order.totalMinor,
     pricingVersion: order.pricingVersion,
+    discount: order.discount ? { applied: true, label: "Personal manual-payment discount", originalAmountMinor: (order.discount as { originalAmountMinor: number }).originalAmountMinor, amountMinor: order.amountMinor } : null,
     paymentState: order.paymentState,
     enrolmentState: order.enrolmentState,
     revision: order.revision,
@@ -317,17 +322,23 @@ export async function repriceSirah(
   countryCode: string,
   plan: SirahPlan,
   method: SirahMethod | null,
+  couponCode?: string,
 ) {
-  const price = priceFor(
+  const owned = await ownedSirahOrder(orderId, userId);
+  const student = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
+  const price = await personalSirahPrice(
     countryCode,
     plan,
     method || defaultPriceMethod(countryCode, plan),
+    student.email,
+    couponCode,
+    owned.discount,
   );
   const cohort = await publicSirahCohort();
-  const selectedTerms = snapshotSirahCohort(
+  const selectedTerms = withManualDiscountTerms(snapshotSirahCohort(
     termsFor(plan, countryCode),
     cohort,
-  );
+  ), price.discount);
   if (method && !cohortAllowsPayment(termsFor(plan, countryCode), cohort))
     throw new SirahError(
       "The first paid teaching date is pending owner confirmation. Payment remains closed.",
@@ -364,6 +375,7 @@ export async function repriceSirah(
         amountMinor: price.amountMinor,
         totalMinor: price.totalMinor,
         pricingVersion: price.pricingVersion,
+        discount: price.discount ? jsonValue(price.discount) : Prisma.DbNull,
         terms: selectedTerms ? jsonValue(selectedTerms) : Prisma.DbNull,
         revision: { increment: 1 },
       },
@@ -378,6 +390,7 @@ export async function repriceSirah(
       plan,
       method,
       pricingVersion: price.pricingVersion,
+      discount: price.discount,
     });
   });
   return publicSirahOrder(orderId, userId);

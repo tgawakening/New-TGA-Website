@@ -30,6 +30,7 @@ export async function POST(
         v.countryCode,
         v.plan,
         v.method,
+        v.couponCode,
       ),
     });
   } catch (error) {
