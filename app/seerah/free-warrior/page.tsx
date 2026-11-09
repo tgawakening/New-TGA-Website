@@ -30,6 +30,7 @@ type FormState = {
   attendedOrientation: boolean;
   contributionPreference: "" | "FULL_SCHOLARSHIP" | "PARTIAL_CONTRIBUTION";
   monthlyContributionPkr: "" | "500" | "1000";
+  manualPaymentMethod: "" | "BANK_TRANSFER" | "JAZZCASH";
   manualSenderName: string;
   manualSenderNumber: string;
   manualReferenceKey: string;
@@ -64,6 +65,7 @@ const initialForm: FormState = {
   attendedOrientation: false,
   contributionPreference: "",
   monthlyContributionPkr: "",
+  manualPaymentMethod: "",
   manualSenderName: "",
   manualSenderNumber: "",
   manualReferenceKey: "",
@@ -76,6 +78,7 @@ const initialForm: FormState = {
 
 export default function FeeWaiverPage() {
   const [form, setForm] = useState<FormState>(initialForm);
+  const [receipt, setReceipt] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -103,6 +106,14 @@ export default function FeeWaiverPage() {
       setError("Please provide transfer reference ID before submitting.");
       return;
     }
+    if (isPartialContribution && (!form.manualPaymentMethod || !receipt)) {
+      setError("Select your transfer method and upload the receipt (JPG, PNG or PDF, up to 4 MB).");
+      return;
+    }
+    if (isPartialContribution && receipt && receipt.size > 4 * 1024 * 1024) {
+      setError("The receipt must be no larger than 4 MB.");
+      return;
+    }
     if (!form.adabCommitment) {
       setError("You must commit to adab and etiquette before submitting.");
       return;
@@ -116,18 +127,18 @@ export default function FeeWaiverPage() {
     setSuccess(null);
 
     try {
-      const response = await fetch("/api/fee-waiver/apply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          scholarshipBatch: SIRAH_SCHOLARSHIP_BATCH,
-          age: Number(form.age),
-          courseSlug: "seerah-course",
-          courseTitle: SIRAH_TITLE,
-          listedPrice: "Approved regional fees — see /seerah",
-        }),
-      });
+      const body = new FormData();
+      body.set("details", JSON.stringify({
+        ...form,
+        manualPaymentMethod: isPartialContribution ? form.manualPaymentMethod : undefined,
+        scholarshipBatch: SIRAH_SCHOLARSHIP_BATCH,
+        age: Number(form.age),
+        courseSlug: "seerah-course",
+        courseTitle: SIRAH_TITLE,
+        listedPrice: "Approved regional fees — see /seerah",
+      }));
+      if (isPartialContribution && receipt) body.set("receipt", receipt);
+      const response = await fetch("/api/fee-waiver/apply", { method: "POST", body });
 
       const data = (await response.json()) as {
         error?: string;
@@ -145,6 +156,7 @@ export default function FeeWaiverPage() {
 
       setSuccess("Your Batch 4 scholarship application has been submitted for review. There are 10 places; an application does not guarantee an award. We will email you after review.");
       setForm(initialForm);
+      setReceipt(null);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Application error.");
     } finally {
@@ -325,6 +337,7 @@ export default function FeeWaiverPage() {
                       type="radio"
                       name="contributionPreference"
                       value="FULL_SCHOLARSHIP"
+                      onClick={() => setReceipt(null)}
                       checked={form.contributionPreference === "FULL_SCHOLARSHIP"}
                       onChange={() =>
                         setForm((prev) => ({
@@ -394,6 +407,14 @@ export default function FeeWaiverPage() {
                       </label>
                     </div>
 
+                    <label style={labelStyle}>
+                      Manual payment method*
+                      <select name="manualPaymentMethod" value={form.manualPaymentMethod} onChange={event => setForm(prev => ({ ...prev, manualPaymentMethod: event.target.value as FormState["manualPaymentMethod"] }))} style={inputStyle} required>
+                        <option value="">Select the method you used</option>
+                        <option value="BANK_TRANSFER">Meezan Bank transfer</option>
+                        <option value="JAZZCASH">JazzCash</option>
+                      </select>
+                    </label>
                     <div style={manualInfoWrapStyle}>
                       <div style={manualInfoNoteStyle}>
                         Use your payment reference in the transfer note and then complete the verification fields below clearly.
@@ -473,6 +494,11 @@ export default function FeeWaiverPage() {
                         </label>
                       </div>
 
+                      <label style={labelStyle}>
+                        Payment receipt evidence*
+                        <input name="receipt" type="file" accept="image/jpeg,image/png,application/pdf" required onChange={event => setReceipt(event.target.files?.[0] || null)} style={inputStyle} />
+                        <span style={helperCopyStyle}>Upload a clear JPG, PNG or PDF, up to 4 MB. Required for both Meezan Bank and JazzCash; staff must verify receipt before confirming payment. No receipt is needed for a full scholarship.</span>
+                      </label>
                       <label style={labelStyle}>
                         Notes (optional)
                         <textarea

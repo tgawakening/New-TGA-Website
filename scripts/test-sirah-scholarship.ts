@@ -1,5 +1,10 @@
 import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
+import sharp from "sharp";
+import { POST as applyScholarship } from "../app/api/free-warrior/apply/route";
+import { GET as getScholarshipReceipt } from "../app/api/admin/fee-waiver/[id]/receipt/route";
+import { listFreeWarriorApplicationsForAdmin } from "../services/free-warrior.service";
+import { scholarshipSubmissionEmail } from "../lib/sirah/scholarship-email";
 import { randomUUID } from "node:crypto";
 import { prisma } from "../lib/prisma";
 import { freeWarriorApplicationSchema } from "../lib/validations/free-warrior";
@@ -11,6 +16,7 @@ const db = new URL(process.env.DATABASE_URL || "mysql://invalid");
 assert.equal(db.hostname, "127.0.0.1", "Scholarship tests require isolated local MySQL.");
 assert.equal(db.pathname, "/sirah_test");
 const prefix = "scholarship-test-";
+const originalFetch = global.fetch;
 function payload() {
   return {
     fullName: "Scholarship Test Student", email: `${prefix}${randomUUID()}@example.test`, whatsapp: "+923001234567", age: 24,
@@ -34,8 +40,8 @@ async function clean() {
   await prisma.freeWarriorApplication.deleteMany({ where: { email: { startsWith: prefix } } });
   await prisma.user.deleteMany({ where: { email: { startsWith: prefix } } });
 }
-beforeEach(async () => { delete process.env.RESEND_API_KEY; delete process.env.EMAIL_FROM; delete process.env.ADMIN_NOTIFICATION_EMAIL; await clean(); });
-after(async () => { await clean(); await prisma.$disconnect(); });
+beforeEach(async () => { global.fetch = originalFetch; delete process.env.RESEND_API_KEY; delete process.env.EMAIL_FROM; delete process.env.ADMIN_NOTIFICATION_EMAIL; await clean(); });
+after(async () => { global.fetch = originalFetch; await clean(); await prisma.$disconnect(); });
 async function create() { return submitFreeWarriorApplication(freeWarriorApplicationSchema.parse(payload())); }
 
 test("all Batch 4 eligibility responses and acknowledgements are required without automatically excluding starting Arabic learners", () => {
@@ -104,4 +110,85 @@ test("scholarship approval never replaces an existing paid registration", async 
   await assert.rejects(reviewFreeWarriorApplication({ applicationId: application.id, approve: true }), /already has a paid registration/);
   assert.equal((await prisma.registration.findUniqueOrThrow({ where: { id: registration.id } })).finalAmount, 3240000);
   assert.equal((await prisma.freeWarriorApplication.findUniqueOrThrow({ where: { id: application.id } })).status, "PENDING");
+});
+
+
+function partialPayload(method: "BANK_TRANSFER" | "JAZZCASH") {
+  return freeWarriorApplicationSchema.parse({ ...payload(), contributionPreference: "PARTIAL_CONTRIBUTION", monthlyContributionPkr: "500", manualPaymentMethod: method, manualSenderName: "Scholarship Sender", manualSenderNumber: "03001234567", manualReferenceKey: "SYNTHETIC-TRANSFER", manualNotes: "Synthetic proof only" });
+}
+for (const method of ["BANK_TRANSFER", "JAZZCASH"] as const) test(`${method} scholarship contributions require valid private receipt evidence and remain unverified`, async () => {
+  const input = partialPayload(method);
+  await assert.rejects(submitFreeWarriorApplication(input), /upload your payment receipt/);
+  await assert.rejects(submitFreeWarriorApplication(input, { name: "fake.png", data: Buffer.from("not an image") }), /file contents/);
+  assert.equal(await prisma.freeWarriorApplication.count({ where: { email: input.email } }), 0);
+  const image = await sharp({ create: { width: 8, height: 8, channels: 3, background: "white" } }).png().toBuffer();
+  const result = await submitFreeWarriorApplication(input, { name: "transfer.png", data: image });
+  const saved = await prisma.freeWarriorReceipt.findUniqueOrThrow({ where: { applicationId: result.applicationId } });
+  assert.equal(saved.method, method);
+  assert.equal(saved.mime, "image/png");
+  assert.deepEqual(Buffer.from(saved.data), image);
+  assert.equal(await prisma.user.count({ where: { email: input.email } }), 0);
+  process.env.ADMIN_API_TOKEN = "synthetic-staff-token";
+  const params = { params: Promise.resolve({ id: result.applicationId }) };
+  const anonymous = await getScholarshipReceipt(new Request("http://localhost/api/admin/fee-waiver/test/receipt"), params);
+  assert.equal(anonymous.status, 401);
+  const staff = await getScholarshipReceipt(new Request("http://localhost/api/admin/fee-waiver/test/receipt", { headers: { "x-admin-token": "synthetic-staff-token" } }), params);
+  assert.equal(staff.status, 200);
+  assert.equal(staff.headers.get("cache-control"), "private, no-store");
+  assert.deepEqual(Buffer.from(await staff.arrayBuffer()), image);
+  const overview = (await listFreeWarriorApplicationsForAdmin()).find(row => row.id === result.applicationId)!;
+  assert.deepEqual(Object.keys(overview.receipt!).sort(), ["filename", "method", "mime"]);
+  await reviewFreeWarriorApplication({ applicationId: result.applicationId, approve: true });
+  const registration = await prisma.registration.findFirstOrThrow({ where: { user: { email: input.email } }, include: { payment: true, enrollment: true } });
+  assert.equal(registration.payment!.provider, method);
+  assert.equal(registration.payment!.status, "UNDER_REVIEW");
+  assert.equal(registration.enrollment!.status, "PENDING");
+});
+
+test("public scholarship API rejects missing evidence and accepts bounded multipart evidence", async () => {
+  const input = partialPayload("JAZZCASH");
+  const missing = await applyScholarship(new Request("http://localhost/api/fee-waiver/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) }));
+  assert.equal(missing.status, 400);
+  const image = await sharp({ create: { width: 8, height: 8, channels: 3, background: "white" } }).png().toBuffer();
+  const form = new FormData(); form.set("details", JSON.stringify(input)); form.set("receipt", new File([new Uint8Array(image)], "receipt.png", { type: "image/png" }));
+  const result = await applyScholarship(new Request("http://localhost/api/fee-waiver/apply", { method: "POST", body: form }));
+  assert.equal(result.status, 200);
+  const id = (await result.json()).applicationId;
+  assert.equal((await prisma.freeWarriorApplication.findUniqueOrThrow({ where: { id } })).status, "PENDING");
+});
+
+test("scholarship emails include every submitted answer, escape HTML and link receipts only for staff", async () => {
+  const input = partialPayload("JAZZCASH");
+  input.fullName = "Applicant <script>unsafe</script>";
+  input.scholarshipDetails.skillLearningPlan = "Start a weekly design course and practise on community materials.";
+  const application = { id: "synthetic-reference", createdAt: new Date("2026-11-09T00:00:00Z") };
+  const receipt = { filename: "transfer.png", mime: "image/png" };
+  const admin = scholarshipSubmissionEmail(input, application, receipt, true);
+  const student = scholarshipSubmissionEmail(input, application, receipt, false);
+  for (const value of [input.fullName, input.email, input.whatsapp, input.cityCountry, input.occupation, input.knowledgeLevel, input.previousSeerahStudy, input.currentInvolvement, input.whatDrawsYou, input.howItBenefits, input.mostInterestingTopic, input.whyThisTopic, input.canAttendRegularly, input.manualSenderName, input.manualSenderNumber, input.manualReferenceKey, input.manualNotes, input.reasonForWaiver, ...Object.values(input.scholarshipDetails).filter(v => typeof v === "string" && !["CURRENT_SKILLS", "FOUNDATIONAL"].includes(v))]) {
+    if (value) { assert.ok(admin.text.includes(String(value)), String(value)); assert.ok(student.text.includes(String(value))); }
+  }
+  assert.ok(!admin.html.includes("<script>"));
+  assert.ok(admin.html.includes("&lt;script&gt;"));
+  assert.ok(admin.text.includes("/api/admin/fee-waiver/synthetic-reference/receipt"));
+  assert.ok(!student.text.includes("/api/admin/"));
+  for (const field of ["Age: 24", "Weekly hours: 5", "Attended orientation: No", "JazzCash", "PKR 500", "Skills-learning commitment: Yes", "Genuine financial need: Yes", "Ten-place selection acknowledged: Yes", "awaiting staff verification"]) assert.ok(admin.text.includes(field), field);
+});
+
+test("submission sends one complete acknowledgement and one named staff overview without duplicate recipients", async () => {
+  process.env.RESEND_API_KEY = "synthetic"; process.env.EMAIL_FROM = "sender@example.test"; process.env.ADMIN_NOTIFICATION_EMAIL = "Admin@Example.test,admin@example.test";
+  const captured: Array<{ body: { to: string[]; html: string; subject: string }; key: string | null }> = [];
+  global.fetch = async (_url, init) => { captured.push({ body: JSON.parse(String(init?.body)), key: new Headers(init?.headers).get("Idempotency-Key") }); return Response.json({ id: "synthetic-mail" }); };
+  const input = freeWarriorApplicationSchema.parse(payload());
+  await submitFreeWarriorApplication(input);
+  assert.equal(captured.length, 2);
+  assert.ok(captured.every(mail => mail.key && mail.body.html.includes(input.scholarshipDetails.communityContribution)));
+  assert.equal(captured.filter(mail => mail.body.to.includes("admin@example.test")).length, 1);
+  assert.ok(captured.find(mail => mail.body.to.includes("admin@example.test"))!.body.subject.includes(`submitted by ${input.fullName}`));
+  const staffApplicant = freeWarriorApplicationSchema.parse(payload());
+  process.env.ADMIN_NOTIFICATION_EMAIL = staffApplicant.email;
+  captured.length = 0;
+  await submitFreeWarriorApplication(staffApplicant);
+  assert.equal(captured.length, 1);
+  assert.ok(captured[0].body.subject.includes("submitted by"));
 });

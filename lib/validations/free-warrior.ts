@@ -49,6 +49,7 @@ export const freeWarriorApplicationSchema = z
     attendedOrientation: z.boolean(),
     contributionPreference: z.enum(["FULL_SCHOLARSHIP", "PARTIAL_CONTRIBUTION"]),
     monthlyContributionPkr: z.enum(["500", "1000"]).optional().or(z.literal("")),
+    manualPaymentMethod: z.enum(["BANK_TRANSFER", "JAZZCASH"]).optional(),
     manualSenderName: z.string().trim().optional().or(z.literal("")),
     manualSenderNumber: z.string().trim().optional().or(z.literal("")),
     manualReferenceKey: z.string().trim().optional().or(z.literal("")),
@@ -62,6 +63,9 @@ export const freeWarriorApplicationSchema = z
     listedPrice: z.string().trim().default("GBP 20/mo"),
   })
   .superRefine((value, ctx) => {
+    if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualPaymentMethod) {
+      ctx.addIssue({ code: "custom", path: ["manualPaymentMethod"], message: "Choose Meezan Bank or JazzCash for your transfer." });
+    }
     if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.monthlyContributionPkr) {
       ctx.addIssue({
         code: "custom",
