@@ -1,5 +1,9 @@
 import { PaymentMethod, PaymentStatus, RegistrationStatus, EnrollmentStatus, FreeWarriorApplicationStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { createHash } from "node:crypto";
+import { validateSirahReceipt } from "./sirah-receipts.service";
+import { SirahError } from "./sirah-registration.service";
+import { scholarshipSubmissionEmail } from "@/lib/sirah/scholarship-email";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { parseFreeWarriorContribution } from "@/lib/free-warrior";
@@ -57,7 +61,11 @@ function parsePhoneParts(whatsapp: string) {
   };
 }
 
-export async function submitFreeWarriorApplication(input: FreeWarriorApplicationInput) {
+export async function submitFreeWarriorApplication(input: FreeWarriorApplicationInput, file: { data: Uint8Array; name: string } | null = null) {
+  const partial = input.contributionPreference === "PARTIAL_CONTRIBUTION";
+  if (partial && (!file || !input.manualPaymentMethod)) throw new SirahError("Select Meezan Bank or JazzCash and upload your payment receipt.");
+  if (!partial && file) throw new SirahError("Receipt evidence is only needed for a manual contribution.");
+  const receipt = file ? await validateSirahReceipt(file.data, file.name) : null;
   const existingPending = await prisma.freeWarriorApplication.findFirst({
     where: {
       email: input.email,
@@ -99,6 +107,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
 
   Reflect.deleteProperty(applicationInput, "contributionPreference");
   Reflect.deleteProperty(applicationInput, "monthlyContributionPkr");
+  Reflect.deleteProperty(applicationInput, "manualPaymentMethod");
   Reflect.deleteProperty(applicationInput, "manualSenderName");
   Reflect.deleteProperty(applicationInput, "manualSenderNumber");
   Reflect.deleteProperty(applicationInput, "manualReferenceKey");
@@ -106,56 +115,27 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   const application = await prisma.freeWarriorApplication.create({
     data: {
       ...applicationInput,
+      receipt: receipt ? { create: { ...receipt, method: input.manualPaymentMethod! } } : undefined,
       previousSeerahStudy: input.previousSeerahStudy || null,
       currentInvolvement: input.currentInvolvement || null,
       howHeard: input.howHeard || null,
     },
   });
 
+  const admins = [...new Set((process.env.ADMIN_NOTIFICATION_EMAIL || "").split(",").map(email => email.trim().toLowerCase()).filter(Boolean))];
   await Promise.allSettled([
     sendTransactionalEmail({
       to: input.email,
-      subject: "Batch 4 Sīrah scholarship application received",
-      emailType: "FREE_WARRIOR_RECEIVED",
-      html: `
-        <p>Assalam-u-Alaikum ${input.fullName},</p>
-        <p>We have received your Fee Waiver application for ${SIRAH_TITLE}.</p>
-        <p>Your Batch 4 application is under review for one of 10 scholarship places. Selection considers learning, commitment and community contribution; applying does not guarantee an award. We will email you after review.</p>
-      `,
-      text: [
-        `Assalam-u-Alaikum ${input.fullName},`,
-        `We have received your Fee Waiver application for ${SIRAH_TITLE}.`,
-        "Your Batch 4 application is under review for one of 10 scholarship places. Selection considers learning, commitment and community contribution; applying does not guarantee an award. We will email you after review.",
-      ].join("\n"),
+      emailType: admins.includes(input.email.toLowerCase()) ? "ADMIN_FREE_WARRIOR_APPLICATION" : "FREE_WARRIOR_RECEIVED",
+      idempotencyKey: `scholarship-${application.id}-student`,
+      ...scholarshipSubmissionEmail(input, application, receipt, admins.includes(input.email.toLowerCase())),
     }),
-    notifyAdmins({
-      subject: `Batch 4 scholarship application: ${input.fullName}`,
+    ...admins.filter(email => email !== input.email.toLowerCase()).map(email => sendTransactionalEmail({
+      to: email,
       emailType: "ADMIN_FREE_WARRIOR_APPLICATION",
-      html: `
-        <p>New Batch 4 Sīrah scholarship application received. Review the full eligibility responses in the admin dashboard.</p>
-        <p>Name: <strong>${input.fullName}</strong></p>
-        <p>Email: ${input.email}</p>
-        <p>WhatsApp: ${input.whatsapp}</p>
-        <p>City & Country: ${input.cityCountry}</p>
-        <p>Occupation: ${input.occupation}</p>
-        <p>Knowledge Level: ${input.knowledgeLevel}</p>
-        <p>${contributionSummary}</p>
-        ${manualPaymentSummary ? `<p style="white-space: pre-line;">${manualPaymentSummary}</p>` : ""}
-        <p>Reason for waiver: ${input.reasonForWaiver}</p>
-      `,
-      text: [
-        "New Batch 4 Sīrah scholarship application received. Review the full eligibility responses in the admin dashboard.",
-        `Name: ${input.fullName}`,
-        `Email: ${input.email}`,
-        `WhatsApp: ${input.whatsapp}`,
-        `City & Country: ${input.cityCountry}`,
-        `Occupation: ${input.occupation}`,
-        `Knowledge Level: ${input.knowledgeLevel}`,
-        contributionSummary,
-        manualPaymentSummary,
-        `Reason for waiver: ${input.reasonForWaiver}`,
-      ].join("\n"),
-    }),
+      idempotencyKey: `scholarship-${application.id}-admin-${createHash("sha256").update(email).digest("hex").slice(0, 20)}`,
+      ...scholarshipSubmissionEmail(input, application, receipt, true),
+    })),
   ]);
 
   return { applicationId: application.id };
@@ -163,6 +143,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
 
 export async function listFreeWarriorApplicationsForAdmin() {
   return prisma.freeWarriorApplication.findMany({
+    include: { receipt: { select: { filename: true, mime: true, method: true } } },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -241,6 +222,8 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
   }
 
   const contribution = parseFreeWarriorContribution(application.reasonForWaiver);
+  const evidence = await prisma.freeWarriorReceipt.findUnique({ where: { applicationId: application.id }, select: { method: true } });
+  const manualMethod = evidence?.method === "JAZZCASH" ? PaymentMethod.JAZZCASH : PaymentMethod.BANK_TRANSFER;
   const scholarshipReference = buildScholarshipReference();
   const temporaryPassword = buildTemporaryPassword();
   const passwordHash = await bcrypt.hash(temporaryPassword, 12);
@@ -334,7 +317,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
             autoDiscountAmount: Math.max(2000 - approvedAmountPence, 0),
             couponDiscountAmount: 0,
             finalAmount: approvedAmountPence,
-            paymentMethod: PaymentMethod.BANK_TRANSFER,
+            paymentMethod: manualMethod,
             paymentReference: scholarshipReference,
             status: registrationStatus,
             pricingSnapshot: {
@@ -352,7 +335,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
         const payment = await tx.payment.create({
           data: {
             registrationId: registration.id,
-            provider: PaymentMethod.BANK_TRANSFER,
+            provider: manualMethod,
             amount: approvedAmountPence,
             currency: "GBP",
             status: paymentStatus,
@@ -372,7 +355,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
           await tx.manualPaymentSubmission.create({
             data: {
               paymentId: payment.id,
-              method: PaymentMethod.BANK_TRANSFER,
+              method: manualMethod,
               senderName: contribution.senderName,
               senderNumber: contribution.senderNumber,
               referenceKey: contribution.referenceKey,
@@ -404,7 +387,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
             autoDiscountAmount: Math.max(2000 - approvedAmountPence, 0),
             couponDiscountAmount: 0,
             finalAmount: approvedAmountPence,
-            paymentMethod: PaymentMethod.BANK_TRANSFER,
+            paymentMethod: manualMethod,
             paymentReference: scholarshipReference,
             status: registrationStatus,
             pricingSnapshot: {
@@ -443,7 +426,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
           await tx.payment.update({
             where: { registrationId: existingRegistration.id },
             data: {
-              provider: PaymentMethod.BANK_TRANSFER,
+              provider: manualMethod,
               status: paymentStatus,
               amount: approvedAmountPence,
               currency: "GBP",
@@ -463,7 +446,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
             await tx.manualPaymentSubmission.upsert({
               where: { paymentId: existingRegistration.payment.id },
               update: {
-                method: PaymentMethod.BANK_TRANSFER,
+                method: manualMethod,
                 senderName: contribution.senderName,
                 senderNumber: contribution.senderNumber,
                 referenceKey: contribution.referenceKey,
@@ -471,7 +454,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
               },
               create: {
                 paymentId: existingRegistration.payment.id,
-                method: PaymentMethod.BANK_TRANSFER,
+                method: manualMethod,
                 senderName: contribution.senderName,
                 senderNumber: contribution.senderNumber,
                 referenceKey: contribution.referenceKey,
@@ -484,7 +467,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
           const payment = await tx.payment.create({
             data: {
               registrationId: existingRegistration.id,
-              provider: PaymentMethod.BANK_TRANSFER,
+              provider: manualMethod,
               amount: approvedAmountPence,
               currency: "GBP",
               status: paymentStatus,
@@ -504,7 +487,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
             await tx.manualPaymentSubmission.create({
               data: {
                 paymentId: payment.id,
-                method: PaymentMethod.BANK_TRANSFER,
+                method: manualMethod,
                 senderName: contribution.senderName,
                 senderNumber: contribution.senderNumber,
                 referenceKey: contribution.referenceKey,

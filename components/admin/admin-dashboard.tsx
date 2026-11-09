@@ -1114,6 +1114,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
               <p><strong>Amount:</strong> {selectedFeeWaiver.amountLabel}</p>
               <p><strong>Can attend regularly:</strong> {selectedFeeWaiver.canAttendRegularly}</p>
               <p><strong>How heard:</strong> {selectedFeeWaiver.howHeard ?? "N/A"}</p>
+              {selectedFeeWaiver.receipt ? <p><strong>Manual receipt ({selectedFeeWaiver.receipt.method === "JAZZCASH" ? "JazzCash" : "Meezan Bank"}):</strong> <a href={`/api/admin/fee-waiver/${selectedFeeWaiver.id}/receipt`} target="_blank" rel="noreferrer">View receipt: {selectedFeeWaiver.receipt.filename}</a> · Evidence only; payment requires staff verification.</p> : null}
               <p><strong>Orientation attended:</strong> {formatBoolean(selectedFeeWaiver.attendedOrientation)}</p>
               <p><strong>Adab commitment:</strong> {formatBoolean(selectedFeeWaiver.adabCommitment)}</p>
               <p><strong>Genuine need confirmed:</strong> {formatBoolean(selectedFeeWaiver.genuineFinancialNeed)}</p>

@@ -382,7 +382,20 @@ model MissionSupportManualSubmission {
   donation MissionSupportDonation @relation(fields: [donationId], references: [id], onDelete: Cascade)
 }
 
+model FreeWarriorReceipt {
+  id            String @id @default(cuid())
+  applicationId String @unique
+  method        String
+  filename      String
+  mime          String
+  sha256        String
+  data          Bytes @db.LongBlob
+  createdAt     DateTime @default(now())
+  application   FreeWarriorApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
 model FreeWarriorApplication {
+  receipt              FreeWarriorReceipt?
   scholarshipBatch     String?
   scholarshipDetails   Json?
   id                   String                       @id @default(cuid())

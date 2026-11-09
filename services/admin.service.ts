@@ -124,6 +124,7 @@ export type AdminDashboardSnapshot = {
     }>;
   }>;
   freeWarriorApplications: Array<{
+    receipt: { filename: string; mime: string; method: string } | null;
     scholarshipBatch: string | null;
     scholarshipDetails: SirahScholarshipDetails | null;
     id: string;
@@ -521,6 +522,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
         orderBy: { createdAt: "desc" },
       }),
       prisma.freeWarriorApplication.findMany({
+        include: { receipt: { select: { filename: true, mime: true, method: true } } },
         orderBy: { createdAt: "desc" },
       }),
       loadMissionSupportForAdmin(),
@@ -709,6 +711,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       const contribution = parseFreeWarriorContribution(item.reasonForWaiver);
       return {
         id: item.id,
+        receipt: item.receipt,
         scholarshipBatch: item.scholarshipBatch,
         scholarshipDetails: item.scholarshipDetails as SirahScholarshipDetails | null,
         fullName: item.fullName,
