@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
 import { parseFreeWarriorContribution } from "@/lib/free-warrior";
+import { SIRAH_TITLE, SIRAH_SLUG } from "@/lib/sirah/catalog";
+import { SIRAH_SCHOLARSHIP_BATCH, SIRAH_SCHOLARSHIP_LIMIT } from "@/lib/sirah/scholarship";
 import type { FreeWarriorApplicationInput, FreeWarriorReviewInput } from "@/lib/validations/free-warrior";
 
 function buildScholarshipReference() {
@@ -59,14 +61,15 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   const existingPending = await prisma.freeWarriorApplication.findFirst({
     where: {
       email: input.email,
-      courseSlug: input.courseSlug,
-      status: FreeWarriorApplicationStatus.PENDING,
+      courseSlug: SIRAH_SLUG,
+      scholarshipBatch: SIRAH_SCHOLARSHIP_BATCH,
+      status: { in: [FreeWarriorApplicationStatus.PENDING, FreeWarriorApplicationStatus.APPROVED] },
     },
     select: { id: true },
   });
 
   if (existingPending) {
-    throw new Error("A Fee Waiver application is already pending for this email.");
+    throw new Error("A Batch 4 scholarship application is already pending or approved for this email.");
   }
 
   const contributionSummary =
@@ -88,6 +91,9 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
 
   const applicationInput = {
     ...input,
+    courseSlug: SIRAH_SLUG,
+    courseTitle: SIRAH_TITLE,
+    listedPrice: "Approved regional fees — see /seerah",
     reasonForWaiver: [contributionSummary, manualPaymentSummary, input.reasonForWaiver].filter(Boolean).join("\n\n"),
   };
 
@@ -109,24 +115,24 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   await Promise.allSettled([
     sendTransactionalEmail({
       to: input.email,
-      subject: "Fee Waiver application received",
+      subject: "Batch 4 Sīrah scholarship application received",
       emailType: "FREE_WARRIOR_RECEIVED",
       html: `
         <p>Assalam-u-Alaikum ${input.fullName},</p>
-        <p>We have received your Fee Waiver application for ${input.courseTitle}.</p>
-        <p>Your application is now under review. We will email you once the review is complete.</p>
+        <p>We have received your Fee Waiver application for ${SIRAH_TITLE}.</p>
+        <p>Your Batch 4 application is under review for one of 10 scholarship places. Selection considers learning, commitment and community contribution; applying does not guarantee an award. We will email you after review.</p>
       `,
       text: [
         `Assalam-u-Alaikum ${input.fullName},`,
-        `We have received your Fee Waiver application for ${input.courseTitle}.`,
-        "Your application is now under review. We will email you once the review is complete.",
+        `We have received your Fee Waiver application for ${SIRAH_TITLE}.`,
+        "Your Batch 4 application is under review for one of 10 scholarship places. Selection considers learning, commitment and community contribution; applying does not guarantee an award. We will email you after review.",
       ].join("\n"),
     }),
     notifyAdmins({
-      subject: `New Fee Waiver application: ${input.fullName}`,
+      subject: `Batch 4 scholarship application: ${input.fullName}`,
       emailType: "ADMIN_FREE_WARRIOR_APPLICATION",
       html: `
-        <p>New Fee Waiver application received.</p>
+        <p>New Batch 4 Sīrah scholarship application received. Review the full eligibility responses in the admin dashboard.</p>
         <p>Name: <strong>${input.fullName}</strong></p>
         <p>Email: ${input.email}</p>
         <p>WhatsApp: ${input.whatsapp}</p>
@@ -138,7 +144,7 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
         <p>Reason for waiver: ${input.reasonForWaiver}</p>
       `,
       text: [
-        "New Fee Waiver application received.",
+        "New Batch 4 Sīrah scholarship application received. Review the full eligibility responses in the admin dashboard.",
         `Name: ${input.fullName}`,
         `Email: ${input.email}`,
         `WhatsApp: ${input.whatsapp}`,
@@ -175,14 +181,16 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
   }
 
   if (!input.approve) {
-    const rejected = await prisma.freeWarriorApplication.update({
-      where: { id: application.id },
+    const rejected = await prisma.freeWarriorApplication.updateMany({
+      where: { id: application.id, status: FreeWarriorApplicationStatus.PENDING },
       data: {
         status: FreeWarriorApplicationStatus.REJECTED,
         reviewNote: input.note || null,
         reviewedAt: new Date(),
       },
     });
+
+    if (!rejected.count) throw new Error("This application has already been reviewed.");
 
     await Promise.allSettled([
       sendTransactionalEmail({
@@ -220,7 +228,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
       }),
     ]);
 
-    return rejected;
+    return prisma.freeWarriorApplication.findUniqueOrThrow({ where: { id: application.id } });
   }
 
   const course = await prisma.course.findUnique({
@@ -251,6 +259,14 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
     : `Approved fee warrior application with partial contribution: ${contribution.amountLabel}.`;
 
   const result = await prisma.$transaction(async (tx) => {
+    // Serialize awards on the course row so concurrent reviewers cannot award place 11.
+    await tx.$queryRaw`SELECT id FROM Course WHERE id = ${course.id} FOR UPDATE`;
+    const current = await tx.freeWarriorApplication.findUniqueOrThrow({ where: { id: application.id } });
+    if (current.status !== FreeWarriorApplicationStatus.PENDING) throw new Error("This application has already been reviewed.");
+    if (current.scholarshipBatch === SIRAH_SCHOLARSHIP_BATCH) {
+      const awarded = await tx.freeWarriorApplication.count({ where: { scholarshipBatch: SIRAH_SCHOLARSHIP_BATCH, status: FreeWarriorApplicationStatus.APPROVED } });
+      if (awarded >= SIRAH_SCHOLARSHIP_LIMIT) throw new Error("All 10 Batch 4 scholarship places have been awarded. This application remains pending.");
+    }
     let createdNewUser = false;
     let user = await tx.user.findUnique({
       where: { email: application.email },
@@ -294,12 +310,16 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
       },
       select: {
         id: true,
-        payment: { select: { id: true } },
+        payment: { select: { id: true, status: true } },
         enrollment: { select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
     });
 
+    // A scholarship review must never overwrite a real paid registration or provider checkout.
+    if (existingRegistration && (existingRegistration.payment?.status === PaymentStatus.CONFIRMED || await tx.sirahOrder.findUnique({ where: { registrationId: existingRegistration.id }, select: { id: true } }))) {
+      throw new Error("This student already has a paid registration or a current Sīrah payment record. Review that record before awarding a scholarship; no payment has been changed.");
+    }
     let registrationId = existingRegistration?.id ?? null;
 
       if (!existingRegistration) {
@@ -496,8 +516,8 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
         }
       }
 
-    const reviewedApplication = await tx.freeWarriorApplication.update({
-      where: { id: application.id },
+    const changed = await tx.freeWarriorApplication.updateMany({
+      where: { id: application.id, status: FreeWarriorApplicationStatus.PENDING },
       data: {
         status: FreeWarriorApplicationStatus.APPROVED,
         reviewNote: input.note || null,
@@ -506,8 +526,9 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
       },
     });
 
+    if (!changed.count) throw new Error("This application has already been reviewed.");
     return {
-      application: reviewedApplication,
+      application: await tx.freeWarriorApplication.findUniqueOrThrow({ where: { id: application.id } }),
       user,
       registrationId,
       temporaryPassword: createdNewUser ? temporaryPassword : null,

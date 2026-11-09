@@ -1,11 +1,18 @@
 "use client";
 
+import { SIRAH_SCHOLARSHIP_BATCH, SIRAH_SCHOLARSHIP_LIMIT, scholarshipQuestions, arabicLevels } from "@/lib/sirah/scholarship";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { Header } from "@/components/home/sections/header";
 
 type FormState = {
+  scholarshipDetails: {
+    seerahReflection: string; arabicLevel: string; arabicExperience: string; deenUnderstanding: string;
+    communityContribution: string; missionSupport: string; skillsResources: string; actionPlan: string;
+    skillsStatus: string; skillLearningPlan: string; skillsLearningCommitment: boolean;
+    weeklyHours: string; missionCommitment: boolean; selectionAcknowledgement: boolean;
+  };
   fullName: string;
   email: string;
   whatsapp: string;
@@ -34,6 +41,12 @@ type FormState = {
 };
 
 const initialForm: FormState = {
+  scholarshipDetails: {
+    seerahReflection: "", arabicLevel: "", arabicExperience: "", deenUnderstanding: "",
+    communityContribution: "", missionSupport: "", skillsResources: "", actionPlan: "",
+    skillsStatus: "", skillLearningPlan: "", skillsLearningCommitment: false,
+    weeklyHours: "", missionCommitment: false, selectionAcknowledgement: false,
+  },
   fullName: "",
   email: "",
   whatsapp: "",
@@ -108,6 +121,7 @@ export default function FeeWaiverPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          scholarshipBatch: SIRAH_SCHOLARSHIP_BATCH,
           age: Number(form.age),
           courseSlug: "seerah-course",
           courseTitle: SIRAH_TITLE,
@@ -129,7 +143,7 @@ export default function FeeWaiverPage() {
         throw new Error(detailMessage || data.error || "Application could not be submitted.");
       }
 
-      setSuccess("Your Fee Waiver application has been submitted. We will email you after review.");
+      setSuccess("Your Batch 4 scholarship application has been submitted for review. There are 10 places; an application does not guarantee an award. We will email you after review.");
       setForm(initialForm);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Application error.");
@@ -145,11 +159,17 @@ export default function FeeWaiverPage() {
         <section className="ga-section">
           <div className="ga-container" style={{ maxWidth: 820 }}>
             <div style={{ textAlign: "center", marginBottom: "1.15rem" }}>
-              <p className="ga-kicker">Fee Waiver Application</p>
-              <h1 className="ga-heading">Apply for the Fee Waiver Scholarship</h1>
+              <p className="ga-kicker">Batch 4 · Scholarship Application</p>
+              <h1 className="ga-heading">Apply for a Sīrah Scholarship</h1>
               <p className="ga-copy" style={{ marginTop: "0.8rem" }}>
-                We have made it easy for committed students to avail the course.
+                For committed learners ready to turn Sīrah knowledge into meaningful action, service and a strong global community.
               </p>
+            </div>
+
+            <div style={{ ...radioSectionStyle, marginBottom: "1rem" }}>
+              <h2 style={{ ...inlineHeadingStyle, fontSize: "1rem" }}>Our selection approach</h2>
+              <p style={{ ...helperCopyStyle, color: "#1f3f59" }}><strong>Only {SIRAH_SCHOLARSHIP_LIMIT} scholarship places are available for Batch 4.</strong> We consider prior Sīrah knowledge, foundational Arabic, understanding of Islam, commitment to community service, willingness to support TGA’s mission, and the skills or resources you can contribute.</p>
+              <p style={helperCopyStyle}>We seek learners who will put knowledge into practice and help build a strong Sīrah community globally. Please give honest, specific examples. Applications are assessed on overall suitability, commitment and potential contribution; meeting the criteria does not guarantee a scholarship.</p>
             </div>
 
             <form onSubmit={handleSubmit} style={formCardStyle}>
@@ -159,12 +179,12 @@ export default function FeeWaiverPage() {
                   <p style={ribbonValueStyle}>{SIRAH_TITLE}</p>
                 </div>
                 <div>
-                  <p style={ribbonLabelStyle}>Listed Price</p>
-                  <p style={ribbonValueStyle}>Regional fees apply</p>
+                  <p style={ribbonLabelStyle}>Cohort</p>
+                  <p style={ribbonValueStyle}>Batch 4</p>
                 </div>
                 <div>
                   <p style={ribbonLabelStyle}>Review Mode</p>
-                  <p style={ribbonValueStyle}>Full waiver scholarship</p>
+                  <p style={ribbonValueStyle}>10 places · Manual selection</p>
                 </div>
               </div>
 
@@ -209,12 +229,25 @@ export default function FeeWaiverPage() {
                   </select>
                 </label>
                 <label style={labelStyle}>
-                  Previous Seerah Study
-                  <input value={form.previousSeerahStudy} onChange={(event) => setForm((prev) => ({ ...prev, previousSeerahStudy: event.target.value }))} style={inputStyle} />
+                  Prior Sīrah study and familiarity*
+                  <input name="previousSeerahStudy" minLength={20} maxLength={2000} placeholder="Books, teachers, courses or independent study" value={form.previousSeerahStudy} onChange={(event) => setForm((prev) => ({ ...prev, previousSeerahStudy: event.target.value }))} style={inputStyle} required />
                 </label>
               </div>
               <label style={labelStyle}>
-                Current Involvement
+                Arabic understanding*
+                <select name="arabicLevel" value={form.scholarshipDetails.arabicLevel} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, arabicLevel: event.target.value } }))} style={inputStyle} required>
+                  <option value="">Select your current level</option>
+                  {Object.entries(arabicLevels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>
+              {(["seerahReflection", "arabicExperience", "deenUnderstanding"] as const).map(key => (
+                <label key={key} style={labelStyle}>
+                  {scholarshipQuestions[key]}*
+                  <textarea name={key} value={form.scholarshipDetails[key]} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, [key]: event.target.value } }))} rows={3} minLength={20} maxLength={2000} style={textareaStyle} required />
+                </label>
+              ))}
+              <label style={labelStyle}>
+                Current community or Islamic learning involvement
                 <input value={form.currentInvolvement} onChange={(event) => setForm((prev) => ({ ...prev, currentInvolvement: event.target.value }))} style={inputStyle} />
               </label>
 
@@ -242,11 +275,37 @@ export default function FeeWaiverPage() {
 
               <div style={dividerStyle} />
 
+              <div style={inlineHeadingStyle}>Service, Mission & Contribution</div>
+              {(["communityContribution", "missionSupport", "skillsResources", "actionPlan"] as const).map(key => (
+                <label key={key} style={labelStyle}>
+                  {scholarshipQuestions[key]}*
+                  <textarea name={key} value={form.scholarshipDetails[key]} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, [key]: event.target.value } }))} rows={3} minLength={20} maxLength={2000} style={textareaStyle} required />
+                </label>
+              ))}
+              <label style={labelStyle}>
+                Do you currently have skills you can contribute to mission or community work?*
+                <select name="skillsStatus" value={form.scholarshipDetails.skillsStatus} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, skillsStatus: event.target.value } }))} style={inputStyle} required>
+                  <option value="">Choose an option</option>
+                  <option value="CURRENT_SKILLS">Yes — I have skills to contribute</option>
+                  <option value="LEARNING_REQUIRED">Not yet — I will identify and start learning a useful skill</option>
+                </select>
+              </label>
+              {form.scholarshipDetails.skillsStatus === "LEARNING_REQUIRED" ? <label style={labelStyle}>
+                {scholarshipQuestions.skillLearningPlan}*
+                <textarea name="skillLearningPlan" rows={3} minLength={20} maxLength={2000} value={form.scholarshipDetails.skillLearningPlan} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, skillLearningPlan: event.target.value } }))} style={textareaStyle} required />
+              </label> : null}
+              <p style={helperCopyStyle}><strong>If you do not yet possess relevant skills, you must identify and begin learning skills needed for mission and community work.</strong> We consider willingness to develop useful skills alongside your current experience.</p>
+              <p style={helperCopyStyle}>Examples may include mentoring, study circles, translation, writing, design, teaching, organising or professional support. Describe what is realistic for your circumstances.</p>
+              <div style={dividerStyle} />
               <div style={inlineHeadingStyle}>Commitment & Need</div>
+              <label style={labelStyle}>
+                Hours you can realistically set aside each week for classes, study and contribution*
+                <input name="weeklyHours" type="number" min="0.5" max="80" step="0.5" value={form.scholarshipDetails.weeklyHours} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, weeklyHours: event.target.value } }))} style={inputStyle} required />
+              </label>
               <div style={fieldGridStyle}>
                 <label style={labelStyle}>
-                  Can attend regularly?*
-                  <input value={form.canAttendRegularly} onChange={(event) => setForm((prev) => ({ ...prev, canAttendRegularly: event.target.value }))} placeholder="I'll try my best" style={inputStyle} required />
+                  How will you attend regularly and follow through?*
+                  <input value={form.canAttendRegularly} onChange={(event) => setForm((prev) => ({ ...prev, canAttendRegularly: event.target.value }))} placeholder="Describe your schedule and how you will manage other commitments" style={inputStyle} required />
                 </label>
                 <label style={toggleStyle}>
                   <span>Attended orientation?</span>
@@ -442,24 +501,36 @@ export default function FeeWaiverPage() {
               <div style={inlineHeadingStyle}>Agreements</div>
               <div style={agreementGridStyle}>
                 <label style={agreementCardStyle}>
-                  <input type="checkbox" checked={form.adabCommitment} onChange={(event) => setForm((prev) => ({ ...prev, adabCommitment: event.target.checked }))} />
+                  <input name="skillsLearningCommitment" type="checkbox" checked={form.scholarshipDetails.skillsLearningCommitment} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, skillsLearningCommitment: event.target.checked } }))} required />
+                  <span>If I do not yet have relevant skills, I commit to identifying and starting to learn a skill needed for mission and community work.</span>
+                </label>
+                <label style={agreementCardStyle}>
+                  <input name="missionCommitment" type="checkbox" checked={form.scholarshipDetails.missionCommitment} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, missionCommitment: event.target.checked } }))} required />
+                  <span>I am applying for sustained learning and practical service, and I am willing to contribute to the wider mission wherever possible.</span>
+                </label>
+                <label style={agreementCardStyle}>
+                  <input name="selectionAcknowledgement" type="checkbox" checked={form.scholarshipDetails.selectionAcknowledgement} onChange={event => setForm(prev => ({ ...prev, scholarshipDetails: { ...prev.scholarshipDetails, selectionAcknowledgement: event.target.checked } }))} required />
+                  <span>I understand that only 10 Batch 4 scholarship places are available, my answers are truthful, and applying or meeting the criteria does not guarantee selection.</span>
+                </label>
+                <label style={agreementCardStyle}>
+                  <input type="checkbox" required checked={form.adabCommitment} onChange={(event) => setForm((prev) => ({ ...prev, adabCommitment: event.target.checked }))} />
                   <span>I commit to adab, etiquette, and respectful conduct in this course.</span>
                 </label>
                 <label style={agreementCardStyle}>
-                  <input type="checkbox" checked={form.genuineFinancialNeed} onChange={(event) => setForm((prev) => ({ ...prev, genuineFinancialNeed: event.target.checked }))} />
+                  <input type="checkbox" required checked={form.genuineFinancialNeed} onChange={(event) => setForm((prev) => ({ ...prev, genuineFinancialNeed: event.target.checked }))} />
                   <span>I confirm that this application is based on genuine financial need.</span>
                 </label>
               </div>
 
-              {error ? <p style={{ margin: 0, color: "#b42318" }}>{error}</p> : null}
-              {success ? <p style={{ margin: 0, color: "#166534" }}>{success}</p> : null}
+              {error ? <p role="alert" style={{ margin: 0, color: "#b42318" }}>{error}</p> : null}
+              {success ? <p role="status" style={{ margin: 0, color: "#166534" }}>{success}</p> : null}
 
               <div style={submitRowStyle}>
                 <p style={{ margin: 0, color: "#58758e", fontSize: "0.9rem" }}>
                   Your submission remains confidential and goes straight to manual admin review.
                 </p>
                 <button type="submit" className="ga-btn ga-btn-primary" disabled={submitting}>
-                  {submitting ? "Submitting..." : "Submit Fee Waiver Application"}
+                  {submitting ? "Submitting..." : "Submit Scholarship Application"}
                 </button>
               </div>
             </form>

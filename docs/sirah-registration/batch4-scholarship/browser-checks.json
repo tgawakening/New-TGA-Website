@@ -1,0 +1,29 @@
+[
+  {
+    "width": 390,
+    "noOverflow": true,
+    "criteriaAndLimitVisible": true,
+    "requiredFieldsEnforced": true
+  },
+  {
+    "liveLocalSubmission": true,
+    "storedAllAnswers": true,
+    "adminReviewDisplaysAnswers": true,
+    "noProductionRecordOrEmailCreated": true
+  },
+  {
+    "width": 768,
+    "noOverflow": true,
+    "criteriaAndLimitVisible": true,
+    "requiredFieldsEnforced": true
+  },
+  {
+    "width": 1350,
+    "noOverflow": true,
+    "criteriaAndLimitVisible": true,
+    "requiredFieldsEnforced": true
+  },
+  {
+    "existingLinksStillShowUpdatedForm": true
+  }
+]

@@ -1,5 +1,7 @@
 "use client";
 
+import { SIRAH_SCHOLARSHIP_BATCH, SIRAH_SCHOLARSHIP_LIMIT, scholarshipQuestions, arabicLevels } from "@/lib/sirah/scholarship";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNotificationBell from "@/components/admin/admin-notification-bell";
@@ -96,6 +98,7 @@ function DetailsButton({ onClick }: { onClick: () => void }) {
 
 export default function AdminDashboard({ data, adminEmail, initialNotifications }: Props) {
   const router = useRouter();
+  const batch4Awarded = data.freeWarriorApplications.filter(row => row.scholarshipBatch === SIRAH_SCHOLARSHIP_BATCH && row.status === "APPROVED").length;
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -815,6 +818,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
 
         {activeTab === "scholarships" ? (
           <>
+            <p className="ga-admin-empty-state">Batch 4: <strong>{batch4Awarded} of {SIRAH_SCHOLARSHIP_LIMIT}</strong> scholarship places awarded. Selection considers the full application; submitting does not reserve a place.</p>
             <div className="ga-admin-filter-row ga-admin-filter-row-single">
               <select value={applicationStatusFilter} onChange={(event) => setApplicationStatusFilter(event.target.value)}>
                 <option value="ALL">All applications</option>
@@ -1104,6 +1108,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
               <p><strong>Occupation:</strong> {selectedFeeWaiver.occupation}</p>
               <p><strong>Knowledge level:</strong> {selectedFeeWaiver.knowledgeLevel}</p>
               <p><strong>Course:</strong> {selectedFeeWaiver.courseTitle}</p>
+              {selectedFeeWaiver.scholarshipBatch ? <p><strong>Scholarship cohort:</strong> Batch 4 · 10 places</p> : null}
               <p><strong>Listed price:</strong> {selectedFeeWaiver.listedPrice}</p>
               <p><strong>Payment preference:</strong> {selectedFeeWaiver.paymentLabel}</p>
               <p><strong>Amount:</strong> {selectedFeeWaiver.amountLabel}</p>
@@ -1127,6 +1132,15 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications 
                 <p><strong>How it benefits:</strong> {selectedFeeWaiver.howItBenefits}</p>
                 <p><strong>Most interesting topic:</strong> {selectedFeeWaiver.mostInterestingTopic}</p>
                 <p><strong>Why this topic:</strong> {selectedFeeWaiver.whyThisTopic}</p>
+                {selectedFeeWaiver.scholarshipDetails ? <>
+                  <p><strong>Arabic understanding:</strong> {arabicLevels[selectedFeeWaiver.scholarshipDetails.arabicLevel]}</p>
+                  {Object.entries(scholarshipQuestions).map(([key, question]) => <p key={key} style={{ whiteSpace: "pre-wrap" }}><strong>{question}</strong><br />{String(selectedFeeWaiver.scholarshipDetails![key as keyof typeof scholarshipQuestions] || "Not provided")}</p>)}
+                  <p><strong>Skills status:</strong> {selectedFeeWaiver.scholarshipDetails.skillsStatus === "LEARNING_REQUIRED" ? "Must identify and start learning a useful skill" : "Has skills to contribute"}</p>
+                  <p><strong>Skills-learning commitment:</strong> {formatBoolean(selectedFeeWaiver.scholarshipDetails.skillsLearningCommitment)}</p>
+                  <p><strong>Weekly hours:</strong> {selectedFeeWaiver.scholarshipDetails.weeklyHours}</p>
+                  <p><strong>Learning and mission commitment:</strong> {formatBoolean(selectedFeeWaiver.scholarshipDetails.missionCommitment)}</p>
+                  <p><strong>Ten-place selection acknowledged:</strong> {formatBoolean(selectedFeeWaiver.scholarshipDetails.selectionAcknowledgement)}</p>
+                </> : null}
                 <p><strong>Financial reason:</strong> {selectedFeeWaiver.applicationReason}</p>
                 {selectedFeeWaiver.manualNotes ? <p><strong>Manual notes:</strong> {selectedFeeWaiver.manualNotes}</p> : null}
                 {selectedFeeWaiver.reviewNote ? <p><strong>Admin note:</strong> {selectedFeeWaiver.reviewNote}</p> : null}
