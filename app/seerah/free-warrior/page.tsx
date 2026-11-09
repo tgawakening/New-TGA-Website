@@ -162,15 +162,14 @@ export default function FeeWaiverPage() {
               <p className="ga-kicker">Batch 4 · Scholarship Application</p>
               <h1 className="ga-heading">Apply for a Sīrah Scholarship</h1>
               <p className="ga-copy" style={{ marginTop: "0.8rem" }}>
-                For committed learners ready to turn Sīrah knowledge into meaningful action, service and a strong global community.
+                For committed learners ready to learn, contribute and serve.
               </p>
             </div>
 
-            <div style={{ ...radioSectionStyle, marginBottom: "1rem" }}>
-              <h2 style={{ ...inlineHeadingStyle, fontSize: "1rem" }}>Our selection approach</h2>
-              <p style={{ ...helperCopyStyle, color: "#1f3f59" }}><strong>Only {SIRAH_SCHOLARSHIP_LIMIT} scholarship places are available for Batch 4.</strong> We consider prior Sīrah knowledge, foundational Arabic, understanding of Islam, commitment to community service, willingness to support TGA’s mission, and the skills or resources you can contribute.</p>
-              <p style={helperCopyStyle}>We seek learners who will put knowledge into practice and help build a strong Sīrah community globally. Please give honest, specific examples. Applications are assessed on overall suitability, commitment and potential contribution; meeting the criteria does not guarantee a scholarship.</p>
-            </div>
+            <aside aria-label="Scholarship selection summary" style={{ ...radioSectionStyle, gap: "0.35rem", padding: "0.8rem 0.95rem", marginBottom: "1rem" }}>
+              <h2 style={inlineHeadingStyle}>{SIRAH_SCHOLARSHIP_LIMIT} scholarships · Batch 4</h2>
+              <p style={{ ...helperCopyStyle, margin: 0, color: "#1f3f59" }}>Selection considers Sīrah knowledge, basic Arabic, Islamic foundations and commitment to community service. Bring useful skills or commit to learning them to support TGA’s mission. Awards follow review and are not guaranteed.</p>
+            </aside>
 
             <form onSubmit={handleSubmit} style={formCardStyle}>
               <div style={topRibbonStyle}>
