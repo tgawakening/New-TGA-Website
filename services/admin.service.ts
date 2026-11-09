@@ -741,7 +741,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
         howHeard: item.howHeard ?? null,
         contributionPreference: contribution.contributionPreference,
         contributionLabel: contribution.contributionLabel,
-        paymentLabel: contribution.paymentLabel,
+        paymentLabel: item.receipt?.method === "JAZZCASH" ? "JazzCash" : contribution.paymentLabel,
         amountLabel: contribution.amountLabel,
         monthlyContributionPkr: contribution.monthlyContributionPkr,
         monthlyContributionGbp: contribution.monthlyContributionGbp,
