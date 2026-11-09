@@ -320,3 +320,13 @@ test('manual confirmation endpoint rejects unauthorized callers and accepts auth
     assert.equal((await POST(request(false))).status,401);assert.equal(state.donations.get('donation-1').status,'UNDER_REVIEW');assert.equal((await POST(request(true))).status,200);assert.equal(state.donations.get('donation-1').status,'CONFIRMED');
   } finally { if(previous===undefined) delete process.env.ADMIN_API_TOKEN;else process.env.ADMIN_API_TOKEN=previous; }
 });
+
+
+test('named Gen-Mumin and Sirah course sponsorship purposes are accepted without removing existing purposes', () => {
+  const { missionPurposeIds, missionPurposeLabel } = require('../lib/mission-support.ts');
+  for (const purpose of ['GEN_MUMIN','SIRAH_BEYOND_CHRONOLOGY','LEARNING_ACCESS','EXISTING_PROGRAMMES','NEW_INITIATIVES','WHERE_NEEDED','SEERAH_LEADERSHIP','LEARNING_RESOURCES']) {
+    assert.ok(missionPurposeIds.includes(purpose));
+    assert.equal(missionSupportPaymentSchema.safeParse({...manualInput,purpose}).success,true);
+  }
+  assert.match(missionPurposeLabel('SIRAH_BEYOND_CHRONOLOGY'), /Beyond Chronology/);
+});

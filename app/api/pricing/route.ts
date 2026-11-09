@@ -1,3 +1,5 @@
+import { withManualDiscountTerms } from "@/lib/sirah/discount-terms";
+import { personalSirahPrice, SirahDiscountError } from "@/lib/sirah/manual-discount";
 import {
   publicSirahCohort,
   cohortAllowsPayment,
@@ -11,7 +13,7 @@ import { NextResponse } from "next/server";
 import { countries } from "countries-list";
 import { z } from "zod";
 import { calculatePricing } from "@/lib/pricing";
-import { priceFor, SIRAH_SLUG } from "@/lib/sirah/catalog";
+import { SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { methodAvailable, termsFor, manualAccounts } from "@/lib/sirah/config";
 export async function POST(request: Request) {
   try {
@@ -92,7 +94,8 @@ export async function POST(request: Request) {
           .enum(["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"])
           .nullable()
           .default(null),
-        couponCode: z.string().optional(),
+        couponCode: z.string().max(64).optional(),
+        email: z.email().max(254).optional(),
       })
       .strict()
       .safeParse(body);
@@ -110,24 +113,18 @@ export async function POST(request: Request) {
           couponCode: v.couponCode,
         }),
       });
-    if (v.couponCode)
-      return NextResponse.json(
-        {
-          error:
-            "Additional discounts cannot be stacked with this course’s approved fees.",
-        },
-        { status: 400 },
-      );
-    const price = priceFor(
+    const price = await personalSirahPrice(
       v.countryCode,
       v.plan,
       v.method || defaultPriceMethod(v.countryCode, v.plan),
+      v.email || "",
+      v.couponCode,
     );
     const cohort = await publicSirahCohort();
     const commencementReady = cohortAllowsPayment(termsFor(v.plan, v.countryCode), cohort);
     return NextResponse.json({
       cohort,
-      pricing: price,
+      pricing: { ...price, discount: price.discount ? { label: price.discount.label, originalAmountMinor: price.discount.originalAmountMinor, amountMinor: price.discount.amountMinor } : null },
       methods: (
         ["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"] as const
       ).filter(
@@ -155,9 +152,10 @@ export async function POST(request: Request) {
         ? commencementReady &&
           methodAvailable(v.method, v.countryCode, price.currency, v.plan)
         : false,
-      terms: snapshotSirahCohort(termsFor(v.plan, v.countryCode), cohort),
-    });
-  } catch {
+      terms: withManualDiscountTerms(snapshotSirahCohort(termsFor(v.plan, v.countryCode), cohort), price.discount),
+    }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
+    if (error instanceof SirahDiscountError) return NextResponse.json({ error: error.message }, { status: 400, headers: { "Cache-Control": "private, no-store" } });
     return NextResponse.json(
       { error: "Pricing is temporarily unavailable." },
       { status: 503 },

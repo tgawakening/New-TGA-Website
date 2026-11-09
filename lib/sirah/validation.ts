@@ -21,6 +21,7 @@ export const sirahRegistrationSchema = z
     countryCode: country,
     plan: z.enum(["MONTHLY", "ANNUAL"]),
     requestKey: z.uuid(),
+    couponCode: z.string().trim().max(64).optional(),
     method: z
       .enum(["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"])
       .nullable()
@@ -48,6 +49,7 @@ export const sirahRegistrationSchema = z
 export const sirahRepriceSchema = z
   .object({
     revision: z.number().int().nonnegative(),
+    couponCode: z.string().trim().max(64).optional(),
     countryCode: country,
     plan: z.enum(["MONTHLY", "ANNUAL"]),
     method: z

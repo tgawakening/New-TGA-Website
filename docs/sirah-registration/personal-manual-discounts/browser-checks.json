@@ -1,0 +1,38 @@
+[
+  {
+    "width": 390,
+    "sponsorButtonScopedToCourse": true,
+    "namedPurposesAndExistingOptions": true,
+    "eligibleEmailOnly": true,
+    "bothManualMethodsQuote3000": true,
+    "receiptAmount3000": true,
+    "noOverflow": true
+  },
+  {
+    "localDiscountedRegistrationAndReceiptAccepted": true,
+    "storedFee3000": true,
+    "noEnrolmentBeforeStaffVerification": true,
+    "noProductionPaymentOrEmailCreated": true
+  },
+  {
+    "width": 768,
+    "sponsorButtonScopedToCourse": true,
+    "namedPurposesAndExistingOptions": true,
+    "eligibleEmailOnly": true,
+    "bothManualMethodsQuote3000": true,
+    "receiptAmount3000": true,
+    "noOverflow": true
+  },
+  {
+    "width": 1350,
+    "sponsorButtonScopedToCourse": true,
+    "namedPurposesAndExistingOptions": true,
+    "eligibleEmailOnly": true,
+    "bothManualMethodsQuote3000": true,
+    "receiptAmount3000": true,
+    "noOverflow": true
+  },
+  {
+    "homepageSupportLabelUnchanged": true
+  }
+]

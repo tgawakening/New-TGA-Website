@@ -1,3 +1,6 @@
+import { withManualDiscountTerms } from "../lib/sirah/discount-terms";
+import { discountCodeHash, manualDiscountEligible } from "../lib/sirah/manual-discount";
+import { POST as personalPricing } from "../app/api/pricing/route";
 import { sirahAdminActionSchema } from "../lib/sirah/validation";
 import { sirahPaymentRegistrationSchema, sirahRequiredEvidenceSchema } from "../lib/sirah/registration-payment";
 import { calculateSirahAnnualRefund, calculateSirahAnnualUnusedMonths } from "../lib/sirah/annual-refund";
@@ -26,7 +29,7 @@ import {
   SIRAH_SLUG,
 } from "../lib/sirah/catalog";
 import { normalizeSirahPhone } from "../lib/sirah/phone";
-import { getGroupInvitation, methodAvailable, termsFor } from "../lib/sirah/config";
+import { getGroupInvitation, methodAvailable, termsFor, type SirahTerms } from "../lib/sirah/config";
 import {
   sirahRegistrationSchema,
   sirahRepriceSchema,
@@ -81,7 +84,7 @@ const paypalSignatureHeaders = {
   "paypal-transmission-sig": "synthetic-signature",
   "paypal-transmission-time": "2026-11-07T00:00:00Z",
 };
-const approvedTestTerms = {
+const approvedTestTerms: SirahTerms = {
   version: "TEST-ONLY-TERMS-v1",
   commitment: "Synthetic test terms; not production policy",
   cancellation: "Synthetic test policy",
@@ -154,7 +157,7 @@ async function evidence(
       transactionReference: "student-provided-unverified",
     },
     route === "UPLOAD" ? { data, name: "receipt.png" } : null,
-    approvedTestTerms.version,
+    String(order.terms?.version || approvedTestTerms.version),
   );
   return publicSirahOrder(order.id, userId);
 }
@@ -185,6 +188,7 @@ beforeEach(async () => {
     )
       delete process.env[key];
   process.env.ADMIN_NOTIFICATION_EMAIL = "admin@example.test";
+  await prisma.sirahManualDiscount.deleteMany();
   await prisma.sirahNotification.deleteMany();
   await prisma.sirahAudit.deleteMany();
   await prisma.sirahReceipt.deleteMany();
@@ -3849,4 +3853,94 @@ test("staff can return rejected manual evidence to pending, but cannot reset a p
  await actOnSirahOrder({orderId:order.id,revision:order.revision,action:"APPROVE",verifiedTransfer:true},"admin:review");order=await publicSirahOrder(order.id,r.userId);
  await assert.rejects(actOnSirahOrder({orderId:order.id,revision:order.revision,action:"PENDING"},"admin:review"),/unpaid manual/);
  assert.equal((await publicSirahOrder(order.id,r.userId)).paidMinor,350000);
+});
+
+
+async function personalOffer() {
+  enableManual();
+  const input = { ...payload(), method: "BANK_TRANSFER" as const, couponCode: "TEST-PERSONAL-MANUAL" };
+  const grant = await prisma.sirahManualDiscount.create({ data: { email: input.email, codeHash: discountCodeHash(input.couponCode), batchCode: "beyond-chronology-2026", countryCode: "PK", plan: "MONTHLY", currency: "PKR", amountMinor: 300000 } });
+  return { input, grant };
+}
+async function quoteOffer(body: Record<string, unknown>) {
+  const r = await personalPricing(new Request("http://localhost/api/pricing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ courseSlug: SIRAH_SLUG, countryCode: "PK", plan: "MONTHLY", method: "BANK_TRANSFER", ...body }) }));
+  return { status: r.status, data: await r.json(), cache: r.headers.get("cache-control") };
+}
+test("personal manual code is email-scoped and quotes PKR 3000 only for eligible Pakistan monthly bank/JazzCash payments", async () => {
+  const { input, grant } = await personalOffer();
+  assert.equal(await manualDiscountEligible(input.email.toUpperCase()), true);
+  assert.equal(await manualDiscountEligible("unrelated@example.test"), false);
+  for (const method of ["BANK_TRANSFER", "JAZZCASH"]) {
+    const result = await quoteOffer({ email: input.email, couponCode: input.couponCode.toLowerCase(), method });
+    assert.equal(result.status, 200);
+    assert.equal(result.data.pricing.amountMinor, 300000);
+    assert.equal(result.data.pricing.totalMinor, 3600000);
+    assert.equal(result.data.pricing.discount.originalAmountMinor, 350000);
+    assert.equal(JSON.stringify(result.data).includes(grant.id), false);
+    assert.equal(result.cache, "private, no-store");
+  }
+  assert.equal((await quoteOffer({ email: input.email })).data.pricing.amountMinor, 350000);
+  for (const change of [{ email: "unrelated@example.test" }, { countryCode: "GB" }, { plan: "ANNUAL" }, { method: "STRIPE" }, { method: "PAYPAL" }, { couponCode: "WRONG" }]) {
+    assert.equal((await quoteOffer({ email: input.email, couponCode: input.couponCode, ...change })).status, 400);
+  }
+  await prisma.sirahManualDiscount.update({ where: { id: grant.id }, data: { isActive: false } });
+  assert.equal((await quoteOffer({ email: input.email, couponCode: input.couponCode })).status, 400);
+});
+test("discounted manual registration saves the server fee, preserves it across bank/JazzCash choices, and enrols only after verified funds", async () => {
+  const { input } = await personalOffer();
+  const created = await registerSirah(input);
+  let order = await publicSirahOrder(created.orderId, created.userId);
+  assert.equal(order.amountMinor, 300000);
+  assert.equal(order.paymentState, "UNPAID");
+  assert.equal(canAccessSirah(await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } })), false);
+  order = await repriceSirah(order.id, created.userId, order.revision, "PK", "MONTHLY", "JAZZCASH");
+  assert.equal(order.amountMinor, 300000);
+  assert.ok(order.discount?.applied);
+  order = await evidence(order, created.userId);
+  assert.equal(order.paymentState, "AWAITING_REVIEW");
+  await approve(order, "discounted-transfer");
+  const paid = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  assert.equal(paid.paidMinor, 300000);
+  assert.equal(paid.enrolmentState, "ACTIVE");
+  const registration = await prisma.registration.findUniqueOrThrow({ where: { id: paid.registrationId! } });
+  assert.equal(registration.baseAmount, 350000);
+  assert.equal(registration.couponDiscountAmount, 50000);
+  assert.equal(registration.finalAmount, 300000);
+  await assert.rejects(repriceSirah(order.id, created.userId, paid.revision, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /changed|progress/);
+  await prisma.sirahOrder.update({ where: { id: order.id }, data: { paymentState: "UNPAID" } });
+  order = await publicSirahOrder(order.id, created.userId);
+  order = await evidence(order, created.userId);
+  await approve(order, "discounted-renewal");
+  const renewed = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  assert.equal(renewed.paidMinor, 600000);
+  assert.equal(renewed.paidCount, 2);
+  assert.equal(renewed.amountMinor, 300000);
+});
+test("personal codes cannot reprice another account, stack with annual pricing, or persist after changing to a non-manual route", async () => {
+  const { input } = await personalOffer();
+  const created = await registerSirah(input);
+  const order = await publicSirahOrder(created.orderId, created.userId);
+  await assert.rejects(registerSirah({ ...payload(), method: "BANK_TRANSFER", couponCode: input.couponCode }), /not valid/);
+  await assert.rejects(registerSirah({ ...payload("PK", "ANNUAL"), email: input.email, method: "BANK_TRANSFER", couponCode: input.couponCode }, created.userId), /not valid/);
+  const other = await create();
+  await assert.rejects(repriceSirah(other.orderId, other.userId, 0, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /not valid/);
+  const annual = await repriceSirah(order.id, created.userId, order.revision, "PK", "ANNUAL", "BANK_TRANSFER");
+  assert.equal(annual.amountMinor, 3240000);
+  assert.equal(annual.discount, null);
+  const normal = await repriceSirah(order.id, created.userId, annual.revision, "PK", "MONTHLY", "BANK_TRANSFER");
+  assert.equal(normal.amountMinor, 350000);
+});
+
+
+test("personal fee terms replace the standard manual amount and preserve cancellation/refund protections", () => {
+  const terms = { ...approvedTestTerms, commitment: "Card PKR 3,000; bank PKR 3,500 per verified month. Renewals voluntary.", tax: "Final manual price PKR 3500.00 includes any applicable tax." } as const;
+  const discounted = withManualDiscountTerms(terms, { grantId: "synthetic", originalAmountMinor: 350000, amountMinor: 300000, label: "Personal discount" })!;
+  assert.ok(discounted.commitment.includes("bank PKR 3,000"));
+  assert.ok(!discounted.commitment.includes("3,500"));
+  assert.ok(discounted.tax.includes("PKR 3,000"));
+  assert.ok(!discounted.tax.includes("3500"));
+  assert.equal(discounted.refund, terms.refund);
+  assert.equal(discounted.cancellation, terms.cancellation);
+  assert.notEqual(discounted.version, terms.version);
+  assert.equal(withManualDiscountTerms(terms, null), terms);
 });

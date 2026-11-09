@@ -1,4 +1,6 @@
 export const missionPurposes = [
+  { id: "GEN_MUMIN", label: "Gen-Mu’min Programme" },
+  { id: "SIRAH_BEYOND_CHRONOLOGY", label: "Sīrah | Beyond Chronology Course" },
   { id: "LEARNING_ACCESS", label: "Sponsor Learning Access" },
   { id: "EXISTING_PROGRAMMES", label: "Support Existing Programmes" },
   { id: "NEW_INITIATIVES", label: "Develop New Initiatives" },
