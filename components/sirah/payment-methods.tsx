@@ -4,7 +4,7 @@ import type { SirahMethod } from "@/lib/sirah/catalog";
 import styles from "./registration.module.css";
 
 const labels: Record<SirahMethod, { title: string; processor: string }> = {
-  STRIPE: { title: "Debit / credit card", processor: "Powered by Stripe" },
+  STRIPE: { title: "Pay by debit/credit card", processor: "Stripe · Google Pay · Apple Pay on eligible devices" },
   PAYPAL: { title: "PayPal", processor: "Pay securely with PayPal" },
   BANK_TRANSFER: { title: "Bank transfer", processor: "Meezan Bank" },
   JAZZCASH: { title: "JazzCash", processor: "Manual receipt verification" },

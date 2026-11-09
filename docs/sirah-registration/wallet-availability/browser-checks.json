@@ -1,0 +1,28 @@
+[
+  {
+    "publicReleaseCommit": "53166182b1912b42abf7790a5c236023cc9ffbe5",
+    "productionPageLoaded": true,
+    "providerCheckoutOrRegistrationCreated": false
+  },
+  {
+    "width": 390,
+    "updatedLabelVisible": true,
+    "eligibilityExplanationVisible": true,
+    "noOverflow": true,
+    "pricingSource": "production public pricing, read-only; rendered in local preview"
+  },
+  {
+    "width": 768,
+    "updatedLabelVisible": true,
+    "eligibilityExplanationVisible": true,
+    "noOverflow": true,
+    "pricingSource": "production public pricing, read-only; rendered in local preview"
+  },
+  {
+    "width": 1350,
+    "updatedLabelVisible": true,
+    "eligibilityExplanationVisible": true,
+    "noOverflow": true,
+    "pricingSource": "production public pricing, read-only; rendered in local preview"
+  }
+]

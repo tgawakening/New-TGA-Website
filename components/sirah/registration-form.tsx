@@ -39,7 +39,7 @@ export type RegistrationControls = {
 };
 const methodLabel = (method: SirahMethod) =>
   ({
-    STRIPE: "Pay by debit or credit card",
+    STRIPE: "Pay by debit/credit card, Google Pay or Apple Pay",
     PAYPAL: "Pay with PayPal",
     BANK_TRANSFER: "Pay by bank transfer",
     JAZZCASH: "Pay with JazzCash",
@@ -1309,7 +1309,7 @@ export function SirahRegistrationForm({
                   setAccepted(false);
                 }}
               />
-              {selectedMethod === "STRIPE" && <p>No Stripe account needed.</p>}
+              {selectedMethod === "STRIPE" && <p>No Stripe account needed. Google Pay and Apple Pay appear in secure checkout only when your device, browser, region and saved card are eligible. You can enter debit or credit card details instead.</p>}
               {billing === "PK" && plan === "MONTHLY" && selectedMethod && (
                 <p>
                   Automatic card: PKR 3,000 per month. Manual transfer: PKR
@@ -1765,7 +1765,7 @@ export function SirahRegistrationForm({
                     amount updates when you select a payment method.
                   </p>
                 )}
-                {order.method === "STRIPE" && <p>No Stripe account needed.</p>}
+                {order.method === "STRIPE" && <p>No Stripe account needed. Google Pay and Apple Pay appear in secure checkout only when your device, browser, region and saved card are eligible. You can enter debit or credit card details instead.</p>}
                 {(selectedRouteAvailable || order.manualEvidenceAllowed) && (
                   <Terms
                     order={order}
