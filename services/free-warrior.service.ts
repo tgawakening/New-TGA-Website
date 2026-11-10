@@ -148,7 +148,7 @@ export async function listFreeWarriorApplicationsForAdmin() {
   });
 }
 
-export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput) {
+export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput, reviewedBy?: string) {
   const application = await prisma.freeWarriorApplication.findUnique({
     where: { id: input.applicationId },
   });
@@ -167,6 +167,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
       data: {
         status: FreeWarriorApplicationStatus.REJECTED,
         reviewNote: input.note || null,
+        reviewedBy: reviewedBy || null,
         reviewedAt: new Date(),
       },
     });
@@ -504,6 +505,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
       data: {
         status: FreeWarriorApplicationStatus.APPROVED,
         reviewNote: input.note || null,
+        reviewedBy: reviewedBy || null,
         reviewedAt: new Date(),
         approvedUserId: user.id,
       },

@@ -5,7 +5,8 @@ import { getSessionIdentity } from "./session";
 
 export async function getSirahWorkspaceAccess(request?: Request) {
   if (request ? !requireAdminAccess(request) : await getCurrentAdmin())
-    return { readOnly: false };
+    return { readOnly: false, canApproveScholarships: true };
   const user = await getSessionIdentity(request);
-  return user?.role === "SIRAH_VIEWER" ? { readOnly: true } : null;
+  return user && ["SIRAH_VIEWER", "SIRAH_REVIEWER"].includes(user.role)
+    ? { readOnly: true, canApproveScholarships: user.role === "SIRAH_REVIEWER" } : null;
 }

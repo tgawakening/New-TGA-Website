@@ -11,6 +11,7 @@ enum UserRole {
   STUDENT
   ADMIN
   SIRAH_VIEWER
+  SIRAH_REVIEWER
 }
 
 enum UserStatus {
@@ -424,6 +425,7 @@ model FreeWarriorApplication {
   listedPrice          String
   status               FreeWarriorApplicationStatus @default(PENDING)
   reviewNote           String?
+  reviewedBy           String? @db.VarChar(320)
   reviewedAt           DateTime?
   approvedUserId       String?
   createdAt            DateTime                     @default(now())
