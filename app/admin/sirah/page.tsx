@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/auth/admin-session";
+import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { SirahAdminStudents } from "@/components/sirah/admin-students";
 import { getAdminNotifications } from "@/services/admin.service";
 
@@ -8,16 +8,17 @@ export default async function SirahAdminPage({
 }: {
   searchParams: Promise<{ order?: string }>;
 }) {
-  if (!(await getCurrentAdmin())) redirect("/admin");
+  const access = await getSirahWorkspaceAccess();
+  if (!access) redirect("/admin");
   const [{ order }, notifications] = await Promise.all([
     searchParams,
-    getAdminNotifications(),
+    access.readOnly ? Promise.resolve([]) : getAdminNotifications(),
   ]);
   return (
     <main className="ga-admin-page">
       <section className="ga-admin-page-section">
         <div className="ga-admin-container">
-          <SirahAdminStudents key={order} initialOrder={order} initialNotifications={notifications} />
+          <SirahAdminStudents key={order} initialOrder={order} initialNotifications={notifications} readOnly={access.readOnly} />
         </div>
       </section>
     </main>

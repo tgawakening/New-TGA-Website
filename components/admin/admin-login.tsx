@@ -26,7 +26,7 @@ export default function AdminLogin() {
         throw new Error(data.error || "Admin login failed.");
       }
 
-      router.push("/admin");
+      router.push(data.next || "/admin");
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Admin login error.");

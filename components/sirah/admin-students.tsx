@@ -7,6 +7,7 @@ import type { AdminNotificationItem } from "@/services/admin.service";
 import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 import { SirahAdminCohort } from "./admin-cohort";
+import { SirahAdminNav } from "./admin-nav";
 import styles from "./admin-students.module.css";
 
 type Snapshot = Awaited<ReturnType<typeof listSirahAdmin>>;
@@ -152,9 +153,11 @@ async function readSnapshot(
 export function SirahAdminStudents({
   initialOrder = "",
   initialNotifications,
+  readOnly = false,
 }: {
   initialOrder?: string;
   initialNotifications: AdminNotificationItem[];
+  readOnly?: boolean;
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
@@ -172,7 +175,7 @@ export function SirahAdminStudents({
   const [selected, setSelected] = useState<Student | null>(null);
   const [detailStale, setDetailStale] = useState(false);
   const selectedId = selected?.id;
-  const actions = selected ? availableActions(selected) : [];
+  const actions = selected && !readOnly ? availableActions(selected) : [];
   const [action, setAction] = useState<Action | "">("");
   const dialog = useRef<HTMLDialogElement>(null);
   const query = new URLSearchParams({
@@ -306,28 +309,12 @@ export function SirahAdminStudents({
 
   return (
     <div className={`ga-admin-shell ${styles.shell}`}>
-      <header className={`ga-admin-topbar ${styles.topbar}`}>
-        <a href="/admin?workspace=overview" className="ga-admin-brand">
-          <span className="ga-admin-brand-mark">TGA</span>
-          <span className="ga-admin-brand-title">Admin workspace</span>
-        </a>
-        <nav className="ga-admin-nav" aria-label="Sīrah admin">
-          <a href="/admin?workspace=overview" className="ga-admin-nav-pill">
-            Dashboard
-          </a>
-          <a
-            href="/admin/sirah"
-            className="ga-admin-nav-pill is-active"
-            aria-current="page"
-          >
-            Sīrah enrolments
-          </a>
-        </nav>
+      <SirahAdminNav active="enrolments" readOnly={readOnly} />
         <div className="ga-admin-topbar-actions">
-          <AdminNotificationBell
+          {!readOnly && <AdminNotificationBell
             initialNotifications={initialNotifications}
             refreshKey={refreshBell}
-          />
+          />}
           <button
             type="button"
             className="ga-admin-ghost-btn"
@@ -339,7 +326,6 @@ export function SirahAdminStudents({
             Refresh
           </button>
         </div>
-      </header>
 
       <section className="ga-admin-workspace-card">
         <div className="ga-admin-workspace-head">
@@ -354,13 +340,13 @@ export function SirahAdminStudents({
             >
               Export this page (CSV)
             </a>
-            <a className="ga-admin-outline-btn" href="/api/admin/sirah/legacy">
+            {!readOnly && <a className="ga-admin-outline-btn" href="/api/admin/sirah/legacy">
               Historical records
-            </a>
+            </a>}
           </div>
         </div>
 
-        <SirahAdminCohort />
+        {!readOnly && <SirahAdminCohort />}
         <div className={`ga-admin-filter-row ${styles.filters}`}>
           <label>
             Search students
@@ -534,7 +520,7 @@ export function SirahAdminStudents({
                     >
                       View Details
                     </button>
-                    {availableActions(student)
+                    {(readOnly ? [] : availableActions(student))
                       .filter((option) =>
                         [
                           "APPROVE",

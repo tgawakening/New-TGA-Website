@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { requireAdminAccess } from "@/lib/auth/admin";
+import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { SirahError } from "@/services/sirah-registration.service";
 export function sirahResponseError(error: unknown) {
   return NextResponse.json(
@@ -52,6 +53,11 @@ export async function sirahAdmin(request: Request) {
         .update(request.headers.get("x-admin-token") || "")
         .digest("hex")
         .slice(0, 12)}`;
+}
+export async function sirahReadAccess(request: Request) {
+  const access = await getSirahWorkspaceAccess(request);
+  if (!access) throw new SirahError("Sīrah workspace access is required.", 401);
+  return access;
 }
 export const privateJson = (value: unknown) =>
   NextResponse.json(value, {

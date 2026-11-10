@@ -13,6 +13,7 @@ type Props = {
   data: AdminDashboardSnapshot;
   adminEmail: string;
   initialNotifications: AdminNotificationItem[];
+  initialTab?: "home" | "scholarships";
 };
 
 type TabKey = "home" | "orders" | "students" | "scholarships" | "mission" | "genmumin";
@@ -96,10 +97,10 @@ function DetailsButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-export default function AdminDashboard({ data, adminEmail, initialNotifications }: Props) {
+export default function AdminDashboard({ data, adminEmail, initialNotifications, initialTab = "home" }: Props) {
   const router = useRouter();
   const batch4Awarded = data.freeWarriorApplications.filter(row => row.scholarshipBatch === SIRAH_SCHOLARSHIP_BATCH && row.status === "APPROVED").length;
-  const [activeTab, setActiveTab] = useState<TabKey>("home");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [paymentFilter, setPaymentFilter] = useState("ALL");

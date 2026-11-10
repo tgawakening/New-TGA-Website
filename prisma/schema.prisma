@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   STUDENT
   ADMIN
+  SIRAH_VIEWER
 }
 
 enum UserStatus {
