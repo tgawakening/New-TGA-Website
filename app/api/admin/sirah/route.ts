@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   checkSirahOrigin,
   sirahAdmin,
+  sirahReadAccess,
   sirahResponseError,
   privateJson,
 } from "@/lib/sirah/http";
@@ -14,7 +15,7 @@ import { sirahAdminActionSchema } from "@/lib/sirah/validation";
 import { SirahError } from "@/services/sirah-registration.service";
 export async function GET(request: Request) {
   try {
-    await sirahAdmin(request);
+    await sirahReadAccess(request);
     const params = new URL(request.url).searchParams;
     const data = await listSirahAdmin(params);
     if (params.get("format") === "csv")

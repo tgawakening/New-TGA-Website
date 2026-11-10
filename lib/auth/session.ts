@@ -10,9 +10,9 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-function getExpiryDate(): Date {
+function getExpiryDate(hours = SESSION_DAYS * 24): Date {
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + SESSION_DAYS);
+  expiresAt.setHours(expiresAt.getHours() + hours);
   return expiresAt;
 }
 
@@ -26,10 +26,10 @@ function getCookieOptions(expires: Date) {
   };
 }
 
-export async function createSession(userId: string): Promise<string> {
+export async function createSession(userId: string, hours?: number): Promise<string> {
   const token = randomBytes(32).toString("hex");
   const tokenHash = hashToken(token);
-  const expiresAt = getExpiryDate();
+  const expiresAt = getExpiryDate(hours);
 
   await prisma.session.create({
     data: {
@@ -42,9 +42,22 @@ export async function createSession(userId: string): Promise<string> {
   return token;
 }
 
-export async function attachSessionCookie(response: NextResponse, userId: string) {
-  const token = await createSession(userId);
-  response.cookies.set(SESSION_COOKIE_NAME, token, getCookieOptions(getExpiryDate()));
+export async function attachSessionCookie(response: NextResponse, userId: string, hours?: number) {
+  const token = await createSession(userId, hours);
+  response.cookies.set(SESSION_COOKIE_NAME, token, getCookieOptions(getExpiryDate(hours)));
+}
+
+/** Lightweight, database-backed identity for scoped staff access. */
+export async function getSessionIdentity(request?: Request) {
+  const token = request
+    ? request.headers.get("cookie")?.split(";").map(part => part.trim()).find(part => part.startsWith(`${SESSION_COOKIE_NAME}=`))?.slice(SESSION_COOKIE_NAME.length + 1)
+    : (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+  if (!token) return null;
+  const session = await prisma.session.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: { expiresAt: true, user: { select: { id: true, fullName: true, email: true, role: true, status: true } } },
+  });
+  return session && session.expiresAt > new Date() && session.user.status === "ACTIVE" ? session.user : null;
 }
 
 export async function clearSessionCookie(response: NextResponse) {

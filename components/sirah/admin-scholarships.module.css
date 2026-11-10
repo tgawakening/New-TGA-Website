@@ -1,0 +1,13 @@
+.filters { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
+.filters label { display: grid; gap: .4rem; flex: 1 1 230px; }
+.filters select { padding: .8rem; border: 1px solid #d5e2ec; border-radius: 12px; background: white; }
+.cards { display: grid; gap: 1rem; }
+.card { border: 1px solid #d5e2ec; border-radius: 16px; padding: 1.25rem; min-width: 0; overflow-wrap: anywhere; }
+.card summary { cursor: pointer; padding-top: 1rem; font-weight: 600; }
+.summary { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
+.summary h2 { margin: 0; font-size: 1.25rem; }
+.answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; margin-top: 1.25rem; }
+.answers dt { font-weight: 600; margin-bottom: .35rem; }
+.answers dd { margin: 0; white-space: pre-wrap; }
+@media (max-width: 650px) { .answers { grid-template-columns: 1fr; } .card { padding: 1rem; } }
+.title { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.25; margin: .4rem 0; }

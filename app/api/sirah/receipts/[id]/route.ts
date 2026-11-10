@@ -4,15 +4,21 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { requireAdminAccess } from "@/lib/auth/admin";
 import { readSirahReceipt } from "@/services/sirah-receipts.service";
 import { sirahResponseError } from "@/lib/sirah/http";
+import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
+import { SIRAH_SLUG } from "@/lib/sirah/catalog";
+import { SirahError } from "@/services/sirah-registration.service";
 export const runtime = "nodejs";
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const admin = !requireAdminAccess(request);
+    const fullAdmin = !requireAdminAccess(request);
+    const access = fullAdmin ? { readOnly: false } : await getSirahWorkspaceAccess(request);
+    const admin = !!access;
     const user = admin ? null : await getCurrentUser();
     const id = (await params).id;
+    if (access?.readOnly && !await prisma.sirahReceipt.findFirst({ where: { id, order: { course: { slug: SIRAH_SLUG } } }, select: { id: true } })) throw new SirahError("Receipt not found.", 404);
     let ownerId = user?.status === "ACTIVE" ? user.id : null;
     if (!admin && !ownerId) {
       const grant = await currentSirahResumeGrant();
