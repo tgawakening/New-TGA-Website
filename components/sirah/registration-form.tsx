@@ -1730,7 +1730,7 @@ export function SirahRegistrationForm({
               >
                 Check verified payment status
               </button>
-              {order.method === "STRIPE" &&
+              {["STRIPE", "PAYPAL"].includes(order.method || "") &&
                 order.paymentState === "PROCESSING" && (
                   <button
                     type="button"

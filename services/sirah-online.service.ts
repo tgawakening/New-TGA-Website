@@ -5,7 +5,7 @@ import { paypalPlanIssue } from "@/lib/sirah/paypal-plan";
 import { sirahOriginAllowed } from "@/lib/sirah/origin";
 import Stripe from "stripe";
 import { randomUUID } from "node:crypto";
-import { type SirahOrder } from "@prisma/client";
+import { Prisma, type SirahOrder } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   SIRAH_TITLE,
@@ -721,23 +721,17 @@ export async function markSirahProviderFailure(
   await dispatchSirahNotifications(order.id).catch(() => {});
 }
 
-/** Expire only an unsettled hosted checkout before allowing a new quote.
- * Completed or asynchronous payments stay locked until verified/reconciled. */
-export async function resetUnsettledSirahCheckout(
-  orderId: string,
-  userId: string,
-) {
-  const order = await ownedSirahOrder(orderId, userId);
-  if (
-    order.paidCount ||
-    !["PROCESSING", "FAILED"].includes(order.paymentState) ||
-    order.method !== "STRIPE" ||
-    !order.providerOrderId
-  )
-    throw new SirahError(
-      "This checkout cannot be safely reset. Check its verified payment status or contact support.",
-      409,
-    );
+const RESET_UNSAFE_MESSAGE =
+  "This checkout cannot be safely reset. Check its verified payment status or contact support.";
+const RESET_SETTLED_MESSAGE =
+  "The payment has settled; its agreed amount is preserved.";
+const RESET_MAY_SETTLE_MESSAGE =
+  "The payment may still settle. It has not been replaced or repriced.";
+
+/** Confirm an abandoned Stripe hosted checkout is unsettled, expiring an open
+ * session so it cannot be paid later. Returns the abandoned session reference. */
+async function resetUnsettledSirahStripe(order: SirahOrder): Promise<string> {
+  if (!order.providerOrderId) throw new SirahError(RESET_UNSAFE_MESSAGE, 409);
   const stripe = stripeClient();
   await verifyStripeMerchant(stripe);
   let session = await stripe.checkout.sessions.retrieve(order.providerOrderId);
@@ -748,10 +742,7 @@ export async function resetUnsettledSirahCheckout(
     throw new SirahError("Checkout ownership mismatch.");
   if (session.payment_status === "paid") {
     await verifySirahStripeSession(order.id, session.id, stripe);
-    throw new SirahError(
-      "The payment has settled; its agreed amount is preserved.",
-      409,
-    );
+    throw new SirahError(RESET_SETTLED_MESSAGE, 409);
   }
   if (session.status === "open")
     session = await stripe.checkout.sessions.expire(session.id);
@@ -760,10 +751,94 @@ export async function resetUnsettledSirahCheckout(
     session.subscription ||
     session.payment_status !== "unpaid"
   )
+    throw new SirahError(RESET_MAY_SETTLE_MESSAGE, 409);
+  return session.id;
+}
+
+/** Confirm an abandoned PayPal checkout is genuinely unsettled before it is
+ * cleared, trusting only PayPal's own order/subscription status (never the
+ * browser). Mirrors the Stripe path: if the attempt may still complete it is
+ * settled-and-refused so a paid student is never reset; only an unapproved,
+ * uncaptured, never-activated attempt returns its reference for clearing. */
+async function resetUnsettledSirahPaypal(order: SirahOrder): Promise<string> {
+  const refuse = async (settle: () => Promise<{ state: string } | null>) => {
+    const settled = await settle().catch(() => null);
     throw new SirahError(
-      "The payment may still settle. It has not been replaced or repriced.",
+      settled?.state === "PAID" ? RESET_SETTLED_MESSAGE : RESET_MAY_SETTLE_MESSAGE,
       409,
     );
+  };
+  if (order.plan === "ANNUAL") {
+    const ref = order.providerOrderId;
+    if (!ref) throw new SirahError(RESET_UNSAFE_MESSAGE, 409);
+    const payment = await paypalRequest(`/v2/checkout/orders/${ref}`);
+    const unit = payment.purchase_units?.[0];
+    if (
+      payment.purchase_units?.length !== 1 ||
+      unit?.custom_id !== order.id ||
+      unit.payee?.merchant_id !== process.env.SIRAH_PAYPAL_MERCHANT_ID
+    )
+      throw new SirahError("Checkout ownership mismatch.");
+    // APPROVED/COMPLETED may already be (or still be) captured. Only an order
+    // the payer never approved is safe to clear.
+    if (
+      !["CREATED", "SAVED", "PAYER_ACTION_REQUIRED", "VOIDED"].includes(
+        payment.status,
+      )
+    )
+      await refuse(() => verifySirahPaypal(order.id, ref, true));
+    return ref;
+  }
+  const ref = order.providerSubscriptionId;
+  if (!ref) throw new SirahError(RESET_UNSAFE_MESSAGE, 409);
+  let sub = await paypalRequest(`/v1/billing/subscriptions/${ref}`);
+  if (sub.custom_id !== order.id || sub.plan_id !== order.providerPlanId)
+    throw new SirahError("Checkout ownership mismatch.");
+  // ACTIVE/APPROVED/SUSPENDED mean the payer approved and it may charge. Only a
+  // still-pending (or provider-terminal cancelled/expired) subscription is safe.
+  if (["ACTIVE", "APPROVED", "SUSPENDED"].includes(sub.status))
+    await refuse(() => verifySirahPaypal(order.id, ref));
+  if (!["APPROVAL_PENDING", "CANCELLED", "EXPIRED"].includes(sub.status))
+    throw new SirahError(RESET_MAY_SETTLE_MESSAGE, 409);
+  // Best-effort: stop a still-pending subscription activating later. PayPal may
+  // reject cancel before approval, so ignore failure, then re-check. Once the
+  // reference is cleared a late activation webhook is a no-op (the order has no
+  // matching providerSubscriptionId), so no silent charge-without-enrolment.
+  if (sub.status === "APPROVAL_PENDING")
+    await paypalRequest(
+      `/v1/billing/subscriptions/${ref}/cancel`,
+      "POST",
+      { reason: "Student reset an abandoned checkout before approval." },
+      `reset-${order.checkoutToken}`,
+    ).catch(() => {});
+  sub = await paypalRequest(`/v1/billing/subscriptions/${ref}`);
+  if (sub.custom_id !== order.id)
+    throw new SirahError("Checkout ownership mismatch.");
+  if (["ACTIVE", "APPROVED", "SUSPENDED"].includes(sub.status))
+    await refuse(() => verifySirahPaypal(order.id, ref));
+  return ref;
+}
+
+/** Expire only an unsettled hosted checkout before allowing a new quote.
+ * Completed or asynchronous payments stay locked until verified/reconciled.
+ * Supports both Stripe and PayPal; nothing from the browser is trusted. */
+export async function resetUnsettledSirahCheckout(
+  orderId: string,
+  userId: string,
+) {
+  const order = await ownedSirahOrder(orderId, userId);
+  if (
+    order.paidCount ||
+    !["PROCESSING", "FAILED"].includes(order.paymentState) ||
+    !["STRIPE", "PAYPAL"].includes(order.method || "") ||
+    !(order.providerOrderId || order.providerSubscriptionId)
+  )
+    throw new SirahError(RESET_UNSAFE_MESSAGE, 409);
+  // The provider reference confirmed unsettled server-side, kept for the audit.
+  const clearedRef =
+    order.method === "STRIPE"
+      ? await resetUnsettledSirahStripe(order)
+      : await resetUnsettledSirahPaypal(order);
   const quote = await import("@/lib/sirah/catalog").then(({ priceFor }) =>
     priceFor(
       order.countryCode,
@@ -783,11 +858,18 @@ export async function resetUnsettledSirahCheckout(
       data: {
         providerOrderId: null,
         providerSubscriptionId: null,
+        providerPlanId: null,
         checkoutToken: null,
         method: null,
         paymentState: "UNPAID",
         amountMinor: quote.amountMinor,
         totalMinor: quote.totalMinor,
+        // Drop the locked quote's discount and terms so the base amount cannot
+        // drift from a stale personal-discount snapshot; re-selecting a method
+        // re-resolves both server-side.
+        discount: Prisma.DbNull,
+        terms: Prisma.DbNull,
+        pricingVersion: quote.pricingVersion,
         revision: { increment: 1 },
       },
     });
@@ -801,7 +883,7 @@ export async function resetUnsettledSirahCheckout(
       order.id,
       `student:${userId}`,
       "UNSETTLED_CHECKOUT_EXPIRED",
-      { providerOrderId: session.id },
+      { provider: order.method, reference: clearedRef },
     );
   });
 }
