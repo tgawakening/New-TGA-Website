@@ -52,14 +52,17 @@ function PrimaryAction({
   placement,
   country,
   plan,
+  requireBillingCountry,
 }: {
   placement: string;
   country?: string;
   plan?: "MONTHLY" | "ANNUAL";
+  requireBillingCountry?: boolean;
 }) {
   const open = useSirahRegistration();
   const params = new URLSearchParams();
   if (country) params.set("country", country);
+  else if (requireBillingCountry) params.set("country", "OVERSEAS");
   if (plan) params.set("plan", plan);
   const query = params.toString();
   return (
@@ -74,6 +77,7 @@ function PrimaryAction({
         open({
           country,
           plan,
+          requireBillingCountry: !country && requireBillingCountry,
           replacePreferences: placement.startsWith("fees"),
         });
       }}
@@ -557,6 +561,21 @@ function SeerahContent({
   const root = useRef<HTMLDivElement>(null);
   const activeSection = useSectionExperience(root);
   const { country, hasResidence } = useResidenceSelection(visitorCountry);
+  // Explicit Pakistan/Overseas choice from the hero region selector, used only
+  // while the visitor's residence is not yet known. "Overseas" has no single
+  // country, so registration opens asking the visitor to choose it.
+  const [regionChoice, setRegionChoice] = useState("");
+  // Preselection comes from GeoIP via `hasResidence`: detected Pakistan or a
+  // saved choice resolves `country`; detected overseas resolves to that
+  // country. When detection fails and nothing is chosen (or the visitor picks
+  // "Overseas"), registration opens asking for the country instead of ever
+  // falling back to Pakistan pricing.
+  const needsCountryChoice = !hasResidence && regionChoice !== "PK";
+  const heroCountry = needsCountryChoice
+    ? undefined
+    : hasResidence
+      ? country
+      : "PK";
   const mobileBar = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const bar = mobileBar.current;
@@ -582,7 +601,11 @@ function SeerahContent({
     return () => window.clearInterval(timer);
   }, []);
   return (
-    <ConsultationProvider country={hasResidence ? country : undefined}>
+    <ConsultationProvider
+      country={hasResidence ? country : undefined}
+      regionChoice={regionChoice}
+      onRegionChange={setRegionChoice}
+    >
       <div className={styles.page} ref={root}>
         <a className={styles.skip} href="#overview">
           Skip to course content
@@ -601,7 +624,11 @@ function SeerahContent({
               )
                 return;
               event.preventDefault();
-              openRegistration({ country });
+              openRegistration(
+                needsCountryChoice
+                  ? { requireBillingCountry: true }
+                  : { country: heroCountry },
+              );
             },
           }}
         />
@@ -660,7 +687,11 @@ function SeerahContent({
                   community he built, and our responsibilities today.
                 </p>
                 <div className={styles.heroActions}>
-                  <PrimaryAction placement="hero" country={country} />
+                  <PrimaryAction
+                    placement="hero"
+                    country={heroCountry}
+                    requireBillingCountry={needsCountryChoice}
+                  />
                   <ConsultationAction
                     className={styles.secondary}
                     placement="hero"
@@ -897,7 +928,11 @@ function SeerahContent({
                 <br />
                 <em>Reflect on your responsibility.</em>
               </h2>
-              <PrimaryAction placement="closing" country={country} />
+              <PrimaryAction
+                placement="closing"
+                country={heroCountry}
+                requireBillingCountry={needsCountryChoice}
+              />
               <ConsultationAction
                 className={styles.secondary}
                 placement="closing"
@@ -907,7 +942,11 @@ function SeerahContent({
         </main>
         <Footer />
         <div className={styles.mobileAction} ref={mobileBar}>
-          <PrimaryAction placement="mobile-sticky" country={country} />
+          <PrimaryAction
+            placement="mobile-sticky"
+            country={heroCountry}
+            requireBillingCountry={needsCountryChoice}
+          />
         </div>
       </div>
     </ConsultationProvider>

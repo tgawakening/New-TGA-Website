@@ -36,7 +36,11 @@ import { sirahManualSenderSchema } from "@/lib/sirah/registration-payment";
 import { priceFor } from "@/lib/sirah/catalog";
 import { PhoneControl } from "./phone-control";
 export type RegistrationControls = {
-  setPreferences: (choice: { country?: string; plan?: SirahPlan }) => void;
+  setPreferences: (choice: {
+    country?: string;
+    plan?: SirahPlan;
+    requireBillingCountry?: boolean;
+  }) => void;
 };
 const methodLabel = (method: SirahMethod) =>
   ({
@@ -285,7 +289,15 @@ export function SirahRegistrationForm({
     () => ({
       setPreferences(choice) {
         if (order) return;
-        if (choice.country) {
+        if (choice.requireBillingCountry && !choice.country) {
+          // "Overseas": no assumed country. Open asking the visitor to choose
+          // their billing country; show no Pakistan/PKR defaults.
+          setBilling("");
+          setResidenceOverride(true);
+          setBillingEdited(true);
+          setResidenceConfirmed(false);
+          setAccepted(false);
+        } else if (choice.country) {
           setBilling(choice.country in countries ? choice.country : "");
           if (getCountries().includes(choice.country as CountryCode)) {
             setPhoneCountry(choice.country as CountryCode);
@@ -1144,6 +1156,11 @@ export function SirahRegistrationForm({
                 onPassword={setPasswordForManager}
               />
             )}
+            <p className={styles.notice} role="note">
+              If you are not living in Pakistan, select your country of
+              residence below so you are charged the correct fee for your
+              region.
+            </p>
             <div className={styles.phoneAndResidence}>
               <PhoneControl
                 country={phoneCountry}
@@ -1170,8 +1187,13 @@ export function SirahRegistrationForm({
                       autoComplete="country"
                       value={billing}
                       onChange={(event) => {
-                        setBilling(event.target.value);
-                        saveResidence(event.target.value);
+                        const value = event.target.value;
+                        setBilling(value);
+                        saveResidence(value);
+                        // Keep the phone dialling code in step with the chosen
+                        // country so it never lingers on a default (e.g. +92).
+                        if (getCountries().includes(value as CountryCode))
+                          setPhoneCountry(value as CountryCode);
                         setAccepted(false);
                         setResidenceConfirmed(false);
                         setResidenceOverride(true);
@@ -1329,6 +1351,13 @@ export function SirahRegistrationForm({
               />
               <PersonalDiscount email={email} country={billing} plan={plan} method={selectedMethod} applied={Boolean(quote?.discount)} disabled={busy} onApply={code => { setCouponCode(code); setDiscountAttempt(value => value + 1); setAccepted(false); setManualConfirmed(false); }} />
               {selectedMethod === "STRIPE" && <p>No Stripe account needed. Wallets appear on eligible devices.</p>}
+              {selectedMethod === "STRIPE" && (
+                <p>
+                  Because our card processor is based abroad, your bank may add
+                  international transaction charges and government taxes to card
+                  payments. These are not charged by TGA.
+                </p>
+              )}
               {billing === "PK" && plan === "MONTHLY" && selectedMethod && (
                 <p>
                   Manual transfers require receipt verification.
@@ -1777,6 +1806,13 @@ export function SirahRegistrationForm({
                   </p>
                 )}
                 {order.method === "STRIPE" && <p>No Stripe account needed. Wallets appear on eligible devices.</p>}
+                {order.method === "STRIPE" && (
+                  <p>
+                    Because our card processor is based abroad, your bank may
+                    add international transaction charges and government taxes
+                    to card payments. These are not charged by TGA.
+                  </p>
+                )}
                 {(selectedRouteAvailable || order.manualEvidenceAllowed) && (
                   <Terms
                     order={order}

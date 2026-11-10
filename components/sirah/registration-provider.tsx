@@ -100,6 +100,8 @@ export function SirahRegistrationProvider({
           (next.replacePreferences || next.plan !== lastSelection.current.plan)
         )
           changes.plan = next.plan;
+        if (next.requireBillingCountry && !next.country)
+          changes.requireBillingCountry = true;
         controls.current?.setPreferences(changes);
         lastSelection.current = next;
         setSelection(next);
@@ -167,6 +169,7 @@ export function SirahRegistrationProvider({
               initialPlan={selection.plan}
               requireBillingCountry={Boolean(
                 entry?.requireBillingCountry ||
+                selection.requireBillingCountry ||
                 (selection.country && !/^[A-Z]{2}$/.test(selection.country)),
               )}
             />
