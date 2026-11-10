@@ -14,11 +14,20 @@ const ConsultationContext = createContext<{
 export function ConsultationProvider({
   country,
   children,
+  regionChoice,
+  onRegionChange,
 }: {
   country?: string;
   children: ReactNode;
+  regionChoice?: string;
+  onRegionChange?: (region: string) => void;
 }) {
-  const [choice, select] = useState("");
+  const [internalChoice, setInternalChoice] = useState("");
+  const choice = regionChoice ?? internalChoice;
+  const select = (value: string) => {
+    setInternalChoice(value);
+    onRegionChange?.(value);
+  };
   const region = country ? (country === "PK" ? "PK" : "OVERSEAS") : choice;
   return (
     <ConsultationContext.Provider value={{ country, region, select }}>
