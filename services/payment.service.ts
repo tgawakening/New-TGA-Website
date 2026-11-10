@@ -1375,6 +1375,12 @@ export async function capturePaypalOrder({
     throw new Error("This registration is not set for PayPal.");
   }
 
+  // Trust nothing the browser supplied: the order it asks us to capture must
+  // be the exact order this server created for this payment.
+  if (orderId !== payment.providerOrderId) {
+    throw new Error("PayPal order does not match this registration.");
+  }
+
   const token = await getPaypalAccessToken();
   const base = getPaypalApiBase();
   const captureResponse = await fetch(
@@ -1393,8 +1399,32 @@ export async function capturePaypalOrder({
   }
 
   const capture = await captureResponse.json();
-  const paymentId =
-    capture?.purchase_units?.[0]?.payments?.captures?.[0]?.id ?? undefined;
+  const purchaseUnit = capture?.purchase_units?.[0];
+  const captureRecord = purchaseUnit?.payments?.captures?.[0];
+
+  // The captured order must carry the custom_id we stamped at creation
+  // (custom_id = payment.id). PayPal echoes it on the capture record, and on
+  // the purchase unit as a fallback.
+  const capturedCustomId = captureRecord?.custom_id ?? purchaseUnit?.custom_id;
+  if (capturedCustomId !== payment.id) {
+    throw new Error("PayPal order does not belong to this registration.");
+  }
+
+  // The captured amount and currency must match what we expected to charge.
+  const expectedCharge = getRegistrationChargeAmount(registration);
+  const expectedValue = (expectedCharge.amount / 100).toFixed(2);
+  const capturedAmount = captureRecord?.amount;
+  if (
+    !capturedAmount ||
+    capturedAmount.currency_code !== expectedCharge.currency ||
+    capturedAmount.value !== expectedValue
+  ) {
+    throw new Error(
+      "PayPal captured amount does not match the expected payment amount.",
+    );
+  }
+
+  const paymentId = captureRecord?.id ?? undefined;
 
   await markSuccessfulPayment({
     paymentId: payment.id,
@@ -1426,6 +1456,12 @@ export async function confirmPaypalSubscription({
     );
   }
 
+  // Trust nothing the browser supplied: the subscription it asks us to confirm
+  // must be the exact one this server created for this payment.
+  if (subscriptionId !== payment.providerOrderId) {
+    throw new Error("PayPal subscription does not match this registration.");
+  }
+
   const token = await getPaypalAccessToken();
   const base = getPaypalApiBase();
   const subscriptionResponse = await fetch(
@@ -1445,7 +1481,9 @@ export async function confirmPaypalSubscription({
 
   const subscription =
     (await subscriptionResponse.json()) as PaypalSubscription;
-  if (subscription.custom_id && subscription.custom_id !== payment.id) {
+  // Require the custom_id we stamped at creation (custom_id = payment.id).
+  // No empty-value exception: a subscription missing it is not trusted.
+  if (subscription.custom_id !== payment.id) {
     throw new Error(
       "PayPal subscription does not belong to this registration.",
     );
