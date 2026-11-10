@@ -11,7 +11,7 @@
 .answers dd { margin: 0; white-space: pre-wrap; }
 @media (max-width: 650px) { .answers { grid-template-columns: 1fr; } .card { padding: 1rem; } }
 .title { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.25; margin: .4rem 0; }
-.dialog { width: min(560px, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; border: 1px solid #d5e2ec; border-radius: 18px; padding: 1.5rem; color: #153654; }
+.dialog { margin: auto; width: min(560px, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; border: 1px solid #d5e2ec; border-radius: 18px; padding: 1.5rem; color: #153654; }
 .dialog::backdrop { background: #102c4b88; }
 .dialog h2 { font-size: 1.5rem; }
 .dialog p { margin: 1rem 0; overflow-wrap: anywhere; }
