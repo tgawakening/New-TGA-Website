@@ -5,6 +5,18 @@ import { SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { SIRAH_SCHOLARSHIP_BATCH } from "@/lib/sirah/scholarship";
 import { parseFreeWarriorContribution } from "@/lib/free-warrior";
 import { SirahError } from "./sirah-registration.service";
+import { reviewFreeWarriorApplication } from "./free-warrior.service";
+
+export async function approveSirahScholarship(applicationId: string, note: string | undefined, actor: string) {
+  const application = await prisma.freeWarriorApplication.findFirst({ where: { id: applicationId, courseSlug: SIRAH_SLUG, scholarshipBatch: SIRAH_SCHOLARSHIP_BATCH }, select: { id: true } });
+  if (!application) throw new SirahError("Sīrah Batch 4 application not found.", 404);
+  try {
+    return await reviewFreeWarriorApplication({ applicationId, approve: true, note }, actor);
+  } catch (error) {
+    if (error instanceof Error && /already been reviewed|All 10 Batch 4|already has a paid registration/.test(error.message)) throw new SirahError(error.message, 409);
+    throw error;
+  }
+}
 
 export async function listSirahScholarships(params: URLSearchParams) {
   const q = (params.get("q") || "").trim().slice(0, 150);

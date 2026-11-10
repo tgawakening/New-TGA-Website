@@ -17,8 +17,8 @@ async function main() {
   const fd = openSync(destination, "wx", 0o600);
   try {
     const login = await provisionSirahViewer(email, name);
-    writeFileSync(fd, `Sīrah team read-only login\nURL: https://www.tga-awakening.com/admin\nEmail: ${login.email}\nPassword: ${login.password}\n\nAccess: Sīrah enrolments and Batch 4 scholarships only. This login does not create an email mailbox. Keep these credentials private.\n`);
-    console.log(JSON.stringify({ provisioned: true, email, role: "SIRAH_VIEWER", credentialsWrittenToPrivateFile: true, notificationSent: false }));
+    writeFileSync(fd, `Sīrah team login\nURL: https://www.tga-awakening.com/admin\nEmail: ${login.email}\nPassword: ${login.password}\n\nAccess: Sīrah enrolments and Batch 4 scholarships only. ${login.role === "SIRAH_REVIEWER" ? "Scholarship approval is permitted; payment verification and other admin changes remain restricted." : "Read-only access."} This login does not create an email mailbox. Keep these credentials private.\n`);
+    console.log(JSON.stringify({ provisioned: true, email, role: login.role, credentialsWrittenToPrivateFile: true, notificationSent: false }));
   } finally { closeSync(fd); }
 }
 main().catch(() => { console.error("Provisioning failed. Check the email, schema migration and private file path; no credentials were printed."); process.exitCode = 1; }).finally(() => prisma.$disconnect());

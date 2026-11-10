@@ -154,10 +154,12 @@ export function SirahAdminStudents({
   initialOrder = "",
   initialNotifications,
   readOnly = false,
+  canApproveScholarships = false,
 }: {
   initialOrder?: string;
   initialNotifications: AdminNotificationItem[];
   readOnly?: boolean;
+  canApproveScholarships?: boolean;
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
@@ -309,7 +311,7 @@ export function SirahAdminStudents({
 
   return (
     <div className={`ga-admin-shell ${styles.shell}`}>
-      <SirahAdminNav active="enrolments" readOnly={readOnly} />
+      <SirahAdminNav active="enrolments" readOnly={readOnly} canApproveScholarships={canApproveScholarships} />
         <div className="ga-admin-topbar-actions">
           {!readOnly && <AdminNotificationBell
             initialNotifications={initialNotifications}
