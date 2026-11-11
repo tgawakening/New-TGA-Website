@@ -15,8 +15,23 @@ import { z } from "zod";
 import { calculatePricing } from "@/lib/pricing";
 import { SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { methodAvailable, termsFor, manualAccounts } from "@/lib/sirah/config";
+import {
+  sirahClientIp,
+  sirahRateLimit,
+  normalizeEmail,
+  MINUTE,
+  HOUR,
+} from "@/lib/sirah/rate-limit";
 export async function POST(request: Request) {
   try {
+    const ip = sirahClientIp(request);
+    // GENTLE: a generous per-IP ceiling that only trips on an automated flood.
+    // The form re-quotes on every field change, and schools/families share one
+    // IP, so this is set high and fails open — it never blocks real pricing.
+    const flood = sirahRateLimit([
+      { key: `pricing:ip:${ip}:m`, limit: 600, windowMs: MINUTE },
+    ]);
+    if (flood) return flood;
     const body = await request.json().catch(() => null);
     if (body?.legacyRegistrationId) {
       const input = z
@@ -105,6 +120,21 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     const v = input.data;
+    if (v.couponCode) {
+      // STRICT: a coupon on the request means this is the discount-code
+      // validation path. Limit per email (stops guessing codes for one address)
+      // and per IP (stops scanning). Legitimate use applies a code once or
+      // twice; the form clears the coupon on any field change, so normal
+      // re-quoting never reaches this path.
+      const email = normalizeEmail(v.email || "") || "noemail";
+      const limited = sirahRateLimit([
+        { key: `pricing-coupon:email:${email}:m`, limit: 5, windowMs: MINUTE },
+        { key: `pricing-coupon:email:${email}:h`, limit: 20, windowMs: HOUR },
+        { key: `pricing-coupon:ip:${ip}:m`, limit: 30, windowMs: MINUTE },
+        { key: `pricing-coupon:ip:${ip}:h`, limit: 300, windowMs: HOUR },
+      ]);
+      if (limited) return limited;
+    }
     if (v.courseSlug !== SIRAH_SLUG)
       return NextResponse.json({
         pricing: await calculatePricing({

@@ -19,10 +19,26 @@ import {
   sirahResponseError,
   privateJson,
 } from "@/lib/sirah/http";
+import {
+  sirahClientIp,
+  sirahRateLimit,
+  MINUTE,
+  HOUR,
+} from "@/lib/sirah/rate-limit";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
+    // GENTLE: registration must tolerate many students from one shared IP
+    // (schools, families). This is only a runaway-script guard — per IP, no
+    // per-email limit (one registration per email is already enforced by a
+    // unique constraint) — set high enough for a large classroom burst.
+    const registerIp = sirahClientIp(request);
+    const registerLimited = sirahRateLimit([
+      { key: `sirah-register:ip:${registerIp}:m`, limit: 100, windowMs: MINUTE },
+      { key: `sirah-register:ip:${registerIp}:h`, limit: 600, windowMs: HOUR },
+    ]);
+    if (registerLimited) return registerLimited;
     if (!(await sirahSchemaAvailable()))
       throw new SirahError(
         "Registration setup is being completed. Please enquire on WhatsApp while registration is unavailable.",
