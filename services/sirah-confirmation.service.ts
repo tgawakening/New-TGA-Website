@@ -218,6 +218,38 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
         revision: { increment: 1 },
       },
     });
+    // --- Discount redemption bookkeeping (ADDITIVE; no money logic changed) ---
+    // Record the redemption exactly once, on the first paid event for an order
+    // that used a personal code. This runs inside the same serializable, event-
+    // id-idempotent transaction: a duplicate webhook returns at `seen` above, so
+    // replays never reach here. The conditional updateMany (guarded on the read
+    // redeemedCount) means two different orders can never push a single-use code
+    // past its maxRedemptions.
+    const grantId =
+      order.paidCount === 0
+        ? (order.discount as { grantId?: string } | null)?.grantId
+        : undefined;
+    if (grantId) {
+      const grant = await tx.sirahManualDiscount.findUnique({
+        where: { id: grantId },
+      });
+      if (grant && grant.redeemedCount < grant.maxRedemptions) {
+        const redeemer = await tx.user.findUnique({
+          where: { id: order.userId },
+          select: { email: true },
+        });
+        await tx.sirahManualDiscount.updateMany({
+          where: { id: grantId, redeemedCount: grant.redeemedCount },
+          data: {
+            redeemedCount: { increment: 1 },
+            // Lock-on-first-use: bind the code to the first redeeming student.
+            ...(grant.redeemedCount === 0
+              ? { redeemedEmail: redeemer?.email ?? null, redeemedOrderId: order.id }
+              : {}),
+          },
+        });
+      }
+    }
     await auditSirah(tx, order.id, input.actor, "PAYMENT_VERIFIED", {
       provider: input.provider,
       eventId: input.eventId,

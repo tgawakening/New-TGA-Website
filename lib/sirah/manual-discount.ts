@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { priceFor, SIRAH_BATCH, type SirahMethod, type SirahPlan } from "./catalog";
 export class SirahDiscountError extends Error {}
@@ -20,16 +20,79 @@ export async function personalSirahPrice(country: string, plan: SirahPlan, metho
   const applicable = country === "PK" && plan === "MONTHLY" && (method === "BANK_TRANSFER" || method === "JAZZCASH") && base.currency === "PKR";
   const unchanged = { ...base, discount: null as ManualDiscountSnapshot | null };
   if (!codeProvided && (!snapshot?.grantId || !applicable)) return unchanged;
+  // Look up by code (or saved grant) + context. Email is NOT part of the lookup:
+  // a code may be unbound (email === "") and redeemable by any registration.
   const grant = applicable ? await prisma.sirahManualDiscount.findFirst({ where: {
     ...(codeProvided ? { codeHash: discountCodeHash(code!) } : { id: snapshot!.grantId }),
-    email: email.trim().toLowerCase(), batchCode: SIRAH_BATCH, countryCode: country, plan, currency: base.currency, isActive: true,
+    batchCode: SIRAH_BATCH, countryCode: country, plan, currency: base.currency, isActive: true,
   } }) : null;
-  if (!grant || grant.amountMinor <= 0 || grant.amountMinor >= base.amountMinor) {
-    if (codeProvided) throw new SirahDiscountError("This discount code is not valid for this email, plan or payment method.");
+  // A rejection throws (with the exact reason) when the student typed a code,
+  // but silently returns base price when only re-pricing a saved snapshot.
+  const fail = (message: string) => {
+    if (codeProvided) throw new SirahDiscountError(message);
     return unchanged;
-  }
+  };
+  if (!grant || grant.amountMinor <= 0 || grant.amountMinor >= base.amountMinor)
+    return fail("This discount code is not valid for this email, plan or payment method.");
+  // Email-bound rows keep their binding (back-compat); unbound rows accept any email.
+  if (grant.email && grant.email.trim().toLowerCase() !== email.trim().toLowerCase())
+    return fail("This discount code is linked to a different email address.");
+  // Single-use / capped: once the redemption limit is reached it cannot be shared.
+  if (grant.redeemedCount >= grant.maxRedemptions)
+    return fail("This discount code has already been used.");
   return { ...base, amountMinor: grant.amountMinor, totalMinor: grant.amountMinor * base.months,
     pricingVersion: `${base.pricingVersion}:personal-manual-v1`,
     discount: { grantId: grant.id, originalAmountMinor: base.amountMinor, amountMinor: grant.amountMinor, label: "Personal manual-payment discount" },
   };
+}
+
+/** Human-friendly random code (no ambiguous chars), e.g. SIRAH-7K9P-QR3M. */
+export function generateDiscountCode() {
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(8);
+  let out = "";
+  for (const byte of bytes) out += alphabet[byte % alphabet.length];
+  return `SIRAH-${out.slice(0, 4)}-${out.slice(4, 8)}`;
+}
+
+/**
+ * Admin-only: create one SirahManualDiscount row. Stores the code's hash (never
+ * the plaintext), returns the plaintext once so the team can share it. An empty
+ * email makes the code unbound (redeemable by any student up to maxRedemptions);
+ * a provided email locks it to that person.
+ */
+export async function createManualDiscountCode(input: {
+  code?: string;
+  amountMinor: number;
+  email?: string | null;
+  maxRedemptions?: number;
+  batchCode?: string;
+}) {
+  const base = priceFor("PK", "MONTHLY", "BANK_TRANSFER");
+  if (
+    !Number.isInteger(input.amountMinor) ||
+    input.amountMinor <= 0 ||
+    input.amountMinor >= base.amountMinor
+  )
+    throw new SirahDiscountError(
+      `Discounted amount must be a positive value below the standard manual fee (${base.amountMinor} minor units).`,
+    );
+  const code = (input.code?.trim() || generateDiscountCode()).toUpperCase();
+  const row = await prisma.sirahManualDiscount.create({
+    data: {
+      codeHash: discountCodeHash(code),
+      email: input.email?.trim().toLowerCase() || "",
+      batchCode: input.batchCode?.trim() || SIRAH_BATCH,
+      countryCode: "PK",
+      plan: "MONTHLY",
+      currency: "PKR",
+      amountMinor: input.amountMinor,
+      maxRedemptions:
+        input.maxRedemptions && input.maxRedemptions > 0
+          ? Math.floor(input.maxRedemptions)
+          : 1,
+      isActive: true,
+    },
+  });
+  return { code, id: row.id, maxRedemptions: row.maxRedemptions, email: row.email };
 }

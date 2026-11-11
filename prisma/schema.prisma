@@ -440,17 +440,21 @@ model FreeWarriorApplication {
 
 // Additive current-campaign records. Historical Registration/Payment amounts are untouched.
 model SirahManualDiscount {
-  id          String @id @default(cuid())
-  codeHash    String @unique
-  email       String
-  batchCode   String
-  countryCode String
-  plan        String
-  currency    String
-  amountMinor Int
-  isActive    Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String @id @default(cuid())
+  codeHash        String @unique
+  email           String
+  batchCode       String
+  countryCode     String
+  plan            String
+  currency        String
+  amountMinor     Int
+  isActive        Boolean @default(true)
+  maxRedemptions  Int      @default(1)
+  redeemedCount   Int      @default(0)
+  redeemedEmail   String?
+  redeemedOrderId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([email, batchCode, isActive])
 }

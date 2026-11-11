@@ -7,6 +7,7 @@ import type { AdminNotificationItem } from "@/services/admin.service";
 import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 import { SirahAdminCohort } from "./admin-cohort";
+import { SirahAdminDiscount } from "./admin-discount";
 import { SirahAdminNav } from "./admin-nav";
 import styles from "./admin-students.module.css";
 
@@ -349,6 +350,7 @@ export function SirahAdminStudents({
         </div>
 
         {!readOnly && <SirahAdminCohort />}
+        {!readOnly && <SirahAdminDiscount />}
         <div className={`ga-admin-filter-row ${styles.filters}`}>
           <label>
             Search students
