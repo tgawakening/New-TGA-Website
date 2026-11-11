@@ -1341,6 +1341,13 @@ export function SirahRegistrationForm({
               )}
             </div>
             <div className={styles.paymentOptions}>
+              {billing === "PK" && (
+                <p className={styles.notice} role="note">
+                  Paying from Pakistan? Card payments are often declined by
+                  Pakistani banks on international transactions. For a smooth
+                  payment we recommend JazzCash or Meezan Bank transfer.
+                </p>
+              )}
               <PaymentMethods
                 methods={
                   quote?.country === billing && quote.plan === plan
@@ -1787,6 +1794,13 @@ export function SirahRegistrationForm({
           {["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState) &&
             ["PENDING", "ACTIVE"].includes(order.enrolmentState) && (
               <>
+                {order.countryCode === "PK" && (
+                  <p className={styles.notice} role="note">
+                    Paying from Pakistan? Card payments are often declined by
+                    Pakistani banks on international transactions. For a smooth
+                    payment we recommend JazzCash or Meezan Bank transfer.
+                  </p>
+                )}
                 <PaymentMethods
                   methods={order.methods as SirahMethod[]}
                   value={(order.method || "") as SirahMethod | ""}
