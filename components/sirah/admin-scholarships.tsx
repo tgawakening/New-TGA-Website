@@ -12,7 +12,7 @@ const labels: Record<string, string> = {
 };
 function answer(value: unknown) { return value === null || value === undefined || value === "" ? "Not provided" : typeof value === "boolean" ? value ? "Yes" : "No" : String(value); }
 
-export function SirahAdminScholarships({ readOnly, canApproveScholarships = false }: { readOnly: boolean; canApproveScholarships?: boolean }) {
+export function SirahAdminScholarships({ readOnly, canApproveScholarships = false, canCreateDiscountCodes = false }: { readOnly: boolean; canApproveScholarships?: boolean; canCreateDiscountCodes?: boolean }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
@@ -55,7 +55,7 @@ export function SirahAdminScholarships({ readOnly, canApproveScholarships = fals
     return () => { clearTimeout(timeout); controller.abort(); };
   }, [q, status, page, reload]);
   return <div className="ga-admin-shell">
-    <SirahAdminNav active="scholarships" readOnly={readOnly} canApproveScholarships={canApproveScholarships} />
+    <SirahAdminNav active="scholarships" readOnly={readOnly} canApproveScholarships={canApproveScholarships} canCreateDiscountCodes={canCreateDiscountCodes} />
     <section className="ga-admin-workspace-card">
       <div className="ga-admin-workspace-head"><div><p className="ga-admin-kicker">Batch 4</p><h1 className={styles.title}>Sīrah scholarship applications</h1><p>{data ? `${data.total} matching applications · ${data.approved} of ${SIRAH_SCHOLARSHIP_LIMIT} places awarded` : "Loading applications…"}</p></div><div className="ga-admin-actions"><button className="ga-admin-outline-btn" onClick={() => setReload(n => n + 1)}>Refresh</button>{!readOnly && <a className="ga-admin-outline-btn" href="/admin?workspace=overview&tab=scholarships">Review scholarship decisions</a>}</div></div>
       <div className={styles.filters}>

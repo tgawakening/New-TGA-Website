@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
   checkSirahOrigin,
-  sirahAdmin,
   sirahResponseError,
   privateJson,
 } from "@/lib/sirah/http";
+import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { createManualDiscountCode } from "@/lib/sirah/manual-discount";
 import { SirahError } from "@/services/sirah-registration.service";
 
@@ -21,8 +21,10 @@ const schema = z
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
-    const actor = await sirahAdmin(request);
-    if (!actor) throw new SirahError("Unauthorised.", 401);
+    // Env full-admin or a DB SIRAH_REVIEWER may issue codes; viewers may not.
+    const access = await getSirahWorkspaceAccess(request);
+    if (!access?.canCreateDiscountCodes)
+      throw new SirahError("You are not authorised to create discount codes.", 401);
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(

@@ -5,8 +5,14 @@ import { getSessionIdentity } from "./session";
 
 export async function getSirahWorkspaceAccess(request?: Request) {
   if (request ? !requireAdminAccess(request) : await getCurrentAdmin())
-    return { readOnly: false, canApproveScholarships: true };
+    return { readOnly: false, canApproveScholarships: true, canCreateDiscountCodes: true };
   const user = await getSessionIdentity(request);
   return user && ["SIRAH_VIEWER", "SIRAH_REVIEWER"].includes(user.role)
-    ? { readOnly: true, canApproveScholarships: user.role === "SIRAH_REVIEWER" } : null;
+    ? {
+        readOnly: true,
+        canApproveScholarships: user.role === "SIRAH_REVIEWER",
+        // Reviewers may issue discount codes; pure viewers stay read-only.
+        canCreateDiscountCodes: user.role === "SIRAH_REVIEWER",
+      }
+    : null;
 }
