@@ -7,6 +7,7 @@ import {
   verifySirahStripeInvoice,
   verifySirahPaypal,
   markSirahProviderFailure,
+  resetUnsettledSirahCheckout,
   paypalRequest,
 } from "./sirah-online.service";
 import { recordSirahRefund, holdSirahRefund } from "./sirah-admin.service";
@@ -39,6 +40,26 @@ export async function handleSirahStripeEvent(
       if (latest.payment_status !== "paid")
         await markSirahProviderFailure(order, `stripe:failed:${event.id}`);
     } else await verifySirahStripeSession(orderId, session.id, stripe);
+    return true;
+  }
+  if (event.type === "checkout.session.expired") {
+    const session = event.data.object;
+    const orderId = session.metadata?.sirahOrderId;
+    if (!orderId) return false;
+    const order = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: orderId },
+    });
+    if (session.metadata?.checkoutToken !== order.checkoutToken)
+      throw new SirahError("Checkout event ownership mismatch.");
+    // Auto-return an abandoned checkout to UNPAID. resetUnsettledSirahCheckout
+    // re-checks Stripe server-side and refuses to clear anything that could
+    // still settle, so a late-settling payment is never dropped. Only act while
+    // this exact session is still the order's open PROCESSING attempt.
+    if (
+      order.paymentState === "PROCESSING" &&
+      order.providerOrderId === session.id
+    )
+      await resetUnsettledSirahCheckout(order.id, order.userId).catch(() => {});
     return true;
   }
   if (
