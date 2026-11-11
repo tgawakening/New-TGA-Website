@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function AdminLogin() {
+export default function AdminLogin({ workspace = "all" }: { workspace?: "all" | "sirah" }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +26,7 @@ export default function AdminLogin() {
         throw new Error(data.error || "Admin login failed.");
       }
 
-      router.push(data.next || "/admin");
+      router.push(workspace === "sirah" ? "/admin/sirah" : data.next || "/admin");
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Admin login error.");
@@ -38,12 +38,12 @@ export default function AdminLogin() {
   return (
     <div className="ga-admin-login-shell">
       <article className="ga-admin-login-card">
-        <div className="ga-admin-login-badge">Admin access</div>
+        <div className="ga-admin-login-badge">{workspace === "sirah" ? "Sīrah team access" : "Admin access"}</div>
         <h1 className="ga-admin-title" style={{ marginTop: "1rem" }}>
-          Sign in to the Global Awakening admin panel
+          {workspace === "sirah" ? "Sign in to Sīrah Admin" : "Sign in to the Global Awakening admin panel"}
         </h1>
         <p className="ga-admin-subtitle" style={{ marginTop: "0.85rem" }}>
-          Review live registrations, fee waiver applications, payment states, and enrollments from one place.
+          {workspace === "sirah" ? "Open enrolments, scholarships and the course tools your account is authorised to use." : "Review live registrations, fee waiver applications, payment states, and enrollments from one place."}
         </p>
 
         <form onSubmit={handleSubmit} className="ga-admin-login-form" style={{ marginTop: "1.6rem" }}>

@@ -1,0 +1,13 @@
+.install { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; }
+.loginInstall { display: flex; justify-content: center; margin-bottom: 1rem; }
+.help { margin: auto; width: min(470px, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; padding: 1.5rem; border: 1px solid #d5e2ec; border-radius: 18px; background: white; color: #153654; }
+.help::backdrop { background: #102c4b88; }
+.help h2 { font-size: 1.5rem; line-height: 1.3; }
+.help p { margin: 1rem 0; line-height: 1.6; }
+.help ol { padding-left: 1.4rem; list-style: decimal; line-height: 1.7; }
+.help li + li { margin-top: .5rem; }
+.help .hint { font-size: .9rem; color: #526a80; }
+.offline { margin: 0; padding: .8rem 1rem; text-align: center; background: #fff3cf; color: #6a4a00; font-size: .95rem; }
+.root { min-height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); background: #f3f7fc; }
+.root :global(.ga-admin-page) { min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+.root :global(dialog) { max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem); }
