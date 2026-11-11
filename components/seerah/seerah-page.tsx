@@ -611,7 +611,7 @@ function SeerahContent({
           Skip to course content
         </a>
         <Header
-          supportAction={{ href: "/support-our-mission?purpose=LEARNING_ACCESS#mission-giving", label: "Sponsor a Child" }}
+          supportAction={{ href: "/support-our-mission?purpose=LEARNING_ACCESS#mission-giving", label: "Sponsor a Student" }}
           enrolmentAction={{
             href: "/seerah/register",
             label: "Register for the Course",
