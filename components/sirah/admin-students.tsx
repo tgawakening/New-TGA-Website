@@ -7,7 +7,6 @@ import type { AdminNotificationItem } from "@/services/admin.service";
 import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 import { SirahAdminCohort } from "./admin-cohort";
-import { SirahAdminDiscount } from "./admin-discount";
 import { SirahAdminNav } from "./admin-nav";
 import styles from "./admin-students.module.css";
 
@@ -156,11 +155,13 @@ export function SirahAdminStudents({
   initialNotifications,
   readOnly = false,
   canApproveScholarships = false,
+  canCreateDiscountCodes = false,
 }: {
   initialOrder?: string;
   initialNotifications: AdminNotificationItem[];
   readOnly?: boolean;
   canApproveScholarships?: boolean;
+  canCreateDiscountCodes?: boolean;
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
@@ -312,7 +313,7 @@ export function SirahAdminStudents({
 
   return (
     <div className={`ga-admin-shell ${styles.shell}`}>
-      <SirahAdminNav active="enrolments" readOnly={readOnly} canApproveScholarships={canApproveScholarships} />
+      <SirahAdminNav active="enrolments" readOnly={readOnly} canApproveScholarships={canApproveScholarships} canCreateDiscountCodes={canCreateDiscountCodes} />
         <div className="ga-admin-topbar-actions">
           {!readOnly && <AdminNotificationBell
             initialNotifications={initialNotifications}
@@ -350,7 +351,6 @@ export function SirahAdminStudents({
         </div>
 
         {!readOnly && <SirahAdminCohort />}
-        {!readOnly && <SirahAdminDiscount />}
         <div className={`ga-admin-filter-row ${styles.filters}`}>
           <label>
             Search students

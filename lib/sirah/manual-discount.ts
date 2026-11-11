@@ -46,13 +46,17 @@ export async function personalSirahPrice(country: string, plan: SirahPlan, metho
   };
 }
 
-/** Human-friendly random code (no ambiguous chars), e.g. SIRAH-7K9P-QR3M. */
-export function generateDiscountCode() {
+/** 4-char uppercase alphanumeric suffix (no ambiguous characters). */
+function randomSuffix() {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  const bytes = randomBytes(8);
+  const bytes = randomBytes(4);
   let out = "";
   for (const byte of bytes) out += alphabet[byte % alphabet.length];
-  return `SIRAH-${out.slice(0, 4)}-${out.slice(4, 8)}`;
+  return out;
+}
+/** Matches existing codes, e.g. SIRAH-PK-3000-AZ7Q (amount is whole PKR). */
+export function generateDiscountCode(amountMinor: number) {
+  return `SIRAH-PK-${Math.round(amountMinor / 100)}-${randomSuffix()}`;
 }
 
 /**
@@ -77,7 +81,26 @@ export async function createManualDiscountCode(input: {
     throw new SirahDiscountError(
       `Discounted amount must be a positive value below the standard manual fee (${base.amountMinor} minor units).`,
     );
-  const code = (input.code?.trim() || generateDiscountCode()).toUpperCase();
+  let code: string;
+  if (input.code?.trim()) {
+    code = input.code.trim().toUpperCase();
+  } else {
+    // Auto-generate SIRAH-PK-<amount>-<RANDOM4>; regenerate on hash collision.
+    code = "";
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const candidate = generateDiscountCode(input.amountMinor);
+      const clash = await prisma.sirahManualDiscount.findUnique({
+        where: { codeHash: discountCodeHash(candidate) },
+        select: { id: true },
+      });
+      if (!clash) {
+        code = candidate;
+        break;
+      }
+    }
+    if (!code)
+      throw new SirahDiscountError("Could not generate a unique code. Please try again.");
+  }
   const row = await prisma.sirahManualDiscount.create({
     data: {
       codeHash: discountCodeHash(code),
