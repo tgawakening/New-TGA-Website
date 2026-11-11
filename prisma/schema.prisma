@@ -442,6 +442,7 @@ model FreeWarriorApplication {
 model SirahManualDiscount {
   id              String @id @default(cuid())
   codeHash        String @unique
+  codePlain       String?
   email           String
   batchCode       String
   countryCode     String

@@ -6,7 +6,11 @@ import {
   privateJson,
 } from "@/lib/sirah/http";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
-import { createManualDiscountCode } from "@/lib/sirah/manual-discount";
+import {
+  createManualDiscountCode,
+  deactivateManualDiscountCode,
+  listManualDiscountCodes,
+} from "@/lib/sirah/manual-discount";
 import { SirahError } from "@/services/sirah-registration.service";
 
 const schema = z
@@ -17,6 +21,39 @@ const schema = z
     maxRedemptions: z.number().int().min(1).max(100_000).optional(),
   })
   .strict();
+
+const deactivateSchema = z.object({ id: z.string().min(1).max(64), deactivate: z.literal(true) }).strict();
+
+// Env full-admin or a DB SIRAH_REVIEWER may manage codes; viewers may not.
+async function requireDiscountManager(request: Request) {
+  const access = await getSirahWorkspaceAccess(request);
+  if (!access?.canCreateDiscountCodes)
+    throw new SirahError("You are not authorised to manage discount codes.", 401);
+}
+
+export async function GET(request: Request) {
+  try {
+    checkSirahOrigin(request);
+    await requireDiscountManager(request);
+    return privateJson({ rows: await listManualDiscountCodes() });
+  } catch (error) {
+    return sirahResponseError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    checkSirahOrigin(request);
+    await requireDiscountManager(request);
+    const parsed = deactivateSchema.safeParse(await request.json());
+    if (!parsed.success)
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+    await deactivateManualDiscountCode(parsed.data.id);
+    return privateJson({ ok: true });
+  } catch (error) {
+    return sirahResponseError(error);
+  }
+}
 
 export async function POST(request: Request) {
   try {

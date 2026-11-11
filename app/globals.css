@@ -6333,6 +6333,35 @@ footer a:hover {
   max-width: 320px;
 }
 
+/* Discount-code create form: bottom-align every input so a label that wraps to
+   two lines does not push its field out of line with the others, and drop the
+   native number spinners so all four fields read as one clean row. */
+.ga-admin-field-grid label {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.ga-admin-field-grid .ga-admin-label {
+  margin: 0;
+  min-height: 2.1em;
+  display: flex;
+  align-items: flex-end;
+}
+
+.ga-admin-search[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.ga-admin-search[type="number"]::-webkit-outer-spin-button,
+.ga-admin-search[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .ga-admin-data-table {
   display: grid;
   gap: 0.75rem;
@@ -6721,6 +6750,11 @@ footer a:hover {
   .ga-admin-table-head-scholarships,
   .ga-admin-table-row-scholarships {
     grid-template-columns: 1.1fr 0.95fr 0.9fr 1.15fr 0.8fr 1.15fr;
+  }
+
+  .ga-admin-table-head-discounts,
+  .ga-admin-table-row-discounts {
+    grid-template-columns: 1.15fr 0.8fr 1.25fr 0.85fr 0.9fr 0.9fr 0.85fr;
   }
 
   .ga-admin-card-grid {
