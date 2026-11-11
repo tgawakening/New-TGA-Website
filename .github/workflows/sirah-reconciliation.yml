@@ -1,0 +1,51 @@
+name: Sīrah reconciliation backstop
+
+# Periodically triggers the server-side maintenance sweep so stuck PROCESSING
+# Sīrah orders are reconciled (confirmed to PAID or cleared to UNPAID) even when
+# no student returns. The endpoint is idempotent and safe to call repeatedly.
+
+on:
+  schedule:
+    # Every 30 minutes (cron is UTC). Scheduled runs only fire from the default
+    # branch once this workflow is on main.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+# Never overlap two sweeps; let an in-flight run finish rather than cancel it.
+concurrency:
+  group: sirah-reconciliation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST process-renewals
+        env:
+          ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ADMIN_API_TOKEN:-}" ]; then
+            echo "::error::ADMIN_API_TOKEN secret is not set."
+            exit 1
+          fi
+          code=$(curl -sS \
+            --max-time 120 \
+            -o response.txt \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${ADMIN_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            https://tga-awakening.com/api/internal/subscriptions/process-renewals)
+          echo "HTTP ${code}"
+          echo "--- response body ---"
+          cat response.txt || true
+          echo
+          if [ "${code}" -lt 200 ] || [ "${code}" -ge 300 ]; then
+            echo "::error::process-renewals returned non-2xx status ${code}"
+            exit 1
+          fi
