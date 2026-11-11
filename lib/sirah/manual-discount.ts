@@ -104,6 +104,9 @@ export async function createManualDiscountCode(input: {
   const row = await prisma.sirahManualDiscount.create({
     data: {
       codeHash: discountCodeHash(code),
+      // These codes are shared with students, not secret: keep the plaintext so
+      // the admin list can show it. Validation still matches on codeHash only.
+      codePlain: code,
       email: input.email?.trim().toLowerCase() || "",
       batchCode: input.batchCode?.trim() || SIRAH_BATCH,
       countryCode: "PK",
@@ -118,4 +121,46 @@ export async function createManualDiscountCode(input: {
     },
   });
   return { code, id: row.id, maxRedemptions: row.maxRedemptions, email: row.email };
+}
+
+export type ManualDiscountListRow = {
+  id: string;
+  code: string | null;
+  amountMinor: number;
+  currency: string;
+  binding: string;
+  redeemedCount: number;
+  maxRedemptions: number;
+  status: "Active" | "Used up" | "Deactivated";
+  createdAt: string;
+};
+
+/** Admin list of discount codes for the current batch, newest first. */
+export async function listManualDiscountCodes(): Promise<ManualDiscountListRow[]> {
+  const rows = await prisma.sirahManualDiscount.findMany({
+    where: { batchCode: SIRAH_BATCH, countryCode: "PK", plan: "MONTHLY" },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    code: row.codePlain || null,
+    amountMinor: row.amountMinor,
+    currency: row.currency,
+    binding: row.email ? row.email : "Any student",
+    redeemedCount: row.redeemedCount,
+    maxRedemptions: row.maxRedemptions,
+    status: !row.isActive
+      ? "Deactivated"
+      : row.redeemedCount >= row.maxRedemptions
+        ? "Used up"
+        : "Active",
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+/** Admin: deactivate a code so it can no longer be redeemed. Idempotent. */
+export async function deactivateManualDiscountCode(id: string) {
+  const row = await prisma.sirahManualDiscount.findUnique({ where: { id }, select: { id: true } });
+  if (!row) throw new SirahDiscountError("That discount code could not be found.");
+  await prisma.sirahManualDiscount.update({ where: { id }, data: { isActive: false } });
 }

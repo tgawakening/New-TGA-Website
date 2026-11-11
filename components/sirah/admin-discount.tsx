@@ -1,9 +1,32 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { SirahAdminNav } from "./admin-nav";
 
-/** Admin tab: create a PK monthly manual-payment discount code. The code is
- * stored as a hash; the plaintext is shown once here to share with students. */
+type DiscountRow = {
+  id: string;
+  code: string | null;
+  amountMinor: number;
+  currency: string;
+  binding: string;
+  redeemedCount: number;
+  maxRedemptions: number;
+  status: "Active" | "Used up" | "Deactivated";
+  createdAt: string;
+};
+
+const statusClass: Record<DiscountRow["status"], string> = {
+  Active: "is-succeeded",
+  "Used up": "is-under_review",
+  Deactivated: "is-cancelled",
+};
+
+function formatAmount(row: DiscountRow) {
+  return `${row.currency} ${(row.amountMinor / 100).toLocaleString("en-US")}`;
+}
+
+/** Admin tab: create and manage PK monthly manual-payment discount codes. The
+ * code is stored as a hash for validation; the shareable plaintext is kept in
+ * codePlain so the team can see and reshare it. */
 export function SirahAdminDiscount({
   readOnly,
   canApproveScholarships = false,
@@ -17,11 +40,30 @@ export function SirahAdminDiscount({
   const [error, setError] = useState("");
   const [created, setCreated] = useState<{ code: string; message: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [rows, setRows] = useState<DiscountRow[] | null>(null);
+  const [listError, setListError] = useState("");
+  const [pendingId, setPendingId] = useState("");
 
   // Match the light admin theme (page body #17324d, kicker/label #3d668f);
   // the shared ga-admin-label/-tag/-row strong rules were authored for the
   // dark card and render too faint on the light workspace card.
   const labelStyle = { color: "#3d668f" };
+
+  const loadCodes = useCallback(async () => {
+    setListError("");
+    try {
+      const response = await fetch("/api/admin/sirah/discount", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || "Could not load discount codes.");
+      setRows(result.rows as DiscountRow[]);
+    } catch (cause) {
+      setListError(cause instanceof Error ? cause.message : "Could not load discount codes.");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCodes();
+  }, [loadCodes]);
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,6 +95,7 @@ export function SirahAdminDiscount({
       if (!response.ok) throw Error(result.error || "Could not create the code.");
       setCreated({ code: result.code, message: result.message });
       formEl.reset();
+      void loadCodes();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create the code.");
     } finally {
@@ -67,6 +110,27 @@ export function SirahAdminDiscount({
       setCopied(true);
     } catch {
       setCopied(false);
+    }
+  }
+
+  async function deactivate(row: DiscountRow) {
+    const label = row.code || "this code";
+    if (!window.confirm(`Deactivate ${label}? Students will no longer be able to redeem it.`)) return;
+    setPendingId(row.id);
+    setListError("");
+    try {
+      const response = await fetch("/api/admin/sirah/discount", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: row.id, deactivate: true }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || "Could not deactivate the code.");
+      await loadCodes();
+    } catch (cause) {
+      setListError(cause instanceof Error ? cause.message : "Could not deactivate the code.");
+    } finally {
+      setPendingId("");
     }
   }
 
@@ -87,7 +151,7 @@ export function SirahAdminDiscount({
           </div>
         </div>
 
-        <form className="ga-admin-filter-row" onSubmit={create} aria-busy={busy}>
+        <form className="ga-admin-filter-row ga-admin-field-grid" onSubmit={create} aria-busy={busy}>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Code (optional — blank auto-generates)</span>
             <input className="ga-admin-search" name="code" maxLength={64} autoComplete="off" placeholder="SIRAH-PK-3000-AZ7Q" />
@@ -145,6 +209,65 @@ export function SirahAdminDiscount({
           >
             {error}
           </p>
+        )}
+
+        <div className="ga-admin-workspace-head" style={{ marginTop: "2rem" }}>
+          <div>
+            <p className="ga-admin-kicker">Existing codes</p>
+            <h2 style={{ fontSize: "1.25rem" }}>Issued discount codes</h2>
+          </div>
+        </div>
+
+        {listError && (
+          <p className="ga-admin-row" role="alert" style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr" }}>
+            {listError}
+          </p>
+        )}
+
+        {rows === null && !listError && <p style={{ color: "#6a7f95" }}>Loading codes…</p>}
+
+        {rows !== null && rows.length === 0 && (
+          <p style={{ color: "#6a7f95" }}>No discount codes have been created yet.</p>
+        )}
+
+        {rows !== null && rows.length > 0 && (
+          <div className="ga-admin-data-table">
+            <div className="ga-admin-table-head ga-admin-table-head-discounts">
+              <span>Code</span>
+              <span>Amount</span>
+              <span>Binding</span>
+              <span>Redemptions</span>
+              <span>Status</span>
+              <span>Created</span>
+              <span>Action</span>
+            </div>
+            {rows.map((row) => (
+              <div className="ga-admin-table-row ga-admin-table-row-discounts" key={row.id}>
+                <div>
+                  <strong style={{ wordBreak: "break-all" }}>{row.code || "hidden"}</strong>
+                </div>
+                <div>{formatAmount(row)}</div>
+                <div style={{ wordBreak: "break-word" }}>{row.binding}</div>
+                <div>{row.redeemedCount} / {row.maxRedemptions}</div>
+                <div>
+                  <span className={`ga-admin-status ${statusClass[row.status]}`}>{row.status}</span>
+                </div>
+                <div>{new Date(row.createdAt).toLocaleDateString("en-GB")}</div>
+                <div>
+                  {row.status !== "Deactivated" && (
+                    <button
+                      type="button"
+                      className="ga-admin-outline-btn"
+                      onClick={() => deactivate(row)}
+                      disabled={pendingId === row.id}
+                    >
+                      {pendingId === row.id ? "Deactivating…" : "Deactivate"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>
