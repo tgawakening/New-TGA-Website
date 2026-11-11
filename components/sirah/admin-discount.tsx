@@ -27,6 +27,7 @@ export function SirahAdminDiscount({
       return;
     }
     const maxRaw = Number(form.get("maxRedemptions"));
+    const formEl = event.currentTarget;
     setBusy(true);
     setError("");
     setCreated(null);
@@ -46,7 +47,7 @@ export function SirahAdminDiscount({
       const result = await response.json();
       if (!response.ok) throw Error(result.error || "Could not create the code.");
       setCreated({ code: result.code, message: result.message });
-      event.currentTarget.reset();
+      formEl.reset();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create the code.");
     } finally {
@@ -112,19 +113,31 @@ export function SirahAdminDiscount({
         </p>
 
         {created && (
-          <div className="ga-admin-row" role="status" style={{ marginTop: "1rem" }}>
-            <strong>{created.message}</strong>
-            <div className="ga-admin-actions" style={{ alignItems: "center", gap: "0.75rem" }}>
-              <code style={{ fontSize: "1.1rem", letterSpacing: "0.04em" }}>{created.code}</code>
+          <div
+            className="ga-admin-row"
+            role="status"
+            style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr", gap: "0.85rem", alignItems: "start" }}
+          >
+            <strong style={{ fontSize: "1rem" }}>{created.message}</strong>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
+              <code style={{ fontSize: "1.25rem", letterSpacing: "0.06em", fontWeight: 600, wordBreak: "break-all" }}>
+                {created.code}
+              </code>
               <button type="button" className="ga-admin-outline-btn" onClick={copyCode}>
                 {copied ? "Copied" : "Copy code"}
               </button>
             </div>
-            <span className="ga-admin-tag">Stored hashed — it will not be shown again.</span>
+            <span className="ga-admin-tag" style={{ justifySelf: "start" }}>
+              Stored hashed — it will not be shown again.
+            </span>
           </div>
         )}
         {error && (
-          <p className="ga-admin-row" role="alert" style={{ marginTop: "1rem" }}>
+          <p
+            className="ga-admin-row"
+            role="alert"
+            style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr" }}
+          >
             {error}
           </p>
         )}
