@@ -406,7 +406,7 @@ export async function verifySirahStripeSession(
   orderId: string,
   sessionId: string,
   stripe = stripeClient(),
-) {
+): Promise<{ state: string; settlementPending?: boolean }> {
   const order = await prisma.sirahOrder.findUniqueOrThrow({
     where: { id: orderId },
   });
@@ -430,7 +430,9 @@ export async function verifySirahStripeSession(
       data: { providerOrderId: session.id },
     });
   if (session.payment_status !== "paid" || session.status !== "complete")
-    return { state: "PROCESSING" };
+    // "complete" status with an unpaid/processing payment = genuinely settling;
+    // an "open"/"expired" session means the student has not completed checkout.
+    return { state: "PROCESSING", settlementPending: session.status === "complete" };
   if (
     session.currency?.toUpperCase() !== order.currency ||
     session.amount_total !== order.amountMinor
@@ -492,7 +494,7 @@ export async function verifySirahStripeSession(
       typeof session.invoice === "string"
         ? session.invoice
         : session.invoice?.id;
-    if (!invoiceId) return { state: "PROCESSING" };
+    if (!invoiceId) return { state: "PROCESSING", settlementPending: true };
     await verifySirahStripeInvoice(order.id, invoiceId, stripe);
   }
   return { state: "PAID" };
@@ -545,7 +547,7 @@ export async function verifySirahPaypal(
   orderId: string,
   providerId: string,
   capture = false,
-) {
+): Promise<{ state: string; settlementPending?: boolean }> {
   const order = await prisma.sirahOrder.findUniqueOrThrow({
     where: { id: orderId },
   });
@@ -591,7 +593,9 @@ export async function verifySirahPaypal(
           ["REFUNDED", "PARTIALLY_REFUNDED"].includes(settlement?.status))
       )
     )
-      return { state: "PROCESSING" };
+      // APPROVED = payer authorised, awaiting capture (genuinely in-flight);
+      // CREATED/PAYER_ACTION_REQUIRED/VOIDED = not completed by the payer.
+      return { state: "PROCESSING", settlementPending: payment.status === "APPROVED" };
     if (
       settlement.amount.currency_code !== order.currency ||
       decimalToMinor(settlement.amount.value, order.currency) !==
@@ -668,7 +672,12 @@ export async function verifySirahPaypal(
       },
       data: { nextBillingAt: new Date(providerNext) },
     });
-  return { state: paid ? "PAID" : "PROCESSING" };
+  return {
+    state: paid ? "PAID" : "PROCESSING",
+    // Approved/active subscription will charge (in-flight); approval-pending is
+    // not yet completed by the payer.
+    settlementPending: !paid && ["APPROVED", "ACTIVE"].includes(sub.status),
+  };
 }
 export async function markSirahProviderFailure(
   order: SirahOrder,

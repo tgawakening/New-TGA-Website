@@ -591,6 +591,9 @@ export function SirahRegistrationForm({
   const selectedRouteAvailable = Boolean(
     order?.method && order.methods.includes(order.method as SirahMethod),
   );
+  // True only when the provider's last check showed a genuinely in-flight
+  // settlement; false (default) means checkout was started but not completed.
+  const [settlementPending, setSettlementPending] = useState(false);
   const processingOrderId =
     order?.paymentState === "PROCESSING" &&
     ["STRIPE", "PAYPAL"].includes(order.method || "")
@@ -611,6 +614,7 @@ export function SirahRegistrationForm({
         });
         if (!active) return;
         setOrder(result.order);
+        setSettlementPending(Boolean(result.settlementPending));
         if (result.order.paymentState !== "PROCESSING") return;
       } catch {
         /* Leave the manual check available if a provider is delayed. */
@@ -840,10 +844,13 @@ export function SirahRegistrationForm({
         body: "{}",
       });
       setOrder(result.order);
+      setSettlementPending(Boolean(result.settlementPending));
       setMessage(
         result.order.paymentState === "PAID"
           ? "Payment verified. Your enrolment status is shown below."
-          : "The payment is still processing. Course access follows verified payment.",
+          : result.settlementPending
+            ? "We are confirming your payment, this updates automatically."
+            : "Your payment is not completed yet. If you just paid it will update shortly. Otherwise you can retry or choose another method like JazzCash or Meezan.",
       );
     });
   }
@@ -1501,12 +1508,18 @@ export function SirahRegistrationForm({
               Enrolment: <strong>{order.enrolmentState}</strong>
             </p>
           </div>
-          {order.paymentState === "PROCESSING" && (
-            <p role="status">
-              Confirming your payment with the provider. This page will recheck
-              safely; you can also check the verified payment status below.
-            </p>
-          )}
+          {order.paymentState === "PROCESSING" &&
+            (settlementPending ? (
+              <p role="status">
+                We are confirming your payment, this updates automatically.
+              </p>
+            ) : (
+              <p role="status">
+                Your payment is not completed yet. If you just paid it will
+                update shortly. Otherwise you can retry or choose another method
+                like JazzCash or Meezan using “Close an unpaid checkout” below.
+              </p>
+            ))}
           {passwordForManager && (
             <div className={styles.notice}>
               <p>

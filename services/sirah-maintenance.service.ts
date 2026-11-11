@@ -10,10 +10,95 @@ import {
 } from "./sirah-notifications.service";
 import { addMonthsClamped, serializable } from "./sirah-confirmation.service";
 import { auditSirah } from "./sirah-registration.service";
+import {
+  verifySirahStripeSession,
+  verifySirahPaypal,
+  resetUnsettledSirahCheckout,
+  paypalRequest,
+} from "./sirah-online.service";
+
+/** Minutes a checkout may sit in PROCESSING before the sweep reconciles it. */
+const SIRAH_PROCESSING_GRACE_MS = 20 * 60 * 1000;
+
+/**
+ * Reconcile orders stuck in PROCESSING past the grace window. For each, a
+ * read-only provider check (capture=false) confirms a genuinely settled payment
+ * to PAID; otherwise the existing safe reset clears it to UNPAID. The reset
+ * re-checks the provider and REFUSES to clear anything that could still settle,
+ * so this never drops an order that might still pay — a refusal simply leaves it
+ * PROCESSING for the next pass or manual handling.
+ */
+async function reconcileProcessingSirahOrders(now: Date) {
+  const stale = new Date(now.getTime() - SIRAH_PROCESSING_GRACE_MS);
+  const processing = await prisma.sirahOrder.findMany({
+    where: {
+      paymentState: "PROCESSING",
+      updatedAt: { lte: stale },
+      cancelledAt: null,
+      method: { in: ["STRIPE", "PAYPAL"] },
+      OR: [
+        { providerOrderId: { not: null } },
+        { providerSubscriptionId: { not: null } },
+      ],
+    },
+    take: 100,
+  });
+  let paid = 0;
+  let cleared = 0;
+  let retained = 0;
+  for (const order of processing) {
+    try {
+      const ref = order.providerOrderId || order.providerSubscriptionId!;
+      if (order.method === "PAYPAL") {
+        // A background job must never capture an authorised-but-uncaptured
+        // order. If PayPal reports APPROVED, the payer authorised a payment that
+        // is not yet captured; skip it (retained) so only the student's own
+        // return/reset can settle it. The manual reset (capture-first) is
+        // unchanged. On an unreadable status, skip conservatively.
+        const live = await paypalRequest(
+          order.plan === "ANNUAL"
+            ? `/v2/checkout/orders/${ref}`
+            : `/v1/billing/subscriptions/${ref}`,
+        ).catch(() => null);
+        if (!live || live.status === "APPROVED") {
+          retained++;
+          continue;
+        }
+        // Read-only confirmation only: capture=false never charges.
+        await verifySirahPaypal(order.id, ref, false).catch(() => {});
+      } else if (order.method === "STRIPE" && order.providerOrderId)
+        // Stripe confirmation only ever confirms an already-paid session.
+        await verifySirahStripeSession(order.id, order.providerOrderId).catch(
+          () => {},
+        );
+      const after = await prisma.sirahOrder.findUnique({
+        where: { id: order.id },
+      });
+      if (!after) continue;
+      if (after.paymentState === "PAID") {
+        paid++;
+        continue;
+      }
+      if (after.paymentState !== "PROCESSING") continue;
+      // Still unsettled: clear via the same safety the student's "close unpaid
+      // checkout" button uses. Throws (and is caught) if it might still settle.
+      try {
+        await resetUnsettledSirahCheckout(order.id, order.userId);
+        cleared++;
+      } catch {
+        retained++;
+      }
+    } catch {
+      retained++;
+    }
+  }
+  return { scanned: processing.length, paid, cleared, retained };
+}
 export async function maintainSirahOrders() {
   if (!(await sirahSchemaAvailable()))
     return { available: false, reason: "Database migration pending" };
   const now = new Date();
+  const reconciledProcessing = await reconcileProcessingSirahOrders(now);
   const ended = await prisma.sirahOrder.findMany({
     where: {
       OR: [{ programmeEnd: { lte: now } }, { accessEndsAt: { lte: now } }],
@@ -181,6 +266,7 @@ export async function maintainSirahOrders() {
   return {
     ended: ended.length,
     manualReminders: due.length,
+    reconciledProcessing,
     failures,
     ...notifications,
   };
