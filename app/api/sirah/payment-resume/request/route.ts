@@ -7,6 +7,12 @@ import {
   sirahResponseError,
 } from "@/lib/sirah/http";
 import {
+  sirahClientIp,
+  sirahRateLimit,
+  MINUTE,
+  HOUR,
+} from "@/lib/sirah/rate-limit";
+import {
   queueSirahNotice,
   dispatchSirahNotifications,
 } from "@/services/sirah-notifications.service";
@@ -22,6 +28,16 @@ export async function POST(request: Request) {
       })
       .strict()
       .parse(await request.json());
+    // This triggers an outbound email, so cap per address (anti email-bombing)
+    // and per IP (anti mass-probing). A real visitor requests once; these
+    // ceilings never affect that. The outbox also enforces one email per
+    // registration per hour independently.
+    const resumeLimited = sirahRateLimit([
+      { key: `sirah-resume:email:${email}:h`, limit: 5, windowMs: HOUR },
+      { key: `sirah-resume:ip:${sirahClientIp(request)}:m`, limit: 10, windowMs: MINUTE },
+      { key: `sirah-resume:ip:${sirahClientIp(request)}:h`, limit: 60, windowMs: HOUR },
+    ]);
+    if (resumeLimited) return resumeLimited;
     const hour = Math.floor(Date.now() / 3600000).toString();
     // One fresh-link email per registration per hour, enforced by the durable outbox unique key.
     const order = await prisma.sirahOrder.findFirst({
