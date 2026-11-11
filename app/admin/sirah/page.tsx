@@ -18,7 +18,7 @@ export default async function SirahAdminPage({
     <main className="ga-admin-page">
       <section className="ga-admin-page-section">
         <div className="ga-admin-container">
-          <SirahAdminStudents key={order} initialOrder={order} initialNotifications={notifications} readOnly={access.readOnly} canApproveScholarships={access.canApproveScholarships} canCreateDiscountCodes={access.canCreateDiscountCodes} />
+          <SirahAdminStudents key={order} initialOrder={order} initialNotifications={notifications} readOnly={access.readOnly} canApproveScholarships={access.canApproveScholarships} canCreateDiscountCodes={access.canCreateDiscountCodes} canManageEnrolments={access.canManageEnrolments} />
         </div>
       </section>
     </main>

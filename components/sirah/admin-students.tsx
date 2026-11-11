@@ -156,12 +156,14 @@ export function SirahAdminStudents({
   readOnly = false,
   canApproveScholarships = false,
   canCreateDiscountCodes = false,
+  canManageEnrolments = false,
 }: {
   initialOrder?: string;
   initialNotifications: AdminNotificationItem[];
   readOnly?: boolean;
   canApproveScholarships?: boolean;
   canCreateDiscountCodes?: boolean;
+  canManageEnrolments?: boolean;
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
@@ -179,7 +181,12 @@ export function SirahAdminStudents({
   const [selected, setSelected] = useState<Student | null>(null);
   const [detailStale, setDetailStale] = useState(false);
   const selectedId = selected?.id;
-  const actions = selected && !readOnly ? availableActions(selected) : [];
+  // Reviewers get the full enrolment action set except refunds, which stay
+  // super-admin only (readOnly === false only for the env super-admin).
+  const actions =
+    selected && canManageEnrolments
+      ? availableActions(selected).filter((entry) => entry !== "REFUND" || !readOnly)
+      : [];
   const [action, setAction] = useState<Action | "">("");
   const dialog = useRef<HTMLDialogElement>(null);
   const query = new URLSearchParams({
