@@ -18,6 +18,11 @@ export function SirahAdminDiscount({
   const [created, setCreated] = useState<{ code: string; message: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Match the light admin theme (page body #17324d, kicker/label #3d668f);
+  // the shared ga-admin-label/-tag/-row strong rules were authored for the
+  // dark card and render too faint on the light workspace card.
+  const labelStyle = { color: "#3d668f" };
+
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -84,19 +89,19 @@ export function SirahAdminDiscount({
 
         <form className="ga-admin-filter-row" onSubmit={create} aria-busy={busy}>
           <label>
-            <span className="ga-admin-label">Code (optional — blank auto-generates)</span>
+            <span className="ga-admin-label" style={labelStyle}>Code (optional — blank auto-generates)</span>
             <input className="ga-admin-search" name="code" maxLength={64} autoComplete="off" placeholder="SIRAH-PK-3000-AZ7Q" />
           </label>
           <label>
-            <span className="ga-admin-label">Discounted monthly fee (PKR)</span>
+            <span className="ga-admin-label" style={labelStyle}>Discounted monthly fee (PKR)</span>
             <input className="ga-admin-search" name="amountPkr" type="number" min="1" step="1" required placeholder="3000" />
           </label>
           <label>
-            <span className="ga-admin-label">Lock to email (optional)</span>
+            <span className="ga-admin-label" style={labelStyle}>Lock to email (optional)</span>
             <input className="ga-admin-search" name="email" type="email" maxLength={254} autoComplete="off" placeholder="student@example.com" />
           </label>
           <label>
-            <span className="ga-admin-label">Max redemptions</span>
+            <span className="ga-admin-label" style={labelStyle}>Max redemptions</span>
             <input className="ga-admin-search" name="maxRedemptions" type="number" min="1" step="1" defaultValue={1} />
           </label>
           <div className="ga-admin-actions">
@@ -118,7 +123,7 @@ export function SirahAdminDiscount({
             role="status"
             style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr", gap: "0.85rem", alignItems: "start" }}
           >
-            <strong style={{ fontSize: "1rem" }}>{created.message}</strong>
+            <strong style={{ fontSize: "1rem", color: "#17324d" }}>{created.message}</strong>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
               <code style={{ fontSize: "1.25rem", letterSpacing: "0.06em", fontWeight: 600, wordBreak: "break-all" }}>
                 {created.code}
@@ -127,7 +132,7 @@ export function SirahAdminDiscount({
                 {copied ? "Copied" : "Copy code"}
               </button>
             </div>
-            <span className="ga-admin-tag" style={{ justifySelf: "start" }}>
+            <span className="ga-admin-tag" style={{ justifySelf: "start", color: "#17324d", background: "rgba(92, 139, 238, 0.22)" }}>
               Stored hashed — it will not be shown again.
             </span>
           </div>
