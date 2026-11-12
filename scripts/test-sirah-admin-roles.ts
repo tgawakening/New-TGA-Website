@@ -202,6 +202,50 @@ test("Super Admin manages access: add, promote, demote and revoke (revoke ends s
   assert.equal(student.status, "ACTIVE");
 });
 
+test("every access change writes one audit row (who, whose, from/to, when); refusals write none", async () => {
+  const sup = { superAdmin: true };
+  const post = (body: unknown) => accessPost(req("/api/admin/sirah/access", sup, body));
+  assert.equal((await post({ action: "ADD_LEAD", email: "audit.lead@example.test", fullName: "Audit Lead" })).status, 200);
+  const target = table("user").find((u) => u.email === "audit.lead@example.test")!;
+  assert.equal((await post({ action: "PROMOTE", userId: target.id })).status, 200);
+  assert.equal((await post({ action: "DEMOTE", userId: target.id })).status, 200);
+  assert.equal((await post({ action: "REVOKE", userId: target.id })).status, 200);
+  assert.equal((await post({ action: "ADD_LEAD", email: "audit.lead@example.test", fullName: "Audit Lead" })).status, 200);
+  const log = table("sirahAccessAudit");
+  assert.deepEqual(
+    log.map((r) => [r.action, r.fromRole, r.toRole, r.fromStatus, r.toStatus]),
+    [
+      ["ADD_LEAD", null, "SIRAH_VIEWER", null, "ACTIVE"],
+      ["PROMOTE", "SIRAH_VIEWER", "SIRAH_REVIEWER", "ACTIVE", "ACTIVE"],
+      ["DEMOTE", "SIRAH_REVIEWER", "SIRAH_VIEWER", "ACTIVE", "ACTIVE"],
+      ["REVOKE", "SIRAH_VIEWER", "SIRAH_VIEWER", "ACTIVE", "SUSPENDED"],
+      ["ADD_LEAD", "SIRAH_VIEWER", "SIRAH_VIEWER", "SUSPENDED", "ACTIVE"],
+    ],
+  );
+  for (const row of log) {
+    assert.equal(row.targetUserId, target.id);
+    assert.equal(row.targetEmail, "audit.lead@example.test");
+    assert.match(String(row.actor), /^admin(-api)?:/, "the Super Admin is recorded as the actor");
+    assert.ok(row.createdAt instanceof Date);
+  }
+  // Refused changes (protected Super Admin, non-team account, wrong role, non-admin caller) are not logged.
+  const shadow = user("SIRAH_REVIEWER", SUPER_EMAIL);
+  const student = user("STUDENT");
+  assert.equal((await post({ action: "REVOKE", userId: shadow.id })).status, 409);
+  assert.equal((await post({ action: "DEMOTE", userId: student.id })).status, 409);
+  assert.equal((await post({ action: "DEMOTE", userId: target.id })).status, 409);
+  const manager = await sessionFor("SIRAH_REVIEWER");
+  assert.equal((await accessPost(req("/api/admin/sirah/access", manager, { action: "REVOKE", userId: target.id }))).status, 401);
+  assert.equal(table("sirahAccessAudit").length, 5);
+  // The Super Admin sees the log, newest first.
+  const view = await (await accessGet(req("/api/admin/sirah/access", sup))).json();
+  assert.equal(view.changes.length, 5);
+  // Operator CLI changes are recorded too, attributed to the script.
+  const { provisionSirahViewer } = await import("../services/sirah-team.service");
+  await provisionSirahViewer("cli.lead@example.test", "CLI Lead");
+  assert.equal(table("sirahAccessAudit").at(-1)!.actor, "operator:cli");
+});
+
 test("the env Super Admin can never be demoted, revoked or re-provisioned, by anyone", async () => {
   const sup = { superAdmin: true };
   // Even if a team row exists with the Super Admin's email (any case), it is protected.

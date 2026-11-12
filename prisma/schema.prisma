@@ -600,3 +600,22 @@ model SirahCohort {
   history        Json?
   updatedAt      DateTime @updatedAt
 }
+
+/// Append-only record of Sīrah workspace access changes (add, promote, demote,
+/// revoke): who changed whose role or status, and when. No foreign key, so the
+/// record survives any later change to the target account.
+model SirahAccessAudit {
+  id           String   @id @default(cuid())
+  actor        String   @db.VarChar(320)
+  action       String   @db.VarChar(32)
+  targetUserId String?  @db.VarChar(191)
+  targetEmail  String   @db.VarChar(320)
+  fromRole     String?  @db.VarChar(32)
+  toRole       String?  @db.VarChar(32)
+  fromStatus   String?  @db.VarChar(32)
+  toStatus     String?  @db.VarChar(32)
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+
+  @@index([createdAt])
+  @@index([targetEmail, createdAt])
+}

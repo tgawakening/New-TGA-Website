@@ -11,6 +11,28 @@ type TeamRow = {
   createdAt: string;
 };
 type Change = "PROMOTE" | "DEMOTE" | "REVOKE";
+type AccessLogRow = {
+  id: string;
+  actor: string;
+  action: "ADD_LEAD" | "PROMOTE" | "DEMOTE" | "REVOKE";
+  targetEmail: string;
+  fromRole: string | null;
+  toRole: string | null;
+  fromStatus: string | null;
+  toStatus: string | null;
+  createdAt: string;
+};
+const roleName = (role: string | null) =>
+  role === "SIRAH_REVIEWER" ? "Manager" : role === "SIRAH_VIEWER" ? "Community Lead" : role || "none";
+function describeChange(row: AccessLogRow) {
+  if (row.action === "ADD_LEAD")
+    return row.fromRole
+      ? `Re-added (${roleName(row.toRole)}, ${row.fromStatus === "ACTIVE" ? "password reset" : "access restored"})`
+      : "Added as Community Lead";
+  if (row.action === "PROMOTE") return "Promoted: Community Lead → Manager";
+  if (row.action === "DEMOTE") return "Demoted: Manager → Community Lead";
+  return `Access revoked (${roleName(row.fromRole)})`;
+}
 
 const ROLE_SUMMARY = [
   {
@@ -42,6 +64,7 @@ const confirmText: Record<Change, (row: TeamRow) => string> = {
 /** Super Admin only (the API enforces this): manage Sīrah team access. */
 export function SirahAdminAccess() {
   const [rows, setRows] = useState<TeamRow[] | null>(null);
+  const [changes, setChanges] = useState<AccessLogRow[]>([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [pending, setPending] = useState("");
@@ -55,6 +78,7 @@ export function SirahAdminAccess() {
       const result = await response.json();
       if (!response.ok) throw Error(result.error || "Could not load team accounts.");
       setRows(result.rows);
+      setChanges(result.changes || []);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load team accounts.");
     }
@@ -239,6 +263,39 @@ export function SirahAdminAccess() {
                 </article>
               );
             })}
+          </div>
+        )}
+
+        <div className="ga-admin-workspace-head" style={{ marginTop: "2rem" }}>
+          <div>
+            <p className="ga-admin-kicker">Audit log</p>
+            <h2 style={{ fontSize: "1.2rem" }}>Recent access changes</h2>
+            <p>Who changed whose access, and when. Newest first; this record cannot be edited.</p>
+          </div>
+        </div>
+        {rows !== null && changes.length === 0 && (
+          <p className="ga-admin-empty-state">No access changes recorded yet.</p>
+        )}
+        {changes.length > 0 && (
+          <div className="ga-admin-data-table">
+            {changes.map((entry) => (
+              <article
+                key={entry.id}
+                className="ga-admin-table-row"
+                style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "0.4rem 1.25rem" }}
+              >
+                <div style={{ flex: "1 1 16rem", minWidth: 0, overflowWrap: "anywhere" }}>
+                  <strong>{describeChange(entry)}</strong>
+                  <p>{entry.targetEmail}</p>
+                </div>
+                <div style={{ flex: "0 1 14rem", minWidth: 0, overflowWrap: "anywhere" }}>
+                  <p>By {entry.actor}</p>
+                  <p>
+                    {new Date(entry.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+                  </p>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>

@@ -9,6 +9,7 @@ import {
 import {
   addSirahCommunityLead,
   demoteSirahManager,
+  listSirahAccessAudit,
   listSirahTeam,
   promoteSirahTeamMember,
   revokeSirahTeamAccess,
@@ -33,7 +34,8 @@ const actionSchema = z.discriminatedUnion("action", [
 export async function GET(request: Request) {
   try {
     await sirahAdmin(request);
-    return privateJson({ rows: await listSirahTeam() });
+    const [rows, changes] = await Promise.all([listSirahTeam(), listSirahAccessAudit()]);
+    return privateJson({ rows, changes });
   } catch (error) {
     return sirahResponseError(error);
   }
@@ -42,22 +44,23 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
-    await sirahAdmin(request);
+    // Audit actor: "admin:<email>" (signed-in Super Admin) or "admin-api:<hash>".
+    const actor = await sirahAdmin(request);
     const parsed = actionSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json({ error: "Check the access change request." }, { status: 400 });
     const input = parsed.data;
     try {
       if (input.action === "ADD_LEAD") {
-        const login = await addSirahCommunityLead(input.email, input.fullName);
+        const login = await addSirahCommunityLead(input.email, input.fullName, actor);
         // The generated password is returned once, to the Super Admin only.
         return privateJson({ added: true, email: login.email, password: login.password, role: login.role });
       }
       if (input.action === "PROMOTE")
-        return privateJson(await promoteSirahTeamMember(input.userId));
+        return privateJson(await promoteSirahTeamMember(input.userId, actor));
       if (input.action === "DEMOTE")
-        return privateJson(await demoteSirahManager(input.userId));
-      return privateJson(await revokeSirahTeamAccess(input.userId));
+        return privateJson(await demoteSirahManager(input.userId, actor));
+      return privateJson(await revokeSirahTeamAccess(input.userId, actor));
     } catch (cause) {
       if (cause instanceof SirahError) throw cause;
       throw new SirahError(
