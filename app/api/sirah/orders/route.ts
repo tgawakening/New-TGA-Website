@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const form = multipart
       ? await readSirahMultipart(request).catch(() => {
           throw new SirahError(
-            "Upload a JPG, PNG or PDF receipt up to 4 MB.",
+            "Upload a JPG, PNG, WebP or PDF receipt up to 4 MB.",
             413,
           );
         })

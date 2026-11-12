@@ -23,16 +23,17 @@ import {
   queueSirahNotice,
   dispatchSirahNotifications,
 } from "./sirah-notifications.service";
-export const MAX_SIRAH_RECEIPT_BYTES = 4 * 1024 * 1024;
+import { MAX_SIRAH_RECEIPT_BYTES } from "@/lib/sirah/registration-payment";
+export { MAX_SIRAH_RECEIPT_BYTES };
 export async function validateSirahReceipt(data: Uint8Array, filename: string) {
   if (!data.byteLength || data.byteLength > MAX_SIRAH_RECEIPT_BYTES)
-    throw new SirahError("Upload a JPG, PNG or PDF up to 4 MB.");
+    throw new SirahError("Upload a JPG, PNG, WebP or PDF up to 4 MB.");
   const type = await fileTypeFromBuffer(data);
   if (
     !type ||
-    !["image/jpeg", "image/png", "application/pdf"].includes(type.mime)
+    !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(type.mime)
   )
-    throw new SirahError("The file contents must be a JPG, PNG or PDF.");
+    throw new SirahError("The file contents must be a JPG, PNG, WebP or PDF.");
   try {
     if (type.mime === "application/pdf") {
       const document = await PDFDocument.load(data, {

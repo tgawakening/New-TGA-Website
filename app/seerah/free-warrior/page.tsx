@@ -1,6 +1,7 @@
 "use client";
 
 import { SIRAH_SCHOLARSHIP_BATCH, SIRAH_SCHOLARSHIP_LIMIT, scholarshipQuestions, arabicLevels } from "@/lib/sirah/scholarship";
+import { prepareSirahReceipt, SIRAH_RECEIPT_ACCEPT, sirahReceiptSelectionError } from "@/lib/sirah/receipt-upload";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import type { CSSProperties } from "react";
 import { useState } from "react";
@@ -107,11 +108,11 @@ export default function FeeWaiverPage() {
       return;
     }
     if (isPartialContribution && (!form.manualPaymentMethod || !receipt)) {
-      setError("Select your transfer method and upload the receipt (JPG, PNG or PDF, up to 4 MB).");
+      setError("Select your transfer method and attach a JPG, PNG, WebP or PDF receipt.");
       return;
     }
-    if (isPartialContribution && receipt && receipt.size > 4 * 1024 * 1024) {
-      setError("The receipt must be no larger than 4 MB.");
+    if (isPartialContribution && receipt && sirahReceiptSelectionError(receipt)) {
+      setError(sirahReceiptSelectionError(receipt));
       return;
     }
     if (!form.adabCommitment) {
@@ -137,7 +138,7 @@ export default function FeeWaiverPage() {
         courseTitle: SIRAH_TITLE,
         listedPrice: "Approved regional fees — see /seerah",
       }));
-      if (isPartialContribution && receipt) body.set("receipt", receipt);
+      if (isPartialContribution && receipt) body.set("receipt", await prepareSirahReceipt(receipt));
       const response = await fetch("/api/fee-waiver/apply", { method: "POST", body });
 
       const data = (await response.json()) as {
@@ -496,8 +497,8 @@ export default function FeeWaiverPage() {
 
                       <label style={labelStyle}>
                         Payment receipt evidence*
-                        <input name="receipt" type="file" accept="image/jpeg,image/png,application/pdf" required onChange={event => setReceipt(event.target.files?.[0] || null)} style={inputStyle} />
-                        <span style={helperCopyStyle}>Upload a clear JPG, PNG or PDF, up to 4 MB. Required for both Meezan Bank and JazzCash; staff must verify receipt before confirming payment. No receipt is needed for a full scholarship.</span>
+                        <input name="receipt" type="file" accept={SIRAH_RECEIPT_ACCEPT} required onChange={event => setReceipt(event.target.files?.[0] || null)} style={inputStyle} />
+                        <span style={helperCopyStyle}>Upload a clear JPG, PNG, WebP or PDF. Images up to 20 MB are resized automatically; PDFs must be under 4 MB. Required for both Meezan Bank and JazzCash; staff must verify receipt before confirming payment. No receipt is needed for a full scholarship.</span>
                       </label>
                       <label style={labelStyle}>
                         Notes (optional)

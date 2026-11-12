@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { MAX_SIRAH_RECEIPT_BYTES } from "@/lib/sirah/registration-payment";
+import { SIRAH_RECEIPT_ACCEPT, sirahReceiptSelectionError } from "@/lib/sirah/receipt-upload";
 import styles from "./registration.module.css";
 
 /** Shared by initial submission and a saved registration's receipt correction. */
@@ -23,26 +23,20 @@ export function ManualPaymentFields({
   return (
     <div className={styles.manualFields}>
       <label>
-        Payment receipt (JPG, PNG or PDF, up to 4 MB)
+        Payment receipt (JPG, PNG, WebP or PDF)
         <input
           type="file"
           name="receipt"
-          accept="image/jpeg,image/png,application/pdf"
+          accept={SIRAH_RECEIPT_ACCEPT}
           required
           onChange={(event) => {
             const file = event.currentTarget.files?.[0];
-            const problem =
-              file &&
-              (file.size > MAX_SIRAH_RECEIPT_BYTES ||
-                !["image/jpeg", "image/png", "application/pdf"].includes(
-                  file.type,
-                ))
-                ? "Choose a JPG, PNG or PDF receipt up to 4 MB."
-                : "";
+            const problem = file ? sirahReceiptSelectionError(file) : "";
             setReceiptError(problem);
             if (problem) event.currentTarget.value = "";
           }}
         />
+        <small>Images up to 20 MB are resized automatically. PDFs: up to 4 MB. Keep the amount and transaction reference readable.</small>
         {receiptError ? (
           <small className={styles.fieldError} role="alert">
             {receiptError}

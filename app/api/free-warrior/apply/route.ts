@@ -7,7 +7,7 @@ import { submitFreeWarriorApplication } from "@/services/free-warrior.service";
 export async function POST(request: Request) {
   try {
     const multipart = request.headers.get("content-type")?.includes("multipart/form-data");
-    const form = multipart ? await readSirahMultipart(request).catch(() => { throw new SirahError("Upload a JPG, PNG or PDF receipt up to 4 MB.", 413); }) : null;
+    const form = multipart ? await readSirahMultipart(request).catch(() => { throw new SirahError("Upload a JPG, PNG, WebP or PDF receipt up to 4 MB.", 413); }) : null;
     let json;
     try { json = form ? JSON.parse(String(form.get("details") || "{}")) : await request.json(); }
     catch { throw new SirahError("Invalid scholarship application data."); }

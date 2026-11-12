@@ -99,6 +99,7 @@ export const sirahAdminActionSchema = z
     transactionReference: z.string().trim().max(150).optional(),
     paymentEventId: z.string().max(200).optional(),
     verifiedTransfer: z.boolean().optional(),
+    manualMethod: z.enum(["BANK_TRANSFER", "JAZZCASH"]).optional(),
     providerReference: z
       .string()
       .regex(/^[a-zA-Z0-9_-]+$/)

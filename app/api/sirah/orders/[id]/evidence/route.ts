@@ -17,7 +17,7 @@ export async function POST(
     checkSirahOrigin(request);
     const user = await sirahUser((await params).id);
     const body = await readSirahMultipart(request).catch(() => {
-      throw new SirahError("Upload a JPG, PNG or PDF receipt up to 4 MB.", 413);
+      throw new SirahError("Upload a JPG, PNG, WebP or PDF receipt up to 4 MB.", 413);
     });
     const input = JSON.parse(String(body.get("details") || "{}"));
     const parsed = sirahRequiredEvidenceSchema.safeParse(input);
