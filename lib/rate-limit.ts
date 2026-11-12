@@ -59,6 +59,15 @@ function hit(rule: RateLimitRule, now: number): RateLimitResult {
 }
 
 /**
+ * Test isolation only: clear every in-memory bucket so one test's requests
+ * cannot spend another test's allowance. Not called by application code.
+ */
+export function resetRateLimitsForTests() {
+  buckets.clear();
+  lastSweep = 0;
+}
+
+/**
  * Evaluate every rule. The request is allowed only if all rules allow it.
  * All rules are still counted even once one trips, so a sustained abuser is
  * also caught by the longer windows. Returns the longest retry-after among the

@@ -27,14 +27,19 @@ test("a viewer cannot approve, and an explicit grant preserves the shared passwo
   const row = await application(); assert.equal((await approve(req({ applicationId: row.id, approve: true }))).status, 403);
   const previous = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   assert.deepEqual(await grantSirahScholarshipApproval(email), { granted: true, changed: true });
-  assert.deepEqual(await getSirahWorkspaceAccess(new Request(base, { headers: { cookie: `ga_session=${token}` } })), { readOnly: true, canApproveScholarships: true });
+  assert.deepEqual(await getSirahWorkspaceAccess(new Request(base, { headers: { cookie: `ga_session=${token}` } })), { readOnly: true, canApproveScholarships: true, canCreateDiscountCodes: true, canManageEnrolments: true });
   assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).passwordHash, previous.passwordHash); assert.ok(await authenticateSirahViewer(email, password));
   assert.deepEqual(await grantSirahScholarshipApproval(email), { granted: true, changed: false });
 });
 test("reviewers cannot approve other courses or historical applications, reject requests, or access general/payment writes", async () => {
   for (const overrides of [{ courseSlug: "other-course" }, { scholarshipBatch: null }]) { const row = await application(overrides); assert.equal((await approve(req({ applicationId: row.id, approve: true }))).status, 404); }
   const row = await application(); assert.equal((await approve(req({ applicationId: row.id, approve: false }))).status, 400);
-  assert.equal((await payments(req({}))).status, 401); assert.equal((await generalReview(req({ applicationId: row.id, approve: true }))).status, 401);
+  // Reviewers may now run enrolment actions, so an empty action passes the role gate and fails validation (400, not 401)...
+  assert.equal((await payments(req({}))).status, 400);
+  // ...but refunds remain the main administrator's alone.
+  const refund = await payments(req({ orderId: "any-order", revision: 0, action: "REFUND", note: "Reviewer refund attempt" }));
+  assert.equal(refund.status, 403); assert.match((await refund.json()).error, /Refunds require the main administrator/);
+  assert.equal((await generalReview(req({ applicationId: row.id, approve: true }))).status, 401);
   assert.equal((await approve(req({ applicationId: row.id, approve: true }, "https://untrusted.example"))).status, 403);
 });
 test("a scoped full scholarship activates access once, records its approver, and duplicate approval is a conflict", async () => {

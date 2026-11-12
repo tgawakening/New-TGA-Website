@@ -29,6 +29,7 @@ import {
   SIRAH_SLUG,
 } from "../lib/sirah/catalog";
 import { normalizeSirahPhone } from "../lib/sirah/phone";
+import { resetRateLimitsForTests } from "../lib/rate-limit";
 import { getGroupInvitation, methodAvailable, termsFor, type SirahTerms } from "../lib/sirah/config";
 import {
   sirahRegistrationSchema,
@@ -181,6 +182,8 @@ async function approve(
 }
 beforeEach(async () => {
   global.fetch = originalFetch;
+  // The rate limiter is in-process state; never let one test spend another's allowance.
+  resetRateLimitsForTests();
   for (const key of Object.keys(process.env))
     if (
       key.startsWith("SIRAH_") ||
@@ -3884,14 +3887,26 @@ test("personal manual code is email-scoped and quotes PKR 3000 only for eligible
     assert.equal(result.cache, "private, no-store");
   }
   assert.equal((await quoteOffer({ email: input.email })).data.pricing.amountMinor, 350000);
+  // Each group below is an independent validation check. The per-email coupon
+  // limit (5/min, added in a5249c0) would otherwise refuse the 6th quote here,
+  // so reset it between groups; the limit itself is asserted at the end.
+  resetRateLimitsForTests();
   for (const change of [{ email: "unrelated@example.test" }, { countryCode: "GB" }, { plan: "ANNUAL" }, { method: "STRIPE" }, { method: "PAYPAL" }, { couponCode: "WRONG" }]) {
     assert.equal((await quoteOffer({ email: input.email, couponCode: input.couponCode, ...change })).status, 400);
   }
+  resetRateLimitsForTests();
   await prisma.sirahManualDiscount.update({ where: { id: grant.id }, data: { isActive: false } });
   assert.equal((await quoteOffer({ email: input.email, couponCode: input.couponCode })).status, 400);
+  // The coupon-guessing limit still applies: the 6th coupon quote for one email within a minute is refused.
+  resetRateLimitsForTests();
+  for (let attempt = 1; attempt <= 5; attempt++)
+    assert.equal((await quoteOffer({ email: input.email, couponCode: input.couponCode })).status, 400);
+  const limited = await quoteOffer({ email: input.email, couponCode: input.couponCode });
+  assert.equal(limited.status, 429);
+  assert.equal(limited.cache, "private, no-store");
 });
 test("discounted manual registration saves the server fee, preserves it across bank/JazzCash choices, and enrols only after verified funds", async () => {
-  const { input } = await personalOffer();
+  const { input, grant } = await personalOffer();
   const created = await registerSirah(input);
   let order = await publicSirahOrder(created.orderId, created.userId);
   assert.equal(order.amountMinor, 300000);
@@ -3910,7 +3925,14 @@ test("discounted manual registration saves the server fee, preserves it across b
   assert.equal(registration.baseAmount, 350000);
   assert.equal(registration.couponDiscountAmount, 50000);
   assert.equal(registration.finalAmount, 300000);
-  await assert.rejects(repriceSirah(order.id, created.userId, paid.revision, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /changed|progress/);
+  // Single-use codes are redeemed on the first verified payment (redemption
+  // limits), so re-applying the code to the paid order is refused and the
+  // agreed fee is untouched.
+  const redeemed = await prisma.sirahManualDiscount.findUniqueOrThrow({ where: { id: grant.id } });
+  assert.equal(redeemed.redeemedCount, 1);
+  assert.equal(redeemed.redeemedOrderId, order.id);
+  await assert.rejects(repriceSirah(order.id, created.userId, paid.revision, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /already been used/);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } })).amountMinor, 300000);
   await prisma.sirahOrder.update({ where: { id: order.id }, data: { paymentState: "UNPAID" } });
   order = await publicSirahOrder(order.id, created.userId);
   order = await evidence(order, created.userId);
@@ -3924,10 +3946,13 @@ test("personal codes cannot reprice another account, stack with annual pricing, 
   const { input } = await personalOffer();
   const created = await registerSirah(input);
   const order = await publicSirahOrder(created.orderId, created.userId);
-  await assert.rejects(registerSirah({ ...payload(), method: "BANK_TRANSFER", couponCode: input.couponCode }), /not valid/);
+  // This grant is bound to one email (codes may now also be unbound), so any
+  // other account is refused with the specific email-binding reason.
+  await assert.rejects(registerSirah({ ...payload(), method: "BANK_TRANSFER", couponCode: input.couponCode }), /linked to a different email address/);
   await assert.rejects(registerSirah({ ...payload("PK", "ANNUAL"), email: input.email, method: "BANK_TRANSFER", couponCode: input.couponCode }, created.userId), /not valid/);
   const other = await create();
-  await assert.rejects(repriceSirah(other.orderId, other.userId, 0, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /not valid/);
+  await assert.rejects(repriceSirah(other.orderId, other.userId, 0, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /linked to a different email address/);
+  assert.equal((await publicSirahOrder(other.orderId, other.userId)).amountMinor, 350000);
   const annual = await repriceSirah(order.id, created.userId, order.revision, "PK", "ANNUAL", "BANK_TRANSFER");
   assert.equal(annual.amountMinor, 3240000);
   assert.equal(annual.discount, null);
