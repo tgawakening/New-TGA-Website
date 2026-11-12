@@ -1,4 +1,4 @@
-import { withManualDiscountTerms } from "@/lib/sirah/discount-terms";
+import { withDiscountTerms } from "@/lib/sirah/discount-terms";
 import { personalSirahPrice, SirahDiscountError } from "@/lib/sirah/manual-discount";
 import {
   publicSirahCohort,
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
         ? commencementReady &&
           methodAvailable(v.method, v.countryCode, price.currency, v.plan)
         : false,
-      terms: withManualDiscountTerms(snapshotSirahCohort(termsFor(v.plan, v.countryCode), cohort), price.discount),
+      terms: withDiscountTerms(snapshotSirahCohort(termsFor(v.plan, v.countryCode), cohort), price.discount, price.currency),
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     if (error instanceof SirahDiscountError) return NextResponse.json({ error: error.message }, { status: 400, headers: { "Cache-Control": "private, no-store" } });

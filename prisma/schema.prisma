@@ -449,6 +449,8 @@ model SirahManualDiscount {
   plan            String
   currency        String
   amountMinor     Int
+  /// MANUAL = Pakistan bank/JazzCash (all codes before card discounts); CARD = Stripe checkout.
+  paymentScope    String   @default("MANUAL") @db.VarChar(16)
   isActive        Boolean @default(true)
   maxRedemptions  Int      @default(1)
   redeemedCount   Int      @default(0)

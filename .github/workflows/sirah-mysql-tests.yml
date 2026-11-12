@@ -71,3 +71,8 @@ jobs:
         # Each suite runs even if an earlier one failed, so every result shows.
         if: ${{ !cancelled() && steps.migrate.outcome == 'success' }}
         run: node --conditions=react-server --import tsx --test scripts/test-sirah-scholarship-approval.ts
+
+      - name: test:sirah-card-discounts
+        # Each suite runs even if an earlier one failed, so every result shows.
+        if: ${{ !cancelled() && steps.migrate.outcome == 'success' }}
+        run: npm run test:sirah-card-discounts
