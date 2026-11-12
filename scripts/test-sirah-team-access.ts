@@ -14,6 +14,7 @@ import { GET as notifications } from "../app/api/admin/notifications/route";
 import { GET as legacy } from "../app/api/admin/sirah/legacy/route";
 import { POST as review } from "../app/api/admin/free-warrior/review/route";
 import { POST as updateCohort } from "../app/api/admin/sirah/cohort/route";
+import { POST as createCustomLink } from "../app/api/admin/sirah/custom-link/route";
 import { SIRAH_SLUG } from "../lib/sirah/catalog";
 import { SIRAH_SCHOLARSHIP_BATCH } from "../lib/sirah/scholarship";
 const db = new URL(process.env.DATABASE_URL || "mysql://invalid");
@@ -22,6 +23,8 @@ const prefix = `sirah-team-test-${randomUUID()}`;
 const email = `${prefix}@example.test`;
 const base = "http://localhost:3100";
 let password: string, userId: string, token: string, currentId: string, unrelatedId: string;
+// A schema-valid body, so a 401 proves the role gate (not validation) refused it.
+const customLinkBody = (who: string) => ({ fullName: `${who} attempt`, email: `${prefix}-${who}@example.test`, plan: "ANNUAL", countryCode: "GB", amount: "1" });
 function req(path: string, session = token, body?: object) {
   return new Request(base + path, { method: body ? "POST" : "GET", headers: { cookie: `ga_session=${session}`, origin: base, "content-type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
 }
@@ -66,6 +69,10 @@ test("staff can read current scholarship evidence but cannot fetch unrelated evi
 });
 test("server rejects staff mutations, wider admin data, notifications and historical exports", async () => {
   for (const handler of [mutateEnrolment, review, updateCohort]) assert.equal((await handler(req("/api/admin/action", token, {}))).status, 401);
+  // A SIRAH_VIEWER cannot issue an admin custom payment link; no order is created.
+  const ordersBefore = await prisma.sirahOrder.count();
+  assert.equal((await createCustomLink(req("/api/admin/sirah/custom-link", token, customLinkBody("viewer")))).status, 401);
+  assert.equal(await prisma.sirahOrder.count(), ordersBefore);
   for (const handler of [generalApplications, notifications, legacy]) assert.equal((await handler(req("/api/admin/data"))).status, 401);
 });
 test("student, expired, suspended and forged sessions cannot gain Sīrah admin access", async () => {
@@ -74,6 +81,10 @@ test("student, expired, suspended and forged sessions cannot gain Sīrah admin a
   assert.equal(await getSirahWorkspaceAccess(req("/")), null); assert.equal(await authenticateSirahViewer(email, password), null);
   await prisma.user.update({ where: { id: userId }, data: { status: "ACTIVE", role: "STUDENT" } });
   assert.equal((await scholarships(req("/api/admin/sirah/scholarships"))).status, 401);
+  // A student session cannot issue an admin custom payment link either.
+  const ordersBefore = await prisma.sirahOrder.count();
+  assert.equal((await createCustomLink(req("/api/admin/sirah/custom-link", token, customLinkBody("student")))).status, 401);
+  assert.equal(await prisma.sirahOrder.count(), ordersBefore);
   await prisma.user.update({ where: { id: userId }, data: { role: "SIRAH_VIEWER" } });
   await prisma.session.updateMany({ where: { userId }, data: { expiresAt: new Date(0) } });
   assert.equal(await getSirahWorkspaceAccess(req("/")), null);

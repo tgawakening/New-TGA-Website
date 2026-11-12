@@ -1,4 +1,5 @@
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
+import type Stripe from "stripe";
 import "server-only";
 import { type SirahTerms } from "@/lib/sirah/config";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +29,7 @@ const SIRAH_PROCESSING_GRACE_MS = 20 * 60 * 1000;
  * so this never drops an order that might still pay — a refusal simply leaves it
  * PROCESSING for the next pass or manual handling.
  */
-async function reconcileProcessingSirahOrders(now: Date) {
+async function reconcileProcessingSirahOrders(now: Date, stripe?: Stripe) {
   const stale = new Date(now.getTime() - SIRAH_PROCESSING_GRACE_MS);
   const processing = await prisma.sirahOrder.findMany({
     where: {
@@ -68,9 +69,11 @@ async function reconcileProcessingSirahOrders(now: Date) {
         await verifySirahPaypal(order.id, ref, false).catch(() => {});
       } else if (order.method === "STRIPE" && order.providerOrderId)
         // Stripe confirmation only ever confirms an already-paid session.
-        await verifySirahStripeSession(order.id, order.providerOrderId).catch(
-          () => {},
-        );
+        await verifySirahStripeSession(
+          order.id,
+          order.providerOrderId,
+          stripe,
+        ).catch(() => {});
       const after = await prisma.sirahOrder.findUnique({
         where: { id: order.id },
       });
@@ -83,7 +86,7 @@ async function reconcileProcessingSirahOrders(now: Date) {
       // Still unsettled: clear via the same safety the student's "close unpaid
       // checkout" button uses. Throws (and is caught) if it might still settle.
       try {
-        await resetUnsettledSirahCheckout(order.id, order.userId);
+        await resetUnsettledSirahCheckout(order.id, order.userId, { stripe });
         cleared++;
       } catch {
         retained++;
@@ -94,11 +97,16 @@ async function reconcileProcessingSirahOrders(now: Date) {
   }
   return { scanned: processing.length, paid, cleared, retained };
 }
-export async function maintainSirahOrders() {
+/** `options.stripe` is a test seam; production callers pass nothing and the
+ * sweep uses the configured Sīrah Stripe client exactly as before. */
+export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
   if (!(await sirahSchemaAvailable()))
     return { available: false, reason: "Database migration pending" };
   const now = new Date();
-  const reconciledProcessing = await reconcileProcessingSirahOrders(now);
+  const reconciledProcessing = await reconcileProcessingSirahOrders(
+    now,
+    options.stripe,
+  );
   const ended = await prisma.sirahOrder.findMany({
     where: {
       OR: [{ programmeEnd: { lte: now } }, { accessEndsAt: { lte: now } }],
