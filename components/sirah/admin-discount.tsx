@@ -1,11 +1,17 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { catalogue, decimalToMinor, formatSirahMoney, priceFor, type SirahPlan } from "@/lib/sirah/catalog";
+
+type Scope = "MANUAL" | "CARD";
 
 type DiscountRow = {
   id: string;
   code: string | null;
   amountMinor: number;
   currency: string;
+  market: string;
+  plan: string;
+  paymentScope: Scope;
   binding: string;
   redeemedCount: number;
   maxRedemptions: number;
@@ -20,12 +26,20 @@ const statusClass: Record<DiscountRow["status"], string> = {
 };
 
 function formatAmount(row: DiscountRow) {
-  return `${row.currency} ${(row.amountMinor / 100).toLocaleString("en-US")}`;
+  // PKR keeps its original display; other currencies use their own precision.
+  if (row.currency === "PKR") return `${row.currency} ${(row.amountMinor / 100).toLocaleString("en-US")}`;
+  return formatSirahMoney(row.amountMinor, row.currency);
 }
 
-/** Admin tab: create and manage PK monthly manual-payment discount codes. The
- * code is stored as a hash for validation; the shareable plaintext is kept in
- * codePlain so the team can see and reshare it. */
+function appliesTo(row: Pick<DiscountRow, "market" | "plan" | "paymentScope">) {
+  const plan = row.plan === "ANNUAL" ? "Annual" : "Monthly";
+  return `${row.market} · ${plan} · ${row.paymentScope === "CARD" ? "Card" : "Bank / JazzCash"}`;
+}
+
+/** Admin tab: create and manage discount codes. MANUAL codes are the original
+ * Pakistan monthly bank/JazzCash codes; CARD codes reduce a Stripe checkout in
+ * one catalogue market and plan. The code is stored as a hash for validation;
+ * the shareable plaintext is kept in codePlain so the team can see and reshare it. */
 export function SirahAdminDiscount() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -34,6 +48,13 @@ export function SirahAdminDiscount() {
   const [rows, setRows] = useState<DiscountRow[] | null>(null);
   const [listError, setListError] = useState("");
   const [pendingId, setPendingId] = useState("");
+  const [scope, setScope] = useState<Scope>("MANUAL");
+  const [market, setMarket] = useState("PK");
+  const [plan, setPlan] = useState<SirahPlan>("MONTHLY");
+  // Bank / JazzCash codes exist only for Pakistan monthly.
+  const effectiveMarket = scope === "MANUAL" ? "PK" : market;
+  const effectivePlan: SirahPlan = scope === "MANUAL" ? "MONTHLY" : plan;
+  const standard = priceFor(effectiveMarket, effectivePlan, scope === "MANUAL" ? "BANK_TRANSFER" : "STRIPE");
 
   // Match the light admin theme (page body #17324d, kicker/label #3d668f);
   // the shared ga-admin-label/-tag/-row strong rules were authored for the
@@ -59,9 +80,14 @@ export function SirahAdminDiscount() {
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const rupees = Number(form.get("amountPkr"));
-    if (!Number.isFinite(rupees) || rupees <= 0) {
-      setError("Enter the discounted monthly fee in PKR.");
+    let amountMinor: number;
+    try {
+      amountMinor = decimalToMinor(String(form.get("amount") || "").trim(), standard.currency);
+    } catch {
+      amountMinor = 0;
+    }
+    if (amountMinor <= 0) {
+      setError(`Enter the discounted ${effectivePlan === "ANNUAL" ? "upfront price" : "monthly fee"} in ${standard.currency}.`);
       return;
     }
     const maxRaw = Number(form.get("maxRedemptions"));
@@ -76,10 +102,12 @@ export function SirahAdminDiscount() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code: String(form.get("code") || "").trim() || undefined,
-          amountMinor: Math.round(rupees * 100),
+          amountMinor,
           email: String(form.get("email") || "").trim() || undefined,
           maxRedemptions:
             Number.isFinite(maxRaw) && maxRaw >= 1 ? Math.floor(maxRaw) : undefined,
+          // Manual codes send no scope fields, exactly as before.
+          ...(scope === "CARD" ? { paymentScope: "CARD", market: effectiveMarket, plan: effectivePlan } : {}),
         }),
       });
       const result = await response.json();
@@ -132,18 +160,42 @@ export function SirahAdminDiscount() {
           <div>
             <p className="ga-admin-kicker">Current batch</p>
             <h2>Discount codes</h2>
-            <p>Create a Pakistan monthly manual-payment discount code to share with a student.</p>
+            <p>Create a discount code to share with a student: Pakistan bank transfer / JazzCash, or card checkout in any market.</p>
           </div>
         </div>
 
         <form className="ga-admin-filter-row ga-admin-field-grid" onSubmit={create} aria-busy={busy}>
           <label>
+            <span className="ga-admin-label" style={labelStyle}>Payment</span>
+            <select className="ga-admin-search" name="paymentScope" value={scope} onChange={(event) => setScope(event.target.value as Scope)}>
+              <option value="MANUAL">Bank transfer / JazzCash (Pakistan monthly)</option>
+              <option value="CARD">Card (Stripe checkout)</option>
+            </select>
+          </label>
+          <label>
+            <span className="ga-admin-label" style={labelStyle}>Market</span>
+            <select className="ga-admin-search" name="market" value={effectiveMarket} disabled={scope === "MANUAL"} onChange={(event) => setMarket(event.target.value)}>
+              {catalogue.map(([code, name, currency]) => (
+                <option key={code} value={code}>{name} ({currency})</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="ga-admin-label" style={labelStyle}>Plan</span>
+            <select className="ga-admin-search" name="plan" value={effectivePlan} disabled={scope === "MANUAL"} onChange={(event) => setPlan(event.target.value as SirahPlan)}>
+              <option value="MONTHLY">Monthly (every payment reduced)</option>
+              <option value="ANNUAL">Annual (one upfront payment)</option>
+            </select>
+          </label>
+          <label>
             <span className="ga-admin-label" style={labelStyle}>Code (optional — blank auto-generates)</span>
             <input className="ga-admin-search" name="code" maxLength={64} autoComplete="off" placeholder="SIRAH-PK-3000-AZ7Q" />
           </label>
           <label>
-            <span className="ga-admin-label" style={labelStyle}>Discounted monthly fee (PKR)</span>
-            <input className="ga-admin-search" name="amountPkr" type="number" min="1" step="1" required placeholder="3000" />
+            <span className="ga-admin-label" style={labelStyle}>
+              Discounted {effectivePlan === "ANNUAL" ? "upfront price" : "monthly fee"} ({standard.currency}) · standard {formatSirahMoney(standard.amountMinor, standard.currency)}
+            </span>
+            <input className="ga-admin-search" name="amount" type="number" min="0" step="any" inputMode="decimal" required placeholder={scope === "MANUAL" ? "3000" : ""} />
           </label>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Lock to email (optional)</span>
@@ -161,7 +213,8 @@ export function SirahAdminDiscount() {
         </form>
 
         <p className="ga-admin-workspace-head" style={{ marginTop: "1rem" }}>
-          PK monthly manual payments only (JazzCash / Meezan Bank). A blank email
+          A code works only for the payment type, market and plan it was created
+          for, and must be below that market&apos;s standard price. A blank email
           makes the code redeemable by any student up to the redemption limit,
           then it stops working. Set an email to lock it to one person.
         </p>
@@ -230,6 +283,7 @@ export function SirahAdminDiscount() {
               <div className="ga-admin-table-row ga-admin-table-row-discounts" key={row.id}>
                 <div>
                   <strong style={{ wordBreak: "break-all" }}>{row.code || "hidden"}</strong>
+                  <div style={{ fontSize: "0.8rem", color: "#3d668f" }}>{appliesTo(row)}</div>
                 </div>
                 <div>{formatAmount(row)}</div>
                 <div style={{ wordBreak: "break-word" }}>{row.binding}</div>

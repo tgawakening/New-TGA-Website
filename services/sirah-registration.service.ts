@@ -1,5 +1,5 @@
-import { withManualDiscountTerms } from "@/lib/sirah/discount-terms";
-import { personalSirahPrice } from "@/lib/sirah/manual-discount";
+import { withDiscountTerms } from "@/lib/sirah/discount-terms";
+import { isCardDiscount, personalSirahPrice } from "@/lib/sirah/manual-discount";
 import {
   ADMIN_CUSTOM_PRICING_VERSION,
   adminCustomSnapshot,
@@ -96,10 +96,10 @@ export async function registerSirah(
     input.couponCode,
   );
   const cohort = await publicSirahCohort();
-  const initialTerms = withManualDiscountTerms(snapshotSirahCohort(
+  const initialTerms = withDiscountTerms(snapshotSirahCohort(
     termsFor(input.plan, input.countryCode),
     cohort,
-  ), initial.discount);
+  ), initial.discount, initial.currency);
   if (
     input.method &&
     !cohortAllowsPayment(termsFor(input.plan, input.countryCode), cohort)
@@ -293,7 +293,7 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     amountMinor: order.amountMinor,
     totalMinor: order.totalMinor,
     pricingVersion: order.pricingVersion,
-    discount: order.discount ? { applied: true, label: adminCustomSnapshot(order) ? "Price agreed with the TGA team" : "Personal manual-payment discount", originalAmountMinor: (order.discount as { originalAmountMinor: number }).originalAmountMinor, amountMinor: order.amountMinor } : null,
+    discount: order.discount ? { applied: true, label: adminCustomSnapshot(order) ? "Price agreed with the TGA team" : isCardDiscount(order.discount) ? order.discount.label : "Personal manual-payment discount", originalAmountMinor: (order.discount as { originalAmountMinor: number }).originalAmountMinor, amountMinor: order.amountMinor } : null,
     paymentState: order.paymentState,
     enrolmentState: order.enrolmentState,
     revision: order.revision,
@@ -344,10 +344,10 @@ export async function repriceSirah(
     owned.discount,
   );
   const cohort = await publicSirahCohort();
-  const selectedTerms = withManualDiscountTerms(snapshotSirahCohort(
+  const selectedTerms = withDiscountTerms(snapshotSirahCohort(
     termsFor(plan, countryCode),
     cohort,
-  ), price.discount);
+  ), price.discount, price.currency);
   if (method && !cohortAllowsPayment(termsFor(plan, countryCode), cohort))
     throw new SirahError(
       "The first paid teaching date is pending owner confirmation. Payment remains closed.",

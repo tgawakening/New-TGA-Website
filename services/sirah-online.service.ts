@@ -14,6 +14,8 @@ import {
   type SirahPlan,
 } from "@/lib/sirah/catalog";
 import { methodAvailable, termsFor, paypalMonthlyPlanId } from "@/lib/sirah/config";
+import { withDiscountTerms } from "@/lib/sirah/discount-terms";
+import { assertCardDiscountRedeemable } from "@/lib/sirah/manual-discount";
 import {
   isAdminCustomOrder,
   studentPriceChangeRefusal,
@@ -133,12 +135,19 @@ export async function startSirahCheckout(
   )
     throw new SirahError("This checkout route is not currently enabled.");
   const terms = termsFor(order.plan as SirahPlan, order.countryCode);
+  // A personal card discount carries its own terms version (":card-<amount>-v1"),
+  // the exact one the student was shown and accepted. Without a discount this
+  // is the catalogue version, as before.
+  const expectedVersion = withDiscountTerms(terms, order.discount, order.currency)?.version;
   if (
     !terms ||
-    terms.version !== acceptedVersion ||
-    (order.terms as { version?: string } | null)?.version !== terms.version
+    expectedVersion !== acceptedVersion ||
+    (order.terms as { version?: string } | null)?.version !== expectedVersion
   )
     throw new SirahError("Review and accept the current payment terms.");
+  // Card codes complete without staff review: re-check the saved code is still
+  // active and under its redemption limit before opening a Stripe session.
+  if (method === "STRIPE") await assertCardDiscountRedeemable(order.discount);
   const cohort = await publicSirahCohort();
   if (!cohortAllowsPayment(terms, cohort))
     throw new SirahError("The first paid teaching date is pending owner confirmation. Payment remains closed.");

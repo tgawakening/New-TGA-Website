@@ -19,6 +19,11 @@ const schema = z
     amountMinor: z.number().int().positive().max(100_000_000),
     email: z.union([z.string().email().max(254), z.literal("")]).optional(),
     maxRedemptions: z.number().int().min(1).max(100_000).optional(),
+    // Omitted = the original PK monthly bank/JazzCash code. CARD = Stripe checkout
+    // in the chosen catalogue market; the amount is checked against that market.
+    paymentScope: z.enum(["MANUAL", "CARD"]).optional(),
+    market: z.string().trim().toUpperCase().regex(/^[A-Z]{2,5}$/).optional(),
+    plan: z.enum(["MONTHLY", "ANNUAL"]).optional(),
   })
   .strict();
 
@@ -76,13 +81,20 @@ export async function POST(request: Request) {
       amountMinor: parsed.data.amountMinor,
       email: parsed.data.email || null,
       maxRedemptions: parsed.data.maxRedemptions,
+      paymentScope: parsed.data.paymentScope,
+      market: parsed.data.market,
+      plan: parsed.data.plan,
     });
     return privateJson({
       code: result.code,
       id: result.id,
       maxRedemptions: result.maxRedemptions,
       email: result.email || null,
-      message: `Discount code ${result.code} created${result.email ? ` for ${result.email}` : " (unbound)"}.`,
+      market: result.market,
+      plan: result.plan,
+      currency: result.currency,
+      paymentScope: result.paymentScope,
+      message: `${result.paymentScope === "CARD" ? `Card discount code for ${result.market} ${result.plan.toLowerCase()}` : "Discount code"} ${result.code} created${result.email ? ` for ${result.email}` : " (unbound)"}.`,
     });
   } catch (error) {
     // Unique codeHash collision -> a code with that text already exists.
