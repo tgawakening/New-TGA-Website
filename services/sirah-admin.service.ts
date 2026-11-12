@@ -1,3 +1,4 @@
+import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import "server-only";
 import { calculateSirahAnnualUnusedMonths } from "@/lib/sirah/annual-refund";
 import { quoteSirahAnnualRefund } from "./sirah-refunds.service";
@@ -411,7 +412,12 @@ export async function actOnSirahOrder(
     throw new SirahError("This record is not an online checkout.");
   }
   if (input.action === "APPROVE") {
-    if (!["BANK_TRANSFER", "JAZZCASH"].includes(order.method || ""))
+    const method = order.method || input.manualMethod;
+    const recovery = canRecoverSirahManualPayment(order);
+    if (!method) throw new SirahError("Select the verified Meezan Bank or JazzCash payment method.");
+    if (!method || !["BANK_TRANSFER", "JAZZCASH"].includes(method) ||
+        (!order.method && !recovery) ||
+        (order.method && input.manualMethod && input.manualMethod !== order.method))
       throw new SirahError(
         "Online payments cannot be approved through a display-status change.",
       );
@@ -419,6 +425,8 @@ export async function actOnSirahOrder(
       throw new SirahError(
         "Confirm that the funds were received in the merchant account.",
       );
+    if (recovery && !input.note?.trim())
+      throw new SirahError("Record how staff verified the received funds without a complete student submission.");
     const evidence = await prisma.sirahAudit.findFirst({
       where: { orderId: order.id, action: "EVIDENCE_SUBMITTED" },
       orderBy: { createdAt: "desc" },
@@ -444,16 +452,17 @@ export async function actOnSirahOrder(
     const amount = input.verifiedAmount
       ? decimalToMinor(input.verifiedAmount, currency)
       : order.amountMinor;
-    const eventId = `manual:${order.method}:${createHash("sha256").update(reference).digest("hex")}`;
+    const eventId = `manual:${method}:${createHash("sha256").update(reference).digest("hex")}`;
     return confirmSirahPayment({
       orderId: order.id,
       eventId,
-      provider: order.method as "BANK_TRANSFER" | "JAZZCASH",
+      provider: method as "BANK_TRANSFER" | "JAZZCASH",
       amountMinor: amount,
       currency,
       actor,
       note: `${input.note || "Staff confirmed the received funds against this registration."} Reference source: ${source}. Reference: ${reference}`,
       expectedRevision: input.revision,
+      allowUnsubmittedManual: recovery,
       allowCancelledTransfer:
         order.enrolmentState === "CANCELLED" &&
         !!input.note &&

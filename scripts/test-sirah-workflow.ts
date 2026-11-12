@@ -4029,3 +4029,90 @@ test("known quota rejections recover after the daily reset even for old notices;
   assert.equal(calls, 0);
   assert.equal((await prisma.sirahNotification.findUniqueOrThrow({ where: { id: unknown.id } })).state, "DELIVERY_UNKNOWN");
 });
+
+test("staff recover unsubmitted Meezan and JazzCash payments without inventing a student receipt", async () => {
+  for (const method of ["BANK_TRANSFER", "JAZZCASH"] as const) {
+    enableManual();
+    const r = await create();
+    const order = await repriceSirah(r.orderId, r.userId, 0, "PK", "MONTHLY", method);
+    const action = { orderId: order.id, revision: order.revision, action: "APPROVE" as const, verifiedTransfer: true, note: "Staff checked the receiving account and matched the sender independently.", transactionReference: `RECOVERY-${method}` };
+    await assert.rejects(actOnSirahOrder({ ...action, note: undefined }, "reviewer:synthetic"), /how staff verified/);
+    await actOnSirahOrder(action, "reviewer:synthetic");
+    await actOnSirahOrder(action, "reviewer:synthetic-retry");
+    const paid = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+    assert.equal(paid.paymentState, "PAID"); assert.equal(paid.enrolmentState, "ACTIVE");
+    assert.equal(paid.paidCount, 1); assert.equal(paid.paidMinor, order.amountMinor);
+    assert.equal(await prisma.sirahReceipt.count({ where: { orderId: order.id } }), 0);
+    assert.equal(await prisma.sirahAudit.count({ where: { orderId: order.id, action: "EVIDENCE_SUBMITTED" } }), 0);
+    assert.equal(await prisma.sirahAudit.count({ where: { orderId: order.id, action: "MANUAL_PAYMENT_RECOVERED" } }), 1);
+    assert.equal(await prisma.enrollment.count({ where: { userId: r.userId, status: "ACTIVE" } }), 1);
+    assert.equal(paid.accessEndsAt?.toISOString(), addMonthsClamped(paid.programmeStart!, 1).toISOString());
+    assert.equal(await prisma.sirahNotification.count({ where: { orderId: order.id, kind: "CONFIRMED" } }), 2);
+  }
+});
+
+test("missing-method recovery requires an explicit manual method and preserves the saved fee atomically", async () => {
+  enableManual(); const r = await create("PK", "ANNUAL");
+  const order = await publicSirahOrder(r.orderId, r.userId);
+  const action = { orderId: order.id, revision: order.revision, action: "APPROVE" as const, verifiedTransfer: true, note: "Staff matched the received transfer against the saved student reference.", manualMethod: "JAZZCASH" as const, transactionReference: "MISSING-METHOD-RECOVERY" };
+  await assert.rejects(actOnSirahOrder({ ...action, manualMethod: undefined }, "admin:test"));
+  await assert.rejects(actOnSirahOrder({ ...action, verifiedTransfer: false }, "admin:test"), /funds were received/);
+  await assert.rejects(actOnSirahOrder({ ...action, verifiedAmount: "1" }, "admin:test"), /does not match/);
+  assert.equal((await publicSirahOrder(order.id, r.userId)).method, null);
+  assert.equal(await prisma.sirahPaymentEvent.count(), 0);
+  await actOnSirahOrder(action, "admin:test");
+  const paid = await publicSirahOrder(order.id, r.userId);
+  assert.equal(paid.method, "JAZZCASH"); assert.equal(paid.paidMinor, 3240000);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: paid.id } })).accessEndsAt, null);
+  assert.equal(paid.paymentState, "PAID"); assert.equal(paid.enrolmentState, "ACTIVE");
+  const audit = await prisma.sirahAudit.findFirstOrThrow({ where: { orderId: order.id, action: "MANUAL_PAYMENT_RECOVERED" } });
+  assert.equal((audit.detail as Record<string, unknown>).previousMethod, null);
+});
+
+test("manual recovery cannot override online checkout, another market, stale edits or an existing provider reference", async () => {
+  const r = await manualOrder();
+  const action = { orderId: r.order.id, revision: r.order.revision, action: "APPROVE" as const, verifiedTransfer: true, note: "Synthetic staff receiving-account check", manualMethod: "BANK_TRANSFER" as const };
+  for (const method of ["STRIPE", "PAYPAL"]) {
+    await prisma.sirahOrder.update({ where: { id: r.order.id }, data: { method } });
+    await assert.rejects(actOnSirahOrder(action, "admin:test"), /Online payments/);
+  }
+  await prisma.sirahOrder.update({ where: { id: r.order.id }, data: { method: null, countryCode: "GB", currency: "GBP" } });
+  await assert.rejects(actOnSirahOrder(action, "admin:test"));
+  await prisma.sirahOrder.update({ where: { id: r.order.id }, data: { method: null, countryCode: "PK", currency: "PKR", providerOrderId: "SYNTHETIC_EXISTING_CHECKOUT" } });
+  await assert.rejects(actOnSirahOrder(action, "admin:test"));
+  await prisma.sirahOrder.update({ where: { id: r.order.id }, data: { method: "BANK_TRANSFER", providerOrderId: null, revision: { increment: 1 } } });
+  await assert.rejects(actOnSirahOrder(action, "admin:test"), /already changed/);
+  assert.equal(await prisma.sirahPaymentEvent.count(), 0);
+});
+
+test("concurrent recovery reviews cannot credit an unsubmitted payment twice", async () => {
+  const r = await manualOrder();
+  const action = { orderId: r.order.id, revision: r.order.revision, action: "APPROVE" as const, verifiedTransfer: true, note: "Synthetic staff receiving-account check" };
+  const results = await Promise.allSettled([
+    actOnSirahOrder({ ...action, transactionReference: "RECOVERY-A" }, "reviewer:a"),
+    actOnSirahOrder({ ...action, transactionReference: "RECOVERY-B" }, "reviewer:b"),
+  ]);
+  assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
+  assert.equal(await prisma.sirahPaymentEvent.count({ where: { orderId: r.order.id } }), 1);
+  const order = await publicSirahOrder(r.order.id, r.userId);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } })).paidCount, 1); assert.equal(order.paidMinor, r.order.amountMinor);
+});
+
+test("receipt content accepts WebP and missing file metadata while rejecting disguised non-images", async () => {
+  const bytes = await sharp({ create: { width: 200, height: 100, channels: 3, background: "white" } }).webp().toBuffer();
+  const receipt = await validateSirahReceipt(bytes, "phone-screenshot.webp");
+  assert.equal(receipt.mime, "image/webp");
+  const unnamed = await validateSirahReceipt(bytes, "phone-upload");
+  assert.equal(unnamed.mime, "image/webp");
+  await assert.rejects(validateSirahReceipt(Buffer.from("not an image"), "fake.webp"), /contents/);
+});
+
+test("legacy awaiting-review orders with no method still require explicit staff recovery", async () => {
+  enableManual(); const r = await create();
+  await prisma.sirahOrder.update({ where: { id: r.orderId }, data: { paymentState: "AWAITING_REVIEW" } });
+  const action = { orderId: r.orderId, revision: 0, action: "APPROVE" as const, verifiedTransfer: true, manualMethod: "BANK_TRANSFER" as const };
+  await assert.rejects(actOnSirahOrder(action, "admin:test"), /how staff verified/);
+  await actOnSirahOrder({ ...action, note: "The merchant independently matched this legacy transfer." }, "admin:test");
+  const order = await publicSirahOrder(r.orderId, r.userId);
+  assert.equal(order.method, "BANK_TRANSFER"); assert.equal(order.paymentState, "PAID");
+});

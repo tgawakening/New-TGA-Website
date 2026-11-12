@@ -6,6 +6,7 @@ import AdminNotificationBell from "@/components/admin/admin-notification-bell";
 import type { AdminNotificationItem } from "@/services/admin.service";
 import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
+import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import { SirahAdminCohort } from "./admin-cohort";
 import { SirahAdminNav } from "./admin-nav";
 import styles from "./admin-students.module.css";
@@ -56,7 +57,7 @@ function availableActions(student: Student): Action[] {
   const review = manual && student.paymentState === "AWAITING_REVIEW";
   const actions: Action[] = [];
   if (
-    review ||
+    review || canRecoverSirahManualPayment(student) ||
     (manual && student.enrolmentState === "CANCELLED" && !student.paidCount)
   )
     actions.push("APPROVE");
@@ -277,6 +278,7 @@ export function SirahAdminStudents({
           verifiedAmount: field("verifiedAmount"),
           currency: field("currency"),
           transactionReference: field("transactionReference"),
+          manualMethod: field("manualMethod"),
           refundReference: field("refundReference"),
           paymentEventId: field("paymentEventId"),
           providerReference: field("providerReference"),
@@ -742,6 +744,16 @@ export function SirahAdminStudents({
                             ? "The existing cancellation is preserved."
                             : "This activates the student’s paid course access."}
                         </p>
+                        {!selected.method && (
+                          <label>Verified payment method
+                            <select name="manualMethod" required defaultValue="">
+                              <option value="" disabled>Select the account that received the funds</option>
+                              <option value="BANK_TRANSFER">Meezan Bank transfer</option>
+                              <option value="JAZZCASH">JazzCash</option>
+                            </select>
+                          </label>
+                        )}
+                        {canRecoverSirahManualPayment(selected) && <p>No uploaded receipt is required for this staff review. Record how you checked the received funds in the review note below.</p>}
                         <label className={styles.check}>
                           <input
                             name="verifiedTransfer"
@@ -841,7 +853,7 @@ export function SirahAdminStudents({
                       <label>
                         {action === "REFUND" ||
                         (action === "APPROVE" &&
-                          selected.enrolmentState === "CANCELLED")
+                          (selected.enrolmentState === "CANCELLED" || canRecoverSirahManualPayment(selected)))
                           ? "Reason / review note"
                           : "Review note (optional)"}
                         <textarea
@@ -850,7 +862,7 @@ export function SirahAdminStudents({
                           required={
                             action === "REFUND" ||
                             (action === "APPROVE" &&
-                              selected.enrolmentState === "CANCELLED")
+                              (selected.enrolmentState === "CANCELLED" || canRecoverSirahManualPayment(selected)))
                           }
                         />
                       </label>

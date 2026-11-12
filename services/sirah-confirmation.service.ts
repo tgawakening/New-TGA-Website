@@ -1,3 +1,4 @@
+import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import "server-only";
 import { Prisma, type SirahOrder } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -59,6 +60,7 @@ export type VerifiedSirahPayment = {
   note?: string;
   expectedRevision?: number;
   allowCancelledTransfer?: boolean;
+  allowUnsubmittedManual?: boolean;
 };
 export async function confirmSirahPayment(input: VerifiedSirahPayment) {
   const result = await serializable(async (tx) => {
@@ -77,10 +79,15 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
     const order = await tx.sirahOrder.findUniqueOrThrow({
       where: { id: input.orderId },
     });
+    const recovery = input.allowUnsubmittedManual === true &&
+      input.expectedRevision !== undefined && !!input.note?.trim() &&
+      ["BANK_TRANSFER", "JAZZCASH"].includes(input.provider) &&
+      canRecoverSirahManualPayment(order);
+    const method = order.method || (recovery ? input.provider : null);
     if (
       order.currency !== input.currency ||
       order.amountMinor !== input.amountMinor ||
-      order.method !== input.provider
+      method !== input.provider
     )
       throw new SirahError(
         "Payment amount, currency or method does not match the locked order.",
@@ -88,7 +95,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
     if (
       input.expectedRevision !== undefined &&
       (input.expectedRevision !== order.revision ||
-        (order.paymentState !== "AWAITING_REVIEW" &&
+        (order.paymentState !== "AWAITING_REVIEW" && !recovery &&
           !(
             input.allowCancelledTransfer &&
             order.enrolmentState === "CANCELLED" &&
@@ -108,6 +115,11 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
       ["REFUNDED", "REFUND_PENDING"].includes(order.paymentState) ||
       !!order.cancelledAt ||
       (!!order.programmeEnd && order.programmeEnd <= new Date());
+    if (recovery)
+      await auditSirah(tx, order.id, input.actor, "MANUAL_PAYMENT_RECOVERED", {
+        previousMethod: order.method, previousPaymentState: order.paymentState,
+        method, note: input.note, staffVerifiedWithoutStudentSubmission: true,
+      });
     await tx.sirahPaymentEvent.create({
       data: {
         id: input.eventId,
@@ -188,6 +200,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
       where: { id: order.id },
       data: {
         registrationId,
+        method,
         paymentState: ["REFUNDED", "REFUND_PENDING"].includes(
           order.paymentState,
         )
@@ -203,7 +216,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
           ? {
               accessEndsAt:
                 order.plan === "MONTHLY" &&
-                ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "")
+                ["BANK_TRANSFER", "JAZZCASH"].includes(method || "")
                   ? addMonthsClamped(start, order.paidCount + 1)
                   : null,
             }

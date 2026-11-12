@@ -1,4 +1,5 @@
 "use client";
+import { prepareSirahReceipt } from "@/lib/sirah/receipt-upload";
 import { PersonalDiscount } from "./personal-discount";
 import {
   sirahAccessConsentsComplete,
@@ -760,7 +761,7 @@ export function SirahRegistrationForm({
       if (manual && receipt instanceof File) {
         const multipart = new FormData();
         multipart.set("details", JSON.stringify(details));
-        multipart.set("receipt", receipt);
+        multipart.set("receipt", await prepareSirahReceipt(receipt));
         body = multipart;
       }
       const result = await api("/api/sirah/orders", { method: "POST", body });
@@ -1003,6 +1004,9 @@ export function SirahRegistrationForm({
         "digitalContentConsented",
         String(accessConsents.digitalContentConsented === true),
       );
+      const receipt = data.get("receipt");
+      if (!(receipt instanceof File) || !receipt.size) throw new Error("Upload your payment receipt.");
+      data.set("receipt", await prepareSirahReceipt(receipt));
       const result = await api(`/api/sirah/orders/${order.id}/evidence`, {
         method: "POST",
         body: data,
