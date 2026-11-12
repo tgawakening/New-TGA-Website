@@ -5,7 +5,7 @@ import { paypalPlanIssue } from "@/lib/sirah/paypal-plan";
 import { sirahOriginAllowed } from "@/lib/sirah/origin";
 import Stripe from "stripe";
 import { randomUUID } from "node:crypto";
-import { Prisma, type SirahOrder } from "@prisma/client";
+import type { SirahOrder } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   SIRAH_TITLE,
@@ -14,6 +14,11 @@ import {
   type SirahPlan,
 } from "@/lib/sirah/catalog";
 import { methodAvailable, termsFor, paypalMonthlyPlanId } from "@/lib/sirah/config";
+import {
+  isAdminCustomOrder,
+  studentPriceChangeRefusal,
+  unsettledCheckoutResetData,
+} from "@/lib/sirah/admin-custom";
 import {
   ownedSirahOrder,
   auditSirah,
@@ -38,7 +43,7 @@ export function stripeClient() {
     throw new SirahError("Stripe is not configured.", 503);
   return new Stripe(process.env.SIRAH_STRIPE_SECRET_KEY);
 }
-async function verifyStripeMerchant(stripe: Stripe) {
+export async function verifyStripeMerchant(stripe: Stripe) {
   const account = await stripe.accounts.retrieve();
   if (account.id !== process.env.SIRAH_STRIPE_ACCOUNT_ID)
     throw new SirahError(
@@ -111,6 +116,9 @@ export async function startSirahCheckout(
     throw new SirahError("This payment return address is not approved.", 403);
   const checkoutBase = requestedReturnOrigin || appUrl();
   let order = await ownedSirahOrder(id, userId);
+  // Admin custom-price orders are paid only through the link the team issued.
+  const locked = studentPriceChangeRefusal(order);
+  if (locked) throw new SirahError(locked, 409);
   if (!["STRIPE", "PAYPAL"].includes(order.method || ""))
     throw new SirahError("Select an available online method first.");
   const method = order.method as "STRIPE" | "PAYPAL";
@@ -736,12 +744,20 @@ const RESET_SETTLED_MESSAGE =
   "The payment has settled; its agreed amount is preserved.";
 const RESET_MAY_SETTLE_MESSAGE =
   "The payment may still settle. It has not been replaced or repriced.";
+const RESET_ADMIN_LINK_OPEN_MESSAGE =
+  "This payment link was issued by the TGA team and is still open. It has not been closed or repriced.";
 
 /** Confirm an abandoned Stripe hosted checkout is unsettled, expiring an open
- * session so it cannot be paid later. Returns the abandoned session reference. */
-async function resetUnsettledSirahStripe(order: SirahOrder): Promise<string> {
+ * session so it cannot be paid later. Returns the abandoned session reference.
+ * An admin-issued link is long-lived on purpose: its open session is only
+ * expired when the admin explicitly regenerates it (`expireOpen`), never by the
+ * 20-minute maintenance sweep or a student reset. */
+async function resetUnsettledSirahStripe(
+  order: SirahOrder,
+  stripe: Stripe,
+  expireOpen: boolean,
+): Promise<string> {
   if (!order.providerOrderId) throw new SirahError(RESET_UNSAFE_MESSAGE, 409);
-  const stripe = stripeClient();
   await verifyStripeMerchant(stripe);
   let session = await stripe.checkout.sessions.retrieve(order.providerOrderId);
   if (
@@ -753,8 +769,10 @@ async function resetUnsettledSirahStripe(order: SirahOrder): Promise<string> {
     await verifySirahStripeSession(order.id, session.id, stripe);
     throw new SirahError(RESET_SETTLED_MESSAGE, 409);
   }
-  if (session.status === "open")
+  if (session.status === "open") {
+    if (!expireOpen) throw new SirahError(RESET_ADMIN_LINK_OPEN_MESSAGE, 409);
     session = await stripe.checkout.sessions.expire(session.id);
+  }
   if (
     session.status !== "expired" ||
     session.subscription ||
@@ -834,6 +852,12 @@ async function resetUnsettledSirahPaypal(order: SirahOrder): Promise<string> {
 export async function resetUnsettledSirahCheckout(
   orderId: string,
   userId: string,
+  options: {
+    /** Only an admin regenerating its own custom link may close an open one. */
+    expireOpenAdminLink?: boolean;
+    actor?: string;
+    stripe?: Stripe;
+  } = {},
 ) {
   const order = await ownedSirahOrder(orderId, userId);
   if (
@@ -843,10 +867,15 @@ export async function resetUnsettledSirahCheckout(
     !(order.providerOrderId || order.providerSubscriptionId)
   )
     throw new SirahError(RESET_UNSAFE_MESSAGE, 409);
+  const adminCustom = isAdminCustomOrder(order);
   // The provider reference confirmed unsettled server-side, kept for the audit.
   const clearedRef =
     order.method === "STRIPE"
-      ? await resetUnsettledSirahStripe(order)
+      ? await resetUnsettledSirahStripe(
+          order,
+          options.stripe || stripeClient(),
+          !adminCustom || options.expireOpenAdminLink === true,
+        )
       : await resetUnsettledSirahPaypal(order);
   const quote = await import("@/lib/sirah/catalog").then(({ priceFor }) =>
     priceFor(
@@ -864,23 +893,9 @@ export async function resetUnsettledSirahCheckout(
         paidCount: 0,
         paymentState: { in: ["PROCESSING", "FAILED"] },
       },
-      data: {
-        providerOrderId: null,
-        providerSubscriptionId: null,
-        providerPlanId: null,
-        checkoutToken: null,
-        method: null,
-        paymentState: "UNPAID",
-        amountMinor: quote.amountMinor,
-        totalMinor: quote.totalMinor,
-        // Drop the locked quote's discount and terms so the base amount cannot
-        // drift from a stale personal-discount snapshot; re-selecting a method
-        // re-resolves both server-side.
-        discount: Prisma.DbNull,
-        terms: Prisma.DbNull,
-        pricingVersion: quote.pricingVersion,
-        revision: { increment: 1 },
-      },
+      // Self-registered orders return to the catalog quote; an admin custom
+      // order keeps its agreed amount and method (see unsettledCheckoutResetData).
+      data: unsettledCheckoutResetData(order, quote),
     });
     if (!result.count)
       throw new SirahError(
@@ -890,9 +905,15 @@ export async function resetUnsettledSirahCheckout(
     await auditSirah(
       tx,
       order.id,
-      `student:${userId}`,
+      options.actor || `student:${userId}`,
       "UNSETTLED_CHECKOUT_EXPIRED",
-      { provider: order.method, reference: clearedRef },
+      {
+        provider: order.method,
+        reference: clearedRef,
+        ...(adminCustom
+          ? { adminCustomLink: true, amountMinorKept: order.amountMinor }
+          : {}),
+      },
     );
   });
 }

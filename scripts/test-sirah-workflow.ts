@@ -16,7 +16,9 @@ import Stripe from "stripe";
 import sharp from "sharp";
 import { PDFDocument } from "pdf-lib";
 import { handleSirahStripeWebhook as handleStripeWebhook } from "../services/sirah-stripe-webhook.service";
-import { handleSirahPaypalWebhook } from "../services/sirah-webhooks.service";
+import { handleSirahPaypalWebhook, handleSirahStripeEvent } from "../services/sirah-webhooks.service";
+import { createSirahAdminCustomLink } from "../services/sirah-admin-custom-link.service";
+import { ADMIN_CUSTOM_PRICING_VERSION, sirahAdminCustomLinkSchema } from "../lib/sirah/admin-custom";
 import { resolveSirahResumeToken, resumeHash } from "../lib/sirah/resume";
 import { sirahOriginAllowed } from "../lib/sirah/origin";
 import { prisma } from "../lib/prisma";
@@ -29,6 +31,7 @@ import {
   SIRAH_SLUG,
 } from "../lib/sirah/catalog";
 import { normalizeSirahPhone } from "../lib/sirah/phone";
+import { resetRateLimitsForTests } from "../lib/rate-limit";
 import { getGroupInvitation, methodAvailable, termsFor, type SirahTerms } from "../lib/sirah/config";
 import {
   sirahRegistrationSchema,
@@ -181,6 +184,8 @@ async function approve(
 }
 beforeEach(async () => {
   global.fetch = originalFetch;
+  // The rate limiter is in-process state; never let one test spend another's allowance.
+  resetRateLimitsForTests();
   for (const key of Object.keys(process.env))
     if (
       key.startsWith("SIRAH_") ||
@@ -3884,14 +3889,26 @@ test("personal manual code is email-scoped and quotes PKR 3000 only for eligible
     assert.equal(result.cache, "private, no-store");
   }
   assert.equal((await quoteOffer({ email: input.email })).data.pricing.amountMinor, 350000);
+  // Each group below is an independent validation check. The per-email coupon
+  // limit (5/min, added in a5249c0) would otherwise refuse the 6th quote here,
+  // so reset it between groups; the limit itself is asserted at the end.
+  resetRateLimitsForTests();
   for (const change of [{ email: "unrelated@example.test" }, { countryCode: "GB" }, { plan: "ANNUAL" }, { method: "STRIPE" }, { method: "PAYPAL" }, { couponCode: "WRONG" }]) {
     assert.equal((await quoteOffer({ email: input.email, couponCode: input.couponCode, ...change })).status, 400);
   }
+  resetRateLimitsForTests();
   await prisma.sirahManualDiscount.update({ where: { id: grant.id }, data: { isActive: false } });
   assert.equal((await quoteOffer({ email: input.email, couponCode: input.couponCode })).status, 400);
+  // The coupon-guessing limit still applies: the 6th coupon quote for one email within a minute is refused.
+  resetRateLimitsForTests();
+  for (let attempt = 1; attempt <= 5; attempt++)
+    assert.equal((await quoteOffer({ email: input.email, couponCode: input.couponCode })).status, 400);
+  const limited = await quoteOffer({ email: input.email, couponCode: input.couponCode });
+  assert.equal(limited.status, 429);
+  assert.equal(limited.cache, "private, no-store");
 });
 test("discounted manual registration saves the server fee, preserves it across bank/JazzCash choices, and enrols only after verified funds", async () => {
-  const { input } = await personalOffer();
+  const { input, grant } = await personalOffer();
   const created = await registerSirah(input);
   let order = await publicSirahOrder(created.orderId, created.userId);
   assert.equal(order.amountMinor, 300000);
@@ -3910,7 +3927,14 @@ test("discounted manual registration saves the server fee, preserves it across b
   assert.equal(registration.baseAmount, 350000);
   assert.equal(registration.couponDiscountAmount, 50000);
   assert.equal(registration.finalAmount, 300000);
-  await assert.rejects(repriceSirah(order.id, created.userId, paid.revision, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /changed|progress/);
+  // Single-use codes are redeemed on the first verified payment (redemption
+  // limits), so re-applying the code to the paid order is refused and the
+  // agreed fee is untouched.
+  const redeemed = await prisma.sirahManualDiscount.findUniqueOrThrow({ where: { id: grant.id } });
+  assert.equal(redeemed.redeemedCount, 1);
+  assert.equal(redeemed.redeemedOrderId, order.id);
+  await assert.rejects(repriceSirah(order.id, created.userId, paid.revision, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /already been used/);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } })).amountMinor, 300000);
   await prisma.sirahOrder.update({ where: { id: order.id }, data: { paymentState: "UNPAID" } });
   order = await publicSirahOrder(order.id, created.userId);
   order = await evidence(order, created.userId);
@@ -3924,10 +3948,13 @@ test("personal codes cannot reprice another account, stack with annual pricing, 
   const { input } = await personalOffer();
   const created = await registerSirah(input);
   const order = await publicSirahOrder(created.orderId, created.userId);
-  await assert.rejects(registerSirah({ ...payload(), method: "BANK_TRANSFER", couponCode: input.couponCode }), /not valid/);
+  // This grant is bound to one email (codes may now also be unbound), so any
+  // other account is refused with the specific email-binding reason.
+  await assert.rejects(registerSirah({ ...payload(), method: "BANK_TRANSFER", couponCode: input.couponCode }), /linked to a different email address/);
   await assert.rejects(registerSirah({ ...payload("PK", "ANNUAL"), email: input.email, method: "BANK_TRANSFER", couponCode: input.couponCode }, created.userId), /not valid/);
   const other = await create();
-  await assert.rejects(repriceSirah(other.orderId, other.userId, 0, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /not valid/);
+  await assert.rejects(repriceSirah(other.orderId, other.userId, 0, "PK", "MONTHLY", "BANK_TRANSFER", input.couponCode), /linked to a different email address/);
+  assert.equal((await publicSirahOrder(other.orderId, other.userId)).amountMinor, 350000);
   const annual = await repriceSirah(order.id, created.userId, order.revision, "PK", "ANNUAL", "BANK_TRANSFER");
   assert.equal(annual.amountMinor, 3240000);
   assert.equal(annual.discount, null);
@@ -4115,4 +4142,136 @@ test("legacy awaiting-review orders with no method still require explicit staff 
   await actOnSirahOrder({ ...action, note: "The merchant independently matched this legacy transfer." }, "admin:test");
   const order = await publicSirahOrder(r.orderId, r.userId);
   assert.equal(order.method, "BANK_TRANSFER"); assert.equal(order.paymentState, "PAID");
+});
+
+// ---------------------------------------------------------------------------
+// Admin custom payment link: checkout-reset guarantees against real MySQL.
+// ---------------------------------------------------------------------------
+function customLinkStripe() {
+  const sessions = new Map<string, Record<string, unknown>>();
+  const expired: string[] = [];
+  let seq = 0;
+  const client = {
+    accounts: { retrieve: async () => ({ id: "acct_synthetic", charges_enabled: true }) },
+    checkout: {
+      sessions: {
+        create: async (params: Record<string, unknown>) => {
+          const line = (params.line_items as { price_data: { currency: string; unit_amount: number } }[])[0];
+          const id = `cs_custom_${++seq}`;
+          const session = {
+            id,
+            url: `https://checkout.stripe.test/${id}`,
+            status: "open",
+            payment_status: "unpaid",
+            mode: params.mode,
+            metadata: params.metadata,
+            client_reference_id: params.client_reference_id,
+            currency: line.price_data.currency,
+            amount_total: line.price_data.unit_amount,
+            expires_at: params.expires_at,
+            payment_intent: null,
+            subscription: null,
+          };
+          sessions.set(id, session);
+          return { ...session };
+        },
+        retrieve: async (id: string) => ({ ...sessions.get(id)! }),
+        expire: async (id: string) => {
+          expired.push(id);
+          sessions.get(id)!.status = "expired";
+          return { ...sessions.get(id)! };
+        },
+      },
+    },
+  } as unknown as Stripe;
+  return { client, sessions, expired };
+}
+async function customLinkOrder(stub: ReturnType<typeof customLinkStripe>) {
+  process.env.SIRAH_STRIPE_SECRET_KEY = "sk_test_synthetic";
+  process.env.SIRAH_STRIPE_ACCOUNT_ID = "acct_synthetic";
+  process.env.SIRAH_ANNUAL_TERMS_JSON = JSON.stringify(approvedTestTerms);
+  const input = sirahAdminCustomLinkSchema.parse({
+    fullName: "Sponsored Test Student",
+    email: `sirah-custom-${randomUUID()}@example.test`,
+    plan: "ANNUAL",
+    countryCode: "GB",
+    amount: "150",
+    sponsorLabel: "Synthetic sponsor",
+  });
+  const link = await createSirahAdminCustomLink(input, "admin:test-a", stub.client);
+  return prisma.sirahOrder.findUniqueOrThrow({ where: { id: link.orderId } });
+}
+const backdate = (id: string) =>
+  prisma.sirahOrder.update({
+    where: { id },
+    // Older than the maintenance sweep's 20-minute PROCESSING grace window.
+    data: { updatedAt: new Date(Date.now() - 2 * 3600000) },
+  });
+
+test("an expired admin custom link keeps its agreed amount, method and terms and clears only the dead session", async () => {
+  const stub = customLinkStripe();
+  const issued = await customLinkOrder(stub);
+  assert.equal(issued.paymentState, "PROCESSING");
+  assert.equal(issued.amountMinor, 15000);
+  assert.ok(issued.providerOrderId && issued.checkoutToken);
+  // Stripe expires the unpaid session and delivers the signed event.
+  stub.sessions.get(issued.providerOrderId!)!.status = "expired";
+  await handleSirahStripeEvent(
+    {
+      id: "evt_custom_expired",
+      type: "checkout.session.expired",
+      data: { object: { ...stub.sessions.get(issued.providerOrderId!) } },
+    } as unknown as Stripe.Event,
+    stub.client,
+  );
+  const after = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: issued.id } });
+  // Only the dead provider attempt is cleared...
+  assert.equal(after.paymentState, "UNPAID");
+  assert.equal(after.providerOrderId, null);
+  assert.equal(after.checkoutToken, null);
+  assert.equal(after.revision, issued.revision + 1);
+  // ...the agreed price, route and terms survive (no catalog reprice).
+  assert.equal(after.amountMinor, 15000);
+  assert.equal(after.totalMinor, 15000);
+  assert.equal(after.currency, "GBP");
+  assert.equal(after.plan, "ANNUAL");
+  assert.equal(after.method, "STRIPE");
+  assert.equal(after.pricingVersion, ADMIN_CUSTOM_PRICING_VERSION);
+  assert.deepEqual(after.terms, issued.terms);
+  assert.deepEqual(after.discount, issued.discount);
+  assert.equal(after.paidCount, 0);
+  assert.equal(after.enrolmentState, "PENDING");
+  assert.equal(
+    await prisma.sirahAudit.count({
+      where: { orderId: issued.id, action: "UNSETTLED_CHECKOUT_EXPIRED" },
+    }),
+    1,
+  );
+  assert.deepEqual(stub.expired, [], "an already-expired session is not re-expired");
+});
+
+test("the maintenance sweep never closes an open admin custom link early, and clears it once Stripe expires it", async () => {
+  const stub = customLinkStripe();
+  const issued = await customLinkOrder(stub);
+  await backdate(issued.id);
+  await maintainSirahOrders({ stripe: stub.client });
+  const open = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: issued.id } });
+  assert.deepEqual(stub.expired, [], "the open admin link was not expired");
+  assert.equal(stub.sessions.get(issued.providerOrderId!)!.status, "open");
+  assert.equal(open.paymentState, "PROCESSING");
+  assert.equal(open.providerOrderId, issued.providerOrderId);
+  assert.equal(open.checkoutToken, issued.checkoutToken);
+  assert.equal(open.amountMinor, 15000);
+  assert.equal(open.revision, issued.revision);
+  // After Stripe itself expires the link, the next sweep clears it but keeps the price.
+  stub.sessions.get(issued.providerOrderId!)!.status = "expired";
+  await backdate(issued.id);
+  await maintainSirahOrders({ stripe: stub.client });
+  const cleared = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: issued.id } });
+  assert.equal(cleared.paymentState, "UNPAID");
+  assert.equal(cleared.providerOrderId, null);
+  assert.equal(cleared.amountMinor, 15000);
+  assert.equal(cleared.method, "STRIPE");
+  assert.deepEqual(cleared.terms, issued.terms);
+  assert.deepEqual(stub.expired, []);
 });

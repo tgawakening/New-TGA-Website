@@ -23,7 +23,8 @@
     "sirah:stripe:check": "node --import tsx scripts/check-sirah-stripe.ts",
     "sirah:stripe:sandbox:renewal": "node --import tsx scripts/check-sirah-sandbox-renewal.ts",
     "sirah:launch:check": "node --conditions=react-server --import tsx scripts/check-sirah-launch.ts",
-    "test:sirah-scholarship": "node --conditions=react-server --import tsx --test scripts/test-sirah-scholarship.ts"
+    "test:sirah-scholarship": "node --conditions=react-server --import tsx --test scripts/test-sirah-scholarship.ts",
+    "test:sirah-custom-link": "node --conditions=react-server --import tsx --test scripts/test-sirah-admin-custom-link.ts"
   },
   "engines": {
     "node": "20.x || 22.x"
