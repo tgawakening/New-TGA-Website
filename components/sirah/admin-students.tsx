@@ -322,7 +322,7 @@ export function SirahAdminStudents({
 
   return (
     <div className={`ga-admin-shell ${styles.shell}`}>
-      <SirahAdminNav active="enrolments" readOnly={readOnly} canApproveScholarships={canApproveScholarships} canCreateDiscountCodes={canCreateDiscountCodes} />
+      <SirahAdminNav active="enrolments" readOnly={readOnly} canApproveScholarships={canApproveScholarships} canCreateDiscountCodes={canCreateDiscountCodes} canManageEnrolments={canManageEnrolments} />
         <div className="ga-admin-topbar-actions">
           {!readOnly && <AdminNotificationBell
             initialNotifications={initialNotifications}
@@ -411,6 +411,7 @@ export function SirahAdminStudents({
               <option value="BANK_TRANSFER">Meezan Bank transfer</option>
               <option value="JAZZCASH">JazzCash</option>
               <option value="UNSELECTED">No method selected</option>
+              <option value="CUSTOM_LINK">Admin custom payment links</option>
             </select>
           </label>
           <label>
@@ -504,6 +505,19 @@ export function SirahAdminStudents({
                     <strong>
                       {formatSirahMoney(student.amountMinor, student.currency)}
                     </strong>
+                    {student.customLink && (
+                      <p>
+                        <span className="ga-admin-pill">Custom link</span>{" "}
+                        Catalog{" "}
+                        {formatSirahMoney(
+                          student.customLink.catalogAmountMinor,
+                          student.customLink.catalogCurrency,
+                        )}
+                        {student.customLink.sponsorLabel
+                          ? ` · ${student.customLink.sponsorLabel}`
+                          : ""}
+                      </p>
+                    )}
                     <p>{student.countryName}</p>
                   </div>
                   <div>
@@ -691,6 +705,36 @@ export function SirahAdminStudents({
                 <p>
                   <strong>Pricing version:</strong> {selected.pricingVersion}
                 </p>
+                {selected.customLink && (
+                  <>
+                    <p>
+                      <strong>Source:</strong> Admin custom payment link
+                    </p>
+                    <p>
+                      <strong>Catalog price:</strong>{" "}
+                      {formatSirahMoney(
+                        selected.customLink.catalogAmountMinor,
+                        selected.customLink.catalogCurrency,
+                      )}{" "}
+                      · <strong>Custom price:</strong>{" "}
+                      {formatSirahMoney(
+                        selected.customLink.amountMinor,
+                        selected.currency,
+                      )}
+                    </p>
+                    {selected.customLink.sponsorLabel && (
+                      <p>
+                        <strong>Sponsor:</strong>{" "}
+                        {selected.customLink.sponsorLabel}
+                      </p>
+                    )}
+                    <p>
+                      <strong>Link created by:</strong>{" "}
+                      {selected.customLink.createdBy} ·{" "}
+                      {date(selected.customLink.createdAt)}
+                    </p>
+                  </>
+                )}
               </div>
             </section>
 

@@ -16,6 +16,10 @@ import {
 } from "@/lib/sirah/catalog";
 import { getGroupInvitation, type SirahTerms } from "@/lib/sirah/config";
 import { sirahAdminActionSchema } from "@/lib/sirah/validation";
+import {
+  ADMIN_CUSTOM_PRICING_VERSION,
+  adminCustomSnapshot,
+} from "@/lib/sirah/admin-custom";
 import { auditSirah, SirahError } from "./sirah-registration.service";
 import {
   confirmSirahPayment,
@@ -54,6 +58,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
       "JAZZCASH",
       "MANUAL",
       "UNSELECTED",
+      "CUSTOM_LINK",
     ].includes(method)
   )
     throw new SirahError("Choose a valid payment method.");
@@ -63,7 +68,9 @@ export async function listSirahAdmin(search: URLSearchParams) {
     ...(enrolment ? { enrolmentState: enrolment } : {}),
     ...(batch ? { batchCode: batch } : {}),
     ...(country ? { countryCode: country } : {}),
-    ...(method === "MANUAL"
+    ...(method === "CUSTOM_LINK"
+      ? { pricingVersion: ADMIN_CUSTOM_PRICING_VERSION }
+      : method === "MANUAL"
       ? { method: { in: ["BANK_TRANSFER", "JAZZCASH"] } }
       : method === "UNSELECTED"
         ? { method: null }
@@ -104,6 +111,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
         paidMinor: true,
         refundedMinor: true,
         pricingVersion: true,
+        discount: true,
         revision: true,
         paymentState: true,
         enrolmentState: true,
@@ -148,7 +156,29 @@ export async function listSirahAdmin(search: URLSearchParams) {
       },
     }),
   ]);
-  return { courseTitle: SIRAH_TITLE, total, page, pageSize, rows };
+  return {
+    courseTitle: SIRAH_TITLE,
+    total,
+    page,
+    pageSize,
+    rows: rows.map(({ discount, ...row }) => {
+      const custom = adminCustomSnapshot({ discount });
+      return {
+        ...row,
+        // Admin custom payment link: catalog vs agreed price, sponsor, creator.
+        customLink: custom
+          ? {
+              catalogAmountMinor: custom.catalogAmountMinor,
+              catalogCurrency: custom.catalogCurrency,
+              amountMinor: custom.amountMinor,
+              sponsorLabel: custom.sponsorLabel,
+              createdBy: custom.createdBy,
+              createdAt: custom.createdAt,
+            }
+          : null,
+      };
+    }),
+  };
 }
 export async function cancelSirahProvider(
   order: {
@@ -741,6 +771,11 @@ export function sirahCsv(data: Awaited<ReturnType<typeof listSirahAdmin>>) {
       "Currency",
       "Payment status",
       "Enrolment status",
+      "Source",
+      "Catalog price",
+      "Custom price",
+      "Sponsor",
+      "Link created by",
     ].join(","),
     ...data.rows.map((row) =>
       [
@@ -757,6 +792,18 @@ export function sirahCsv(data: Awaited<ReturnType<typeof listSirahAdmin>>) {
         row.currency,
         row.paymentState,
         row.enrolmentState,
+        row.customLink ? "Admin custom link" : "Self-registered",
+        row.customLink
+          ? formatSirahMoney(
+              row.customLink.catalogAmountMinor,
+              row.customLink.catalogCurrency,
+            )
+          : "",
+        row.customLink
+          ? formatSirahMoney(row.customLink.amountMinor, row.currency)
+          : "",
+        row.customLink?.sponsorLabel || "",
+        row.customLink?.createdBy || "",
       ]
         .map(sirahCsvCell)
         .join(","),

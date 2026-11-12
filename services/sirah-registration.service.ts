@@ -1,5 +1,10 @@
 import { withManualDiscountTerms } from "@/lib/sirah/discount-terms";
 import { personalSirahPrice } from "@/lib/sirah/manual-discount";
+import {
+  ADMIN_CUSTOM_PRICING_VERSION,
+  adminCustomSnapshot,
+  studentPriceChangeRefusal,
+} from "@/lib/sirah/admin-custom";
 import { defaultPriceMethod } from "@/lib/sirah/payment-display";
 import "server-only";
 import { sirahAccessConsentsComplete } from "@/lib/sirah/access-consent";
@@ -288,7 +293,7 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     amountMinor: order.amountMinor,
     totalMinor: order.totalMinor,
     pricingVersion: order.pricingVersion,
-    discount: order.discount ? { applied: true, label: "Personal manual-payment discount", originalAmountMinor: (order.discount as { originalAmountMinor: number }).originalAmountMinor, amountMinor: order.amountMinor } : null,
+    discount: order.discount ? { applied: true, label: adminCustomSnapshot(order) ? "Price agreed with the TGA team" : "Personal manual-payment discount", originalAmountMinor: (order.discount as { originalAmountMinor: number }).originalAmountMinor, amountMinor: order.amountMinor } : null,
     paymentState: order.paymentState,
     enrolmentState: order.enrolmentState,
     revision: order.revision,
@@ -325,6 +330,10 @@ export async function repriceSirah(
   couponCode?: string,
 ) {
   const owned = await ownedSirahOrder(orderId, userId);
+  // An admin custom-price order keeps its agreed amount: no student reprice,
+  // plan/country change or method change (which would re-quote from catalog).
+  const locked = studentPriceChangeRefusal(owned);
+  if (locked) throw new SirahError(locked, 409);
   const student = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
   const price = await personalSirahPrice(
     countryCode,
@@ -364,6 +373,8 @@ export async function repriceSirah(
         paidCount: 0,
         providerOrderId: null,
         providerSubscriptionId: null,
+        // Race guard: never reprice an order an admin converted meanwhile.
+        pricingVersion: { not: ADMIN_CUSTOM_PRICING_VERSION },
       },
       data: {
         countryCode,

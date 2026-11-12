@@ -59,7 +59,10 @@ export async function handleSirahStripeEvent(
       order.paymentState === "PROCESSING" &&
       order.providerOrderId === session.id
     )
-      await resetUnsettledSirahCheckout(order.id, order.userId).catch(() => {});
+      await resetUnsettledSirahCheckout(order.id, order.userId, {
+        stripe,
+        actor: "provider:stripe",
+      }).catch(() => {});
     return true;
   }
   if (
