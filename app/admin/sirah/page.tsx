@@ -9,7 +9,7 @@ export default async function SirahAdminPage({
   searchParams: Promise<{ order?: string }>;
 }) {
   const access = await getSirahWorkspaceAccess();
-  if (!access) redirect("/admin");
+  if (!access) redirect("/admin/sirah/login");
   const [{ order }, notifications] = await Promise.all([
     searchParams,
     access.readOnly ? Promise.resolve([]) : getAdminNotifications(),

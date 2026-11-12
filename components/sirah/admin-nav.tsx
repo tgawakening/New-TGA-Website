@@ -1,4 +1,5 @@
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
+import { SirahAppInstallButton } from "./admin-app";
 
 export function SirahAdminNav({ active, readOnly, canApproveScholarships = false, canCreateDiscountCodes = false }: { active: "enrolments" | "scholarships" | "discounts"; readOnly: boolean; canApproveScholarships?: boolean; canCreateDiscountCodes?: boolean }) {
   return <header className="ga-admin-topbar" style={{ flexWrap: "wrap", gap: "1rem" }}>
@@ -9,6 +10,6 @@ export function SirahAdminNav({ active, readOnly, canApproveScholarships = false
       <a href="/admin/sirah/scholarships" className={`ga-admin-nav-pill${active === "scholarships" ? " is-active" : ""}`} aria-current={active === "scholarships" ? "page" : undefined}>Sīrah scholarships</a>
       {canCreateDiscountCodes && <a href="/admin/sirah/discount-codes" className={`ga-admin-nav-pill${active === "discounts" ? " is-active" : ""}`} aria-current={active === "discounts" ? "page" : undefined}>Discount codes</a>}
     </nav>
-    <div className="ga-admin-topbar-actions">{readOnly && <span className="ga-admin-pill">{canApproveScholarships ? "Scholarship approver" : "Read-only team access"}</span>}<AdminLogoutButton /></div>
+    <div className="ga-admin-topbar-actions">{readOnly && <span className="ga-admin-pill">{canApproveScholarships ? "Scholarship approver" : "Read-only team access"}</span>}<SirahAppInstallButton /><AdminLogoutButton redirectTo="/admin/sirah/login" /></div>
   </header>;
 }

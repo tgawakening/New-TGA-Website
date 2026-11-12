@@ -4,7 +4,7 @@ import { SirahAdminDiscount } from "@/components/sirah/admin-discount";
 
 export default async function SirahDiscountCodesPage() {
   const access = await getSirahWorkspaceAccess();
-  if (!access) redirect("/admin");
+  if (!access) redirect("/admin/sirah/login");
   if (!access.canCreateDiscountCodes) redirect("/admin/sirah");
   return (
     <main className="ga-admin-page">
