@@ -47,6 +47,9 @@ export async function listSirahAdmin(search: URLSearchParams) {
   const batch = search.get("batch") || "";
   const country = (search.get("country") || "").trim().toUpperCase();
   const method = (search.get("method") || "").trim().toUpperCase();
+  const group = (search.get("group") || "").trim().toUpperCase();
+  if (group && !["ADDED", "NOT_ADDED"].includes(group))
+    throw new SirahError("Choose a valid group status.");
   if (country && !(country in countries))
     throw new SirahError("Choose a valid country.");
   if (
@@ -64,7 +67,16 @@ export async function listSirahAdmin(search: URLSearchParams) {
     throw new SirahError("Choose a valid payment method.");
   const where: Prisma.SirahOrderWhereInput = {
     course: { slug: SIRAH_SLUG },
-    ...(payment ? { paymentState: payment } : {}),
+    ...(payment === "NEEDS_ATTENTION"
+      ? { paymentState: { in: ["AWAITING_REVIEW", "PROCESSING", "FAILED"] } }
+      : payment
+        ? { paymentState: payment }
+        : {}),
+    ...(group === "ADDED"
+      ? { groupAddedAt: { not: null } }
+      : group === "NOT_ADDED"
+        ? { groupAddedAt: null }
+        : {}),
     ...(enrolment ? { enrolmentState: enrolment } : {}),
     ...(batch ? { batchCode: batch } : {}),
     ...(country ? { countryCode: country } : {}),
@@ -121,6 +133,8 @@ export async function listSirahAdmin(search: URLSearchParams) {
         cancelledAt: true,
         accessEndsAt: true,
         paidCount: true,
+        groupAddedAt: true,
+        groupAddedBy: true,
         createdAt: true,
         user: { select: { fullName: true, email: true } },
         receipts: {
@@ -776,6 +790,9 @@ export function sirahCsv(data: Awaited<ReturnType<typeof listSirahAdmin>>) {
       "Custom price",
       "Sponsor",
       "Link created by",
+      "Added to group",
+      "Group added at",
+      "Group added by",
     ].join(","),
     ...data.rows.map((row) =>
       [
@@ -804,6 +821,9 @@ export function sirahCsv(data: Awaited<ReturnType<typeof listSirahAdmin>>) {
           : "",
         row.customLink?.sponsorLabel || "",
         row.customLink?.createdBy || "",
+        row.groupAddedAt ? "Yes" : "No",
+        row.groupAddedAt ? new Date(row.groupAddedAt).toISOString() : "",
+        row.groupAddedBy || "",
       ]
         .map(sirahCsvCell)
         .join(","),

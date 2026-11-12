@@ -6,7 +6,7 @@ import { SirahAdminCustomLink } from "@/components/sirah/admin-custom-link";
 
 export default async function SirahCustomLinkPage() {
   const access = await getSirahWorkspaceAccess();
-  if (!access) redirect("/admin");
+  if (!access) redirect("/admin/sirah/login");
   if (!access.canManageEnrolments) redirect("/admin/sirah");
   const countryOptions = Object.entries(countries)
     .map(([code, value]) => {
@@ -20,19 +20,5 @@ export default async function SirahCustomLinkPage() {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
   const currencies = [...new Set(catalogue.map((row) => row[2]))].sort();
-  return (
-    <main className="ga-admin-page">
-      <section className="ga-admin-page-section">
-        <div className="ga-admin-container">
-          <SirahAdminCustomLink
-            readOnly={access.readOnly}
-            canApproveScholarships={access.canApproveScholarships}
-            canCreateDiscountCodes={access.canCreateDiscountCodes}
-            countries={countryOptions}
-            currencies={currencies}
-          />
-        </div>
-      </section>
-    </main>
-  );
+  return <SirahAdminCustomLink countries={countryOptions} currencies={currencies} />;
 }
