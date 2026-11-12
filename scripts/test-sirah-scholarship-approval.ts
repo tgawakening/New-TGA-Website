@@ -27,7 +27,7 @@ test("a viewer cannot approve, and an explicit grant preserves the shared passwo
   const row = await application(); assert.equal((await approve(req({ applicationId: row.id, approve: true }))).status, 403);
   const previous = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   assert.deepEqual(await grantSirahScholarshipApproval(email), { granted: true, changed: true });
-  assert.deepEqual(await getSirahWorkspaceAccess(new Request(base, { headers: { cookie: `ga_session=${token}` } })), { readOnly: true, canApproveScholarships: true, canCreateDiscountCodes: true, canManageEnrolments: true });
+  assert.deepEqual(await getSirahWorkspaceAccess(new Request(base, { headers: { cookie: `ga_session=${token}` } })), { role: "MANAGER", readOnly: true, canApproveScholarships: true, canCreateDiscountCodes: true, canManageEnrolments: true, canManageAccess: false, canMarkGroupAdded: true });
   assert.equal((await prisma.user.findUniqueOrThrow({ where: { id: userId } })).passwordHash, previous.passwordHash); assert.ok(await authenticateSirahViewer(email, password));
   assert.deepEqual(await grantSirahScholarshipApproval(email), { granted: true, changed: false });
 });
