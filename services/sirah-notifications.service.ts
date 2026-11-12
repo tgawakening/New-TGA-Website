@@ -4,7 +4,8 @@ import { createSirahResumeLink } from "@/lib/sirah/resume";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { sendTransactionalEmail } from "@/lib/email";
+import { EmailDeliveryError, sendTransactionalEmail } from "@/lib/email";
+import { sirahNoticeAudience, sirahNoticeRecipients, uniqueEmailRecipients } from "@/lib/sirah/notification-policy";
 import { SIRAH_TITLE, formatSirahMoney } from "@/lib/sirah/catalog";
 import { getGroupInvitation, type SirahTerms } from "@/lib/sirah/config";
 const escapeHtml = (value: string) =>
@@ -35,6 +36,7 @@ const subjects: Record<string, string> = {
   RENEWED: "Monthly payment received",
   RENEWAL_DUE: "Monthly payment reminder",
 };
+const rejectedByLimit = "PROVIDER_LIMIT_REJECTED:";
 export async function queueSirahNotice(
   tx: Prisma.TransactionClient,
   orderId: string,
@@ -129,16 +131,10 @@ export async function queueSirahNotice(
     .split(",")
     .map((v) => v.trim())
     .filter(Boolean);
-  const recipients =
-    kind === "PAYMENT_RESUME"
-      ? [order.user.email]
-      : kind === "INVITATION_PENDING"
-        ? admins.length
-          ? admins
-          : [""]
-        : [order.user.email, ...(admins.length ? admins : [""])];
+  const recipients = sirahNoticeRecipients(kind, order.user.email, admins);
+  if (sirahNoticeAudience(kind) !== "STUDENT" && !admins.length) recipients.push("");
   for (const email of recipients) {
-    const admin = email !== order.user.email;
+    const admin = email.toLowerCase() !== order.user.email.toLowerCase();
     const key = createHash("sha256")
       .update(`${order.id}:${kind}:${version}:${email}`)
       .digest("hex");
@@ -194,10 +190,7 @@ export async function queueSirahNotice(
   }
 }
 async function resolveAdminRecipients(orderId?: string) {
-  const recipients = (process.env.ADMIN_NOTIFICATION_EMAIL || "")
-    .split(",")
-    .map((v) => v.trim())
-    .filter(Boolean);
+  const recipients = uniqueEmailRecipients((process.env.ADMIN_NOTIFICATION_EMAIL || "").split(","));
   if (!recipients.length) return;
   const missing = await prisma.sirahNotification.findMany({
     where: { ...(orderId ? { orderId } : {}), toEmail: "", state: "SKIPPED" },
@@ -205,6 +198,10 @@ async function resolveAdminRecipients(orderId?: string) {
   });
   for (const item of missing)
     await prisma.$transaction(async (tx) => {
+      if (sirahNoticeAudience(item.kind) === "STUDENT") {
+        await tx.sirahNotification.update({ where: { id: item.id }, data: { state: "SUPPRESSED", error: "Routine admin copy disabled to preserve email quota." } });
+        return;
+      }
       for (const email of recipients) {
         const key = createHash("sha256")
           .update(`${item.key}:recipient:${email}`)
@@ -250,6 +247,18 @@ export async function dispatchSirahNotifications(orderId?: string) {
   let sent = 0;
   for (const item of candidates) {
     if (!item.toEmail) continue;
+    const owner = await prisma.sirahOrder.findUniqueOrThrow({
+      where: { id: item.orderId }, select: { user: { select: { email: true } } },
+    });
+    const recipients = sirahNoticeRecipients(item.kind, owner.user.email, (process.env.ADMIN_NOTIFICATION_EMAIL || "").split(","));
+    const audience = sirahNoticeAudience(item.kind);
+    // Also apply the policy to existing queued copies, without deleting audit history.
+    const routineAdminCopy = audience === "STUDENT" && !recipients.includes(item.toEmail.toLowerCase());
+    const internalStudentCopy = audience === "ADMIN" && item.toEmail.toLowerCase() === owner.user.email.toLowerCase() && !recipients.includes(item.toEmail.toLowerCase());
+    if (routineAdminCopy || internalStudentCopy) {
+      await prisma.sirahNotification.update({ where: { id: item.id }, data: { state: "SUPPRESSED", lockedUntil: null, error: "Unnecessary notification copy disabled to preserve email quota." } });
+      continue;
+    }
     if (["REGISTERED", "PAYMENT_RESUME"].includes(item.kind)) {
       const order = await prisma.sirahOrder.findUnique({
         where: { id: item.orderId },
@@ -285,7 +294,7 @@ export async function dispatchSirahNotifications(orderId?: string) {
           user: { select: { email: true, status: true } },
         },
       });
-      if (item.toEmail === current.user.email) {
+      if (item.toEmail.toLowerCase() === current.user.email.toLowerCase()) {
         const eligible =
           current.user.status === "ACTIVE" &&
           current.paymentState === "PAID" &&
@@ -330,7 +339,8 @@ export async function dispatchSirahNotifications(orderId?: string) {
     if (
       ["SENDING", "FAILED"].includes(item.state) &&
       item.attempts > 0 &&
-      Date.now() - item.createdAt.getTime() > 23 * 3600000
+      Date.now() - item.createdAt.getTime() > 23 * 3600000 &&
+      !(item.state === "FAILED" && item.error?.startsWith(rejectedByLimit))
     ) {
       await prisma.sirahNotification.update({
         where: { id: item.id },
@@ -401,22 +411,39 @@ export async function dispatchSirahNotifications(orderId?: string) {
             where: { id: item.orderId },
             select: { user: { select: { email: true } } },
           });
-          if (owner.user.email === item.toEmail)
+          if (owner.user.email.toLowerCase() === item.toEmail.toLowerCase())
             await prisma.sirahOrder.updateMany({
               where: { id: item.orderId, invitationState: "QUEUED" },
               data: { invitationState: "SENT" },
             });
         }
       }
-    } catch {
+    } catch (error) {
+      // Resend does not accept or queue 429-rejected messages. Preserve that
+      // fact only when no earlier attempt may have been accepted. An expired
+      // SENDING lease or an unknown network failure must stay ambiguous.
+      const definitelyRejected = error instanceof EmailDeliveryError && error.pauseBatch &&
+        (item.attempts === 0 || (item.state === "FAILED" && item.error?.startsWith(rejectedByLimit)));
       await prisma.sirahNotification.update({
         where: { id: item.id },
         data: {
           state: "FAILED",
-          lockedUntil: null,
-          error: "Delivery failed; retry from the authorised admin action.",
+          lockedUntil: new Date(Date.now() + (error instanceof EmailDeliveryError ? error.retryAfterMs : 5 * 60000)),
+          error: `${definitelyRejected ? rejectedByLimit + " " : ""}Delivery deferred after failure; queued for retry after the delivery cooldown.`,
         },
       });
+      if (error instanceof EmailDeliveryError && error.pauseBatch) {
+        // A provider limit applies to the whole batch, not just this recipient.
+        await prisma.sirahNotification.updateMany({
+          where: {
+            id: { in: candidates.map(candidate => candidate.id) },
+            state: { in: ["PENDING", "FAILED", "SKIPPED"] },
+            OR: [{ lockedUntil: null }, { lockedUntil: { lt: new Date() } }],
+          },
+          data: { lockedUntil: new Date(Date.now() + error.retryAfterMs) },
+        });
+        break;
+      }
     }
   }
   return { sent };

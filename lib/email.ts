@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 
+export class EmailDeliveryError extends Error {
+  constructor(message: string, readonly retryAfterMs: number, readonly pauseBatch = false) { super(message); }
+}
+
 type EmailPayload = {
   idempotencyKey?: string;
   userId?: string;
@@ -58,6 +62,11 @@ async function logEmail({
 }
 
 export async function sendTransactionalEmail(payload: EmailPayload) {
+  // Operational checks must inspect existing deliveries instead of spending student quota.
+  if (payload.emailType.startsWith("SIRAH_OPS_") && process.env.ALLOW_OPERATIONAL_TEST_EMAILS !== "true") {
+    await logEmail({ ...payload, status: "SKIPPED", error: "Operational test emails disabled to preserve transactional quota." });
+    return { status: "SKIPPED" as const };
+  }
   const resendApiKey = getOptionalEnv("RESEND_API_KEY");
   const emailFrom = getOptionalEnv("EMAIL_FROM");
 
@@ -117,7 +126,16 @@ export async function sendTransactionalEmail(payload: EmailPayload) {
       payload,
       error: errorText,
     });
-    throw new Error(`Email send failed: ${errorText}`);
+    const retryHeader = response.headers.get("retry-after");
+    const retrySeconds = retryHeader ? Number(retryHeader) : NaN;
+    const retryDate = retryHeader ? Date.parse(retryHeader) - Date.now() : NaN;
+    const providerDelay = Number.isFinite(retrySeconds) ? retrySeconds * 1000 : Number.isFinite(retryDate) ? retryDate : 0;
+    const dailyReset = new Date();
+    dailyReset.setUTCHours(24, 1, 0, 0);
+    const cooldown = /daily_quota/i.test(errorText)
+      ? dailyReset.getTime() - Date.now()
+      : /monthly_quota/i.test(errorText) ? 3600000 : response.status === 429 ? 60000 : 300000;
+    throw new EmailDeliveryError("Email delivery deferred by provider.", Math.max(providerDelay, cooldown), response.status === 429);
   }
 
   const json = (await response.json()) as { id?: string };
@@ -149,10 +167,7 @@ export async function notifyAdmins({
     return { status: "SKIPPED" as const };
   }
 
-  const emails = configured
-    .split(",")
-    .map((email) => email.trim())
-    .filter(Boolean);
+  const emails = [...new Set(configured.split(",").map(email => email.trim().toLowerCase()).filter(Boolean))];
 
   await Promise.all(
     emails.map((email) =>

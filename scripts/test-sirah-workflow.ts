@@ -818,6 +818,10 @@ test("failed email delivery is persisted and retried without duplicating success
   );
   succeed = true;
   await dispatchSirahNotifications(order.id);
+  const deferredCalls = keys.length;
+  await prisma.sirahNotification.updateMany({ where: { orderId: order.id, state: "FAILED" }, data: { lockedUntil: new Date(0) } });
+  await dispatchSirahNotifications(order.id);
+  assert.ok(keys.length > deferredCalls);
   const calls = keys.length;
   await dispatchSirahNotifications(order.id);
   assert.equal(keys.length, calls);
@@ -3943,4 +3947,85 @@ test("personal fee terms replace the standard manual amount and preserve cancell
   assert.equal(discounted.cancellation, terms.cancellation);
   assert.notEqual(discounted.version, terms.version);
   assert.equal(withManualDiscountTerms(terms, null), terms);
+});
+
+
+test("routine registration copies are student-only while payment reviews still reach staff", async () => {
+  process.env.ADMIN_NOTIFICATION_EMAIL = "Admin@Example.test, admin@example.test";
+  const result = await create();
+  const notices = await prisma.sirahNotification.findMany({ where: { orderId: result.orderId, kind: "REGISTERED" } });
+  assert.equal(notices.length, 1);
+  assert.notEqual(notices[0].toEmail, "admin@example.test");
+  await prisma.$transaction(tx => queueSirahNotice(tx, result.orderId, "CHECKOUT_REVIEW", "test-review"));
+  const reviews = await prisma.sirahNotification.findMany({ where: { orderId: result.orderId, kind: "CHECKOUT_REVIEW" } });
+  assert.deepEqual(reviews.map(n => n.toEmail), ["admin@example.test"]);
+  await prisma.$transaction(tx => queueSirahNotice(tx, result.orderId, "SUBMITTED", "test-submitted"));
+  assert.equal(await prisma.sirahNotification.count({ where: { orderId: result.orderId, kind: "SUBMITTED" } }), 2);
+});
+
+test("previously queued routine admin copies are suppressed without sending or losing the audit record", async () => {
+  const result = await create();
+  await prisma.sirahNotification.create({ data: { key: randomUUID(), orderId: result.orderId, toEmail: "admin@example.test", kind: "REGISTERED", payload: { subject: "Old copy", text: "old", html: "old" } } });
+  process.env.RESEND_API_KEY = "synthetic";
+  process.env.EMAIL_FROM = "sender@example.test";
+  const recipients: string[] = [];
+  global.fetch = async (_url, init) => { recipients.push(...JSON.parse(String(init?.body)).to); return Response.json({ id: "synthetic-mail" }); };
+  await dispatchSirahNotifications(result.orderId);
+  assert.ok(!recipients.includes("admin@example.test"));
+  assert.equal(await prisma.sirahNotification.count({ where: { orderId: result.orderId, state: "SUPPRESSED", toEmail: "admin@example.test" } }), 1);
+});
+
+test("provider quota errors retain essential notices and respect Retry-After without a retry storm", async () => {
+  const result = await create();
+  await prisma.$transaction(tx => queueSirahNotice(tx, result.orderId, "SUBMITTED", "quota-test"));
+  process.env.RESEND_API_KEY = "synthetic";
+  process.env.EMAIL_FROM = "sender@example.test";
+  let calls = 0;
+  global.fetch = async () => { calls++; return Response.json({ name: "daily_quota_exceeded" }, { status: 429, headers: { "Retry-After": "7200" } }); };
+  await dispatchSirahNotifications(result.orderId);
+  const firstCalls = calls;
+  assert.equal(firstCalls, 1);
+  const deferred = await prisma.sirahNotification.findFirstOrThrow({ where: { orderId: result.orderId, state: "FAILED" } });
+  assert.ok(deferred.lockedUntil!.getTime() > Date.now() + 7100000);
+  await dispatchSirahNotifications(result.orderId);
+  assert.equal(calls, firstCalls);
+  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({ where: { id: result.orderId } })).paymentState, "UNPAID");
+});
+
+
+test("routine operational test emails do not consume student delivery quota", async () => {
+  const { sendTransactionalEmail } = await import("../lib/email");
+  delete process.env.ALLOW_OPERATIONAL_TEST_EMAILS;
+  process.env.RESEND_API_KEY = "synthetic";
+  process.env.EMAIL_FROM = "sender@example.test";
+  let calls = 0;
+  global.fetch = async () => { calls++; return Response.json({ id: "unexpected" }); };
+  const result = await sendTransactionalEmail({ to: "admin@example.test", emailType: "SIRAH_OPS_test-run", subject: "Diagnostic", text: "test", html: "test" });
+  assert.equal(result.status, "SKIPPED");
+  assert.equal(calls, 0);
+  assert.equal(await prisma.emailLog.count({ where: { emailType: "SIRAH_OPS_test-run", status: "SKIPPED" } }), 1);
+});
+
+test("known quota rejections recover after the daily reset even for old notices; ambiguous old sends stay held", async () => {
+  const result = await create();
+  process.env.RESEND_API_KEY = "synthetic";
+  process.env.EMAIL_FROM = "sender@example.test";
+  global.fetch = async () => Response.json({ name: "daily_quota_exceeded" }, { status: 429 });
+  await dispatchSirahNotifications(result.orderId);
+  const deferred = await prisma.sirahNotification.findFirstOrThrow({ where: { orderId: result.orderId, state: "FAILED" } });
+  assert.match(deferred.error || "", /^PROVIDER_LIMIT_REJECTED:/);
+  assert.equal(deferred.lockedUntil?.getUTCHours(), 0); assert.equal(deferred.lockedUntil?.getUTCMinutes(), 1);
+  await prisma.sirahNotification.update({ where: { id: deferred.id }, data: { createdAt: new Date(Date.now() - 48 * 3600000), lockedUntil: new Date(0) } });
+  let calls = 0;
+  global.fetch = async () => { calls++; return Response.json({ id: "recovered-email" }); };
+  await dispatchSirahNotifications(result.orderId);
+  assert.equal((await prisma.sirahNotification.findUniqueOrThrow({ where: { id: deferred.id } })).state, "SENT");
+  assert.equal(calls, 1);
+  const other = await create();
+  const unknown = await prisma.sirahNotification.findFirstOrThrow({ where: { orderId: other.orderId } });
+  await prisma.sirahNotification.update({ where: { id: unknown.id }, data: { state: "FAILED", attempts: 1, error: "Unknown network outcome", createdAt: new Date(Date.now() - 48 * 3600000), lockedUntil: null } });
+  calls = 0;
+  await dispatchSirahNotifications(other.orderId);
+  assert.equal(calls, 0);
+  assert.equal((await prisma.sirahNotification.findUniqueOrThrow({ where: { id: unknown.id } })).state, "DELIVERY_UNKNOWN");
 });
