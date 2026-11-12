@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { SirahAdminNav } from "./admin-nav";
 
 type DiscountRow = {
   id: string;
@@ -27,15 +26,7 @@ function formatAmount(row: DiscountRow) {
 /** Admin tab: create and manage PK monthly manual-payment discount codes. The
  * code is stored as a hash for validation; the shareable plaintext is kept in
  * codePlain so the team can see and reshare it. */
-export function SirahAdminDiscount({
-  readOnly,
-  canApproveScholarships = false,
-  canCreateDiscountCodes = false,
-}: {
-  readOnly: boolean;
-  canApproveScholarships?: boolean;
-  canCreateDiscountCodes?: boolean;
-}) {
+export function SirahAdminDiscount() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState<{ code: string; message: string } | null>(null);
@@ -136,12 +127,6 @@ export function SirahAdminDiscount({
 
   return (
     <div className="ga-admin-shell">
-      <SirahAdminNav
-        active="discounts"
-        readOnly={readOnly}
-        canApproveScholarships={canApproveScholarships}
-        canCreateDiscountCodes={canCreateDiscountCodes}
-      />
       <section className="ga-admin-workspace-card">
         <div className="ga-admin-workspace-head">
           <div>

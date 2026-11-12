@@ -498,6 +498,10 @@ model SirahOrder {
   paidMinor              Int                 @default(0)
   paidCount              Int                 @default(0)
   invitationState        String              @default("PENDING")
+  /// Manually confirmed by staff: student added to the course WhatsApp group.
+  /// Separate from invitationState (the automatic invitation email).
+  groupAddedAt           DateTime?           @db.DateTime(3)
+  groupAddedBy           String?             @db.VarChar(320)
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
   user                   User                @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -511,6 +515,7 @@ model SirahOrder {
 
   @@unique([userId, courseId, batchCode])
   @@index([paymentState, enrolmentState, createdAt])
+  @@index([groupAddedAt])
 }
 
 model SirahReceipt {
@@ -594,4 +599,23 @@ model SirahCohort {
   revision       Int      @default(0)
   history        Json?
   updatedAt      DateTime @updatedAt
+}
+
+/// Append-only record of Sīrah workspace access changes (add, promote, demote,
+/// revoke): who changed whose role or status, and when. No foreign key, so the
+/// record survives any later change to the target account.
+model SirahAccessAudit {
+  id           String   @id @default(cuid())
+  actor        String   @db.VarChar(320)
+  action       String   @db.VarChar(32)
+  targetUserId String?  @db.VarChar(191)
+  targetEmail  String   @db.VarChar(320)
+  fromRole     String?  @db.VarChar(32)
+  toRole       String?  @db.VarChar(32)
+  fromStatus   String?  @db.VarChar(32)
+  toStatus     String?  @db.VarChar(32)
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+
+  @@index([createdAt])
+  @@index([targetEmail, createdAt])
 }

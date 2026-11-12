@@ -1,0 +1,73 @@
+name: Sīrah MySQL test suites
+
+# Runs the database-backed Sīrah suites on every pull request against a
+# throwaway MySQL service. Separate from (and does not touch) the
+# reconciliation cron. Uses only synthetic test data; no secrets are needed
+# and no production service is contacted.
+
+on:
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: sirah-mysql-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mysql-suites:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: sirah_ci_only
+          MYSQL_DATABASE: sirah_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -psirah_ci_only"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      # The suites refuse to run unless the host is 127.0.0.1 and the database
+      # is sirah_test, so they can never be pointed at a real database.
+      DATABASE_URL: mysql://root:sirah_ci_only@127.0.0.1:3306/sirah_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies (also generates the Prisma client)
+        run: npm ci
+
+      - name: Apply all migrations to the CI database
+        id: migrate
+        run: npx prisma migrate deploy
+
+      - name: test:sirah-workflow
+        # Each suite runs even if an earlier one failed, so every result shows.
+        if: ${{ !cancelled() && steps.migrate.outcome == 'success' }}
+        run: npm run test:sirah-workflow
+
+      - name: test:sirah-team
+        # Each suite runs even if an earlier one failed, so every result shows.
+        if: ${{ !cancelled() && steps.migrate.outcome == 'success' }}
+        run: npm run test:sirah-team
+
+      - name: test:sirah-scholarship
+        # Each suite runs even if an earlier one failed, so every result shows.
+        if: ${{ !cancelled() && steps.migrate.outcome == 'success' }}
+        run: npm run test:sirah-scholarship
+
+      - name: test-sirah-scholarship-approval
+        # Each suite runs even if an earlier one failed, so every result shows.
+        if: ${{ !cancelled() && steps.migrate.outcome == 'success' }}
+        run: node --conditions=react-server --import tsx --test scripts/test-sirah-scholarship-approval.ts

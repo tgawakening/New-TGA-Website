@@ -1,6 +1,5 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
-import { SirahAdminNav } from "./admin-nav";
 
 type CountryOption = {
   code: string;
@@ -29,15 +28,9 @@ const accountEmailText: Record<Created["accountEmail"], string> = {
 /** Admin tab: issue a one-time Stripe card link at a custom amount (sponsorship,
  * in-person or group booking). Paying it enrols the student automatically. */
 export function SirahAdminCustomLink({
-  readOnly,
-  canApproveScholarships = false,
-  canCreateDiscountCodes = false,
   countries,
   currencies,
 }: {
-  readOnly: boolean;
-  canApproveScholarships?: boolean;
-  canCreateDiscountCodes?: boolean;
   countries: CountryOption[];
   currencies: string[];
 }) {
@@ -113,13 +106,6 @@ export function SirahAdminCustomLink({
 
   return (
     <div className="ga-admin-shell">
-      <SirahAdminNav
-        active="custom-link"
-        readOnly={readOnly}
-        canApproveScholarships={canApproveScholarships}
-        canCreateDiscountCodes={canCreateDiscountCodes}
-        canManageEnrolments
-      />
       <section className="ga-admin-workspace-card">
         <div className="ga-admin-workspace-head">
           <div>

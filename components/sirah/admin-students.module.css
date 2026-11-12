@@ -178,3 +178,34 @@
 .row :global(.ga-admin-status.is-succeeded),
 .row :global(.ga-admin-status.is-confirmed) { color: #17664b; }
 .row :global(.ga-admin-status.is-pending) { color: #805900; }
+
+/* Course group column (8-column table on wide screens) */
+.groupMeta {
+  color: #5d7189;
+  font-size: 0.8rem;
+}
+
+.groupToggle {
+  margin-top: 0.4rem;
+  min-height: 2.1rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.groupDetail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.groupDetail .groupMeta {
+  margin: 0;
+}
+
+@media (min-width: 1024px) {
+  :global(.ga-admin-table-head).table,
+  :global(.ga-admin-table-row).table {
+    grid-template-columns: 1.15fr 1.2fr 0.85fr 0.85fr 0.75fr 0.8fr 0.75fr 1.15fr;
+  }
+}

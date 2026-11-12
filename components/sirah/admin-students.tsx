@@ -8,7 +8,6 @@ import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import { SirahAdminCohort } from "./admin-cohort";
-import { SirahAdminNav } from "./admin-nav";
 import styles from "./admin-students.module.css";
 
 type Snapshot = Awaited<ReturnType<typeof listSirahAdmin>>;
@@ -152,23 +151,29 @@ async function readSnapshot(
 }
 
 export function SirahAdminStudents({
+  view = "students",
   initialOrder = "",
+  initialGroup = "",
+  initialPayment = "",
   initialNotifications,
   readOnly = false,
-  canApproveScholarships = false,
-  canCreateDiscountCodes = false,
   canManageEnrolments = false,
+  canMarkGroupAdded = false,
 }: {
+  view?: "students" | "payments";
   initialOrder?: string;
+  initialGroup?: "" | "ADDED" | "NOT_ADDED";
+  initialPayment?: string;
   initialNotifications: AdminNotificationItem[];
   readOnly?: boolean;
-  canApproveScholarships?: boolean;
-  canCreateDiscountCodes?: boolean;
   canManageEnrolments?: boolean;
+  canMarkGroupAdded?: boolean;
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
-  const [payment, setPayment] = useState("");
+  const [payment, setPayment] = useState(initialPayment);
+  const [group, setGroup] = useState<string>(initialGroup);
+  const [groupBusy, setGroupBusy] = useState("");
   const [enrolment, setEnrolment] = useState("");
   const [country, setCountry] = useState("");
   const [method, setMethod] = useState("");
@@ -196,6 +201,7 @@ export function SirahAdminStudents({
     enrolment,
     country,
     method,
+    group,
     page: String(page),
   }).toString();
 
@@ -320,33 +326,113 @@ export function SirahAdminStudents({
     }
   }
 
+  /** Mark / unmark "added to course group". Its own endpoint, open to every
+   * workspace role; it never touches payment or enrolment state. */
+  async function toggleGroup(student: Student) {
+    const added = !student.groupAddedAt;
+    if (
+      !added &&
+      !window.confirm(
+        `Mark ${student.user.fullName} as NOT added to the course group?`,
+      )
+    )
+      return;
+    setGroupBusy(student.id);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/sirah/group-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: student.id, added }),
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw Error(result.error || "Could not update group status.");
+      setReload((key) => key + 1);
+      if (selected?.id === student.id) {
+        const detail = await readSnapshot(
+          new URLSearchParams({ q: student.reference }).toString(),
+        ).catch(() => null);
+        const fresh = detail?.rows.find((entry) => entry.id === student.id);
+        if (fresh) setSelected(fresh);
+      }
+    } catch (cause) {
+      const text =
+        cause instanceof Error ? cause.message : "Could not update group status.";
+      if (selected?.id === student.id) setError(text);
+      else setLoadError(text);
+    } finally {
+      setGroupBusy("");
+    }
+  }
+
+  const groupCell = (student: Student) => (
+    <>
+      <span
+        className={`ga-admin-status is-${student.groupAddedAt ? "completed" : "pending"}`}
+      >
+        {student.groupAddedAt ? "Added" : "Not added"}
+      </span>
+      {student.groupAddedAt && (
+        <p className={styles.groupMeta}>
+          {date(student.groupAddedAt)}
+          {student.groupAddedBy ? ` · ${student.groupAddedBy}` : ""}
+        </p>
+      )}
+      {canMarkGroupAdded && (
+        <button
+          type="button"
+          className={`ga-admin-ghost-btn ${styles.groupToggle}`}
+          disabled={groupBusy === student.id}
+          aria-pressed={!!student.groupAddedAt}
+          onClick={() => toggleGroup(student)}
+        >
+          {groupBusy === student.id
+            ? "Saving…"
+            : student.groupAddedAt
+              ? "Undo"
+              : "Mark added"}
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div className={`ga-admin-shell ${styles.shell}`}>
-      <SirahAdminNav active="enrolments" readOnly={readOnly} canApproveScholarships={canApproveScholarships} canCreateDiscountCodes={canCreateDiscountCodes} canManageEnrolments={canManageEnrolments} />
-        <div className="ga-admin-topbar-actions">
-          {!readOnly && <AdminNotificationBell
-            initialNotifications={initialNotifications}
-            refreshKey={refreshBell}
-          />}
-          <button
-            type="button"
-            className="ga-admin-ghost-btn"
-            onClick={() => {
-              setReload((key) => key + 1);
-              setRefreshBell((key) => key + 1);
-            }}
-          >
-            Refresh
-          </button>
-        </div>
-
       <section className="ga-admin-workspace-card">
         <div className="ga-admin-workspace-head">
           <div>
             <p className="ga-admin-kicker">Current batch</p>
-            <h2>Sīrah | Beyond Chronology enrolments</h2>
+            <h2>
+              {view === "payments"
+                ? "Payments and reviews"
+                : "Sīrah | Beyond Chronology enrolments"}
+            </h2>
+            {view === "payments" && (
+              <p>
+                Registrations awaiting receipt review, a provider check or a
+                retried payment. Scholarship applications are reviewed under{" "}
+                <a href="/admin/sirah/scholarships">Scholarship reviews</a>.
+              </p>
+            )}
           </div>
           <div className="ga-admin-actions ga-admin-actions-inline">
+            {!readOnly && (
+              <AdminNotificationBell
+                initialNotifications={initialNotifications}
+                refreshKey={refreshBell}
+              />
+            )}
+            <button
+              type="button"
+              className="ga-admin-ghost-btn"
+              onClick={() => {
+                setReload((key) => key + 1);
+                setRefreshBell((key) => key + 1);
+              }}
+            >
+              Refresh
+            </button>
             <a
               className="ga-admin-outline-btn"
               href={`/api/admin/sirah?${query}&format=csv`}
@@ -425,6 +511,9 @@ export function SirahAdminStudents({
               }}
             >
               <option value="">All payments</option>
+              <option value="NEEDS_ATTENTION">
+                Needs attention (review, processing, failed)
+              </option>
               {paymentStates.map((value) => (
                 <option key={value} value={value}>
                   {label(value)}
@@ -450,6 +539,21 @@ export function SirahAdminStudents({
               ))}
             </select>
           </label>
+          <label>
+            Course group
+            <select
+              aria-label="Course group"
+              value={group}
+              onChange={(event) => {
+                setGroup(event.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">Added or not</option>
+              <option value="NOT_ADDED">Not yet added</option>
+              <option value="ADDED">Added to group</option>
+            </select>
+          </label>
           <button
             type="button"
             className="ga-admin-outline-btn"
@@ -459,6 +563,7 @@ export function SirahAdminStudents({
               setMethod("");
               setPayment("");
               setEnrolment("");
+              setGroup("");
               setPage(1);
             }}
           >
@@ -477,19 +582,23 @@ export function SirahAdminStudents({
               {data.total} registrations · Page {data.page}
             </p>
             <div className="ga-admin-data-table">
-              <div className="ga-admin-table-head" aria-hidden="true">
+              <div
+                className={`ga-admin-table-head ${styles.table}`}
+                aria-hidden="true"
+              >
                 <span>Order</span>
                 <span>Customer</span>
                 <span>Amount</span>
                 <span>Payment</span>
                 <span>Course access</span>
+                <span>Group</span>
                 <span>Date</span>
                 <span>Actions</span>
               </div>
               {data.rows.map((student) => (
                 <article
                   key={student.id}
-                  className={`ga-admin-table-row ${styles.row}`}
+                  className={`ga-admin-table-row ${styles.row} ${styles.table}`}
                 >
                   <div>
                     <span className="ga-admin-pill">Sīrah</span>
@@ -536,6 +645,7 @@ export function SirahAdminStudents({
                         <p>Cancellation scheduled</p>
                       )}
                   </div>
+                  <div>{groupCell(student)}</div>
                   <div>
                     <strong>{date(student.createdAt)}</strong>
                   </div>
@@ -705,6 +815,9 @@ export function SirahAdminStudents({
                 <p>
                   <strong>Pricing version:</strong> {selected.pricingVersion}
                 </p>
+                <div className={styles.groupDetail}>
+                  <strong>Course group:</strong> {groupCell(selected)}
+                </div>
                 {selected.customLink && (
                   <>
                     <p>

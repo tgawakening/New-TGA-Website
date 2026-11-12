@@ -1,0 +1,173 @@
+.shell {
+  min-height: 78vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem 0;
+}
+
+.card {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 1.4rem;
+  padding: 2rem 1.75rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 1.4rem;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 24px 60px rgba(18, 48, 88, 0.12);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, #1f5f93, #2c7bbb);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  box-shadow: 0 12px 24px rgba(36, 96, 148, 0.25);
+}
+
+.brandName {
+  color: #3d668f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  color: #102844;
+  font-size: 1.6rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.lead {
+  margin: 0.45rem 0 0;
+  color: #5f758e;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+  color: #35516f;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.input {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid #cfdbe8;
+  border-radius: 0.8rem;
+  background: #fff;
+  color: #163450;
+  padding: 0.75rem 0.9rem;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus {
+  border-color: #2c7bbb;
+  box-shadow: 0 0 0 3px rgba(44, 123, 187, 0.18);
+}
+
+.passwordWrap {
+  position: relative;
+}
+
+.passwordWrap .input {
+  padding-right: 3.2rem;
+}
+
+.eye {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  transform: translateY(-50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: #4d6680;
+  cursor: pointer;
+}
+
+.eye:hover {
+  background: #eef4fb;
+  color: #17406a;
+}
+
+.eye:focus-visible {
+  outline: 2px solid #2c7bbb;
+  outline-offset: 1px;
+}
+
+.eye svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.error {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #f2c4bf;
+  border-radius: 0.75rem;
+  background: #fdf0ee;
+  color: #9b2c22;
+  font-size: 0.92rem;
+}
+
+.submit {
+  width: 100%;
+  min-height: 3rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: linear-gradient(180deg, #255f91, #1d4f7d);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 14px 24px rgba(26, 76, 119, 0.18);
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.submit:focus-visible {
+  outline: 2px solid #2c7bbb;
+  outline-offset: 2px;
+}
+
+.roles {
+  margin: 0;
+  padding-top: 1rem;
+  border-top: 1px solid #e3eaf2;
+  color: #667c92;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  text-align: center;
+}
