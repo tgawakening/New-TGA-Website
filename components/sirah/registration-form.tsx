@@ -130,6 +130,7 @@ function Terms({
         <label className={styles.check}>
           <input
             type="checkbox"
+            id="sirah-consent-early-service"
             checked={accessConsents.earlyServiceRequested === true}
             onChange={(event) =>
               onAccessConsentChange({
@@ -145,6 +146,7 @@ function Terms({
         <label className={styles.check}>
           <input
             type="checkbox"
+            id="sirah-consent-digital-content"
             checked={accessConsents.digitalContentConsented === true}
             onChange={(event) =>
               onAccessConsentChange({
@@ -166,6 +168,7 @@ function Terms({
       <label className={styles.check}>
         <input
           type="checkbox"
+          id="sirah-accept-terms"
           checked={accepted}
           onChange={(event) => onChange(event.target.checked)}
         />
@@ -592,6 +595,37 @@ export function SirahRegistrationForm({
   const selectedRouteAvailable = Boolean(
     order?.method && order.methods.includes(order.method as SirahMethod),
   );
+  // Changing payment method clears the student's confirmations; remember that
+  // so the checklist can say they must be ticked again.
+  const [methodSwitched, setMethodSwitched] = useState(false);
+  // What still blocks a saved-booking receipt submission, in page order.
+  const evidenceMissing = order
+    ? [
+        !accepted && {
+          id: "sirah-accept-terms",
+          label: "Agree to the payment and access terms (“I have read and agree…”)",
+        },
+        order.terms?.earlyServiceRequestText &&
+          accessConsents.earlyServiceRequested !== true && {
+            id: "sirah-consent-early-service",
+            label: "Request that teaching can start now (“I expressly request teaching…”)",
+          },
+        order.terms?.digitalContentConsentText &&
+          accessConsents.digitalContentConsented !== true && {
+            id: "sirah-consent-digital-content",
+            label: "Consent to immediate recording access (“I expressly consent…”)",
+          },
+        !manualConfirmed && {
+          id: "sirah-confirm-manual-amount",
+          label: `Confirm the payment amount of ${formatSirahMoney(order.amountMinor, order.currency)}`,
+        },
+      ].filter((item): item is { id: string; label: string } => Boolean(item))
+    : [];
+  function focusField(id: string) {
+    const field = document.getElementById(id);
+    field?.scrollIntoView({ block: "center", behavior: "smooth" });
+    field?.focus({ preventScroll: true });
+  }
   // True only when the provider's last check showed a genuinely in-flight
   // settlement; false (default) means checkout was started but not completed.
   const [settlementPending, setSettlementPending] = useState(false);
@@ -828,6 +862,7 @@ export function SirahRegistrationForm({
       saveResidence(countryCode);
       setAccepted(false);
       setManualConfirmed(false);
+      if (method !== order.method) setMethodSwitched(true);
     });
   }
   async function refresh() {
@@ -899,6 +934,40 @@ export function SirahRegistrationForm({
       setManualConfirmed(false);
       setMessage(
         "The unsettled checkout is closed. Choose an available payment method; Pakistan manual monthly payments use PKR 3,500.",
+      );
+    });
+  }
+  // One step from an unfinished card/PayPal checkout to a manual transfer. The
+  // server first confirms with the provider that nothing was paid and closes
+  // the checkout; the manual method is then selected on the reset revision.
+  async function switchToManual(method: "BANK_TRANSFER" | "JAZZCASH") {
+    if (!order) return;
+    await run(async () => {
+      const reset = await api(`/api/sirah/orders/${order.id}/reset-checkout`, {
+        method: "POST",
+        body: "{}",
+      });
+      try {
+        const result = await api(`/api/sirah/orders/${order.id}/quote`, {
+          method: "POST",
+          body: JSON.stringify({
+            revision: reset.order.revision,
+            countryCode: reset.order.countryCode,
+            plan: reset.order.plan,
+            method,
+          }),
+        });
+        setOrder(result.order);
+      } catch (cause) {
+        // The checkout is already closed; show that state so they can pick again.
+        setOrder(reset.order);
+        throw cause;
+      }
+      setAccepted(false);
+      setManualConfirmed(false);
+      setMethodSwitched(true);
+      setMessage(
+        `${methodLabel(method)} selected. Pay using the details below, then upload your receipt.`,
       );
     });
   }
@@ -974,13 +1043,18 @@ export function SirahRegistrationForm({
   }
   async function submitEvidence(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!order) return;
     if (
-      !order ||
-      !accepted ||
-      !manualConfirmed ||
+      evidenceMissing.length ||
       !sirahAccessConsentsComplete(order.terms, accessConsents)
-    )
+    ) {
+      setMessage("");
+      setError(
+        `Before submitting, please tick: ${evidenceMissing.map((item) => item.label).join("; ")}.`,
+      );
+      if (evidenceMissing[0]) focusField(evidenceMissing[0].id);
       return;
+    }
     const data = new FormData(event.currentTarget);
     await run(async () => {
       const details = {
@@ -1536,8 +1610,12 @@ export function SirahRegistrationForm({
             ) : (
               <p role="status">
                 Your payment is not completed yet. If you just paid it will
-                update shortly. Otherwise you can retry or choose another method
-                like JazzCash or Meezan using “Close an unpaid checkout” below.
+                update shortly.{" "}
+                {order.methods.some((method) =>
+                  ["JAZZCASH", "BANK_TRANSFER"].includes(method),
+                )
+                  ? "Otherwise you can retry, or switch to JazzCash or Meezan bank transfer below and upload your receipt."
+                  : "Otherwise you can retry, or close the unpaid checkout below to choose another method."}
               </p>
             ))}
           {passwordForManager && (
@@ -1802,6 +1880,33 @@ export function SirahRegistrationForm({
                     Close an unpaid checkout to change payment method
                   </button>
                 )}
+              {["STRIPE", "PAYPAL"].includes(order.method || "") &&
+                order.paymentState === "PROCESSING" &&
+                !settlementPending &&
+                order.methods.some((method) =>
+                  ["JAZZCASH", "BANK_TRANSFER"].includes(method),
+                ) && (
+                  <div>
+                    <p>
+                      Card payment didn’t go through? Pay by transfer instead
+                      and upload your receipt here:
+                    </p>
+                    {(["JAZZCASH", "BANK_TRANSFER"] as const)
+                      .filter((method) => order.methods.includes(method))
+                      .map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void switchToManual(method)}
+                        >
+                          {method === "JAZZCASH"
+                            ? "Pay with JazzCash instead"
+                            : "Pay by Meezan Bank transfer instead"}
+                        </button>
+                      ))}
+                  </div>
+                )}
             </div>
           ) : null}
           {["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState) &&
@@ -1916,6 +2021,7 @@ export function SirahRegistrationForm({
                           <span>
                             <input
                               type="checkbox"
+                              id="sirah-confirm-manual-amount"
                               checked={manualConfirmed}
                               onChange={(event) =>
                                 setManualConfirmed(event.target.checked)
@@ -2018,17 +2124,45 @@ export function SirahRegistrationForm({
                           Notes, if needed
                           <textarea name="note" maxLength={1500} />
                         </label>
+                        {evidenceMissing.length > 0 && (
+                          <div
+                            className={styles.notice}
+                            id="sirah-evidence-checklist"
+                            role="status"
+                            aria-live="polite"
+                          >
+                            <p>
+                              <strong>
+                                {methodSwitched
+                                  ? "You changed payment method, so please tick these again before submitting:"
+                                  : "Before you submit, please tick:"}
+                              </strong>
+                            </p>
+                            <ul>
+                              {evidenceMissing.map((item) => (
+                                <li key={item.id}>
+                                  <a
+                                    href={`#${item.id}`}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      focusField(item.id);
+                                    }}
+                                  >
+                                    {item.label}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                         <button
                           className={styles.primary}
                           type="submit"
-                          disabled={
-                            busy ||
-                            !accepted ||
-                            !manualConfirmed ||
-                            !sirahAccessConsentsComplete(
-                              order.terms,
-                              accessConsents,
-                            )
+                          disabled={busy}
+                          aria-describedby={
+                            evidenceMissing.length
+                              ? "sirah-evidence-checklist"
+                              : undefined
                           }
                         >
                           {busy

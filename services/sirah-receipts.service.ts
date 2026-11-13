@@ -7,7 +7,7 @@ import type { SirahTerms } from "@/lib/sirah/config";
 import { createHash } from "node:crypto";
 import { fileTypeFromBuffer } from "file-type";
 import sharp from "sharp";
-import { PDFDocument } from "pdf-lib";
+import { inspectPdf, type PdfOpenAccess } from "@/lib/sirah/pdf-encryption";
 import { prisma } from "@/lib/prisma";
 import { decimalToMinor } from "@/lib/sirah/catalog";
 
@@ -34,21 +34,31 @@ export async function validateSirahReceipt(data: Uint8Array, filename: string) {
     !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(type.mime)
   )
     throw new SirahError("The file contents must be a JPG, PNG, WebP or PDF.");
+  let pdfAccess: PdfOpenAccess = "NONE";
   try {
     if (type.mime === "application/pdf") {
-      const document = await PDFDocument.load(data, {
-        ignoreEncryption: false,
-      });
-      if (!document.getPageCount() || document.getPageCount() > 100)
-        throw Error();
+      // Bank e-receipts are often encrypted only to restrict printing/copying;
+      // they still open without a password. Load the structure regardless,
+      // then decide from the security handler whether it opens freely.
+      const pdf = await inspectPdf(data);
+      pdfAccess = pdf.access;
+      if (pdf.pages !== null && (!pdf.pages || pdf.pages > 100)) throw Error();
     } else {
       await sharp(data, { limitInputPixels: 20000000 }).raw().toBuffer();
     }
   } catch {
     throw new SirahError(
-      "The receipt is damaged, encrypted, or has unsupported content.",
+      "The receipt is damaged or has unsupported content. Upload a screenshot (JPG or PNG) instead.",
     );
   }
+  if (pdfAccess === "PASSWORD_REQUIRED")
+    throw new SirahError(
+      "This PDF needs a password to open. Upload a screenshot of the receipt (JPG or PNG), or a copy saved without a password.",
+    );
+  if (pdfAccess === "UNSUPPORTED")
+    throw new SirahError(
+      "This PDF uses protection we can't open. Upload a screenshot of the receipt (JPG or PNG) instead.",
+    );
   return {
     data: Buffer.from(data),
     filename:
