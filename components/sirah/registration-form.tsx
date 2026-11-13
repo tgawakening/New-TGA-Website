@@ -1367,6 +1367,15 @@ export function SirahRegistrationForm({
                   setAccepted(false);
                 }}
               />
+              {quote?.country === billing &&
+                quote.plan === plan &&
+                quote.methods.includes("STRIPE") &&
+                !quote.methods.includes("PAYPAL") && (
+                  <p>
+                    Prefer PayPal? Choose Card and you can pay with PayPal on
+                    the payment page.
+                  </p>
+                )}
               <PersonalDiscount email={email} country={billing} plan={plan} method={selectedMethod} applied={Boolean(quote?.discount)} disabled={busy} onApply={code => { setCouponCode(code); setDiscountAttempt(value => value + 1); setAccepted(false); setManualConfirmed(false); }} />
               {selectedMethod === "STRIPE" && <p>No Stripe account needed. Wallets appear on eligible devices.</p>}
               {selectedMethod === "STRIPE" && (
