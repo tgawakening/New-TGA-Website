@@ -8,10 +8,6 @@ import {
   saveResidence,
 } from "@/lib/sirah/use-residence";
 import Image, { getImageProps } from "next/image";
-import {
-  SirahRegistrationProvider,
-  useSirahRegistration,
-} from "@/components/sirah/registration-provider";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, A11y } from "swiper/modules";
 import type { Swiper as SwiperInstance } from "swiper";
@@ -59,7 +55,6 @@ function PrimaryAction({
   plan?: "MONTHLY" | "ANNUAL";
   requireBillingCountry?: boolean;
 }) {
-  const open = useSirahRegistration();
   const params = new URLSearchParams();
   if (country) params.set("country", country);
   else if (requireBillingCountry) params.set("country", "OVERSEAS");
@@ -69,18 +64,8 @@ function PrimaryAction({
     <a
       className={styles.primary}
       href={`/seerah/register${query ? `?${query}` : ""}`}
-      onClick={(event) => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
-          return;
-        event.preventDefault();
-        trackSeerah("seerah_registration_open", { placement });
-        open({
-          country,
-          plan,
-          requireBillingCountry: !country && requireBillingCountry,
-          replacePreferences: placement.startsWith("fees"),
-        });
-      }}
+      // A normal link to the registration page; the click is only tracked.
+      onClick={() => trackSeerah("seerah_registration_open", { placement })}
     >
       Register for the Course <span aria-hidden>↗</span>
     </a>
@@ -550,7 +535,6 @@ function SeerahContent({
   visitorCountry?: string;
   availability?: Record<string, Record<string, boolean>>;
 }) {
-  const openRegistration = useSirahRegistration();
   const mobileHero = getImageProps({
     src: config.heroMobile.src,
     alt: config.heroMobile.alt,
@@ -613,23 +597,13 @@ function SeerahContent({
         <Header
           supportAction={{ href: "/support-our-mission?purpose=LEARNING_ACCESS#mission-giving", label: "Sponsor a Student" }}
           enrolmentAction={{
-            href: "/seerah/register",
+            // Same preselection the dialog used, carried in the page URL.
+            href: needsCountryChoice
+              ? "/seerah/register?country=OVERSEAS"
+              : heroCountry
+                ? `/seerah/register?country=${heroCountry}`
+                : "/seerah/register",
             label: "Register for the Course",
-            onClick: (event) => {
-              if (
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey
-              )
-                return;
-              event.preventDefault();
-              openRegistration(
-                needsCountryChoice
-                  ? { requireBillingCountry: true }
-                  : { country: heroCountry },
-              );
-            },
           }}
         />
         <nav className={styles.sectionNav} aria-label="Course sections">
@@ -954,19 +928,10 @@ function SeerahContent({
 }
 
 export default function SeerahPage(props: {
-  registrationEntry?: {
-    country?: string;
-    plan?: "MONTHLY" | "ANNUAL";
-    requireBillingCountry?: boolean;
-  };
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
   visitorCountry?: string;
   availability?: Record<string, Record<string, boolean>>;
 }) {
-  return (
-    <SirahRegistrationProvider entry={props.registrationEntry}>
-      <SeerahContent {...props} />
-    </SirahRegistrationProvider>
-  );
+  return <SeerahContent {...props} />;
 }

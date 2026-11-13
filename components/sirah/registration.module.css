@@ -139,40 +139,9 @@
   font-size: 12px;
   font-weight: 400;
 }
-.experience :focus-visible,
-.close:focus-visible {
+.experience :focus-visible {
   outline: 3px solid #735719;
   outline-offset: 3px;
-}
-.dialog {
-  padding: 0;
-  border: 1px solid #d9ad4a;
-  background: #f5efdf;
-  width: min(920px, calc(100vw - 32px));
-  max-height: calc(100dvh - 32px);
-  color: #141611;
-  margin: auto;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-.dialog::backdrop {
-  background: #0c100ccf;
-}
-.dialogInner {
-  position: relative;
-  padding-top: 38px;
-}
-.close {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  min-width: 44px;
-  min-height: 44px;
-  border: 1px solid #77775e;
-  background: #f5efdf;
-  color: #141611;
-  font-size: 24px;
-  cursor: pointer;
 }
 .page {
   min-height: 100vh;
@@ -254,10 +223,6 @@
   .page {
     padding: 24px 12px;
   }
-  .dialog {
-    width: calc(100vw - 16px);
-    max-height: calc(100dvh - 16px);
-  }
   .status {
     gap: 8px 22px;
   }
@@ -278,8 +243,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .experience *,
-  .dialog {
+  .experience * {
     scroll-behavior: auto !important;
     animation: none !important;
     transition: none !important;
@@ -454,44 +418,11 @@
 .phoneOptions button[aria-selected="true"] {
   background: #e9e3cf;
 }
-.dialog {
-  width: min(670px, calc(100vw - 32px));
-  max-height: 90dvh;
-  border-radius: 8px;
-  overflow: auto;
-}
-.dialogInner {
-  padding: 0;
-}
-.dialog .experience {
-  padding: 28px;
-}
-.close {
-  position: sticky;
-  top: 10px;
-  margin: 10px 10px -46px auto;
-  display: block;
-  z-index: 40;
-  min-width: 36px;
-  min-height: 36px;
-  font-size: 24px;
-  border-color: transparent;
-  border-radius: 50%;
-}
-.dialog input,
-.dialog select {
-  scroll-margin-block: 72px;
-}
 .page > a {
   max-width: 680px;
 }
 @media (max-width: 600px) {
-  .dialog {
-    width: calc(100vw - 16px);
-    max-height: calc(100dvh - 16px);
-  }
-  .experience,
-  .dialog .experience {
+  .experience {
     padding: 24px 20px;
   }
   .experience h2 {
@@ -521,25 +452,6 @@
     font-size: 16px;
   }
 }
-.dialog {
-  position: fixed;
-  top: calc(
-    var(--sirah-viewport-top, 0px) + var(--sirah-viewport-height, 100dvh) * 0.5
-  );
-  bottom: auto;
-  left: 50%;
-  right: auto;
-  transform: translate(-50%, -50%);
-  margin: 0;
-  max-height: min(90dvh, calc(var(--sirah-viewport-height, 100dvh) - 16px));
-}
-@media (max-width: 600px) {
-  .dialog {
-    max-height: calc(
-      var(--sirah-viewport-height, 100dvh) - 16px - env(safe-area-inset-bottom)
-    );
-  }
-}
 .phoneField > label {
   margin-bottom: 6px !important;
 }
@@ -563,15 +475,6 @@
   accent-color: #735719;
 }
 
-.dialog {
-  box-shadow:
-    0 28px 100px #0009,
-    0 8px 24px #0005;
-}
-.dialog::backdrop {
-  background: #080b09b8;
-  backdrop-filter: blur(5px);
-}
 .passwordField {
   min-width: 0;
 }
@@ -656,53 +559,6 @@
     gap: 5px;
   }
 }
-.closedRegistration {
-  position: fixed;
-  bottom: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(640px, calc(100vw - 32px));
-  z-index: 65;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: #f5efdf;
-  color: #141611;
-  border: 1px solid #b29b62;
-  border-radius: 8px;
-  box-shadow: 0 12px 44px #0004;
-  font:
-    13px/1.5 var(--font-montserrat),
-    Arial,
-    sans-serif;
-}
-.closedRegistration span {
-  flex: 1;
-}
-.closedRegistration button {
-  min-height: 42px;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  background: #d9ad4a;
-  border: 1px solid #a27d2c;
-  color: #141611;
-  font: inherit;
-  font-weight: 600;
-}
-.closedRegistration button:last-child {
-  background: transparent;
-  border: 0;
-  font-size: 22px;
-  padding: 4px 8px;
-}
-@media (min-width: 768px) {
-  .closedRegistration {
-    bottom: 24px;
-  }
-}
-
 .experience .cardIntroduction small {
   display: inline;
   margin-left: 6px;
@@ -954,7 +810,7 @@
 .discountToggle > div {
   margin-top: 4px;
 }
-/* Dedicated /seerah/register page (replaces the dialog on that route). */
+/* Dedicated /seerah/register page: the only registration surface. */
 .registerPage {
   min-height: 100vh;
   min-height: 100dvh;
