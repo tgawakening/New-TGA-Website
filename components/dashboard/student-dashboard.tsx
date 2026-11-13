@@ -63,7 +63,7 @@ const seerahLessons = [
   { title: "Introduction to Prophetic Strategy", type: "Recorded", access: "Available now" },
   { title: "Makkan Period Leadership", type: "Recorded", access: "Available now" },
   { title: "Diplomacy and Treaty Building", type: "Recorded", access: "Available now" },
-  { title: "Weekly Live Reflection Circle", type: "Live", access: "Saturday 10:00 AM PKT" },
+  { title: "Weekly Live Reflection Circle", type: "Live", access: "Sunday 10:00 AM PKT" },
 ];
 
 const supportLinks = [

@@ -105,7 +105,7 @@ export const missionPillars = [
 export const propheticSlides: PropheticSlide[] = [
   {
     title: "Intelligence & Community Protection",
-    subtitle: "Every Saturday",
+    subtitle: "Every Sunday",
     description:
       "Discover how the Prophet Muhammad (PBUH) established sophisticated networks to safeguard the early Muslim community.",
     image: "/seerah%20slide-1.jpg",
