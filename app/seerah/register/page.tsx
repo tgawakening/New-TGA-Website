@@ -1,4 +1,3 @@
-import { detectedResidence } from "@/lib/sirah/geolocation";
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import { countries } from "countries-list";
 import { redirect } from "next/navigation";
@@ -6,11 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import LegacyRegistration from "@/components/sirah/legacy-registration";
 import type { Metadata } from "next";
-import SeerahPage from "@/components/seerah/seerah-page";
-import { activeCampaign } from "@/components/seerah/course-config";
-import { planAvailability } from "@/lib/sirah/payment-display";
-import { methodAvailable } from "@/lib/sirah/config";
 import { sirahFont } from "@/lib/sirah/font";
+import { SirahRegistrationPage } from "@/components/sirah/registration-page";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 export const metadata: Metadata = {
   title: `Register | ${SIRAH_TITLE}`,
@@ -47,19 +43,14 @@ export default async function SirahRegisterPage({
     if (!registration) redirect("/seerah/register");
     return <LegacyRegistration />;
   }
+  // A dedicated page: no course landing page behind it and no dialog. The
+  // form reads ?order=, #payment= and the session itself, exactly as before.
   return (
     <div className={sirahFont.variable}>
-      <SeerahPage
-        initialCampaign={activeCampaign()}
-        visitorCountry={await detectedResidence()}
-        availability={planAvailability()}
-        pakistanOnlineAvailable={methodAvailable(
-          "STRIPE",
-          "PK",
-          "PKR",
-          "MONTHLY",
-        )}
-        registrationEntry={{ country: initialCountry, plan: initialPlan, requireBillingCountry: Boolean(params.country && !initialCountry) }}
+      <SirahRegistrationPage
+        initialCountry={initialCountry}
+        initialPlan={initialPlan}
+        requireBillingCountry={Boolean(params.country && !initialCountry)}
       />
     </div>
   );
