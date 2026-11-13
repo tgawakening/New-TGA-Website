@@ -892,3 +892,52 @@
   max-width: 100%;
   font-size: 13px;
 }
+
+/* Saved booking: one primary action, one secondary, the rest tucked away. */
+.nextStep {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+}
+.nextStep > .primary {
+  width: 100%;
+}
+.secondaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.secondaryActions p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.feedback {
+  margin: 12px 0;
+  scroll-margin: 16px;
+}
+.moreOptions {
+  margin: 20px 0;
+  border-top: 1px solid #b8af91;
+  padding-top: 12px;
+}
+.moreOptions > summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.moreOptionsBody {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+}
+@media (max-width: 600px) {
+  .secondaryActions button {
+    flex: 1 1 100%;
+  }
+  .moreOptionsBody .grid {
+    grid-template-columns: 1fr;
+  }
+}

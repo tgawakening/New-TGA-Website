@@ -1054,6 +1054,7 @@ export function SirahRegistrationForm({
       evidenceMissing.length ||
       !sirahAccessConsentsComplete(order.terms, accessConsents)
     ) {
+      feedbackScroll.current = false;
       setMessage("");
       setError(
         `Before submitting, please tick: ${evidenceMissing.map((item) => item.label).join("; ")}.`,
@@ -1096,6 +1097,97 @@ export function SirahRegistrationForm({
       setOrder(current.order);
     });
   }
+  // Saved-booking view: one primary action, one secondary, the rest under
+  // "More options". These only decide placement; the handlers are unchanged.
+  const [showMethods, setShowMethods] = useState(false);
+  useEffect(() => {
+    setShowMethods(false);
+  }, [order?.id, order?.method]);
+  // An unfinished card/PayPal checkout that the existing checkout() can reopen.
+  const checkoutResumable = Boolean(
+    order?.paymentState === "PROCESSING" &&
+      ["STRIPE", "PAYPAL"].includes(order.method || "") &&
+      !settlementPending &&
+      selectedRouteAvailable,
+  );
+  const manualAlternatives = (["JAZZCASH", "BANK_TRANSFER"] as const).filter(
+    (method) => order?.methods.includes(method),
+  );
+  const renewalNeedsBilling = Boolean(
+    order?.paymentState === "FAILED" && order.hasBillingProfile,
+  );
+  // Same checks checkout() already makes, but said out loud instead of a
+  // silently disabled button.
+  function completePayment() {
+    if (!order) return;
+    const missing = evidenceMissing.filter(
+      (item) => item.id !== "sirah-confirm-manual-amount",
+    );
+    if (missing.length || !sirahAccessConsentsComplete(order.terms, accessConsents)) {
+      feedbackScroll.current = false;
+      setMessage("");
+      setError(
+        `Before paying, please tick: ${missing.map((item) => item.label).join("; ")}.`,
+      );
+      if (missing[0]) focusField(missing[0].id);
+      return;
+    }
+    void checkout();
+  }
+  // Errors and confirmations sit next to the action that caused them, and an
+  // error scrolls into view (unless focus was just moved to a checkbox).
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  const feedbackScroll = useRef(true);
+  useEffect(() => {
+    if (error && feedbackScroll.current)
+      feedbackRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    feedbackScroll.current = true;
+  }, [error]);
+  const feedback =
+    error || message ? (
+      <div ref={feedbackRef} className={styles.feedback}>
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
+        {message && (
+          <p className={styles.notice} role="status">
+            {message}
+          </p>
+        )}
+      </div>
+    ) : null;
+  const freshLinkForm = (
+    <form
+      className={styles.form}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        void run(async () => {
+          const result = await api("/api/sirah/payment-resume/request", {
+            method: "POST",
+            body: JSON.stringify({ email: data.get("email") }),
+          });
+          setMessage(result.message);
+        });
+      }}
+    >
+      <label>
+        Registration email
+        <input
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          defaultValue={email}
+        />
+      </label>
+      <button type="submit" disabled={busy}>
+        Send a fresh link
+      </button>
+    </form>
+  );
   return (
     <div className={styles.experience}>
       <p className={styles.eyebrow}>
@@ -1588,6 +1680,7 @@ export function SirahRegistrationForm({
                     : "Submit registration & transfer receipt"}
             </button>
           </form>
+          {feedback}
         </>
       ) : (
         <section aria-label="Your course registration">
@@ -1630,8 +1723,8 @@ export function SirahRegistrationForm({
                 {order.methods.some((method) =>
                   ["JAZZCASH", "BANK_TRANSFER"].includes(method),
                 )
-                  ? "Otherwise you can retry, or switch to JazzCash or Meezan bank transfer below and upload your receipt."
-                  : "Otherwise you can retry, or close the unpaid checkout below to choose another method."}
+                  ? "Otherwise complete the payment below, or switch to JazzCash or Meezan bank transfer and upload your receipt."
+                  : "Otherwise complete the payment below, or change payment method."}
               </p>
             ))}
           {passwordForManager && (
@@ -1707,121 +1800,6 @@ export function SirahRegistrationForm({
                 )}
               </div>
             )}
-          <details className={styles.savedDetails}>
-            <summary>
-              {order.fullName} · {order.email} · Edit registration details
-            </summary>
-            <form
-              className={styles.form}
-              onSubmit={(event) => {
-                event.preventDefault();
-                void run(async () => {
-                  const result = await api(`/api/sirah/orders/${order.id}`, {
-                    method: "PATCH",
-                    body: JSON.stringify({
-                      revision: order.revision,
-                      fullName: name,
-                      phoneCountry,
-                      callingCode: `+${getCountryCallingCode(phoneCountry)}`,
-                      phone,
-                    }),
-                  });
-                  setOrder(result.order);
-                  setMessage("Registration details saved.");
-                });
-              }}
-            >
-              <label>
-                Full name
-                <input
-                  aria-label="Saved full name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  minLength={2}
-                  maxLength={120}
-                  required
-                />
-              </label>
-              <label>
-                Email
-                <input
-                  aria-label="Saved email"
-                  type="email"
-                  value={order.email}
-                  readOnly
-                />
-                <small>
-                  For an email correction, contact TGA or update your account
-                  after signing in.
-                </small>
-              </label>
-              <PhoneControl
-                country={phoneCountry}
-                value={phone}
-                onCountryChange={setPhoneCountry}
-                onChange={setPhone}
-              />
-              <button
-                type="submit"
-                disabled={
-                  busy ||
-                  !["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState)
-                }
-              >
-                Save details
-              </button>
-            </form>
-          </details>
-          <div className={styles.grid}>
-            <label>
-              Country of residence / billing country
-              <select
-                aria-label="Country of residence / billing country"
-                value={order.countryCode}
-                disabled={
-                  busy ||
-                  !["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState)
-                }
-                onChange={(event) =>
-                  void reprice(
-                    event.target.value,
-                    order.plan as SirahPlan,
-                    null,
-                  )
-                }
-              >
-                <option value="" disabled>
-                  Select your billing country
-                </option>
-                {residenceCountries.map((c) => (
-                  <option value={c.code} key={c.code}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Payment plan
-              <select
-                aria-label="Payment plan"
-                value={order.plan}
-                disabled={
-                  busy ||
-                  !["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState)
-                }
-                onChange={(event) =>
-                  void reprice(
-                    order.countryCode,
-                    event.target.value as SirahPlan,
-                    null,
-                  )
-                }
-              >
-                <option value="MONTHLY">Monthly payment</option>
-                <option value="ANNUAL">Annual upfront</option>
-              </select>
-            </label>
-          </div>
           <div className={styles.summary}>
             {order.nextBillingAt && <p>Next renewal: {new Date(order.nextBillingAt).toLocaleDateString()}.</p>}
             {order.programmeEnd && (
@@ -1873,351 +1851,11 @@ export function SirahRegistrationForm({
               remain on this registration.
             </p>
           )}
-          {["PROCESSING", "REFUND_PENDING"].includes(order.paymentState) ? (
-            <div className={styles.notice}>
-              <p>
-                Payment pending. We’re waiting for confirmation from the payment
-                provider.
-              </p>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void checkPayment()}
-              >
-                Check verified payment status
-              </button>
-              {["STRIPE", "PAYPAL"].includes(order.method || "") &&
-                order.paymentState === "PROCESSING" && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void resetCheckout()}
-                  >
-                    Close an unpaid checkout to change payment method
-                  </button>
-                )}
-              {["STRIPE", "PAYPAL"].includes(order.method || "") &&
-                order.paymentState === "PROCESSING" &&
-                !settlementPending &&
-                order.methods.some((method) =>
-                  ["JAZZCASH", "BANK_TRANSFER"].includes(method),
-                ) && (
-                  <div>
-                    <p>
-                      Card payment didn’t go through? Pay by transfer instead
-                      and upload your receipt here:
-                    </p>
-                    {(["JAZZCASH", "BANK_TRANSFER"] as const)
-                      .filter((method) => order.methods.includes(method))
-                      .map((method) => (
-                        <button
-                          key={method}
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void switchToManual(method)}
-                        >
-                          {method === "JAZZCASH"
-                            ? "Pay with JazzCash instead"
-                            : "Pay by Meezan Bank transfer instead"}
-                        </button>
-                      ))}
-                  </div>
-                )}
-            </div>
-          ) : null}
-          {["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState) &&
-            ["PENDING", "ACTIVE"].includes(order.enrolmentState) && (
-              <>
-                {order.countryCode === "PK" && (
-                  <p className={styles.notice} role="note">
-                    Paying from Pakistan? Card payments are often declined by
-                    Pakistani banks on international transactions. For a smooth
-                    payment we recommend JazzCash or Meezan Bank transfer.
-                  </p>
-                )}
-                <PaymentMethods
-                  methods={order.methods as SirahMethod[]}
-                  value={(order.method || "") as SirahMethod | ""}
-                  disabled={busy}
-                  describedBy={
-                    order.countryCode === "PK" && order.plan === "MONTHLY"
-                      ? "sirah-pk-method-pricing"
-                      : undefined
-                  }
-                  onChange={(method) =>
-                    void reprice(
-                      order.countryCode,
-                      order.plan as SirahPlan,
-                      method,
-                    )
-                  }
-                />
-                {order.countryCode === "IN" &&
-                  order.methods.includes("STRIPE") && (
-                    <p>
-                      Using an Indian card? Please switch on International and
-                      Online payments in your bank app first, then pay by Card.
-                    </p>
-                  )}
-                <PersonalDiscount email={order.email} country={order.countryCode} plan={order.plan} method={order.method || ""} applied={Boolean(order.discount)} disabled={busy} onApply={code => { void reprice(order.countryCode, order.plan as SirahPlan, order.method as SirahMethod, code); }} />
-                {order.manualEvidenceAllowed &&
-                  !selectedRouteAvailable &&
-                  order.method && (
-                    <p>
-                      {methodLabel(order.method as SirahMethod)} · saved
-                      instructions only
-                    </p>
-                  )}
-                {order.countryCode === "PK" && order.plan === "MONTHLY" && (
-                  <p className={styles.notice} id="sirah-pk-method-pricing">
-                    Your selected fee is shown above. Manual transfers require receipt verification.
-                  </p>
-                )}
-                {order.method === "STRIPE" && <p>No Stripe account needed. Wallets appear on eligible devices.</p>}
-                {order.method === "STRIPE" && (
-                  <p>
-                    Because our card processor is based abroad, your bank may
-                    add international transaction charges and government taxes
-                    to card payments. These are not charged by TGA.
-                  </p>
-                )}
-                {(selectedRouteAvailable || order.manualEvidenceAllowed) && (
-                  <Terms
-                    order={order}
-                    accepted={accepted}
-                    onChange={setAccepted}
-                    accessConsents={accessConsents}
-                    onAccessConsentChange={setAccessConsents}
-                  />
-                )}
-                {order.manualEvidenceAllowed && !selectedRouteAvailable && (
-                  <p className={styles.notice} role="status">
-                    This method is closed to new payments. If you already
-                    transferred using the instructions issued for this
-                    registration, accept your saved terms and submit your
-                    receipt below. Do not make another transfer; contact TGA if
-                    you need help.
-                  </p>
-                )}
-                {!order.methods.length && !order.manualEvidenceAllowed && (
-                  <p className={styles.notice}>
-                    Your registration is saved. Payment is pending until an
-                    approved method is available for this country and plan.
-                    Return using the secure “Complete my payment” email link or
-                    open this saved registration again. Enrolment follows
-                    verified payment.
-                  </p>
-                )}
-                {selectedRouteAvailable &&
-                  !order.hasBillingProfile &&
-                  order.method &&
-                  ["STRIPE", "PAYPAL"].includes(order.method) && (
-                    <button
-                      type="button"
-                      className={styles.primary}
-                      disabled={
-                        busy ||
-                        !accepted ||
-                        !sirahAccessConsentsComplete(
-                          order.terms,
-                          accessConsents,
-                        )
-                      }
-                      onClick={() => void checkout()}
-                    >
-                      Continue to secure payment
-                    </button>
-                  )}
-                {order.method &&
-                  ["BANK_TRANSFER", "JAZZCASH"].includes(order.method) &&
-                  order.manualEvidenceAllowed && (
-                    <>
-                      <div className={styles.notice}>
-                        {order.countryCode === "PK" &&
-                          order.plan === "MONTHLY" && (
-                            <p>
-                              Manual payments are PKR 3,500 per month. The PKR
-                              3,000 rate applies to automatic card payments.
-                            </p>
-                          )}
-                        <label className={styles.residenceConfirmation}>
-                          <span>
-                            <input
-                              type="checkbox"
-                              id="sirah-confirm-manual-amount"
-                              checked={manualConfirmed}
-                              onChange={(event) =>
-                                setManualConfirmed(event.target.checked)
-                              }
-                            />{" "}
-                            I confirm the manual payment amount of{" "}
-                            {formatSirahMoney(
-                              order.amountMinor,
-                              order.currency,
-                            )}
-                            {order.plan === "MONTHLY"
-                              ? " per month"
-                              : " for 12 months"}
-                            .
-                          </span>
-                        </label>
-                        {order.manualAccounts
-                          .filter((a) => a.method === order.method)
-                          .map((account) => (
-                            <div key={account.method}>
-                              <h3>{account.service}</h3>
-                              {[
-                                ["Account holder", account.holder],
-                                ["Account number", account.account],
-                                ...(account.iban
-                                  ? [["IBAN", account.iban]]
-                                  : []),
-                              ].map(([label, value]) => (
-                                <p key={label}>
-                                  {label}: <strong>{value}</strong>{" "}
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      void navigator.clipboard
-                                        .writeText(value)
-                                        .then(() =>
-                                          setMessage(`${label} copied.`),
-                                        )
-                                        .catch(() =>
-                                          setError(
-                                            "Copy failed. Select and copy the account detail manually.",
-                                          ),
-                                        )
-                                    }
-                                  >
-                                    Copy
-                                  </button>
-                                </p>
-                              ))}
-                            </div>
-                          ))}
-                        <p>
-                          Amount due:{" "}
-                          {formatSirahMoney(order.amountMinor, order.currency)}
-                        </p>
-                        <p>
-                          {selectedRouteAvailable
-                            ? "Add SIRAH BEYOND CHRONOLOGY and your registration reference in the payment remarks. After paying, upload your private receipt here. WhatsApp is available if you need payment support."
-                            : "Use the reference below when submitting proof of a transfer you already made."}{" "}
-                          Include your full name, registered email and
-                          registration reference. Staff must verify receipt
-                          before enrolment is confirmed.
-                        </p>
-                        <p>
-                          <strong>
-                            SIRAH BEYOND CHRONOLOGY {order.reference}
-                          </strong>{" "}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void navigator.clipboard
-                                .writeText(
-                                  `SIRAH BEYOND CHRONOLOGY ${order.reference}`,
-                                )
-                                .then(() =>
-                                  setMessage("Payment reference copied."),
-                                )
-                            }
-                          >
-                            Copy reference
-                          </button>
-                        </p>
-                      </div>
-                      <a
-                        href={order.paymentSupportUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Payment support on WhatsApp ↗
-                      </a>
-                      <form onSubmit={submitEvidence} className={styles.form}>
-                        <ManualPaymentFields
-                          payerName={user?.fullName || name}
-                          amount={minorToDecimal(
-                            order.amountMinor,
-                            order.currency,
-                          )}
-                        />
-                        <label>
-                          Notes, if needed
-                          <textarea name="note" maxLength={1500} />
-                        </label>
-                        {evidenceMissing.length > 0 && (
-                          <div
-                            className={styles.notice}
-                            id="sirah-evidence-checklist"
-                            role="status"
-                            aria-live="polite"
-                          >
-                            <p>
-                              <strong>
-                                {methodSwitched
-                                  ? "You changed payment method, so please tick these again before submitting:"
-                                  : "Before you submit, please tick:"}
-                              </strong>
-                            </p>
-                            <ul>
-                              {evidenceMissing.map((item) => (
-                                <li key={item.id}>
-                                  <a
-                                    href={`#${item.id}`}
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      focusField(item.id);
-                                    }}
-                                  >
-                                    {item.label}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        <button
-                          className={styles.primary}
-                          type="submit"
-                          disabled={busy}
-                          aria-describedby={
-                            evidenceMissing.length
-                              ? "sirah-evidence-checklist"
-                              : undefined
-                          }
-                        >
-                          {busy
-                            ? "Submitting evidence…"
-                            : "Submit for admin review"}
-                        </button>
-                        <p>
-                          Evidence is reviewed by an admin. A screenshot does
-                          not automatically confirm payment.
-                        </p>
-                      </form>
-                    </>
-                  )}
-              </>
-            )}
           {order.paymentState === "AWAITING_REVIEW" && (
             <p className={styles.notice}>
               Awaiting bank transfer verification. TGA will check your transfer
               details and confirm enrolment after receipt is verified.
             </p>
-          )}
-          {order.receipts.length > 0 && (
-            <div>
-              <h3>Your private receipts</h3>
-              {order.receipts.map((receipt) => (
-                <p key={receipt.id}>
-                  <a href={`/api/sirah/receipts/${receipt.id}`}>
-                    {receipt.filename} · evidence version {receipt.revision}
-                  </a>
-                </p>
-              ))}
-            </div>
           )}
           {order.paymentState === "FAILED" && order.hasBillingProfile && (
             <p className={styles.notice} role="status">
@@ -2234,103 +1872,588 @@ export function SirahRegistrationForm({
               {new Date(order.accessEndsAt).toLocaleDateString()}.
             </p>
           )}
-          {order.plan === "ANNUAL" && order.paymentState === "PAID" && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void requestRefundReview()}
-            >
-              Request a refund review
-            </button>
+          {["PROCESSING", "REFUND_PENDING"].includes(order.paymentState) && (
+            <div className={styles.nextStep}>
+              {checkoutResumable ? (
+                <>
+                  <Terms
+                    order={order}
+                    accepted={accepted}
+                    onChange={setAccepted}
+                    accessConsents={accessConsents}
+                    onAccessConsentChange={setAccessConsents}
+                  />
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    disabled={busy}
+                    onClick={completePayment}
+                  >
+                    Complete payment
+                  </button>
+                  {manualAlternatives.length > 0 ? (
+                    <div className={styles.secondaryActions}>
+                      <p>Card payment didn’t go through? Pay by transfer instead and upload your receipt here:</p>
+                      {manualAlternatives.map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void switchToManual(method)}
+                        >
+                          {method === "JAZZCASH"
+                            ? "Pay with JazzCash instead"
+                            : "Pay by Meezan Bank transfer instead"}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.secondaryActions}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void resetCheckout()}
+                      >
+                        Change payment method
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.primary}
+                  disabled={busy}
+                  onClick={() => void checkPayment()}
+                >
+                  Check payment status
+                </button>
+              )}
+            </div>
           )}
-          {order.paymentState === "FAILED" &&
-            order.hasBillingProfile &&
-            order.method === "PAYPAL" &&
-            selectedRouteAvailable &&
-            !order.cancelledAt && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void resumeRenewals()}
-              >
-                Resume existing PayPal renewals
-              </button>
+          {["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState) &&
+            ["PENDING", "ACTIVE"].includes(order.enrolmentState) && (
+              <div className={styles.nextStep}>
+                {renewalNeedsBilling ? (
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    disabled={busy}
+                    onClick={() => void manageBilling()}
+                  >
+                    Update payment details
+                  </button>
+                ) : (
+                  <>
+                    {(!order.method || showMethods) && (
+                      <>
+                        {order.countryCode === "PK" && (
+                          <p className={styles.notice} role="note">
+                            Paying from Pakistan? Card payments are often declined by
+                            Pakistani banks on international transactions. For a smooth
+                            payment we recommend JazzCash or Meezan Bank transfer.
+                          </p>
+                        )}
+                        <PaymentMethods
+                          methods={order.methods as SirahMethod[]}
+                          value={(order.method || "") as SirahMethod | ""}
+                          disabled={busy}
+                          describedBy={
+                            order.countryCode === "PK" && order.plan === "MONTHLY"
+                              ? "sirah-pk-method-pricing"
+                              : undefined
+                          }
+                          onChange={(method) =>
+                            void reprice(
+                              order.countryCode,
+                              order.plan as SirahPlan,
+                              method,
+                            )
+                          }
+                        />
+                      </>
+                    )}
+                    {order.countryCode === "IN" &&
+                      order.methods.includes("STRIPE") && (
+                        <p>
+                          Using an Indian card? Please switch on International and
+                          Online payments in your bank app first, then pay by Card.
+                        </p>
+                      )}
+                    {order.manualEvidenceAllowed &&
+                      !selectedRouteAvailable &&
+                      order.method && (
+                        <p>
+                          {methodLabel(order.method as SirahMethod)} · saved
+                          instructions only
+                        </p>
+                      )}
+                    {order.countryCode === "PK" && order.plan === "MONTHLY" && (
+                      <p className={styles.notice} id="sirah-pk-method-pricing">
+                        Your selected fee is shown above. Manual transfers require receipt verification.
+                      </p>
+                    )}
+                    {order.method === "STRIPE" && <p>No Stripe account needed. Wallets appear on eligible devices.</p>}
+                    {order.method === "STRIPE" && (
+                      <p>
+                        Because our card processor is based abroad, your bank may
+                        add international transaction charges and government taxes
+                        to card payments. These are not charged by TGA.
+                      </p>
+                    )}
+                    {(selectedRouteAvailable || order.manualEvidenceAllowed) && (
+                      <Terms
+                        order={order}
+                        accepted={accepted}
+                        onChange={setAccepted}
+                        accessConsents={accessConsents}
+                        onAccessConsentChange={setAccessConsents}
+                      />
+                    )}
+                    {order.manualEvidenceAllowed && !selectedRouteAvailable && (
+                      <p className={styles.notice} role="status">
+                        This method is closed to new payments. If you already
+                        transferred using the instructions issued for this
+                        registration, accept your saved terms and submit your
+                        receipt below. Do not make another transfer; contact TGA if
+                        you need help.
+                      </p>
+                    )}
+                    {!order.methods.length && !order.manualEvidenceAllowed && (
+                      <p className={styles.notice}>
+                        Your registration is saved. Payment is pending until an
+                        approved method is available for this country and plan.
+                        Return using the secure “Complete my payment” email link or
+                        open this saved registration again. Enrolment follows
+                        verified payment.
+                      </p>
+                    )}
+                    {selectedRouteAvailable &&
+                      !order.hasBillingProfile &&
+                      order.method &&
+                      ["STRIPE", "PAYPAL"].includes(order.method) && (
+                        <button
+                          type="button"
+                          className={styles.primary}
+                          disabled={busy}
+                          onClick={completePayment}
+                        >
+                          Complete payment
+                        </button>
+                      )}
+                    {order.method &&
+                      ["BANK_TRANSFER", "JAZZCASH"].includes(order.method) &&
+                      order.manualEvidenceAllowed && (
+                        <>
+                          <div className={styles.notice}>
+                            {order.countryCode === "PK" &&
+                              order.plan === "MONTHLY" && (
+                                <p>
+                                  Manual payments are PKR 3,500 per month. The PKR
+                                  3,000 rate applies to automatic card payments.
+                                </p>
+                              )}
+                            <label className={styles.residenceConfirmation}>
+                              <span>
+                                <input
+                                  type="checkbox"
+                                  id="sirah-confirm-manual-amount"
+                                  checked={manualConfirmed}
+                                  onChange={(event) =>
+                                    setManualConfirmed(event.target.checked)
+                                  }
+                                />{" "}
+                                I confirm the manual payment amount of{" "}
+                                {formatSirahMoney(
+                                  order.amountMinor,
+                                  order.currency,
+                                )}
+                                {order.plan === "MONTHLY"
+                                  ? " per month"
+                                  : " for 12 months"}
+                                .
+                              </span>
+                            </label>
+                            {order.manualAccounts
+                              .filter((a) => a.method === order.method)
+                              .map((account) => (
+                                <div key={account.method}>
+                                  <h3>{account.service}</h3>
+                                  {[
+                                    ["Account holder", account.holder],
+                                    ["Account number", account.account],
+                                    ...(account.iban
+                                      ? [["IBAN", account.iban]]
+                                      : []),
+                                  ].map(([label, value]) => (
+                                    <p key={label}>
+                                      {label}: <strong>{value}</strong>{" "}
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void navigator.clipboard
+                                            .writeText(value)
+                                            .then(() =>
+                                              setMessage(`${label} copied.`),
+                                            )
+                                            .catch(() =>
+                                              setError(
+                                                "Copy failed. Select and copy the account detail manually.",
+                                              ),
+                                            )
+                                        }
+                                      >
+                                        Copy
+                                      </button>
+                                    </p>
+                                  ))}
+                                </div>
+                              ))}
+                            <p>
+                              Amount due:{" "}
+                              {formatSirahMoney(order.amountMinor, order.currency)}
+                            </p>
+                            <p>
+                              {selectedRouteAvailable
+                                ? "Add SIRAH BEYOND CHRONOLOGY and your registration reference in the payment remarks. After paying, upload your private receipt here. WhatsApp is available if you need payment support."
+                                : "Use the reference below when submitting proof of a transfer you already made."}{" "}
+                              Include your full name, registered email and
+                              registration reference. Staff must verify receipt
+                              before enrolment is confirmed.
+                            </p>
+                            <p>
+                              <strong>
+                                SIRAH BEYOND CHRONOLOGY {order.reference}
+                              </strong>{" "}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void navigator.clipboard
+                                    .writeText(
+                                      `SIRAH BEYOND CHRONOLOGY ${order.reference}`,
+                                    )
+                                    .then(() =>
+                                      setMessage("Payment reference copied."),
+                                    )
+                                }
+                              >
+                                Copy reference
+                              </button>
+                            </p>
+                          </div>
+                          <a
+                            href={order.paymentSupportUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Payment support on WhatsApp ↗
+                          </a>
+                          <form onSubmit={submitEvidence} className={styles.form}>
+                            <ManualPaymentFields
+                              payerName={user?.fullName || name}
+                              amount={minorToDecimal(
+                                order.amountMinor,
+                                order.currency,
+                              )}
+                            />
+                            <label>
+                              Notes, if needed
+                              <textarea name="note" maxLength={1500} />
+                            </label>
+                            {evidenceMissing.length > 0 && (
+                              <div
+                                className={styles.notice}
+                                id="sirah-evidence-checklist"
+                                role="status"
+                                aria-live="polite"
+                              >
+                                <p>
+                                  <strong>
+                                    {methodSwitched
+                                      ? "You changed payment method, so please tick these again before submitting:"
+                                      : "Before you submit, please tick:"}
+                                  </strong>
+                                </p>
+                                <ul>
+                                  {evidenceMissing.map((item) => (
+                                    <li key={item.id}>
+                                      <a
+                                        href={`#${item.id}`}
+                                        onClick={(event) => {
+                                          event.preventDefault();
+                                          focusField(item.id);
+                                        }}
+                                      >
+                                        {item.label}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            <button
+                              className={styles.primary}
+                              type="submit"
+                              disabled={busy}
+                              aria-describedby={
+                                evidenceMissing.length
+                                  ? "sirah-evidence-checklist"
+                                  : undefined
+                              }
+                            >
+                              {busy
+                                ? "Submitting evidence…"
+                                : "Submit for admin review"}
+                            </button>
+                            <p>
+                              Evidence is reviewed by an admin. A screenshot does
+                              not automatically confirm payment.
+                            </p>
+                          </form>
+                        </>
+                      )}
+                    {order.method &&
+                      !showMethods &&
+                      order.methods.some((method) => method !== order.method) && (
+                      <div className={styles.secondaryActions}>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setShowMethods(true)}
+                        >
+                          Change payment method
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
-          {order.hasBillingProfile && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void manageBilling()}
-            >
-              Manage billing / payment details
-            </button>
+          {feedback}
+          {order.receipts.length > 0 && (
+            <div>
+              <h3>Your private receipts</h3>
+              {order.receipts.map((receipt) => (
+                <p key={receipt.id}>
+                  <a href={`/api/sirah/receipts/${receipt.id}`}>
+                    {receipt.filename} · evidence version {receipt.revision}
+                  </a>
+                </p>
+              ))}
+            </div>
           )}
-          {!order.cancelledAt &&
-            order.enrolmentState !== "CANCELLED" &&
-            order.enrolmentState !== "COMPLETED" &&
-            (order.terms || order.paymentState === "UNPAID") && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void cancelRegistration()}
-              >
-                {order.plan === "MONTHLY"
-                  ? "Cancel future payments"
-                  : "Request cancellation"}
+          <details className={styles.moreOptions}>
+            <summary>More options</summary>
+            <div className={styles.moreOptionsBody}>
+              {checkoutResumable && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void checkPayment()}
+                >
+                  Check verified payment status
+                </button>
+              )}
+              {order.paymentState === "PROCESSING" &&
+                ["STRIPE", "PAYPAL"].includes(order.method || "") &&
+                !(checkoutResumable && manualAlternatives.length === 0) && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void resetCheckout()}
+                  >
+                    Close an unpaid checkout to change payment method
+                  </button>
+                )}
+              {["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState) &&
+                ["PENDING", "ACTIVE"].includes(order.enrolmentState) &&
+                !renewalNeedsBilling && (
+                  <PersonalDiscount email={order.email} country={order.countryCode} plan={order.plan} method={order.method || ""} applied={Boolean(order.discount)} disabled={busy} onApply={code => { void reprice(order.countryCode, order.plan as SirahPlan, order.method as SirahMethod, code); }} />
+                )}
+              <div className={styles.grid}>
+                <label>
+                  Country of residence / billing country
+                  <select
+                    aria-label="Country of residence / billing country"
+                    value={order.countryCode}
+                    disabled={
+                      busy ||
+                      !["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState)
+                    }
+                    onChange={(event) =>
+                      void reprice(
+                        event.target.value,
+                        order.plan as SirahPlan,
+                        null,
+                      )
+                    }
+                  >
+                    <option value="" disabled>
+                      Select your billing country
+                    </option>
+                    {residenceCountries.map((c) => (
+                      <option value={c.code} key={c.code}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Payment plan
+                  <select
+                    aria-label="Payment plan"
+                    value={order.plan}
+                    disabled={
+                      busy ||
+                      !["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState)
+                    }
+                    onChange={(event) =>
+                      void reprice(
+                        order.countryCode,
+                        event.target.value as SirahPlan,
+                        null,
+                      )
+                    }
+                  >
+                    <option value="MONTHLY">Monthly payment</option>
+                    <option value="ANNUAL">Annual upfront</option>
+                  </select>
+                </label>
+              </div>
+              <details className={styles.savedDetails}>
+                <summary>
+                  {order.fullName} · {order.email} · Edit registration details
+                </summary>
+                <form
+                  className={styles.form}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void run(async () => {
+                      const result = await api(`/api/sirah/orders/${order.id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({
+                          revision: order.revision,
+                          fullName: name,
+                          phoneCountry,
+                          callingCode: `+${getCountryCallingCode(phoneCountry)}`,
+                          phone,
+                        }),
+                      });
+                      setOrder(result.order);
+                      setMessage("Registration details saved.");
+                    });
+                  }}
+                >
+                  <label>
+                    Full name
+                    <input
+                      aria-label="Saved full name"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      minLength={2}
+                      maxLength={120}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Email
+                    <input
+                      aria-label="Saved email"
+                      type="email"
+                      value={order.email}
+                      readOnly
+                    />
+                    <small>
+                      For an email correction, contact TGA or update your account
+                      after signing in.
+                    </small>
+                  </label>
+                  <PhoneControl
+                    country={phoneCountry}
+                    value={phone}
+                    onCountryChange={setPhoneCountry}
+                    onChange={setPhone}
+                  />
+                  <button
+                    type="submit"
+                    disabled={
+                      busy ||
+                      !["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState)
+                    }
+                  >
+                    Save details
+                  </button>
+                </form>
+              </details>
+              {order.hasBillingProfile && !renewalNeedsBilling && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void manageBilling()}
+                >
+                  Manage billing / payment details
+                </button>
+              )}
+              {order.plan === "ANNUAL" && order.paymentState === "PAID" && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void requestRefundReview()}
+                >
+                  Request a refund review
+                </button>
+              )}
+              {order.paymentState === "FAILED" &&
+                order.hasBillingProfile &&
+                order.method === "PAYPAL" &&
+                selectedRouteAvailable &&
+                !order.cancelledAt && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void resumeRenewals()}
+                  >
+                    Resume existing PayPal renewals
+                  </button>
+                )}
+              {!order.cancelledAt &&
+                order.enrolmentState !== "CANCELLED" &&
+                order.enrolmentState !== "COMPLETED" &&
+                (order.terms || order.paymentState === "UNPAID") && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void cancelRegistration()}
+                  >
+                    {order.plan === "MONTHLY"
+                      ? "Cancel future payments"
+                      : "Request cancellation"}
+                  </button>
+                )}
+              <button type="button" disabled={busy} onClick={() => void refresh()}>
+                Refresh registration status
               </button>
-            )}
-          <button type="button" disabled={busy} onClick={() => void refresh()}>
-            Refresh registration status
-          </button>
-          <p>
-            <a href="/dashboard">Student dashboard</a> ·{" "}
-            <a href={`/seerah/register?order=${order.id}`}>
-              Open this registration page
-            </a>
-          </p>
+              <details className={styles.resumeHelp}>
+                <summary>Need a fresh payment link?</summary>
+                {freshLinkForm}
+              </details>
+              <p>
+                <a href="/dashboard">Student dashboard</a> ·{" "}
+                <a href={`/seerah/register?order=${order.id}`}>
+                  Open this registration page
+                </a>
+              </p>
+            </div>
+          </details>
         </section>
       )}
-      <details className={styles.resumeHelp} open={resumeProblem || undefined}>
-        <summary>Need a fresh payment link?</summary>
-        <form
-          className={styles.form}
-          onSubmit={(event) => {
-            event.preventDefault();
-            const data = new FormData(event.currentTarget);
-            void run(async () => {
-              const result = await api("/api/sirah/payment-resume/request", {
-                method: "POST",
-                body: JSON.stringify({ email: data.get("email") }),
-              });
-              setMessage(result.message);
-            });
-          }}
-        >
-          <label>
-            Registration email
-            <input
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              defaultValue={email}
-            />
-          </label>
-          <button type="submit" disabled={busy}>
-            Send a fresh link
-          </button>
-        </form>
-      </details>
-      {error && (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
+      {!order && (
+        <details className={styles.resumeHelp} open={resumeProblem || undefined}>
+          <summary>Need a fresh payment link?</summary>
+          {freshLinkForm}
+        </details>
       )}
-      {message && (
-        <p className={styles.notice} role="status">
-          {message}
-        </p>
-      )}
+      {(!ready || !available) && feedback}
     </div>
   );
 }
