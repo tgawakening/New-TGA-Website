@@ -510,6 +510,23 @@ test("receipt uploads validate real content, reject invalid/oversized evidence, 
     /damaged/,
   );
 });
+test("permission-restricted PDF receipts are accepted; password-locked PDFs are rejected", async () => {
+  // Fixtures made with pypdf: "permissions" files have only an owner password
+  // (they open with an empty password, like bank e-receipts that block
+  // printing/copying); "password" files need a user password to open.
+  const fixture = (name: string) =>
+    new Uint8Array(readFileSync(`scripts/fixtures/receipts/${name}.pdf`));
+  for (const scheme of ["rc4-128", "aes-256"]) {
+    assert.equal(
+      (await validateSirahReceipt(fixture(`${scheme}-permissions`), "receipt.pdf")).mime,
+      "application/pdf",
+    );
+    await assert.rejects(
+      () => validateSirahReceipt(fixture(`${scheme}-password`), "receipt.pdf"),
+      /needs a password/,
+    );
+  }
+});
 async function stripeOrder(plan: "ANNUAL" | "MONTHLY") {
   process.env.SIRAH_STRIPE_SECRET_KEY = "sk_test_synthetic";
   process.env.SIRAH_STRIPE_WEBHOOK_SECRET = "whsec_synthetic";
