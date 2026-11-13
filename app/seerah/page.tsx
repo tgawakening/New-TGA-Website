@@ -50,7 +50,25 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function SeerahRoute() {
+// Admin custom payment links return to /seerah?payment=received&reference=…
+// The reference is shown only in the exact format those links produce.
+const SIRAH_REFERENCE = /^SIRAH-[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/;
+
+export default async function SeerahRoute({
+  searchParams,
+}: {
+  searchParams: Promise<{ payment?: string; reference?: string }>;
+}) {
+  const params = await searchParams;
+  const paymentReceived =
+    params.payment === "received"
+      ? {
+          reference:
+            params.reference && SIRAH_REFERENCE.test(params.reference)
+              ? params.reference
+              : null,
+        }
+      : undefined;
   const visitorCountry = await detectedResidence();
   return (
     <div className={montserrat.variable}>
@@ -62,6 +80,7 @@ export default async function SeerahRoute() {
           methodAvailable("STRIPE", "PK", "PKR", "MONTHLY") ||
           methodAvailable("PAYPAL", "PK", "PKR", "MONTHLY")
         }
+        paymentReceived={paymentReceived}
       />
     </div>
   );
