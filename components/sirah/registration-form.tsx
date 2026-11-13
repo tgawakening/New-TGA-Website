@@ -1162,6 +1162,40 @@ export function SirahRegistrationForm({
   // prompt (returning to this exact URL) instead of the blank registration form.
   const requestedOrderId = new URL(window.location.href).searchParams.get("order");
   const signedOutOrderLink = ready && available && !user && !order && !!requestedOrderId;
+  // Layout only: which numbered section is on screen, for the progress strip.
+  // Read from scroll position and focus; it never touches form state.
+  const registrationForm = useRef<HTMLFormElement>(null);
+  const [formStep, setFormStep] = useState(1);
+  const registrationFormShown = ready && available && !order && !signedOutOrderLink;
+  useEffect(() => {
+    const form = registrationForm.current;
+    if (!registrationFormShown || !form) return;
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const headings = form.querySelectorAll<HTMLElement>("[data-form-step]");
+        const atEnd =
+          window.innerHeight + window.scrollY >=
+          document.documentElement.scrollHeight - 2;
+        let step = 1;
+        headings.forEach((heading) => {
+          if (atEnd || heading.getBoundingClientRect().top < window.innerHeight * 0.45)
+            step = Number(heading.dataset.formStep);
+        });
+        setFormStep(step);
+      });
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [registrationFormShown]);
+  const formSteps = ["Your details", "Plan & payment method", "Terms & pay"];
   const freshLinkForm = (
     <form
       className={styles.form}
@@ -1307,11 +1341,49 @@ export function SirahRegistrationForm({
             </div>
           )}
           <form
+            ref={registrationForm}
             onSubmit={register}
             noValidate
             className={`${styles.form} ${styles.compactForm}`}
             aria-busy={busy}
+            onFocus={(event) => {
+              let step = 1;
+              event.currentTarget
+                .querySelectorAll<HTMLElement>("[data-form-step]")
+                .forEach((heading) => {
+                  if (
+                    heading.compareDocumentPosition(event.target) &
+                    Node.DOCUMENT_POSITION_FOLLOWING
+                  )
+                    step = Number(heading.dataset.formStep);
+                });
+              setFormStep(step);
+            }}
           >
+            <ol className={styles.formProgress} aria-label="Registration steps">
+              {formSteps.map((label, index) => (
+                <li
+                  key={label}
+                  aria-current={formStep === index + 1 ? "step" : undefined}
+                  className={formStep > index + 1 ? styles.formProgressDone : undefined}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      document
+                        .getElementById(`sirah-step-${index + 1}`)
+                        ?.scrollIntoView({ block: "start", behavior: "smooth" })
+                    }
+                  >
+                    <span aria-hidden="true">{index + 1}</span>
+                    {label}
+                  </button>
+                </li>
+              ))}
+            </ol>
+            <h3 className={styles.formStep} id="sirah-step-1" data-form-step="1">
+              <span aria-hidden="true">1</span> Your details
+            </h3>
             <label>
               Full name
               <input
@@ -1460,6 +1532,9 @@ export function SirahRegistrationForm({
                 </button>
               </div>
             </div>
+            <h3 className={styles.formStep} id="sirah-step-2" data-form-step="2">
+              <span aria-hidden="true">2</span> Plan &amp; payment method
+            </h3>
             <div className={styles.planChoice}>
               <label>
                 Payment plan
@@ -1659,6 +1734,14 @@ export function SirahRegistrationForm({
                     </label>
                   </div>
                 )}
+              <h3 className={styles.formStep} id="sirah-step-3" data-form-step="3">
+                <span aria-hidden="true">3</span> Terms &amp; pay
+              </h3>
+              {!(selectedMethod && quote?.country === billing && quote?.plan === plan) && (
+                <p className={styles.stepHint}>
+                  Choose a payment method above to see its terms.
+                </p>
+              )}
               {selectedMethod &&
                 quote?.country === billing &&
                 quote?.plan === plan && (
@@ -1671,37 +1754,39 @@ export function SirahRegistrationForm({
                   />
                 )}
             </div>
-            <button
-              className={`${styles.primary} ${styles.submitRegistration}`}
-              type="submit"
-              disabled={
-                busy ||
-                !ready ||
-                !selectedMethod ||
-                !residenceConfirmed ||
-                !accepted ||
-                !sirahAccessConsentsComplete(
-                  quote?.terms || null,
-                  accessConsents,
-                ) ||
-                quote?.country !== billing ||
-                quote?.plan !== plan ||
-                quote?.method !== selectedMethod ||
-                quote?.couponCode !== couponCode ||
-                (Boolean(couponCode) && quote?.email !== email.trim().toLowerCase()) ||
-                Boolean(quoteError) ||
-                (["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) &&
-                  !manualConfirmed)
-              }
-            >
-              {busy
-                ? "Submitting registration & payment…"
-                : !selectedMethod
-                  ? "Choose an available payment method"
-                  : ["STRIPE", "PAYPAL"].includes(selectedMethod)
-                    ? "Continue to secure payment"
-                    : "Submit registration & transfer receipt"}
-            </button>
+            <div className={styles.stickyAction}>
+              <button
+                className={`${styles.primary} ${styles.submitRegistration}`}
+                type="submit"
+                disabled={
+                  busy ||
+                  !ready ||
+                  !selectedMethod ||
+                  !residenceConfirmed ||
+                  !accepted ||
+                  !sirahAccessConsentsComplete(
+                    quote?.terms || null,
+                    accessConsents,
+                  ) ||
+                  quote?.country !== billing ||
+                  quote?.plan !== plan ||
+                  quote?.method !== selectedMethod ||
+                  quote?.couponCode !== couponCode ||
+                  (Boolean(couponCode) && quote?.email !== email.trim().toLowerCase()) ||
+                  Boolean(quoteError) ||
+                  (["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod) &&
+                    !manualConfirmed)
+                }
+              >
+                {busy
+                  ? "Submitting registration & payment…"
+                  : !selectedMethod
+                    ? "Choose an available payment method"
+                    : ["STRIPE", "PAYPAL"].includes(selectedMethod)
+                      ? "Continue to secure payment"
+                      : "Submit registration & transfer receipt"}
+              </button>
+            </div>
           </form>
           {feedback}
         </>

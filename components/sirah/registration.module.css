@@ -877,3 +877,135 @@
     padding-bottom: 18px;
   }
 }
+/* Stage 4: numbered sections, progress strip and sticky action bar for new
+   registrations. Layout only; the form's fields and button are unchanged. */
+.formProgress {
+  grid-column: 1 / -1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.formProgress li {
+  min-width: 0;
+}
+.formProgress button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border: 0;
+  border-bottom: 3px solid #d6cfb6;
+  border-radius: 0;
+  background: transparent;
+  color: #5b5f52;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+.formProgress button span {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 11px;
+}
+.formProgressDone button {
+  border-bottom-color: #b49650;
+}
+.formProgress [aria-current="step"] button {
+  color: #141611;
+  border-bottom-color: #735719;
+}
+.formProgress [aria-current="step"] button span {
+  background: #735719;
+  border-color: #735719;
+  color: #f5efdf;
+}
+.experience .formStep {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 0;
+  font:
+    600 16px/1.4 var(--font-montserrat),
+    Arial,
+    sans-serif;
+  scroll-margin-top: 72px;
+}
+.experience .paymentOptions .formStep {
+  margin-top: 22px;
+}
+.formStep span {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #141611;
+  color: #f5efdf;
+  font-size: 13px;
+}
+.experience .stepHint {
+  margin: 4px 0 0;
+  color: #5b5f52;
+}
+.stickyAction {
+  grid-column: 1 / -1;
+}
+.experience .stickyAction .submitRegistration {
+  width: 100%;
+  margin-top: 0;
+}
+/* iOS zooms into any text field under 16px. */
+.experience textarea {
+  font-size: 16px;
+}
+@media (max-width: 767px) {
+  .formProgress {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 -20px;
+    padding: max(4px, env(safe-area-inset-top)) 20px 0;
+    background: #f5efdf;
+    box-shadow: 0 1px 0 #d6cfb6;
+  }
+  .formProgress button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    font-size: 11px;
+    text-align: center;
+  }
+  .stickyAction {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin: 0 -20px;
+    padding: 12px 20px max(12px, env(safe-area-inset-bottom));
+    background: #f5efdf;
+    border-top: 1px solid #d6cfb6;
+    box-shadow: 0 -8px 24px #0000001a;
+  }
+  /* Keep focused fields clear of the sticky strip and bar. */
+  .compactForm input,
+  .compactForm select,
+  .compactForm textarea,
+  .compactForm button {
+    scroll-margin-top: 80px;
+    scroll-margin-bottom: 110px;
+  }
+}
