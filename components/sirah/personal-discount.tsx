@@ -1,6 +1,12 @@
 "use client";
 import { useState } from "react";
 import styles from "./registration.module.css";
+/** Whether a discount code can apply to this country, plan and method. */
+export function personalDiscountAvailable(country: string, plan: string, method: string) {
+  // Pakistan monthly: bank transfer / JazzCash codes (original) or card codes.
+  // Every other market: card codes, applied to the Stripe checkout.
+  return Boolean(country) && ((country === "PK" && plan === "MONTHLY") || method === "STRIPE");
+}
 export function PersonalDiscount({ country, plan, method, applied, disabled, onApply }: {
   email?: string; country: string; plan: string; method: string; applied: boolean; disabled?: boolean; onApply: (code: string) => void;
 }) {
@@ -13,7 +19,7 @@ export function PersonalDiscount({ country, plan, method, applied, disabled, onA
   const card = method === "STRIPE";
   // Outside PK monthly, show the box only once card checkout is the selected
   // route (Stripe is preselected wherever it is offered).
-  if (!country || !(pkMonthly || card)) return null;
+  if (!personalDiscountAvailable(country, plan, method)) return null;
   return <div className={styles.notice}>
     <label>Discount code<input name="couponCode" autoComplete="off" maxLength={64} value={code} onChange={event => setCode(event.target.value)} /></label>
     <button type="button" disabled={disabled || !(manual || card) || !code.trim() || applied} onClick={() => onApply(code.trim().toUpperCase())}>{applied ? "Discount applied" : "Apply code"}</button>

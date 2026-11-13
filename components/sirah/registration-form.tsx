@@ -1,6 +1,6 @@
 "use client";
 import { prepareSirahReceipt } from "@/lib/sirah/receipt-upload";
-import { PersonalDiscount } from "./personal-discount";
+import { PersonalDiscount, personalDiscountAvailable } from "./personal-discount";
 import {
   sirahAccessConsentsComplete,
   type SirahAccessConsents,
@@ -2001,6 +2001,23 @@ export function SirahRegistrationForm({
                         to card payments. These are not charged by TGA.
                       </p>
                     )}
+                    {personalDiscountAvailable(
+                      order.countryCode,
+                      order.plan,
+                      order.method || "",
+                    ) && (
+                      <details
+                        className={styles.discountToggle}
+                        open={Boolean(order.discount) || undefined}
+                      >
+                        <summary>
+                          {order.discount
+                            ? "Discount code applied"
+                            : "Have a discount code?"}
+                        </summary>
+                        <PersonalDiscount email={order.email} country={order.countryCode} plan={order.plan} method={order.method || ""} applied={Boolean(order.discount)} disabled={busy} onApply={code => { void reprice(order.countryCode, order.plan as SirahPlan, order.method as SirahMethod, code); }} />
+                      </details>
+                    )}
                     {(selectedRouteAvailable || order.manualEvidenceAllowed) && (
                       <Terms
                         order={order}
@@ -2264,11 +2281,6 @@ export function SirahRegistrationForm({
                   >
                     Close an unpaid checkout to change payment method
                   </button>
-                )}
-              {["UNPAID", "REJECTED", "FAILED"].includes(order.paymentState) &&
-                ["PENDING", "ACTIVE"].includes(order.enrolmentState) &&
-                !renewalNeedsBilling && (
-                  <PersonalDiscount email={order.email} country={order.countryCode} plan={order.plan} method={order.method || ""} applied={Boolean(order.discount)} disabled={busy} onApply={code => { void reprice(order.countryCode, order.plan as SirahPlan, order.method as SirahMethod, code); }} />
                 )}
               <div className={styles.grid}>
                 <label>
