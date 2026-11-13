@@ -50,6 +50,12 @@ const methodLabel = (method: SirahMethod) =>
     BANK_TRANSFER: "Pay by bank transfer",
     JAZZCASH: "Pay with JazzCash",
   })[method];
+// Presentment currencies Stripe's PayPal payment method supports. The PayPal
+// hint must not appear for currencies it cannot charge in (e.g. PKR, INR).
+const STRIPE_PAYPAL_CURRENCIES = new Set([
+  "AUD", "CAD", "CHF", "CZK", "DKK", "EUR", "GBP",
+  "HKD", "NOK", "NZD", "PLN", "SEK", "SGD", "USD",
+]);
 const draftKey = "tga-sirah-registration-draft-v1";
 class ApiError extends Error {
   fields?: Record<string, string[]>;
@@ -1444,10 +1450,20 @@ export function SirahRegistrationForm({
               {quote?.country === billing &&
                 quote.plan === plan &&
                 quote.methods.includes("STRIPE") &&
-                !quote.methods.includes("PAYPAL") && (
+                !quote.methods.includes("PAYPAL") &&
+                STRIPE_PAYPAL_CURRENCIES.has(quote.currency) && (
                   <p>
                     Prefer PayPal? Choose Card and you can pay with PayPal on
                     the payment page.
+                  </p>
+                )}
+              {billing === "IN" &&
+                quote?.country === billing &&
+                quote.plan === plan &&
+                quote.methods.includes("STRIPE") && (
+                  <p>
+                    Using an Indian card? Please switch on International and
+                    Online payments in your bank app first, then pay by Card.
                   </p>
                 )}
               <PersonalDiscount email={email} country={billing} plan={plan} method={selectedMethod} applied={Boolean(quote?.discount)} disabled={busy} onApply={code => { setCouponCode(code); setDiscountAttempt(value => value + 1); setAccepted(false); setManualConfirmed(false); }} />
@@ -1936,6 +1952,13 @@ export function SirahRegistrationForm({
                     )
                   }
                 />
+                {order.countryCode === "IN" &&
+                  order.methods.includes("STRIPE") && (
+                    <p>
+                      Using an Indian card? Please switch on International and
+                      Online payments in your bank app first, then pay by Card.
+                    </p>
+                  )}
                 <PersonalDiscount email={order.email} country={order.countryCode} plan={order.plan} method={order.method || ""} applied={Boolean(order.discount)} disabled={busy} onApply={code => { void reprice(order.countryCode, order.plan as SirahPlan, order.method as SirahMethod, code); }} />
                 {order.manualEvidenceAllowed &&
                   !selectedRouteAvailable &&
