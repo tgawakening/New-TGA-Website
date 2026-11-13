@@ -8,6 +8,7 @@ import {
   saveResidence,
 } from "@/lib/sirah/use-residence";
 import Image, { getImageProps } from "next/image";
+import { PaymentReceivedBanner } from "./payment-received-banner";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, A11y } from "swiper/modules";
 import type { Swiper as SwiperInstance } from "swiper";
@@ -529,11 +530,13 @@ function SeerahContent({
   pakistanOnlineAvailable,
   visitorCountry,
   availability,
+  paymentReceived,
 }: {
   initialCampaign: "orientation" | "enrolment";
   pakistanOnlineAvailable?: boolean;
   visitorCountry?: string;
   availability?: Record<string, Record<string, boolean>>;
+  paymentReceived?: { reference: string | null };
 }) {
   const mobileHero = getImageProps({
     src: config.heroMobile.src,
@@ -606,6 +609,9 @@ function SeerahContent({
             label: "Register for the Course",
           }}
         />
+        {paymentReceived && (
+          <PaymentReceivedBanner reference={paymentReceived.reference} />
+        )}
         <nav className={styles.sectionNav} aria-label="Course sections">
           <div className={styles.container}>
             <a className={styles.navBrand} href="#overview">
@@ -932,6 +938,7 @@ export default function SeerahPage(props: {
   pakistanOnlineAvailable?: boolean;
   visitorCountry?: string;
   availability?: Record<string, Record<string, boolean>>;
+  paymentReceived?: { reference: string | null };
 }) {
   return <SeerahContent {...props} />;
 }
