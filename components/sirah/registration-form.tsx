@@ -1158,6 +1158,10 @@ export function SirahRegistrationForm({
         )}
       </div>
     ) : null;
+  // Display only: an ?order= link opened while signed out shows a sign-in
+  // prompt (returning to this exact URL) instead of the blank registration form.
+  const requestedOrderId = new URL(window.location.href).searchParams.get("order");
+  const signedOutOrderLink = ready && available && !user && !order && !!requestedOrderId;
   const freshLinkForm = (
     <form
       className={styles.form}
@@ -1234,7 +1238,7 @@ export function SirahRegistrationForm({
           )}
         </div>
       )}
-      {ready && !user && (
+      {ready && !user && !signedOutOrderLink && (
         <p className={styles.signIn}>
           Already have an account?{" "}
           <a
@@ -1260,6 +1264,25 @@ export function SirahRegistrationForm({
             placement="registration-unavailable"
             countryOverride={billing || undefined}
           />
+        </div>
+      ) : signedOutOrderLink ? (
+        <div className={styles.notice}>
+          <h3>Sign in to see your registration</h3>
+          <p>
+            This link opens a saved registration. Sign in with the email you
+            registered with to see its status and payment options.
+          </p>
+          <a
+            className={styles.primary}
+            href={`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+          >
+            Sign in
+          </a>
+          <details className={styles.resumeHelp} open={resumeProblem || undefined}>
+            <summary>Can&apos;t sign in? Get a fresh payment link by email</summary>
+            {freshLinkForm}
+          </details>
+          {feedback}
         </div>
       ) : !order ? (
         <>
@@ -2459,7 +2482,7 @@ export function SirahRegistrationForm({
           </details>
         </section>
       )}
-      {!order && (
+      {!order && !signedOutOrderLink && (
         <details className={styles.resumeHelp} open={resumeProblem || undefined}>
           <summary>Need a fresh payment link?</summary>
           {freshLinkForm}
