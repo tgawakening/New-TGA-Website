@@ -941,3 +941,16 @@
     grid-template-columns: 1fr;
   }
 }
+/* Saved booking: discount code stays one tap away in the main area. */
+.discountToggle > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.discountToggle > div {
+  margin-top: 4px;
+}
