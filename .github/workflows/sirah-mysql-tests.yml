@@ -81,3 +81,8 @@ jobs:
         # In-memory database and synthetic Stripe; covers annual and monthly links.
         if: ${{ !cancelled() }}
         run: npm run test:sirah-custom-link
+
+      - name: test:sirah-records
+        # In-memory database; exclude / un-exclude / delete test records.
+        if: ${{ !cancelled() }}
+        run: npm run test:sirah-records

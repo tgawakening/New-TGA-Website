@@ -159,6 +159,8 @@ export function SirahAdminStudents({
   readOnly = false,
   canManageEnrolments = false,
   canMarkGroupAdded = false,
+  canManageRecords = false,
+  initialExcluded = false,
 }: {
   view?: "students" | "payments";
   initialOrder?: string;
@@ -168,6 +170,9 @@ export function SirahAdminStudents({
   readOnly?: boolean;
   canManageEnrolments?: boolean;
   canMarkGroupAdded?: boolean;
+  /** Super admin only: select rows, exclude test records, delete junk rows. */
+  canManageRecords?: boolean;
+  initialExcluded?: boolean;
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
@@ -195,6 +200,17 @@ export function SirahAdminStudents({
       : [];
   const [action, setAction] = useState<Action | "">("");
   const dialog = useRef<HTMLDialogElement>(null);
+  // Super-admin test-record housekeeping (selection, bulk bar, excluded view).
+  const [excludedView, setExcludedView] = useState(
+    canManageRecords && initialExcluded,
+  );
+  const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const [bulk, setBulk] = useState<"" | "EXCLUDE" | "INCLUDE" | "DELETE">("");
+  const [deleteWord, setDeleteWord] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState("");
+  const [bulkError, setBulkError] = useState("");
+  const bulkDialog = useRef<HTMLDialogElement>(null);
   const query = new URLSearchParams({
     q,
     payment,
@@ -203,7 +219,69 @@ export function SirahAdminStudents({
     method,
     group,
     page: String(page),
+    ...(excludedView ? { excluded: "only" } : {}),
   }).toString();
+  // A new page or filter starts with nothing selected.
+  useEffect(() => setChecked(new Set()), [query]);
+  const pageRows = data?.rows || [];
+  const selectedRows = pageRows.filter((row) => checked.has(row.id));
+  const deletableRows = selectedRows.filter((row) => !row.deleteRefusal);
+  const allOnPage = pageRows.length > 0 && selectedRows.length === pageRows.length;
+
+  function toggleRow(id: string) {
+    setChecked((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function openBulk(kind: "EXCLUDE" | "INCLUDE" | "DELETE") {
+    setBulk(kind);
+    setDeleteWord("");
+    setBulkError("");
+    bulkDialog.current?.showModal();
+  }
+  async function runBulk() {
+    if (!bulk) return;
+    const rows = bulk === "DELETE" ? deletableRows : selectedRows;
+    if (!rows.length) return;
+    setBulkBusy(true);
+    setBulkError("");
+    try {
+      const response = await fetch("/api/admin/sirah/records", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: bulk,
+          orderIds: rows.map((row) => row.id),
+          ...(bulk === "DELETE" ? { confirmation: deleteWord.trim() } : {}),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || "Could not update these records.");
+      const verb =
+        bulk === "EXCLUDE"
+          ? "excluded from analytics"
+          : bulk === "INCLUDE"
+            ? "included in analytics again"
+            : "deleted permanently";
+      const refused = (result.results as { reference?: string; ok: boolean; reason?: string }[])
+        .filter((entry) => !entry.ok)
+        .map((entry) => `${entry.reference || "Record"}: ${entry.reason}`);
+      setBulkMessage(
+        `${result.done} ${result.done === 1 ? "record" : "records"} ${verb}.` +
+          (refused.length ? ` Not changed: ${refused.join(" ")}` : ""),
+      );
+      setChecked(new Set());
+      bulkDialog.current?.close();
+      setReload((key) => key + 1);
+    } catch (cause) {
+      setBulkError(cause instanceof Error ? cause.message : "Could not update these records.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -554,6 +632,23 @@ export function SirahAdminStudents({
               <option value="ADDED">Added to group</option>
             </select>
           </label>
+          {canManageRecords && (
+            <label>
+              Records
+              <select
+                aria-label="Records"
+                value={excludedView ? "EXCLUDED" : ""}
+                onChange={(event) => {
+                  setExcludedView(event.target.value === "EXCLUDED");
+                  setPage(1);
+                  setBulkMessage("");
+                }}
+              >
+                <option value="">Counted in analytics</option>
+                <option value="EXCLUDED">Excluded (test / junk)</option>
+              </select>
+            </label>
+          )}
           <button
             type="button"
             className="ga-admin-outline-btn"
@@ -564,6 +659,7 @@ export function SirahAdminStudents({
               setPayment("");
               setEnrolment("");
               setGroup("");
+              setExcludedView(false);
               setPage(1);
             }}
           >
@@ -579,13 +675,75 @@ export function SirahAdminStudents({
         {data && (
           <>
             <p className={styles.resultCount}>
-              {data.total} registrations · Page {data.page}
+              {data.total}{" "}
+              {excludedView ? "excluded test records" : "registrations"} · Page{" "}
+              {data.page}
             </p>
+            {canManageRecords && bulkMessage && (
+              <p className={styles.bulkMessage} role="status">
+                {bulkMessage}
+              </p>
+            )}
+            {canManageRecords && pageRows.length > 0 && (
+              <div className={styles.bulkBar} role="region" aria-label="Bulk actions">
+                <label className={styles.selectAll}>
+                  <input
+                    type="checkbox"
+                    checked={allOnPage}
+                    ref={(input) => {
+                      if (input)
+                        input.indeterminate = selectedRows.length > 0 && !allOnPage;
+                    }}
+                    onChange={() =>
+                      setChecked(allOnPage ? new Set() : new Set(pageRows.map((row) => row.id)))
+                    }
+                  />
+                  Select all on this page
+                </label>
+                {selectedRows.length > 0 && (
+                  <>
+                    <strong>{selectedRows.length} selected</strong>
+                    {excludedView ? (
+                      <button
+                        type="button"
+                        className="ga-admin-primary-btn"
+                        onClick={() => openBulk("INCLUDE")}
+                      >
+                        Un-exclude (count in analytics)
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ga-admin-primary-btn"
+                        onClick={() => openBulk("EXCLUDE")}
+                      >
+                        Mark as test / exclude from analytics
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="ga-admin-outline-btn is-danger"
+                      onClick={() => openBulk("DELETE")}
+                    >
+                      Delete permanently
+                    </button>
+                    <button
+                      type="button"
+                      className="ga-admin-ghost-btn"
+                      onClick={() => setChecked(new Set())}
+                    >
+                      Clear selection
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             <div className="ga-admin-data-table">
               <div
-                className={`ga-admin-table-head ${styles.table}`}
+                className={`ga-admin-table-head ${styles.table} ${canManageRecords ? styles.selectable : ""}`}
                 aria-hidden="true"
               >
+                {canManageRecords && <span />}
                 <span>Order</span>
                 <span>Customer</span>
                 <span>Amount</span>
@@ -598,12 +756,29 @@ export function SirahAdminStudents({
               {data.rows.map((student) => (
                 <article
                   key={student.id}
-                  className={`ga-admin-table-row ${styles.row} ${styles.table}`}
+                  className={`ga-admin-table-row ${styles.row} ${styles.table} ${canManageRecords ? styles.selectable : ""}`}
                 >
+                  {canManageRecords && (
+                    <div className={styles.selectCell}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${student.reference}`}
+                        checked={checked.has(student.id)}
+                        onChange={() => toggleRow(student.id)}
+                      />
+                    </div>
+                  )}
                   <div>
                     <span className="ga-admin-pill">Sīrah</span>
+                    {student.excludedAt && (
+                      <span className={`ga-admin-pill ${styles.excludedPill}`}>Excluded (test)</span>
+                    )}
                     <strong>{student.reference}</strong>
-                    <p>Beyond Chronology</p>
+                    <p>
+                      {student.excludedAt
+                        ? `Excluded ${date(student.excludedAt)}${student.excludedBy ? ` by ${student.excludedBy}` : ""}`
+                        : "Beyond Chronology"}
+                    </p>
                   </div>
                   <div>
                     <strong>{student.user.fullName}</strong>
@@ -682,7 +857,9 @@ export function SirahAdminStudents({
               ))}
               {data.rows.length === 0 && (
                 <p className="ga-admin-empty-state">
-                  No registrations match these filters.
+                  {excludedView
+                    ? "No records are excluded."
+                    : "No registrations match these filters."}
                 </p>
               )}
             </div>
@@ -713,6 +890,136 @@ export function SirahAdminStudents({
         )}
       </section>
 
+      {canManageRecords && (
+        <dialog
+          ref={bulkDialog}
+          className="ga-admin-donation-dialog"
+          aria-labelledby="sirah-bulk-title"
+          onClose={() => setBulk("")}
+          onCancel={(event) => {
+            if (bulkBusy) event.preventDefault();
+          }}
+        >
+          <section className={`ga-admin-modal ${styles.modal}`}>
+            <div className="ga-admin-modal-head">
+              <div>
+                <p className="ga-admin-kicker">Test records</p>
+                <h3 id="sirah-bulk-title">
+                  {bulk === "DELETE"
+                    ? "Delete permanently?"
+                    : bulk === "INCLUDE"
+                      ? "Count these records in analytics again?"
+                      : "Exclude these records from analytics?"}
+                </h3>
+              </div>
+            </div>
+            <section className="ga-admin-modal-section">
+              {bulk === "EXCLUDE" && (
+                <p>
+                  {selectedRows.length} selected{" "}
+                  {selectedRows.length === 1 ? "record" : "records"} will be hidden
+                  from the Students and Payments lists, the CSV export and the
+                  Overview counts. Nothing is deleted, students are not affected,
+                  and you can un-exclude them from the &quot;Excluded&quot; view.
+                </p>
+              )}
+              {bulk === "INCLUDE" && (
+                <p>
+                  {selectedRows.length} selected{" "}
+                  {selectedRows.length === 1 ? "record" : "records"} will show in
+                  the lists, CSV export and Overview counts again.
+                </p>
+              )}
+              {bulk === "DELETE" && (
+                <>
+                  <p>
+                    <strong>
+                      {deletableRows.length} payment-free test{" "}
+                      {deletableRows.length === 1 ? "record" : "records"} will be
+                      deleted permanently. This cannot be undone.
+                    </strong>{" "}
+                    The student&apos;s account is kept, and a deletion log is
+                    stored.
+                  </p>
+                  {selectedRows.length > deletableRows.length && (
+                    <>
+                      <p>
+                        These selected records will be skipped. They can only be
+                        excluded:
+                      </p>
+                      <ul className={styles.bulkList}>
+                        {selectedRows
+                          .filter((row) => row.deleteRefusal)
+                          .map((row) => (
+                            <li key={row.id}>
+                              {row.reference} ({row.user.email}): {row.deleteRefusal}
+                            </li>
+                          ))}
+                      </ul>
+                    </>
+                  )}
+                </>
+              )}
+              <ul className={styles.bulkList}>
+                {(bulk === "DELETE" ? deletableRows : selectedRows).map((row) => (
+                  <li key={row.id}>
+                    <strong>{row.reference}</strong> · {row.user.fullName} ·{" "}
+                    {row.user.email}
+                  </li>
+                ))}
+              </ul>
+              {bulk === "DELETE" && deletableRows.length > 0 && (
+                <label className={styles.deleteConfirm}>
+                  Type DELETE to confirm
+                  <input
+                    value={deleteWord}
+                    autoComplete="off"
+                    onChange={(event) => setDeleteWord(event.target.value)}
+                  />
+                </label>
+              )}
+              {bulkError && (
+                <p className="ga-admin-error-banner" role="alert">
+                  {bulkError}
+                </p>
+              )}
+              <div className="ga-admin-actions">
+                <button
+                  type="button"
+                  className="ga-admin-outline-btn"
+                  disabled={bulkBusy}
+                  onClick={() => bulkDialog.current?.close()}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={
+                    bulk === "DELETE"
+                      ? "ga-admin-outline-btn is-danger"
+                      : "ga-admin-primary-btn"
+                  }
+                  disabled={
+                    bulkBusy ||
+                    (bulk === "DELETE"
+                      ? !deletableRows.length || deleteWord.trim() !== "DELETE"
+                      : !selectedRows.length)
+                  }
+                  onClick={() => void runBulk()}
+                >
+                  {bulkBusy
+                    ? "Working…"
+                    : bulk === "DELETE"
+                      ? `Delete ${deletableRows.length} permanently`
+                      : bulk === "INCLUDE"
+                        ? "Un-exclude"
+                        : "Exclude from analytics"}
+                </button>
+              </div>
+            </section>
+          </section>
+        </dialog>
+      )}
       {selectedId && selected && (
         <dialog
           ref={dialog}

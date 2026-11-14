@@ -1,3 +1,4 @@
+import { EXCLUDED_ORDERS, INCLUDED_ORDERS, sirahDeletionRefusal } from "@/lib/sirah/admin-records";
 import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import "server-only";
 import { calculateSirahAnnualUnusedMonths } from "@/lib/sirah/annual-refund";
@@ -39,6 +40,9 @@ import {
   verifySirahPaypal,
 } from "./sirah-online.service";
 export async function listSirahAdmin(search: URLSearchParams) {
+  // Test / junk records a super admin excluded stay out of the lists and CSV
+  // unless the (super-admin only) excluded view is requested.
+  const excludedView = search.get("excluded") === "only";
   const page = Math.max(1, Math.min(10000, Number(search.get("page")) || 1));
   const pageSize = 25;
   const q = (search.get("q") || "").slice(0, 150);
@@ -67,6 +71,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
     throw new SirahError("Choose a valid payment method.");
   const where: Prisma.SirahOrderWhereInput = {
     course: { slug: SIRAH_SLUG },
+    ...(excludedView ? EXCLUDED_ORDERS : INCLUDED_ORDERS),
     ...(payment === "NEEDS_ATTENTION"
       ? { paymentState: { in: ["AWAITING_REVIEW", "PROCESSING", "FAILED"] } }
       : payment
@@ -135,6 +140,11 @@ export async function listSirahAdmin(search: URLSearchParams) {
         paidCount: true,
         groupAddedAt: true,
         groupAddedBy: true,
+        excludedAt: true,
+        excludedBy: true,
+        registrationId: true,
+        providerOrderId: true,
+        providerSubscriptionId: true,
         createdAt: true,
         user: { select: { fullName: true, email: true } },
         receipts: {
@@ -175,10 +185,17 @@ export async function listSirahAdmin(search: URLSearchParams) {
     total,
     page,
     pageSize,
-    rows: rows.map(({ discount, ...row }) => {
+    excludedView,
+    rows: rows.map(({ discount, registrationId, providerOrderId, providerSubscriptionId, ...row }) => {
       const custom = adminCustomSnapshot({ discount });
+      // Whether a super admin may delete it permanently (payment-free junk only).
+      const deleteRefusal = sirahDeletionRefusal(
+        { ...row, registrationId, providerOrderId, providerSubscriptionId },
+        { paymentEvents: row.events.length, receipts: row.receipts.length },
+      );
       return {
         ...row,
+        deleteRefusal,
         // Admin custom payment link: catalog vs agreed price, sponsor, creator.
         customLink: custom
           ? {

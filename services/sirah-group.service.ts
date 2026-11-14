@@ -1,3 +1,4 @@
+import { EXCLUDED_ORDERS, INCLUDED_ORDERS } from "@/lib/sirah/admin-records";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -53,13 +54,14 @@ export async function setSirahGroupAdded(
 
 /** Overview counts over all Sīrah registrations (same scope as Students). */
 export async function sirahOverviewCounts() {
-  const scope = { course: { slug: SIRAH_SLUG } };
+  // Records a super admin excluded as test / junk do not count.
+  const scope = { course: { slug: SIRAH_SLUG }, ...INCLUDED_ORDERS };
   const paidActive = {
     ...scope,
     paymentState: "PAID",
     enrolmentState: { in: ["ACTIVE", "COMPLETED"] },
   };
-  const [total, paid, pending, needsReview, groupAdded, groupNotAdded] =
+  const [total, paid, pending, needsReview, groupAdded, groupNotAdded, excluded] =
     await Promise.all([
       prisma.sirahOrder.count({ where: scope }),
       prisma.sirahOrder.count({ where: { ...scope, paymentState: "PAID" } }),
@@ -77,6 +79,9 @@ export async function sirahOverviewCounts() {
       }),
       prisma.sirahOrder.count({ where: { ...paidActive, groupAddedAt: { not: null } } }),
       prisma.sirahOrder.count({ where: { ...paidActive, groupAddedAt: null } }),
+      prisma.sirahOrder.count({
+        where: { course: { slug: SIRAH_SLUG }, ...EXCLUDED_ORDERS },
+      }),
     ]);
-  return { total, paid, pending, needsReview, groupAdded, groupNotAdded };
+  return { total, paid, pending, needsReview, groupAdded, groupNotAdded, excluded };
 }

@@ -25,7 +25,18 @@ export default async function SirahOverviewPage() {
         <div>
           <p className="ga-admin-kicker">Current batch</p>
           <h2>Sīrah | Beyond Chronology at a glance</h2>
-          <p>Live counts from the enrolment records.</p>
+          <p>
+            Live counts from the enrolment records.
+            {access.role === "SUPER_ADMIN" && counts.excluded > 0 && (
+              <>
+                {" "}
+                {number(counts.excluded)} test{" "}
+                {counts.excluded === 1 ? "record is" : "records are"} excluded
+                from these counts.{" "}
+                <a href="/admin/sirah?excluded=only">View excluded</a>
+              </>
+            )}
+          </p>
         </div>
       </div>
       <div className={styles.grid}>
