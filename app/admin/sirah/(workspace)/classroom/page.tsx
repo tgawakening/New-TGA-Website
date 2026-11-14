@@ -475,10 +475,19 @@ export default async function SirahClassroomAdminPage({
             </label>
           </div>
           <div className={styles.formFoot}>
-            <label className={styles.check}>
-              <input type="checkbox" name="pinned" className={styles.checkbox} />
-              <span>Pin to the top of the classroom</span>
-            </label>
+            <div className={styles.checks}>
+              <label className={styles.check}>
+                <input type="checkbox" name="pinned" className={styles.checkbox} />
+                <span>Pin to the top of the classroom</span>
+              </label>
+              <label className={styles.check}>
+                <input type="checkbox" name="quiet" className={styles.checkbox} aria-describedby="quiet-help" />
+                <span>Don&rsquo;t email students</span>
+              </label>
+              <span id="quiet-help" className={styles.help}>
+                Otherwise every enrolled student is emailed this announcement once.
+              </span>
+            </div>
             <button type="submit" className={styles.primary}>
               Post announcement
             </button>
@@ -493,7 +502,9 @@ export default async function SirahClassroomAdminPage({
                     {item.title}
                     {item.pinned && <span className={styles.pinned}>Pinned</span>}
                   </span>
-                  <span className={styles.rowMeta}>{shortDate.format(item.publishedAt)}</span>
+                  <span className={styles.rowMeta}>
+                    {shortDate.format(item.publishedAt)} · {item.emailStudents ? "Emailed to students" : "Not emailed"}
+                  </span>
                   <p className={styles.noticeBody}>{item.body}</p>
                 </div>
                 <div className={styles.rowActions}>

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { emailFrom as configuredFrom, resendApiKey as configuredKey } from "@/lib/email-config";
 
 export class EmailDeliveryError extends Error {
   constructor(message: string, readonly retryAfterMs: number, readonly pauseBatch = false) { super(message); }
@@ -67,8 +68,8 @@ export async function sendTransactionalEmail(payload: EmailPayload) {
     await logEmail({ ...payload, status: "SKIPPED", error: "Operational test emails disabled to preserve transactional quota." });
     return { status: "SKIPPED" as const };
   }
-  const resendApiKey = getOptionalEnv("RESEND_API_KEY");
-  const emailFrom = getOptionalEnv("EMAIL_FROM");
+  const resendApiKey = configuredKey();
+  const emailFrom = configuredFrom();
 
   if (!resendApiKey || !emailFrom) {
     await logEmail({

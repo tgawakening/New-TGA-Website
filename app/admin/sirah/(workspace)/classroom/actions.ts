@@ -1,6 +1,7 @@
 "use server";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
@@ -20,6 +21,7 @@ import {
   uploadProblem,
 } from "@/lib/sirah/spaces";
 import { classroomFilePath } from "@/services/sirah-classroom-files.service";
+import { dispatchClassroomEmails, queueAnnouncementEmails } from "@/services/sirah-classroom-email.service";
 
 const PAGE = "/admin/sirah/classroom";
 
@@ -168,8 +170,15 @@ export async function postAnnouncement(form: FormData) {
   await requireClassroomEditor();
   const parsed = parseAnnouncementForm(fields(form, ["title", "body", "pinned"]));
   if (!parsed.ok) fail(parsed.error, "announcements");
-  await prisma.sirahAnnouncement.create({ data: parsed.data });
-  done("Announcement posted.", "announcements");
+  const emailStudents = form.get("quiet") !== "on";
+  const post = await prisma.sirahAnnouncement.create({ data: { ...parsed.data, emailStudents } });
+  if (!emailStudents) done("Announcement posted quietly. No email was sent.", "announcements");
+  // Queue one email per enrolled student (unique per post and student), then
+  // start sending after the response; the sweep sends whatever is left.
+  const queued = await queueAnnouncementEmails(post.id).catch(() => null);
+  if (queued === null) done("Announcement posted, but the emails could not be queued.", "announcements");
+  after(() => dispatchClassroomEmails().catch(() => {}));
+  done(`Announcement posted. Emailing ${queued} enrolled student${queued === 1 ? "" : "s"}.`, "announcements");
 }
 
 export async function setAnnouncementPinned(form: FormData) {
