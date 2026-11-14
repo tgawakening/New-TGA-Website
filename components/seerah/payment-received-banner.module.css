@@ -14,7 +14,7 @@
   border-radius: 8px;
   background: #f5efdf;
   color: #141611;
-  font-family: var(--font-montserrat), Arial, sans-serif;
+  font-family: "Amiri Marks", var(--font-montserrat), Arial, sans-serif;
   font-size: 14px;
   line-height: 1.6;
   box-shadow: 0 12px 40px #0000002e;
@@ -70,7 +70,7 @@
   display: grid;
   place-items: center;
   padding: 0;
-  font-family: Arial, sans-serif;
+  font-family: "Amiri Marks", Arial, sans-serif;
   position: absolute;
   top: 8px;
   right: 8px;

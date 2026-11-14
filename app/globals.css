@@ -1,8 +1,30 @@
 @import "tailwindcss";
 
+/* Amiri (OFL, public/fonts/amiri/OFL.txt), subset to three glyphs the Latin
+ * faces lack: ʾ ʿ (U+02BE-02BF, transliteration) and ﷺ (U+FDFA). It leads
+ * every stack, but unicode-range keeps it off all other characters, so the
+ * Latin typography is unchanged and the file only loads where a mark appears. */
+@font-face {
+  font-family: "Amiri Marks";
+  src: url("/fonts/amiri/amiri-marks-400.woff2") format("woff2");
+  font-weight: 100 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+02BE-02BF, U+FDFA;
+}
+
+@font-face {
+  font-family: "Amiri Marks";
+  src: url("/fonts/amiri/amiri-marks-700.woff2") format("woff2");
+  font-weight: 600 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+02BE-02BF, U+FDFA;
+}
+
 :root {
-  --font-poltawski: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
-  --font-marko-one: "Times New Roman", Times, serif;
+  --font-poltawski: "Amiri Marks", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --font-marko-one: "Amiri Marks", "Times New Roman", Times, serif;
   --ga-bg: #030a1f;
   --ga-ink: #ffffff;
   --ga-sky: #6db4ff;
@@ -618,7 +640,7 @@ body {
   margin-bottom: 0;
   font-size: clamp(2rem, 4vw, 3.1rem);
   line-height: 1.08;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "Amiri Marks", Georgia, "Times New Roman", serif;
   color: #f7fbff;
 }
 

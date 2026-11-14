@@ -35,8 +35,8 @@
   --color-ok-soft: #e1e8d3;
 
   /* Type */
-  --font-display: Georgia, "Times New Roman", serif;
-  --font-body: var(--font-montserrat), Arial, sans-serif;
+  --font-display: "Amiri Marks", Georgia, "Times New Roman", serif;
+  --font-body: "Amiri Marks", var(--font-montserrat), Arial, sans-serif;
 
   /* Space, 4px scale */
   --space-1: 4px;
