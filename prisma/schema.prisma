@@ -104,6 +104,7 @@ model User {
   subscriptions           Subscription[]
   emailLogs               EmailLog[]
   freeWarriorApplications FreeWarriorApplication[]
+  sirahLessonProgress     SirahLessonProgress[]
 }
 
 model StudentProfile {
@@ -664,6 +665,7 @@ model SirahLesson {
   createdAt     DateTime        @default(now()) @db.DateTime(3)
   updatedAt     DateTime        @updatedAt @db.DateTime(3)
   materials     SirahMaterial[]
+  progress      SirahLessonProgress[]
 
   @@index([scheduledAt])
   @@index([weekNumber])
@@ -692,4 +694,20 @@ model SirahAnnouncement {
   createdAt   DateTime @default(now()) @db.DateTime(3)
 
   @@index([pinned, publishedAt])
+}
+
+/// A student's own completion mark on a session. studentId is the User id the
+/// enrolment check resolves (getSirahStudentAccess). completedAt null =
+/// marked incomplete again; the row is kept so the toggle is an upsert.
+model SirahLessonProgress {
+  id          String      @id @default(cuid())
+  lessonId    String
+  studentId   String
+  completedAt DateTime?   @db.DateTime(3)
+  createdAt   DateTime    @default(now()) @db.DateTime(3)
+  lesson      SirahLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student     User        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, studentId])
+  @@index([studentId])
 }

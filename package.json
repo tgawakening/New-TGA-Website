@@ -30,7 +30,7 @@
     "test:sirah-card-discounts": "node --conditions=react-server --import tsx --test scripts/test-sirah-card-discounts.ts",
     "test:sirah-records": "node --conditions=react-server --import tsx --test scripts/test-sirah-records.ts",
     "test:dashboard-admin-link": "node --import tsx --test scripts/test-dashboard-admin-link.ts",
-    "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts"
+    "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts scripts/test-sirah-classroom-progress.ts"
   },
   "engines": {
     "node": "20.x || 22.x"

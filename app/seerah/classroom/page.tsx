@@ -3,23 +3,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sirahFont } from "@/lib/sirah/font";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
-import {
-  SIRAH_DEFAULT_TIMEZONE,
-  SIRAH_JOIN_WINDOW_MINUTES,
-  SIRAH_MATERIAL_LABELS,
-  canJoinLesson,
-  groupByWeek,
-  isValidTimeZone,
-  lessonStatus,
-  nextLesson,
-  type SirahLessonStatus,
-} from "@/lib/sirah/classroom";
+import { courseProgress, groupByWeek, lessonStatus, toLessonView } from "@/lib/sirah/classroom";
 import {
   getClassroomData,
+  getCompletedLessonIds,
   getSirahStudentAccess,
   sirahClassroomAvailable,
 } from "@/services/sirah-classroom.service";
-import { ClassroomCountdown } from "@/components/sirah/classroom-countdown";
+import { MaterialList, STATUS_TEXT, SessionBand, classroomClock } from "./parts";
 import "./tokens.css";
 import styles from "./classroom.module.css";
 
@@ -29,67 +20,23 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type Material = { id: string; title: string; kind: keyof typeof SIRAH_MATERIAL_LABELS; url: string };
-
-const STATUS_TEXT: Record<SirahLessonStatus, string> = {
-  upcoming: "Upcoming",
-  live: "Live now",
-  past: "Took place",
-};
-
-function formatter(timeZone: string, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat("en-GB", { timeZone, ...options });
-}
-
-function MaterialList({ materials }: { materials: Material[] }) {
-  // The recording leads: it is what a student who missed the session needs.
-  const sorted = [...materials].sort(
-    (a, b) => Number(b.kind === "RECORDING") - Number(a.kind === "RECORDING"),
-  );
-  return (
-    <ul className={styles.materials}>
-      {sorted.map((material) => (
-        <li key={material.id} className={material.kind === "RECORDING" ? styles.recording : undefined}>
-          <span className={styles.kind}>{SIRAH_MATERIAL_LABELS[material.kind]}</span>
-          <a href={material.url} target="_blank" rel="noopener noreferrer">
-            {material.title}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-}
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 export default async function SirahClassroomPage() {
   const { user, allowed } = await getSirahStudentAccess();
   if (!user) redirect("/login");
   if (!allowed) redirect("/dashboard");
 
-  const profileZone = user.studentProfile?.timezone;
-  const timeZone = profileZone && isValidTimeZone(profileZone) ? profileZone : SIRAH_DEFAULT_TIMEZONE;
-  const longDate = formatter(timeZone, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-  const shortDate = formatter(timeZone, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true });
-  const noticeDate = formatter(timeZone, { day: "numeric", month: "long", year: "numeric" });
-  const zoneName =
-    formatter(timeZone, { timeZoneName: "long" })
-      .formatToParts(new Date())
-      .find((part) => part.type === "timeZoneName")?.value || timeZone;
-
+  const clock = classroomClock(user.studentProfile?.timezone);
   const ready = await sirahClassroomAvailable();
-  const { lessons, courseMaterials, announcements } = ready
-    ? await getClassroomData()
-    : { lessons: [], courseMaterials: [], announcements: [] };
+  const [{ lessons, courseMaterials, announcements }, completedIds] = ready
+    ? await Promise.all([getClassroomData(), getCompletedLessonIds(user.id)])
+    : [{ lessons: [], courseMaterials: [], announcements: [] }, new Set<string>()];
   const now = new Date();
-  const next = nextLesson(lessons, now);
-  const nextStatus = next ? lessonStatus(next.scheduledAt, now) : null;
-  const joinable = next ? canJoinLesson(next.scheduledAt, now) && Boolean(next.zoomJoinUrl) : false;
+  const progress = courseProgress(lessons, completedIds, now);
+  // The band renders through the view builder, so the Zoom link is only
+  // present inside the join window.
+  const next = progress.next ? toLessonView(progress.next, [], { enrolled: true }, now) : null;
   const pinned = announcements.filter((item) => item.pinned);
   const earlier = announcements.filter((item) => !item.pinned);
   const weeks = groupByWeek(lessons);
@@ -99,9 +46,27 @@ export default async function SirahClassroomPage() {
       <header className={styles.masthead}>
         <div className={styles.container}>
           <div className={styles.mastRow}>
-            <h1 className={styles.title}>Classroom</h1>
+            <div>
+              <h1 className={styles.title}>Classroom</h1>
+              {progress.totalSessions > 0 && (
+                <p className={styles.progress}>
+                  {progress.currentWeek ? (
+                    <>
+                      Week <span className={styles.figure}>{progress.currentWeek}</span> of{" "}
+                      <span className={styles.figure}>{progress.totalWeeks}</span>.
+                    </>
+                  ) : (
+                    <>
+                      The course begins in week <span className={styles.figure}>{progress.next?.weekNumber ?? 1}</span>.
+                    </>
+                  )}{" "}
+                  You have completed <span className={styles.figure}>{progress.completed}</span> of{" "}
+                  {plural(progress.totalSessions, "session")}.
+                </p>
+              )}
+            </div>
             <p className={styles.mastMeta}>
-              {SIRAH_TITLE}. Times shown in {zoneName}.
+              {SIRAH_TITLE}. Times shown in {clock.zoneName}.
               <br />
               <Link href="/dashboard">Back to your dashboard</Link>
             </p>
@@ -117,52 +82,27 @@ export default async function SirahClassroomPage() {
                 <h2>{item.title}</h2>
                 <p>{item.body}</p>
                 <time className={styles.noticeDate} dateTime={item.publishedAt.toISOString()}>
-                  {noticeDate.format(item.publishedAt)}
+                  {clock.noticeDate.format(item.publishedAt)}
                 </time>
               </article>
             ))}
           </section>
         )}
 
-        {next ? (
-          <section className={styles.next} aria-label={nextStatus === "live" ? "Live session" : "Next session"}>
-            <div className={styles.nextInner}>
-              <div>
-                <h2 className={styles.nextTitle}>{next.title}</h2>
-                <p className={styles.nextWhen}>
-                  Week {next.weekNumber}, <time dateTime={next.scheduledAt.toISOString()}>{longDate.format(next.scheduledAt)}</time>
-                </p>
-                {next.summary && <p className={styles.nextSummary}>{next.summary}</p>}
-              </div>
-              <div className={styles.nextAside}>
-                {nextStatus === "live" && <p className={styles.liveNow}>Live now</p>}
-                {nextStatus === "upcoming" && (
-                  <ClassroomCountdown
-                    startsAt={next.scheduledAt.toISOString()}
-                    serverNow={now.toISOString()}
-                    joinWindowMinutes={SIRAH_JOIN_WINDOW_MINUTES}
-                    className={styles.countdown}
-                    noteClassName={styles.countdownNote}
-                  />
-                )}
-                {joinable && next.zoomJoinUrl ? (
-                  <>
-                    <a className={styles.join} href={next.zoomJoinUrl} target="_blank" rel="noopener noreferrer">
-                      Join on Zoom
-                    </a>
-                    {next.zoomMeetingId && <span className={styles.meetingId}>Meeting ID {next.zoomMeetingId}</span>}
-                  </>
-                ) : (
-                  <p className={styles.joinHint}>
-                    {nextStatus === "live" || canJoinLesson(next.scheduledAt, now)
-                      ? "The joining link is on its way. Check the course group if it does not appear in a few minutes."
-                      : `The Join button appears here ${SIRAH_JOIN_WINDOW_MINUTES} minutes before the start.`}
-                  </p>
-                )}
-              </div>
-            </div>
-          </section>
-        ) : null}
+        {next && (
+          <SessionBand lesson={next} now={now} label={next.status === "live" ? "Live class" : "Next live class"}>
+            <h2 className={styles.nextTitle}>
+              <Link href={`/seerah/classroom/${next.id}`} className={styles.nextLink}>
+                {next.title}
+              </Link>
+            </h2>
+            <p className={styles.nextWhen}>
+              Week {next.weekNumber},{" "}
+              <time dateTime={next.scheduledAt.toISOString()}>{clock.longDate.format(next.scheduledAt)}</time>
+            </p>
+            {next.summary && <p className={styles.nextSummary}>{next.summary}</p>}
+          </SessionBand>
+        )}
 
         <section className={styles.section} aria-labelledby="schedule">
           <h2 id="schedule" className={styles.sectionTitle}>
@@ -179,36 +119,28 @@ export default async function SirahClassroomPage() {
               {weeks.map((week) => (
                 <li key={week.weekNumber} className={styles.week}>
                   <span className={styles.weekNumber}>Week {week.weekNumber}</span>
-                  <div>
+                  <ul className={styles.lessonRows}>
                     {week.lessons.map((lesson) => {
                       const status = lessonStatus(lesson.scheduledAt, now);
-                      const hasRecording = lesson.materials.some((item) => item.kind === "RECORDING");
+                      const done = completedIds.has(lesson.id);
                       return (
-                        <details key={lesson.id} className={styles.lesson} open={lesson.id === next?.id}>
-                          <summary>
+                        <li key={lesson.id}>
+                          <Link href={`/seerah/classroom/${lesson.id}`} className={styles.lessonRow}>
                             <span className={styles.lessonTitle}>{lesson.title}</span>
                             <span className={styles.lessonWhen}>
-                              <time dateTime={lesson.scheduledAt.toISOString()}>{shortDate.format(lesson.scheduledAt)}</time>
+                              <time dateTime={lesson.scheduledAt.toISOString()}>
+                                {clock.shortDate.format(lesson.scheduledAt)}
+                              </time>
+                              , {STATUS_TEXT[status].toLowerCase()}
                             </span>
-                            <span className={`${styles.status} ${status === "live" ? styles.statusLive : ""}`}>
-                              {STATUS_TEXT[status]}
+                            <span className={done ? styles.done : styles.notDone}>
+                              {done ? "Completed" : "Not completed"}
                             </span>
-                          </summary>
-                          <div className={styles.lessonBody}>
-                            {lesson.summary && <p>{lesson.summary}</p>}
-                            {lesson.materials.length > 0 ? (
-                              <MaterialList materials={lesson.materials} />
-                            ) : (
-                              <p className={styles.empty}>Materials for this session will be added here.</p>
-                            )}
-                            {status === "past" && !hasRecording && (
-                              <p className={styles.empty}>The recording will be added once it has been processed.</p>
-                            )}
-                          </div>
-                        </details>
+                          </Link>
+                        </li>
                       );
                     })}
-                  </div>
+                  </ul>
                 </li>
               ))}
             </ol>
@@ -236,7 +168,7 @@ export default async function SirahClassroomPage() {
                   <h3>{item.title}</h3>
                   <p>{item.body}</p>
                   <time className={styles.noticeDate} dateTime={item.publishedAt.toISOString()}>
-                    {noticeDate.format(item.publishedAt)}
+                    {clock.noticeDate.format(item.publishedAt)}
                   </time>
                 </li>
               ))}
