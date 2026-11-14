@@ -504,6 +504,10 @@ model SirahOrder {
   /// Separate from invitationState (the automatic invitation email).
   groupAddedAt           DateTime?           @db.DateTime(3)
   groupAddedBy           String?             @db.VarChar(320)
+  /// Super admin marked this as a test/junk record: hidden from admin lists,
+  /// CSV and Overview counts. Data kept; null = included (reversible).
+  excludedAt             DateTime?           @db.DateTime(3)
+  excludedBy             String?             @db.VarChar(320)
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
   user                   User                @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -518,6 +522,7 @@ model SirahOrder {
   @@unique([userId, courseId, batchCode])
   @@index([paymentState, enrolmentState, createdAt])
   @@index([groupAddedAt])
+  @@index([excludedAt])
 }
 
 model SirahReceipt {
@@ -620,4 +625,20 @@ model SirahAccessAudit {
 
   @@index([createdAt])
   @@index([targetEmail, createdAt])
+}
+
+/// Append-only record of payment-free test orders a super admin deleted
+/// permanently (the order's own audit rows are deleted with it).
+model SirahRecordDeletion {
+  id         String   @id @default(cuid())
+  orderId    String   @db.VarChar(191)
+  reference  String   @db.VarChar(191)
+  email      String   @db.VarChar(320)
+  fullName   String   @db.VarChar(191)
+  actor      String   @db.VarChar(320)
+  snapshot   Json
+  createdAt  DateTime @default(now()) @db.DateTime(3)
+
+  @@index([createdAt])
+  @@index([reference])
 }

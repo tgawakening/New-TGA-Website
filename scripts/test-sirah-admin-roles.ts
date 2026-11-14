@@ -280,5 +280,5 @@ test("Students list filters not-yet-added and needs-attention; CSV and overview 
   await assert.rejects(listSirahAdmin(new URLSearchParams({ group: "MAYBE" })), /valid group status/);
   const csv = sirahCsv(yes).split("\r\n");
   assert.match(csv[1], /"Yes","2026-11-10T10:00:00\.000Z","lead:a@example\.test"$/);
-  assert.deepEqual(await sirahOverviewCounts(), { total: 4, paid: 2, pending: 2, needsReview: 1, groupAdded: 1, groupNotAdded: 1 });
+  assert.deepEqual(await sirahOverviewCounts(), { total: 4, paid: 2, pending: 2, needsReview: 1, groupAdded: 1, groupNotAdded: 1, excluded: 0 });
 });

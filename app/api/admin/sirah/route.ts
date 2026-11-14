@@ -22,8 +22,10 @@ import { SirahError } from "@/services/sirah-registration.service";
 const REFUND_ACTIONS = new Set(["REFUND", "QUOTE_ANNUAL_REFUND"]);
 export async function GET(request: Request) {
   try {
-    await sirahReadAccess(request);
+    const access = await sirahReadAccess(request);
     const params = new URL(request.url).searchParams;
+    // The excluded (test / junk) view is for the super admin only.
+    if (access.role !== "SUPER_ADMIN") params.delete("excluded");
     const data = await listSirahAdmin(params);
     if (params.get("format") === "csv")
       return new Response(sirahCsv(data), {

@@ -26,7 +26,8 @@
     "test:sirah-scholarship": "node --conditions=react-server --import tsx --test scripts/test-sirah-scholarship.ts",
     "test:sirah-custom-link": "node --conditions=react-server --import tsx --test scripts/test-sirah-admin-custom-link.ts",
     "test:sirah-roles": "node --conditions=react-server --import tsx --test scripts/test-sirah-admin-roles.ts",
-    "test:sirah-card-discounts": "node --conditions=react-server --import tsx --test scripts/test-sirah-card-discounts.ts"
+    "test:sirah-card-discounts": "node --conditions=react-server --import tsx --test scripts/test-sirah-card-discounts.ts",
+    "test:sirah-records": "node --conditions=react-server --import tsx --test scripts/test-sirah-records.ts"
   },
   "engines": {
     "node": "20.x || 22.x"

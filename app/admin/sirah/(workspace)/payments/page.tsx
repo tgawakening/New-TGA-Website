@@ -17,6 +17,7 @@ export default async function SirahPaymentsPage() {
       readOnly={access.readOnly}
       canManageEnrolments={access.canManageEnrolments}
       canMarkGroupAdded={access.canMarkGroupAdded}
+      canManageRecords={access.role === "SUPER_ADMIN"}
     />
   );
 }
