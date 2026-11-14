@@ -1,9 +1,10 @@
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
 import { prisma } from "@/lib/prisma";
-import { SIRAH_PRICING_VERSION } from "@/lib/sirah/catalog";
+import { SIRAH_PRICING_VERSION, SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { redirect } from "next/navigation";
 import StudentDashboard from "@/components/dashboard/student-dashboard";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { getPaymentPlanTypeFromSnapshot } from "@/lib/course-payment";
 import {
   processDueManualSubscriptions,
@@ -35,10 +36,26 @@ export default async function DashboardPage() {
   const legacyRegistrations = refreshedUser.registrations.filter(
     (item) => !currentRegistrationIds.has(item.id),
   );
-  const hasCurrent =
-    (await sirahSchemaAvailable()) &&
-    (await prisma.sirahOrder.count({ where: { userId: refreshedUser.id } })) >
-      0;
+  // Read-only: the student's Sīrah bookings, so an unpaid one is visible here.
+  const sirahOrders = (await sirahSchemaAvailable())
+    ? await prisma.sirahOrder.findMany({
+        where: { userId: refreshedUser.id, course: { slug: SIRAH_SLUG } },
+        select: {
+          id: true,
+          reference: true,
+          plan: true,
+          method: true,
+          currency: true,
+          amountMinor: true,
+          paymentState: true,
+          enrolmentState: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
+  const hasCurrent = sirahOrders.length > 0;
+  const showAdminLink = Boolean(await getSirahWorkspaceAccess());
   return (
     <StudentDashboard
       user={{
@@ -48,6 +65,11 @@ export default async function DashboardPage() {
           !legacyRegistrations.some(
             (item) => item.course.slug === "seerah-course",
           ),
+        showAdminLink,
+        sirahOrders: sirahOrders.map((order) => ({
+          ...order,
+          createdAt: order.createdAt.toISOString(),
+        })),
         fullName: refreshedUser.fullName,
         email: refreshedUser.email,
         phoneCountryCode: refreshedUser.phoneCountryCode,

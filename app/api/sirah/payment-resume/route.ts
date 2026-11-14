@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const grant = await resolveSirahResumeToken(input.token);
     if (!grant)
       throw new SirahError(
-        "This payment link has expired or is invalid. Request a fresh link below.",
+        "This payment link has expired or is invalid. Sign in to complete your payment.",
         410,
       );
     const signedIn = await getCurrentUser();

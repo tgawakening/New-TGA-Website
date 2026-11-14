@@ -1,6 +1,6 @@
 import "server-only";
 import { currencyScale, type SirahMethod, type SirahPlan } from "./catalog";
-export const PAYMENT_SUPPORT_URL = "https://wa.me/923262055614";
+export { PAYMENT_SUPPORT_URL } from "./support";
 
 export function courseGroupAudience(country: string) {
   const pakistan = process.env.SIRAH_PAKISTAN_COUNTRY_CODE || "PK";

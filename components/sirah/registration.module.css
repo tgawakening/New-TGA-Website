@@ -589,17 +589,21 @@
   font-size: 12px;
   line-height: 1.6;
 }
-.savedDetails,
-.resumeHelp {
+.savedDetails {
   margin: 16px 0;
   border: 1px solid #b8af91;
   padding: 12px;
   border-radius: 4px;
 }
-.savedDetails summary,
-.resumeHelp summary {
+.savedDetails summary {
   cursor: pointer;
   font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.signInHelp {
+  margin: 16px 0 0;
+  font-size: 0.95rem;
   overflow-wrap: anywhere;
 }
 
