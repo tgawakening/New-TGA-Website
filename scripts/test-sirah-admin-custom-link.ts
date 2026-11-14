@@ -42,6 +42,9 @@ installFakePrisma();
 // ------------------------------------------------------------- fake stripe
 type FakeSession = Row & { id: string; status: string; payment_status: string; amount_total: number; currency: string };
 const sessions = new Map<string, FakeSession>();
+const subscriptions = new Map<string, Row & { id: string }>();
+const invoices = new Map<string, Row & { id: string }>();
+const subscriptionUpdates: Row[] = [];
 const createdParams: Row[] = [];
 let sessionSeq = 0;
 const stripe = {
@@ -68,6 +71,7 @@ const stripe = {
           payment_intent: null,
           subscription: null,
           invoice: null,
+          subscription_data: params.subscription_data,
         };
         sessions.set(id, session);
         return { ...session };
@@ -80,10 +84,42 @@ const stripe = {
       },
     },
   },
+  subscriptions: {
+    retrieve: async (id: string) => ({ ...subscriptions.get(id)! }),
+    update: async (id: string, params: Row) => {
+      subscriptionUpdates.push({ id, ...params });
+      return { ...subscriptions.get(id)! };
+    },
+  },
+  invoices: {
+    retrieve: async (id: string) => ({ ...invoices.get(id)! }),
+  },
 } as unknown as Stripe;
 const pay = (id: string, overrides: Partial<FakeSession> = {}) =>
   Object.assign(sessions.get(id)!, { status: "complete", payment_status: "paid", payment_intent: `pi_${id}` }, overrides);
 const expire = (id: string) => Object.assign(sessions.get(id)!, { status: "expired" });
+/** Complete a subscription-mode session: Stripe creates the subscription
+ * (metadata from subscription_data) and its first paid invoice. */
+const START = Math.floor(Date.UTC(2026, 10, 15) / 1000);
+const invoiceFor = (subId: string, amount: number, currency: string, n: number, status = "paid") => {
+  const id = `in_${subId}_${n}`;
+  invoices.set(id, { id, status, amount_paid: status === "paid" ? amount : 0, currency, parent: { subscription_details: { subscription: subId } } });
+  return id;
+};
+const paySubscription = (id: string, invoiceAmount?: number) => {
+  const session = sessions.get(id)!;
+  const subId = `sub_${id}`;
+  subscriptions.set(subId, {
+    id: subId,
+    status: "active",
+    customer: `cus_${id}`,
+    start_date: START,
+    metadata: (session.subscription_data as Row).metadata,
+    items: { data: [{ current_period_end: START + 31 * 86400 }] },
+  });
+  const invoice = invoiceFor(subId, invoiceAmount ?? session.amount_total, session.currency, 1);
+  return Object.assign(session, { status: "complete", payment_status: "paid", subscription: subId, invoice });
+};
 
 // --------------------------------------------------------- services (late)
 // Loaded only after globalThis.prisma is the fake (CJS: no top-level await).
@@ -97,6 +133,7 @@ let listSirahAdmin: typeof import("../services/sirah-admin.service").listSirahAd
 let sirahCsv: typeof import("../services/sirah-admin.service").sirahCsv;
 let custom: typeof import("../lib/sirah/admin-custom");
 let GB_ANNUAL_CATALOG = 0; // catalog annual GB price (32389)
+let GB_MONTHLY_CATALOG = 0; // catalog monthly GB card price
 before(async () => {
   ({ createSirahAdminCustomLink } = await import("../services/sirah-admin-custom-link.service"));
   ({ handleSirahStripeEvent } = await import("../services/sirah-webhooks.service"));
@@ -105,6 +142,7 @@ before(async () => {
   ({ listSirahAdmin, sirahCsv } = await import("../services/sirah-admin.service"));
   custom = await import("../lib/sirah/admin-custom");
   GB_ANNUAL_CATALOG = (await import("../lib/sirah/catalog")).priceFor("GB", "ANNUAL", "STRIPE").amountMinor;
+  GB_MONTHLY_CATALOG = (await import("../lib/sirah/catalog")).priceFor("GB", "MONTHLY", "STRIPE").amountMinor;
 });
 const ADMIN = "admin:owner@tga.example";
 const input = (overrides: Row = {}) =>
@@ -124,6 +162,9 @@ const event = (type: string, object: unknown) => ({ id: `evt_${randomUUID()}`, t
 beforeEach(() => {
   tables.clear();
   sessions.clear();
+  subscriptions.clear();
+  invoices.clear();
+  subscriptionUpdates.length = 0;
   createdParams.length = 0;
 });
 
@@ -328,8 +369,9 @@ test("admin list and CSV show catalog vs custom price, sponsor and creating admi
   assert.match(csv[1], /"Admin custom link","GBP\s?323\.89","GBP\s?150\.00","Masjid group booking","admin:owner@tga\.example","No","",""$/);
 });
 
-test("validation: annual only, positive amount, Sirah price-list currency", async () => {
-  assert.equal(custom.sirahAdminCustomLinkSchema.safeParse({ ...input(), plan: "MONTHLY" }).success, false);
+test("validation: annual or monthly only, positive amount, Sirah price-list currency", async () => {
+  assert.equal(custom.sirahAdminCustomLinkSchema.safeParse({ ...input(), plan: "MONTHLY" }).success, true);
+  assert.equal(custom.sirahAdminCustomLinkSchema.safeParse({ ...input(), plan: "WEEKLY" }).success, false);
   await assert.rejects(createSirahAdminCustomLink(input({ amount: "0" }), ADMIN, stripe), /above zero/);
   await assert.rejects(createSirahAdminCustomLink(input({ currency: "JPY" }), ADMIN, stripe), /price list/);
   delete process.env.SIRAH_STRIPE_SECRET_KEY;
@@ -339,4 +381,109 @@ test("validation: annual only, positive amount, Sirah price-list currency", asyn
     process.env.SIRAH_STRIPE_SECRET_KEY = "sk_test_synthetic_only";
   }
   assert.equal(table("sirahOrder").length, 0);
+});
+
+// ---------------------------------------------------------- monthly links
+test("MONTHLY: creates a locked monthly order and a Stripe subscription session like the student checkout", async () => {
+  const result = await createSirahAdminCustomLink(input({ plan: "MONTHLY", amount: "15" }), ADMIN, stripe);
+  assert.equal(result.plan, "MONTHLY");
+  const o = order();
+  assert.equal(o.plan, "MONTHLY");
+  assert.equal(o.method, "STRIPE");
+  assert.equal(o.amountMinor, 1500);
+  assert.equal(o.totalMinor, 1500 * 12);
+  assert.equal(o.paymentState, "PROCESSING");
+  assert.equal(o.pricingVersion, custom.ADMIN_CUSTOM_PRICING_VERSION);
+  const snapshot = custom.adminCustomSnapshot(o as { discount?: unknown })!;
+  assert.equal(snapshot.amountMinor, 1500);
+  assert.equal(snapshot.catalogAmountMinor, GB_MONTHLY_CATALOG);
+  const params = createdParams[0] as Row & { line_items: Row[]; subscription_data: Row; metadata: Row };
+  assert.equal(params.mode, "subscription");
+  assert.equal(params.payment_intent_data, undefined);
+  const price = params.line_items[0].price_data as Row;
+  assert.equal(price.unit_amount, 1500);
+  assert.equal(price.currency, "gbp");
+  assert.deepEqual(price.recurring, { interval: "month" });
+  // Ownership metadata on the subscription, as the student's monthly checkout sets.
+  const subMeta = params.subscription_data.metadata as Row;
+  assert.equal(subMeta.sirahOrderId, o.id);
+  assert.equal(subMeta.checkoutToken, o.checkoutToken);
+  assert.equal(params.metadata.sirahOrderId, o.id);
+  assert.equal(params.client_reference_id, o.id);
+  assert.match(String(params.success_url), /\/seerah\?payment=received&reference=SIRAH-/);
+  assert.ok(Number(params.expires_at) > 0);
+});
+
+test("MONTHLY: paying enrols through the unchanged webhook as a monthly subscription at the custom amount", async () => {
+  await createSirahAdminCustomLink(input({ plan: "MONTHLY", amount: "15" }), ADMIN, stripe);
+  const o = order();
+  const paid = paySubscription(String(o.providerOrderId));
+  assert.equal(await handleSirahStripeEvent(event("checkout.session.completed", { ...paid }), stripe), true);
+  const after = order();
+  assert.equal(after.paymentState, "PAID");
+  assert.equal(after.enrolmentState, "ACTIVE");
+  assert.equal(after.paidCount, 1);
+  assert.equal(after.paidMinor, 1500);
+  assert.equal(after.providerSubscriptionId, `sub_${o.providerOrderId}`);
+  assert.ok(after.nextBillingAt, "next monthly billing date set");
+  // Capped at the programme end, exactly like a self-registered monthly student.
+  assert.equal(subscriptionUpdates.length, 1);
+  assert.equal(subscriptionUpdates[0].proration_behavior, "none");
+  assert.ok(Number(subscriptionUpdates[0].cancel_at) > START);
+  const payment = table("sirahPaymentEvent")[0];
+  assert.equal(payment.id, `stripe:invoice:${paid.invoice}`);
+  assert.equal(payment.amountMinor, 1500);
+  assert.equal(payment.kind, "FIRST");
+  assert.equal(table("registration")[0].finalAmount, 1500);
+  assert.equal(table("registration")[0].baseAmount, GB_MONTHLY_CATALOG);
+  assert.equal(table("enrollment")[0].status, "ACTIVE");
+});
+
+test("MONTHLY: a renewal invoice at the locked amount records the next month", async () => {
+  await createSirahAdminCustomLink(input({ plan: "MONTHLY", amount: "15" }), ADMIN, stripe);
+  const o = order();
+  const paid = paySubscription(String(o.providerOrderId));
+  await handleSirahStripeEvent(event("checkout.session.completed", { ...paid }), stripe);
+  const renewal = invoiceFor(String(paid.subscription), 1500, "gbp", 2);
+  assert.equal(await handleSirahStripeEvent(event("invoice.paid", { ...invoices.get(renewal) }), stripe), true);
+  const after = order();
+  assert.equal(after.paidCount, 2);
+  assert.equal(after.paidMinor, 3000);
+  const events = table("sirahPaymentEvent");
+  assert.equal(events.length, 2);
+  assert.equal(events[1].kind, "RENEWAL");
+  assert.equal(events[1].amountMinor, 1500);
+});
+
+test("MONTHLY: amount checks are not loosened - a first invoice for another amount is refused", async () => {
+  await createSirahAdminCustomLink(input({ plan: "MONTHLY", amount: "15" }), ADMIN, stripe);
+  const o = order();
+  const paid = paySubscription(String(o.providerOrderId), GB_MONTHLY_CATALOG);
+  await assert.rejects(
+    handleSirahStripeEvent(event("checkout.session.completed", { ...paid }), stripe),
+    /locked amount/,
+  );
+  assert.equal(order().paymentState, "PROCESSING");
+  assert.equal(order().enrolmentState, "PENDING");
+  assert.equal(table("sirahPaymentEvent").length, 0);
+});
+
+test("MONTHLY: a student cannot reprice or switch the custom monthly order", async () => {
+  await createSirahAdminCustomLink(input({ plan: "MONTHLY", amount: "15" }), ADMIN, stripe);
+  const o = order();
+  await assert.rejects(
+    repriceSirah(o.id, o.userId, o.revision, "GB", "ANNUAL", "STRIPE"),
+    /price agreed with the TGA team/,
+  );
+  assert.equal(order().amountMinor, 1500);
+  assert.equal(order().plan, "MONTHLY");
+});
+
+test("ANNUAL is unchanged: still a one-time payment session", async () => {
+  await createSirahAdminCustomLink(input(), ADMIN, stripe);
+  const params = createdParams[0] as Row & { line_items: Row[] };
+  assert.equal(params.mode, "payment");
+  assert.equal(params.subscription_data, undefined);
+  assert.equal((params.line_items[0].price_data as Row).recurring, undefined);
+  assert.equal(order().totalMinor, order().amountMinor);
 });

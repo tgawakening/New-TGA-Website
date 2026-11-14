@@ -130,9 +130,13 @@ export function unsettledCheckoutResetData(
   };
 }
 
-/** One-time (annual / full programme) Stripe Checkout Session for the order's
- * exact locked amount. Same ownership metadata as the student checkout, so the
- * existing webhook and verifySirahStripeSession accept it unchanged. */
+/** Stripe Checkout Session for the order's exact locked amount.
+ * - ANNUAL: one-time payment (full programme).
+ * - MONTHLY: a monthly subscription built the same way as the student's own
+ *   monthly card checkout (mode "subscription", recurring monthly price at the
+ *   order amount, ownership metadata on the subscription).
+ * Same ownership metadata as the student checkout, so the existing webhook,
+ * verifySirahStripeSession and verifySirahStripeInvoice accept it unchanged. */
 export function buildAdminCustomCheckoutParams(
   order: {
     id: string;
@@ -140,6 +144,7 @@ export function buildAdminCustomCheckoutParams(
     currency: string;
     amountMinor: number;
     reference: string;
+    plan?: "ANNUAL" | "MONTHLY";
   },
   options: { appUrl: string; email: string; now?: Date },
 ) {
@@ -150,16 +155,39 @@ export function buildAdminCustomCheckoutParams(
     studentEmail: options.email,
   };
   const nowSeconds = Math.floor((options.now || new Date()).getTime() / 1000);
-  return {
+  const shared = {
     // Keep TGA as the seller, matching the student checkout.
     ...{ managed_payments: { enabled: false } },
-    mode: "payment" as const,
     client_reference_id: order.id,
     customer_email: options.email,
     expires_at: nowSeconds + ADMIN_CUSTOM_LINK_TTL_SECONDS,
     success_url: `${options.appUrl}/seerah?payment=received&reference=${encodeURIComponent(order.reference)}`,
     cancel_url: `${options.appUrl}/seerah`,
     metadata,
+  };
+  if (order.plan === "MONTHLY")
+    return {
+      ...shared,
+      mode: "subscription" as const,
+      subscription_data: {
+        metadata,
+        description: `${SIRAH_TITLE} — ${order.reference}`,
+      },
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: order.currency.toLowerCase(),
+            unit_amount: order.amountMinor,
+            product_data: { name: `${SIRAH_TITLE} — monthly` },
+            recurring: { interval: "month" as const },
+          },
+        },
+      ],
+    };
+  return {
+    ...shared,
+    mode: "payment" as const,
     payment_intent_data: {
       metadata,
       description: `${SIRAH_TITLE} — ${order.reference}`,
@@ -181,7 +209,7 @@ export const sirahAdminCustomLinkSchema = z
   .object({
     fullName: z.string().trim().min(2).max(120),
     email: z.string().trim().toLowerCase().email().max(254),
-    plan: z.literal("ANNUAL"),
+    plan: z.enum(["ANNUAL", "MONTHLY"]),
     countryCode: z
       .string()
       .trim()

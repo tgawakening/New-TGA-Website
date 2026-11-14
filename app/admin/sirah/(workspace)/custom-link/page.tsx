@@ -11,11 +11,13 @@ export default async function SirahCustomLinkPage() {
   const countryOptions = Object.entries(countries)
     .map(([code, value]) => {
       const catalog = priceFor(code, "ANNUAL", "STRIPE");
+      const monthly = priceFor(code, "MONTHLY", "STRIPE");
       return {
         code,
         name: value.name,
         currency: catalog.currency,
         catalogAnnual: formatSirahMoney(catalog.amountMinor, catalog.currency),
+        catalogMonthly: formatSirahMoney(monthly.amountMinor, monthly.currency),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
