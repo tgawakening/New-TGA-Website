@@ -147,6 +147,17 @@ export const materialInput = z.object({
   order: z.coerce.number().int().min(0).max(999).default(0),
 });
 
+/** A material whose file was uploaded to Spaces: no URL from the form; the
+ * object key is checked against our own key format by the action. */
+export const uploadedMaterialInput = materialInput.omit({ url: true }).extend({
+  objectKey: z.string().trim().min(1, "Upload a file first.").max(191),
+  originalFilename: z
+    .string()
+    .trim()
+    .max(255)
+    .transform((value) => value.replace(/[\u0000-\u001f\u007f/\\]+/g, " ").trim() || "file"),
+});
+
 export const announcementInput = z.object({
   title: text(191, "Title"),
   body: text(5000, "Message"),
@@ -178,6 +189,13 @@ export function parseLessonForm(form: Record<string, string>): FormResult<{
 
 export function parseMaterialForm(form: Record<string, string>): FormResult<z.output<typeof materialInput>> {
   const parsed = materialInput.safeParse({ ...form, order: form.order || 0 });
+  return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: firstIssue(parsed.error) };
+}
+
+export function parseUploadedMaterialForm(
+  form: Record<string, string>,
+): FormResult<z.output<typeof uploadedMaterialInput>> {
+  const parsed = uploadedMaterialInput.safeParse({ ...form, order: form.order || 0 });
   return parsed.success ? { ok: true, data: parsed.data } : { ok: false, error: firstIssue(parsed.error) };
 }
 
@@ -272,7 +290,15 @@ export const MATERIAL_GROUPS: { key: MaterialGroupKey; label: string; kinds: Sir
   { key: "LINKS", label: "Links", kinds: ["LINK"] },
 ];
 
-type MaterialRecord = { id: string; title: string; kind: SirahMaterialKindName; url: string; order: number };
+type MaterialRecord = {
+  id: string;
+  title: string;
+  kind: SirahMaterialKindName;
+  url: string;
+  order: number;
+  storage?: "LINK" | "UPLOAD";
+  contentType?: string | null;
+};
 type LessonRecord = Orderable & {
   title: string;
   summary: string;
@@ -286,6 +312,8 @@ export type MaterialView = {
   kind: SirahMaterialKindName;
   url: string | null;
   embed: ReturnType<typeof recordingEmbed>;
+  /** Uploaded file (url is then the enrolment-checked file route). */
+  file: { contentType: string | null } | null;
 };
 
 /** The one place that decides which URLs leave the server. Material and
@@ -307,7 +335,9 @@ export function toLessonView(
       title: material.title,
       kind: material.kind,
       url: viewer.enrolled ? material.url : null,
-      embed: viewer.enrolled && material.kind === "RECORDING" ? recordingEmbed(material.url) : null,
+      embed:
+        viewer.enrolled && material.kind === "RECORDING" && material.storage !== "UPLOAD" ? recordingEmbed(material.url) : null,
+      file: viewer.enrolled && material.storage === "UPLOAD" ? { contentType: material.contentType ?? null } : null,
     }));
   return {
     id: lesson.id,

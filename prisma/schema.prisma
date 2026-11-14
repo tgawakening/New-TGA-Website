@@ -681,8 +681,20 @@ model SirahMaterial {
   order     Int               @default(0)
   createdAt DateTime          @default(now()) @db.DateTime(3)
   lesson    SirahLesson?      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  /// LINK: url is the pasted link. UPLOAD: the file lives in Spaces under
+  /// objectKey, and url is the enrolment-checked route that serves it.
+  storage          SirahMaterialStorage @default(LINK)
+  objectKey        String?              @unique @db.VarChar(191)
+  contentType      String?              @db.VarChar(191)
+  sizeBytes        BigInt?
+  originalFilename String?              @db.VarChar(255)
 
   @@index([lessonId, order])
+}
+
+enum SirahMaterialStorage {
+  LINK
+  UPLOAD
 }
 
 model SirahAnnouncement {

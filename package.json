@@ -30,12 +30,14 @@
     "test:sirah-card-discounts": "node --conditions=react-server --import tsx --test scripts/test-sirah-card-discounts.ts",
     "test:sirah-records": "node --conditions=react-server --import tsx --test scripts/test-sirah-records.ts",
     "test:dashboard-admin-link": "node --import tsx --test scripts/test-dashboard-admin-link.ts",
-    "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts scripts/test-sirah-classroom-progress.ts"
+    "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts scripts/test-sirah-classroom-progress.ts scripts/test-sirah-classroom-files.ts"
   },
   "engines": {
     "node": "20.x || 22.x"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1169.0",
+    "@aws-sdk/s3-request-presigner": "^3.1169.0",
     "@prisma/client": "^6.6.0",
     "bcryptjs": "^3.0.2",
     "countries-list": "^3.3.0",

@@ -96,7 +96,18 @@ export default async function SirahLessonPage({ params }: { params: Promise<{ le
             </p>
           ) : (
             recordings.map((recording) =>
-              recording.embed ? (
+              recording.file && recording.url ? (
+                <figure key={recording.id} className={styles.player}>
+                  <ClassroomPlayer
+                    kind="video"
+                    src={recording.url}
+                    contentType={recording.file.contentType}
+                    title={recording.title}
+                    classes={playerClasses}
+                  />
+                  <figcaption>{recording.title}</figcaption>
+                </figure>
+              ) : recording.embed ? (
                 <figure key={recording.id} className={styles.player}>
                   <ClassroomPlayer
                     kind="embed"
