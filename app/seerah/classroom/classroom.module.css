@@ -1,0 +1,495 @@
+/* Hallmark · genre: editorial · shape: app screen · theme: brand (Sīrah, design.md 2026-11-15)
+ * critique: a classroom someone returns to weekly; the live session is the only loud object, the rest is a ruled schedule.
+ * signature: the next-session band, charcoal on ivory, with its countdown and the gold Join action. */
+
+.page {
+  min-height: 100vh;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.7;
+  overflow-x: clip;
+}
+
+.page * {
+  box-sizing: border-box;
+}
+
+.page ::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.page {
+  scrollbar-color: var(--color-rule) var(--color-paper);
+}
+
+.page h1,
+.page h2,
+.page h3,
+.page p,
+.page ul,
+.page ol {
+  margin: 0;
+}
+
+.page h1,
+.page h2,
+.page h3 {
+  text-wrap: balance;
+}
+
+.page a:focus-visible,
+.page button:focus-visible,
+.page summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+  transition: none;
+}
+
+.container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+/* Masthead: left-aligned, compact. Not a hero. */
+.masthead {
+  padding: 40px 0 32px;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.mastRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+}
+
+.title {
+  margin-top: 4px !important;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(36px, 4.4vw, 56px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.mastMeta {
+  color: var(--color-muted);
+  font-size: 15px;
+  text-align: right;
+}
+
+.mastMeta a {
+  color: var(--color-ink);
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.mastMeta a:hover {
+  color: var(--color-gold-text);
+}
+
+/* Pinned notices */
+.notices {
+  padding: 28px 0 0;
+}
+
+.notice {
+  padding: 20px 24px;
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper-2);
+}
+
+.notice + .notice {
+  margin-top: 12px;
+}
+
+.notice h2 {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.notice p {
+  margin-top: 4px !important;
+  color: var(--color-ink-2);
+  white-space: pre-line;
+  max-width: 68ch;
+  text-wrap: pretty;
+}
+
+.noticeDate {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+/* The next session: the page's one loud object. */
+.next {
+  margin-top: 32px;
+  background: var(--color-night);
+  color: var(--color-night-ink);
+}
+
+.nextInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 32px 48px;
+  padding: 40px;
+}
+
+.liveNow {
+  justify-self: start;
+  padding: 4px 12px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-weight: 600;
+}
+
+.nextTitle {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(28px, 3.2vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.nextWhen {
+  margin-top: 12px !important;
+  color: var(--color-night-muted);
+}
+
+.nextSummary {
+  margin-top: 16px !important;
+  color: var(--color-night-muted);
+  max-width: 60ch;
+  white-space: pre-line;
+  text-wrap: pretty;
+}
+
+.nextAside {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  padding-left: 32px;
+  border-left: 1px solid var(--color-night-rule);
+}
+
+.countdown {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.4vw, 44px);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.countdownNote {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-night-muted);
+  font-size: 15px;
+}
+
+.join {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 24px;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  border: 1px solid var(--color-accent);
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  transition: background-color var(--dur-micro) ease;
+}
+
+.join:hover {
+  background: var(--color-accent-hover);
+}
+
+.join:active {
+  transform: translateY(1px);
+}
+
+.join:focus-visible {
+  outline-color: var(--color-accent);
+}
+
+.joinHint {
+  color: var(--color-night-muted);
+  font-size: 15px;
+}
+
+.meetingId {
+  color: var(--color-night-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Schedule */
+.section {
+  padding: 56px 0 0;
+}
+
+.section:last-of-type {
+  padding-bottom: 80px;
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(26px, 2.6vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.sectionLede {
+  margin-top: 8px !important;
+  color: var(--color-muted);
+  max-width: 60ch;
+}
+
+.weeks {
+  margin-top: 24px !important;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-ink);
+}
+
+.week {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 0 24px;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.weekNumber {
+  padding: 20px 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--color-gold-text);
+}
+
+.lesson + .lesson {
+  border-top: 1px solid var(--color-rule);
+}
+
+.lesson summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 24px;
+  align-items: baseline;
+  padding: 20px 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.lesson summary::-webkit-details-marker {
+  display: none;
+}
+
+.lesson summary:hover .lessonTitle {
+  color: var(--color-gold-text);
+}
+
+.lessonTitle {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.lessonTitle::after {
+  content: "+";
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.lesson[open] .lessonTitle::after {
+  content: "−";
+}
+
+.lessonWhen {
+  grid-column: 1;
+  color: var(--color-muted);
+  font-size: 15px;
+}
+
+.status {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: 15px;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+.statusLive {
+  color: var(--color-accent-ink);
+  font-weight: 600;
+  padding: 4px 12px;
+  background: var(--color-accent);
+}
+
+.lessonBody {
+  padding: 0 0 24px;
+}
+
+.lessonBody > p {
+  color: var(--color-ink-2);
+  max-width: 64ch;
+  white-space: pre-line;
+  text-wrap: pretty;
+}
+
+.materials {
+  margin-top: 16px !important;
+  padding: 0;
+  list-style: none;
+}
+
+.materials li {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--color-rule);
+}
+
+.materials li:last-child {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.kind {
+  color: var(--color-muted);
+  font-size: 15px;
+}
+
+.materials a {
+  color: var(--color-ink);
+  font-weight: 500;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  overflow-wrap: anywhere;
+}
+
+.materials a:hover {
+  color: var(--color-gold-text);
+}
+
+.recording a {
+  font-weight: 600;
+}
+
+.empty {
+  margin-top: 16px !important;
+  color: var(--color-muted);
+}
+
+.emptyPanel {
+  margin-top: 24px !important;
+  padding: 24px 0;
+  border-top: 1px solid var(--color-ink);
+  border-bottom: 1px solid var(--color-rule);
+  color: var(--color-ink-2);
+  max-width: 64ch;
+}
+
+.earlier {
+  margin-top: 24px !important;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-ink);
+}
+
+.earlier li {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.earlier h3 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.earlier p {
+  margin-top: 4px !important;
+  color: var(--color-ink-2);
+  max-width: 68ch;
+  white-space: pre-line;
+}
+
+@media (max-width: 760px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .masthead {
+    padding: 28px 0 24px;
+  }
+
+  .mastMeta {
+    text-align: left;
+  }
+
+  .mastRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .next {
+    margin-left: -16px;
+    margin-right: -16px;
+  }
+
+  .nextInner {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 28px 16px;
+  }
+
+  .nextAside {
+    padding-left: 0;
+    padding-top: 20px;
+    border-left: 0;
+    border-top: 1px solid var(--color-night-rule);
+  }
+
+  .join {
+    width: 100%;
+  }
+
+  .week {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .weekNumber {
+    padding: 16px 0 0;
+  }
+
+  .materials li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page * {
+    transition: none !important;
+  }
+}

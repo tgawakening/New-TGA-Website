@@ -35,6 +35,7 @@ const ICONS = {
   links: icon("M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"),
   access: icon("M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6zM9 12l2 2 4-4"),
   dashboard: icon("M3 12 12 4l9 8M5 10v10h14V10"),
+  classroom: icon("M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z"),
 };
 
 /** Sīrah workspace frame: role-aware left nav and a header role badge.
@@ -57,6 +58,7 @@ export function SirahAdminShell({
         { href: "/admin/sirah", label: "Students", icon: ICONS.students, show: true },
         { href: "/admin/sirah/payments", label: "Payments and reviews", icon: ICONS.payments, show: true },
         { href: "/admin/sirah/scholarships", label: "Scholarship reviews", icon: ICONS.scholarships, show: true, sub: true },
+        { href: "/admin/sirah/classroom", label: "Classroom", icon: ICONS.classroom, show: access.canManageEnrolments },
       ],
     },
     {

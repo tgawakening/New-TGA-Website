@@ -1,0 +1,24 @@
+/* Hallmark · genre: editorial · shape: app screen · theme: brand (Sīrah, design.md 2026-11-15)
+ * critique: tokens for the Sīrah classroom, scoped to its data-theme so they never leak into the rest of the site.
+ * source: tga-awakening.com /seerah (components/seerah/seerah.module.css), see design.md. */
+
+[data-theme="sirah-classroom"] {
+  --color-paper: #f5efdf;
+  --color-paper-2: #ece4cf;
+  --color-ink: #141611;
+  --color-ink-2: #41463a;
+  --color-muted: #53564c;
+  --color-rule: #c6c9b6;
+  --color-night: #141611;
+  --color-night-ink: #f5efdf;
+  --color-night-muted: #c3c3b7;
+  --color-night-rule: #41463a;
+  --color-accent: #d9ad4a;
+  --color-accent-hover: #e7c879;
+  --color-gold-text: #735719;  /* gold text on ivory, 5.9:1 */
+  --color-accent-ink: #141611; /* text on a gold fill */
+  --color-focus: #735719;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: var(--font-montserrat), Arial, sans-serif;
+  --dur-micro: 120ms;
+}

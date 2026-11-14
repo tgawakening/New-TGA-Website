@@ -1,0 +1,345 @@
+/* Hallmark · genre: modern-minimal · shape: app screen · theme: the project's own (Sīrah workspace shell)
+ * critique: a schedule editor; the session list is the object, forms sit inside the session they change.
+ * signature: the week-ordered session ledger with its inline materials. */
+
+.screen {
+  display: grid;
+  gap: 1.25rem;
+  color: var(--color-ink);
+}
+
+.panel {
+  padding: 1.35rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 1rem;
+  background: var(--color-paper);
+}
+
+.head h2 {
+  margin: 0;
+  text-wrap: balance;
+  font-family: var(--font-display);
+  color: var(--color-ink-strong);
+  font-size: 1.6rem;
+  font-weight: 400;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.head p {
+  margin: 0.35rem 0 0;
+  color: var(--color-muted);
+  max-width: 70ch;
+}
+
+.head a {
+  color: var(--color-accent);
+}
+
+.flash,
+.flashError {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.6rem;
+  font-weight: 600;
+}
+
+.flash {
+  background: var(--color-ok-bg);
+  color: var(--color-ok);
+}
+
+.flashError {
+  background: var(--color-err-bg);
+  color: var(--color-danger);
+}
+
+.sectionTitle {
+  margin: 0 0 0.75rem;
+  color: var(--color-ink-strong);
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.form label {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.form .wide {
+  grid-column: 1 / -1;
+}
+
+.form input,
+.form select,
+.form textarea {
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--color-field-rule);
+  border-radius: 0.6rem;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.form textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.form input:hover,
+.form select:hover,
+.form textarea:hover {
+  border-color: var(--color-field-hover);
+}
+
+.form input:focus-visible,
+.form select:focus-visible,
+.form textarea:focus-visible,
+.primary:focus-visible,
+.secondary:focus-visible,
+.danger:focus-visible,
+.session summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  transition: none;
+}
+
+.hint {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.check {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem !important;
+}
+
+.check input {
+  width: auto;
+  min-height: 0;
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.primary,
+.secondary,
+.danger {
+  min-height: 2.6rem;
+  padding: 0.55rem 1rem;
+  border-radius: 0.6rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-micro) ease, border-color var(--dur-micro) ease;
+}
+
+.primary {
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.secondary {
+  border: 1px solid var(--color-field-rule);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.secondary:hover {
+  border-color: var(--color-field-hover);
+  background: var(--color-panel);
+}
+
+.danger {
+  border: 1px solid var(--color-danger-rule);
+  background: var(--color-paper);
+  color: var(--color-danger);
+}
+
+.danger:hover {
+  background: var(--color-err-bg);
+}
+
+.primary:disabled,
+.secondary:disabled,
+.danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.screen ::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.screen {
+  scrollbar-color: var(--color-rule) var(--color-paper);
+}
+
+.primary:active,
+.secondary:active,
+.danger:active {
+  transform: translateY(1px);
+}
+
+.ledger {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-rule);
+}
+
+.session {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.session summary {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  padding: 0.9rem 0.25rem;
+  cursor: pointer;
+}
+
+.week {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sessionTitle {
+  font-weight: 650;
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.meta {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.sessionBody {
+  display: grid;
+  gap: 1.25rem;
+  padding: 0.5rem 0.25rem 1.5rem;
+}
+
+.subTitle {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 650;
+}
+
+.materials {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.materials li {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--color-rule);
+}
+
+.materials a {
+  color: var(--color-accent);
+  overflow-wrap: anywhere;
+}
+
+.kind {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.empty {
+  margin: 0.5rem 0 0;
+  color: var(--color-muted);
+}
+
+.notices {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-rule);
+}
+
+.notices li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.notices h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.notices p {
+  margin: 0.25rem 0 0;
+  color: var(--color-muted);
+  white-space: pre-line;
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .materials li,
+  .notices li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen * {
+    transition: none !important;
+  }
+}
+
+.spaced {
+  margin-top: 1rem;
+}
