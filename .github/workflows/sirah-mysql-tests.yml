@@ -76,3 +76,8 @@ jobs:
         # Each suite runs even if an earlier one failed, so every result shows.
         if: ${{ !cancelled() && steps.migrate.outcome == 'success' }}
         run: npm run test:sirah-card-discounts
+
+      - name: test:sirah-custom-link
+        # In-memory database and synthetic Stripe; covers annual and monthly links.
+        if: ${{ !cancelled() }}
+        run: npm run test:sirah-custom-link

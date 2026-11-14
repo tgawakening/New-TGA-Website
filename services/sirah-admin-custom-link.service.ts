@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
 import {
   SIRAH_BATCH,
+  SIRAH_MONTHS,
   SIRAH_SLUG,
   SIRAH_TITLE,
   catalogue,
@@ -49,11 +50,14 @@ function temporaryPassword() {
 }
 
 /**
- * Admin-created custom-price enrolment, paid through a one-time Stripe Checkout
- * Session on the Sīrah Stripe account. The SirahOrder's amountMinor IS the
- * custom amount, so the unchanged webhook → verifySirahStripeSession →
- * confirmSirahPayment path settles and enrols it with every amount check intact.
- * Annual (full programme, one-time) only in this version.
+ * Admin-created custom-price enrolment, paid through a Stripe Checkout Session
+ * on the Sīrah Stripe account. The SirahOrder's amountMinor IS the custom
+ * amount, so the unchanged webhook → verifySirahStripeSession (→
+ * verifySirahStripeInvoice for monthly) → confirmSirahPayment path settles and
+ * enrols it with every amount check intact.
+ * - ANNUAL: one-time payment for the full programme.
+ * - MONTHLY: monthly card subscription at the custom amount, capped at the
+ *   programme's 12 months exactly like a self-registered monthly student.
  */
 export async function createSirahAdminCustomLink(
   input: SirahAdminCustomLinkInput,
@@ -63,7 +67,7 @@ export async function createSirahAdminCustomLink(
   const countryCode = input.countryCode;
   if (!(countryCode in countries))
     throw new SirahError("Choose a valid country.");
-  const plan = "ANNUAL" as const;
+  const plan = input.plan;
   const catalog = priceFor(countryCode, plan, "STRIPE");
   const currency = input.currency || catalog.currency;
   if (!SUPPORTED_CURRENCIES.has(currency))
@@ -82,7 +86,7 @@ export async function createSirahAdminCustomLink(
   const terms = termsFor(plan, countryCode);
   if (!terms)
     throw new SirahError(
-      `Approved annual payment terms are not configured for ${countryCode}.`,
+      `Approved ${plan === "MONTHLY" ? "monthly" : "annual"} payment terms are not configured for ${countryCode}.`,
       409,
     );
   const cohort = await publicSirahCohort();
@@ -151,7 +155,8 @@ export async function createSirahAdminCustomLink(
     method: "STRIPE",
     currency,
     amountMinor,
-    totalMinor: amountMinor,
+    // Monthly: the agreed amount per month across the programme's 12 months.
+    totalMinor: plan === "MONTHLY" ? amountMinor * SIRAH_MONTHS : amountMinor,
     pricingVersion: ADMIN_CUSTOM_PRICING_VERSION,
     discount: jsonValue(snapshot),
     terms: jsonValue(snapshotSirahCohort(terms, cohort)),
@@ -239,7 +244,7 @@ export async function createSirahAdminCustomLink(
   try {
     session = await stripe.checkout.sessions.create(
       buildAdminCustomCheckoutParams(
-        { id: order.id, checkoutToken, currency, amountMinor, reference: order.reference },
+        { id: order.id, checkoutToken, currency, amountMinor, reference: order.reference, plan },
         { appUrl: appUrl(), email },
       ) as Stripe.Checkout.SessionCreateParams,
       { idempotencyKey: `sirah-admin:${checkoutToken}` },
@@ -310,6 +315,7 @@ export async function createSirahAdminCustomLink(
     reference: order.reference,
     url: session.url,
     expiresAt: expiresAt.toISOString(),
+    plan,
     amount: formatSirahMoney(amountMinor, currency),
     catalogAmount: formatSirahMoney(catalog.amountMinor, catalog.currency),
     newAccount: !knownUser,

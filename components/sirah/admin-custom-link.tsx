@@ -6,12 +6,14 @@ type CountryOption = {
   name: string;
   currency: string;
   catalogAnnual: string;
+  catalogMonthly: string;
 };
 type Created = {
   orderId: string;
   reference: string;
   url: string;
   expiresAt: string;
+  plan: "ANNUAL" | "MONTHLY";
   amount: string;
   catalogAmount: string;
   newAccount: boolean;
@@ -25,8 +27,9 @@ const accountEmailText: Record<Created["accountEmail"], string> = {
   NOT_NEEDED: "The student already had an account; no password email was sent.",
 };
 
-/** Admin tab: issue a one-time Stripe card link at a custom amount (sponsorship,
- * in-person or group booking). Paying it enrols the student automatically. */
+/** Admin tab: issue a Stripe card link at a custom amount (sponsorship,
+ * in-person or group booking): one-time for the full programme, or a monthly
+ * subscription. Paying it enrols the student automatically. */
 export function SirahAdminCustomLink({
   countries,
   currencies,
@@ -40,6 +43,8 @@ export function SirahAdminCustomLink({
   const [copied, setCopied] = useState(false);
   const [country, setCountry] = useState("GB");
   const [currency, setCurrency] = useState("");
+  const [plan, setPlan] = useState<"ANNUAL" | "MONTHLY">("ANNUAL");
+  const monthly = plan === "MONTHLY";
   const selected = useMemo(
     () => countries.find((option) => option.code === country),
     [countries, country],
@@ -53,7 +58,9 @@ export function SirahAdminCustomLink({
     const chargeCurrency = currency || selected?.currency || "";
     if (
       !window.confirm(
-        `Create a one-time ${chargeCurrency} ${text("amount")} card link for ${text("fullName")} (${text("email")})? Paying it enrols the student for the full programme.`,
+        monthly
+          ? `Create a monthly ${chargeCurrency} ${text("amount")} card subscription link for ${text("fullName")} (${text("email")})? The card is charged ${chargeCurrency} ${text("amount")} every month for up to 12 months, and the first payment enrols the student.`
+          : `Create a one-time ${chargeCurrency} ${text("amount")} card link for ${text("fullName")} (${text("email")})? Paying it enrols the student for the full programme.`,
       )
     )
       return;
@@ -70,7 +77,7 @@ export function SirahAdminCustomLink({
         body: JSON.stringify({
           fullName: text("fullName"),
           email: text("email"),
-          plan: "ANNUAL",
+          plan,
           countryCode: country,
           currency: currency || undefined,
           amount: text("amount"),
@@ -87,6 +94,7 @@ export function SirahAdminCustomLink({
       setCreated(result as Created);
       formEl.reset();
       setCurrency("");
+      setPlan("ANNUAL");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create the payment link.");
     } finally {
@@ -109,13 +117,15 @@ export function SirahAdminCustomLink({
       <section className="ga-admin-workspace-card">
         <div className="ga-admin-workspace-head">
           <div>
-            <p className="ga-admin-kicker">Current batch · full programme</p>
+            <p className="ga-admin-kicker">Current batch · full programme or monthly</p>
             <h2>Custom payment link</h2>
             <p>
-              Create a one-time card payment link at an agreed price for a
-              sponsorship, in-person or group booking. Payment goes through the
-              Sīrah Stripe account, and the student is enrolled automatically
-              when it is paid.
+              Create a card payment link at an agreed price for a sponsorship,
+              in-person or group booking, or a student stuck on the monthly
+              plan: one-time for the full programme, or a monthly subscription
+              at the agreed monthly amount. Payment goes through the Sīrah
+              Stripe account, and the student is enrolled automatically when
+              the first payment is made.
             </p>
           </div>
         </div>
@@ -131,8 +141,14 @@ export function SirahAdminCustomLink({
           </label>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Plan</span>
-            <select className="ga-admin-search" name="plan" defaultValue="ANNUAL" disabled>
+            <select
+              className="ga-admin-search"
+              name="plan"
+              value={plan}
+              onChange={(event) => setPlan(event.target.value === "MONTHLY" ? "MONTHLY" : "ANNUAL")}
+            >
               <option value="ANNUAL">Full programme (one-time)</option>
+              <option value="MONTHLY">Monthly subscription (up to 12 months)</option>
             </select>
           </label>
           <label>
@@ -154,7 +170,10 @@ export function SirahAdminCustomLink({
           </label>
           <label>
             <span className="ga-admin-label" style={labelStyle}>
-              Custom amount{selected ? ` (catalog: ${selected.catalogAnnual})` : ""}
+              {monthly ? "Custom amount per month" : "Custom amount"}
+              {selected
+                ? ` (catalog: ${monthly ? `${selected.catalogMonthly}/month` : selected.catalogAnnual})`
+                : ""}
             </span>
             <input className="ga-admin-search" name="amount" required inputMode="decimal" pattern="\d+(\.\d{1,3})?" placeholder="150.00" />
           </label>
@@ -197,7 +216,10 @@ export function SirahAdminCustomLink({
             style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr", gap: "0.85rem", alignItems: "start" }}
           >
             <strong style={{ fontSize: "1rem", color: "#17324d" }}>
-              Link ready for {created.amount} (catalog {created.catalogAmount}) · {created.reference}
+              {created.plan === "MONTHLY"
+                ? `Monthly subscription link ready for ${created.amount}/month (catalog ${created.catalogAmount}/month)`
+                : `Link ready for ${created.amount} (catalog ${created.catalogAmount})`}{" "}
+              · {created.reference}
             </strong>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
               <code style={{ fontSize: "0.95rem", wordBreak: "break-all" }}>{created.url}</code>
