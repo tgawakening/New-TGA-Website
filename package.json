@@ -16,6 +16,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed.mjs",
+    "sirah:classroom:seed": "node prisma/seed-sirah-classroom.mjs",
     "test:seerah": "node --test scripts/test-seerah-config.mjs",
     "test:sirah-workflow": "node --conditions=react-server --import tsx --test scripts/test-sirah-workflow.ts",
     "test:sirah-team": "node --conditions=react-server --import tsx --test scripts/test-sirah-team-access.ts",
@@ -28,7 +29,8 @@
     "test:sirah-roles": "node --conditions=react-server --import tsx --test scripts/test-sirah-admin-roles.ts",
     "test:sirah-card-discounts": "node --conditions=react-server --import tsx --test scripts/test-sirah-card-discounts.ts",
     "test:sirah-records": "node --conditions=react-server --import tsx --test scripts/test-sirah-records.ts",
-    "test:dashboard-admin-link": "node --import tsx --test scripts/test-dashboard-admin-link.ts"
+    "test:dashboard-admin-link": "node --import tsx --test scripts/test-dashboard-admin-link.ts",
+    "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts"
   },
   "engines": {
     "node": "20.x || 22.x"

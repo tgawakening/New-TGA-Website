@@ -1,0 +1,25 @@
+/* Hallmark · genre: modern-minimal · shape: app screen · theme: the project's own (Sīrah workspace shell)
+ * critique: tokens for the workspace classroom screen, taken from the existing admin shell palette (admin-shell.module.css).
+ * scoped to its data-theme so nothing leaks into other workspace pages. */
+
+[data-theme="sirah-workspace-classroom"] {
+  --color-ink: #173659;
+  --color-ink-strong: #0f2a46;
+  --color-muted: #5e7389;
+  --color-rule: #dbe4ef;
+  --color-panel: #f4f8fc;
+  --color-paper: #ffffff;
+  --color-accent: #1d4f7d;
+  --color-accent-hover: #255f91;
+  --color-accent-ink: #ffffff;
+  --color-danger: #a33b3b;
+  --color-ok-bg: #edf7f1;
+  --color-ok: #1f6b45;
+  --color-err-bg: #fbefef;
+  --color-focus: #1d4f7d;
+  --font-display: var(--font-marko-one), Georgia, serif;
+  --dur-micro: 120ms;
+  --color-field-rule: #c9d6e4;
+  --color-field-hover: #9fb4ca;
+  --color-danger-rule: #ecc6c6;
+}

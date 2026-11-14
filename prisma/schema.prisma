@@ -642,3 +642,54 @@ model SirahRecordDeletion {
   @@index([createdAt])
   @@index([reference])
 }
+
+enum SirahMaterialKind {
+  SLIDES
+  PDF
+  READING
+  LINK
+  RECORDING
+}
+
+/// One weekly Sīrah teaching session. Status (upcoming / live / past) is
+/// derived from scheduledAt at read time, never stored.
+model SirahLesson {
+  id            String          @id @default(cuid())
+  title         String          @db.VarChar(191)
+  summary       String          @db.Text
+  weekNumber    Int
+  scheduledAt   DateTime        @db.DateTime(3)
+  zoomJoinUrl   String?         @db.VarChar(1024)
+  zoomMeetingId String?         @db.VarChar(64)
+  createdAt     DateTime        @default(now()) @db.DateTime(3)
+  updatedAt     DateTime        @updatedAt @db.DateTime(3)
+  materials     SirahMaterial[]
+
+  @@index([scheduledAt])
+  @@index([weekNumber])
+}
+
+/// Session material. lessonId null = course-wide (not tied to one session).
+model SirahMaterial {
+  id        String            @id @default(cuid())
+  lessonId  String?
+  title     String            @db.VarChar(191)
+  kind      SirahMaterialKind
+  url       String            @db.VarChar(1024)
+  order     Int               @default(0)
+  createdAt DateTime          @default(now()) @db.DateTime(3)
+  lesson    SirahLesson?      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, order])
+}
+
+model SirahAnnouncement {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(191)
+  body        String   @db.Text
+  pinned      Boolean  @default(false)
+  publishedAt DateTime @default(now()) @db.DateTime(3)
+  createdAt   DateTime @default(now()) @db.DateTime(3)
+
+  @@index([pinned, publishedAt])
+}
