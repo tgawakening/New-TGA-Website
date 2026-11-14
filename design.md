@@ -68,7 +68,18 @@ The site has two strands. New Sīrah screens use the second one.
 ## Admin screens
 Workspace pages live inside the existing Sīrah admin shell (`components/sirah/admin-shell.tsx`)
 and use its own light system (`.ga-admin-*` classes, `#173659` ink, `#dbe4ef` rules).
-They do not adopt the student palette.
+
+## Variants
+- **Classroom editor** (`/admin/sirah/classroom`, 2026-11-16): the content area takes the Sīrah
+  palette (ivory canvas, surface cards, gold primary, charcoal outlined secondary) inside the
+  workspace shell, so the team edits in the same look students see. Same tokens, no fork.
+- **Controls**: inputs and pickers are 44px, 1px `--color-rule-strong` border, a 2px control radius
+  (`--radius-control`, the one exception to square edges, so controls read as controls), and a
+  2px `--color-focus` outline. No native date, time or select widgets: `components/sirah/classroom-pickers.tsx`
+  (listbox, calendar, date + start time) carry the brand.
+- **Focus on the charcoal band** is gold (`--color-accent`), elsewhere deep gold (`--color-focus`),
+  so every ring holds 3:1 against what is behind it.
 
 ## Exports
-`app/seerah/classroom/classroom.module.css` declares these tokens on its root class.
+`app/seerah/classroom/tokens.css` declares these tokens on `[data-theme="sirah-classroom"]`;
+student pages and the classroom editor both import it.

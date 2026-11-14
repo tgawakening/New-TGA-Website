@@ -60,8 +60,14 @@ export function SessionBand({
               startsAt={lesson.scheduledAt.toISOString()}
               serverNow={now.toISOString()}
               joinWindowMinutes={SIRAH_JOIN_WINDOW_MINUTES}
-              className={styles.countdown}
-              noteClassName={styles.countdownNote}
+              classes={{
+                root: styles.countdown,
+                units: styles.units,
+                unit: styles.unit,
+                value: styles.unitValue,
+                label: styles.unitLabel,
+                note: styles.countdownNote,
+              }}
             />
           )}
           {lesson.zoomJoinUrl ? (
@@ -84,12 +90,20 @@ export function SessionBand({
   );
 }
 
-export function MaterialList({ materials }: { materials: Pick<MaterialView, "id" | "title" | "kind" | "url">[] }) {
+/** `groupKind`: inside a card already titled by kind, rows of that kind drop
+ * the repeated label; only a different kind (a PDF among readings) shows one. */
+export function MaterialList({
+  materials,
+  groupKind,
+}: {
+  materials: Pick<MaterialView, "id" | "title" | "kind" | "url">[];
+  groupKind?: MaterialView["kind"];
+}) {
   return (
-    <ul className={styles.materials}>
+    <ul className={`${styles.materials} ${groupKind ? styles.materialsGrouped : ""}`}>
       {materials.map((material) => (
         <li key={material.id} className={material.kind === "RECORDING" ? styles.recording : undefined}>
-          <span className={styles.kind}>{SIRAH_MATERIAL_LABELS[material.kind]}</span>
+          {material.kind !== groupKind && <span className={styles.kind}>{SIRAH_MATERIAL_LABELS[material.kind]}</span>}
           {material.url ? (
             <a href={material.url} target="_blank" rel="noopener noreferrer">
               {material.title}
@@ -114,13 +128,23 @@ export function CompletionForm({
   returnTo: string;
 }) {
   return (
-    <form action={toggleLessonComplete} className={styles.completion}>
+    <form action={toggleLessonComplete} className={`${styles.completion} ${completed ? styles.completionDone : ""}`}>
       <input type="hidden" name="lessonId" value={lessonId} />
       <input type="hidden" name="complete" value={completed ? "false" : "true"} />
       <input type="hidden" name="return" value={returnTo} />
-      <p className={styles.completionState}>
-        {completed ? "You have marked this session complete." : "You have not marked this session complete yet."}
-      </p>
+      <span className={styles.checkMark} aria-hidden="true">
+        <svg viewBox="0 0 20 20">
+          <path d="M5 10.5l3.2 3.2L15 6.8" />
+        </svg>
+      </span>
+      <div className={styles.completionText}>
+        <p className={styles.completionTitle}>{completed ? "Completed" : "Not completed yet"}</p>
+        <p className={styles.completionHint}>
+          {completed
+            ? "You marked this session complete. It counts towards your progress."
+            : "Mark it complete once you have attended or watched the recording."}
+        </p>
+      </div>
       <button type="submit" className={completed ? styles.secondaryButton : styles.primaryButton}>
         {completed ? "Mark as not complete" : "Mark as complete"}
       </button>

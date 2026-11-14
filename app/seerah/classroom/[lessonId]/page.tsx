@@ -9,6 +9,7 @@ import {
   getSirahStudentAccess,
   sirahClassroomAvailable,
 } from "@/services/sirah-classroom.service";
+import { ClassroomPlayer } from "@/components/sirah/classroom-player";
 import { CompletionForm, MaterialList, STATUS_TEXT, SessionBand, classroomClock } from "../parts";
 import "../tokens.css";
 import styles from "../classroom.module.css";
@@ -79,7 +80,7 @@ export default async function SirahLessonPage({ params }: { params: Promise<{ le
             Recording
           </h2>
           {recordings.length === 0 ? (
-            <p className={styles.sectionLede}>
+            <p className={styles.emptyPanel}>
               {lesson.status === "past"
                 ? "The recording will be added once it has been processed."
                 : "The recording is added here after the session."}
@@ -88,13 +89,11 @@ export default async function SirahLessonPage({ params }: { params: Promise<{ le
             recordings.map((recording) =>
               recording.embed ? (
                 <figure key={recording.id} className={styles.player}>
-                  <iframe
+                  <ClassroomPlayer
                     src={recording.embed.src}
                     title={recording.title}
-                    loading="lazy"
-                    allow="fullscreen; picture-in-picture; encrypted-media"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
+                    frameClassName={styles.playerFrame}
+                    focusedClassName={styles.playerFocused}
                   />
                   <figcaption>{recording.title}</figcaption>
                 </figure>
@@ -106,7 +105,15 @@ export default async function SirahLessonPage({ params }: { params: Promise<{ le
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Watch the recording: {recording.title}
+                  <span className={styles.playIcon} aria-hidden="true">
+                    <svg viewBox="0 0 20 20">
+                      <path d="M7 5l8 5-8 5z" />
+                    </svg>
+                  </span>
+                  <span>
+                    <span className={styles.recordingTitle}>{recording.title}</span>
+                    <span className={styles.recordingHost}>Opens the recording in a new tab</span>
+                  </span>
                 </a>
               ) : null,
             )
@@ -118,21 +125,31 @@ export default async function SirahLessonPage({ params }: { params: Promise<{ le
             Materials
           </h2>
           {otherGroups.length === 0 ? (
-            <p className={styles.sectionLede}>Materials for this session will be added here.</p>
+            <p className={styles.emptyPanel}>Slides, readings and links for this session will appear here.</p>
           ) : (
-            otherGroups.map((group) => (
-              <div key={group.key} className={styles.materialGroup}>
-                <h3 className={styles.groupTitle}>{group.label}</h3>
-                <MaterialList materials={group.items} />
-              </div>
-            ))
+            <div className={styles.groups}>
+              {otherGroups.map((group) => (
+                <div key={group.key} className={styles.groupCard}>
+                  <h3 className={styles.groupTitle}>
+                    {group.label}
+                    <span className={styles.groupCount}>{group.items.length}</span>
+                  </h3>
+                  <MaterialList materials={group.items} groupKind={group.kinds[0]} />
+                </div>
+              ))}
+            </div>
           )}
         </section>
 
         <nav className={styles.pager} aria-label="Other sessions">
           {previous ? (
             <Link href={`/seerah/classroom/${previous.id}`} className={styles.pagerLink} rel="prev">
-              <span className={styles.pagerLabel}>Previous session, week {previous.weekNumber}</span>
+              <span className={styles.pagerLabel}>
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M10 3L5 8l5 5" />
+                </svg>
+                Previous, week {previous.weekNumber}
+              </span>
               <span className={styles.pagerTitle}>{previous.title}</span>
             </Link>
           ) : (
@@ -140,7 +157,12 @@ export default async function SirahLessonPage({ params }: { params: Promise<{ le
           )}
           {next ? (
             <Link href={`/seerah/classroom/${next.id}`} className={`${styles.pagerLink} ${styles.pagerNext}`} rel="next">
-              <span className={styles.pagerLabel}>Next session, week {next.weekNumber}</span>
+              <span className={styles.pagerLabel}>
+                Next, week {next.weekNumber}
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M6 3l5 5-5 5" />
+                </svg>
+              </span>
               <span className={styles.pagerTitle}>{next.title}</span>
             </Link>
           ) : (

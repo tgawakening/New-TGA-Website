@@ -1,24 +1,62 @@
 /* Hallmark · genre: editorial · shape: app screen · theme: brand (Sīrah, design.md 2026-11-15)
- * critique: tokens for the Sīrah classroom, scoped to its data-theme so they never leak into the rest of the site.
+ * critique: tokens for the Sīrah classroom (student pages and the workspace editor), scoped to its data-theme so they never leak into the rest of the site.
  * source: tga-awakening.com /seerah (components/seerah/seerah.module.css), see design.md. */
 
 [data-theme="sirah-classroom"] {
+  /* Ground and ink */
   --color-paper: #f5efdf;
   --color-paper-2: #ece4cf;
+  --color-surface: #fbf8f0;    /* raised card on ivory */
   --color-ink: #141611;
   --color-ink-2: #41463a;
   --color-muted: #53564c;
   --color-rule: #c6c9b6;
+  --color-rule-strong: #8f927f;
+
+  /* The night band */
   --color-night: #141611;
+  --color-night-2: #1f221b;
   --color-night-ink: #f5efdf;
   --color-night-muted: #c3c3b7;
   --color-night-rule: #41463a;
+
+  /* One gold signal */
   --color-accent: #d9ad4a;
   --color-accent-hover: #e7c879;
-  --color-gold-text: #735719;  /* gold text on ivory, 5.9:1 */
-  --color-accent-ink: #141611; /* text on a gold fill */
+  --color-accent-soft: #f1e3bd;  /* selected day, active option */
+  --color-gold-text: #735719;    /* gold text on ivory, 5.9:1 */
+  --color-accent-ink: #141611;   /* text on a gold fill */
   --color-focus: #735719;
+
+  /* State */
+  --color-danger: #8a2e1f;
+  --color-danger-soft: #f3dfd6;
+  --color-ok: #2f5a2c;
+  --color-ok-soft: #e1e8d3;
+
+  /* Type */
   --font-display: Georgia, "Times New Roman", serif;
   --font-body: var(--font-montserrat), Arial, sans-serif;
+
+  /* Space, 4px scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-20: 80px;
+
+  /* Edges: square brand; a 2px radius only on controls so they read as controls */
+  --radius-control: 2px;
+  --shadow-pop: 0 12px 32px rgb(20 22 17 / 0.18), 0 1px 0 rgb(20 22 17 / 0.06);
+  --shadow-card: 0 1px 0 rgb(20 22 17 / 0.06);
+  --control-height: 44px;
+
   --dur-micro: 120ms;
+  --dur-short: 180ms;
 }

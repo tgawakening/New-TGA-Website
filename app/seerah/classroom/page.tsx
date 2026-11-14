@@ -64,6 +64,21 @@ export default async function SirahClassroomPage() {
                   {plural(progress.totalSessions, "session")}.
                 </p>
               )}
+              {progress.totalSessions > 0 && (
+                <div
+                  className={styles.meter}
+                  role="progressbar"
+                  aria-label="Sessions you have completed"
+                  aria-valuemin={0}
+                  aria-valuemax={progress.totalSessions}
+                  aria-valuenow={progress.completed}
+                >
+                  <span
+                    className={styles.meterFill}
+                    style={{ transform: `scaleX(${progress.completed / progress.totalSessions})` }}
+                  />
+                </div>
+              )}
             </div>
             <p className={styles.mastMeta}>
               {SIRAH_TITLE}. Times shown in {clock.zoneName}.
@@ -110,10 +125,10 @@ export default async function SirahClassroomPage() {
           </h2>
           <p className={styles.sectionLede}>Open a session for its notes, materials and recording.</p>
           {weeks.length === 0 ? (
-            <p className={styles.emptyPanel}>
-              The first session has not been scheduled yet. When the team publishes it, the date, the joining link and the
-              materials will appear here.
-            </p>
+            <div className={styles.emptyPanel}>
+              <p className={styles.emptyTitle}>The first session is not scheduled yet</p>
+              <p>When the team publishes it, its date, joining link and materials appear here.</p>
+            </div>
           ) : (
             <ol className={styles.weeks}>
               {weeks.map((week) => (
@@ -134,8 +149,18 @@ export default async function SirahClassroomPage() {
                               , {STATUS_TEXT[status].toLowerCase()}
                             </span>
                             <span className={done ? styles.done : styles.notDone}>
+                              {done && (
+                                <span className={styles.doneMark} aria-hidden="true">
+                                  <svg viewBox="0 0 20 20">
+                                    <path d="M5 10.5l3.2 3.2L15 6.8" />
+                                  </svg>
+                                </span>
+                              )}
                               {done ? "Completed" : "Not completed"}
                             </span>
+                            <svg className={styles.rowArrow} viewBox="0 0 16 16" aria-hidden="true">
+                              <path d="M6 3l5 5-5 5" />
+                            </svg>
                           </Link>
                         </li>
                       );
