@@ -86,3 +86,8 @@ jobs:
         # In-memory database; exclude / un-exclude / delete test records.
         if: ${{ !cancelled() }}
         run: npm run test:sirah-records
+
+      - name: test:dashboard-admin-link
+        # Pure check: the dashboard Admin Panel link follows the signed-in account.
+        if: ${{ !cancelled() }}
+        run: npm run test:dashboard-admin-link

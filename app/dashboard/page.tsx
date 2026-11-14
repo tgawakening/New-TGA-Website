@@ -4,7 +4,8 @@ import { SIRAH_PRICING_VERSION, SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { redirect } from "next/navigation";
 import StudentDashboard from "@/components/dashboard/student-dashboard";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
+import { getCurrentAdmin } from "@/lib/auth/admin-session";
+import { canSeeDashboardAdminLink } from "@/lib/auth/dashboard-admin-link";
 import { getPaymentPlanTypeFromSnapshot } from "@/lib/course-payment";
 import {
   processDueManualSubscriptions,
@@ -55,7 +56,11 @@ export default async function DashboardPage() {
       })
     : [];
   const hasCurrent = sirahOrders.length > 0;
-  const showAdminLink = Boolean(await getSirahWorkspaceAccess());
+  // Tied to the signed-in account; the admin cookie alone is browser-wide.
+  const showAdminLink = canSeeDashboardAdminLink(
+    refreshedUser,
+    (await getCurrentAdmin())?.email,
+  );
   return (
     <StudentDashboard
       user={{
