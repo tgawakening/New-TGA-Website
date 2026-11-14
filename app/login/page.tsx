@@ -3,23 +3,42 @@ import { redirect } from "next/navigation";
 import LoginForm from "@/components/auth/login-form";
 import { getCurrentUser } from "@/lib/auth/session";
 
-export default async function LoginPage() {
+// True only for a same-site return to a saved Sirah booking (?order=...).
+function isUnfinishedRegistration(next: string | string[] | undefined) {
+  if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//"))
+    return false;
+  const url = new URL(next, "https://local.invalid");
+  return url.pathname === "/seerah/register" && Boolean(url.searchParams.get("order"));
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>;
+}) {
   const user = await getCurrentUser();
   if (user) {
     redirect("/dashboard");
   }
+  const finishing = isUnfinishedRegistration((await searchParams).next);
 
   return (
     <main className="ga-page">
       <section className="ga-section">
         <div className="ga-container ga-login-shell">
           <article className="ga-login-copy">
-            <p className="ga-dashboard-kicker">Student access</p>
-            <h1 className="ga-heading">Login to your Seerah dashboard</h1>
-            <p className="ga-copy" style={{ marginTop: "0.8rem" }}>
-              Use the same email and password you created during registration. Once your payment is
-              approved, your dashboard and LMS access open automatically.
+            <p className="ga-dashboard-kicker">
+              {finishing ? "Finish your registration" : "Student access"}
             </p>
+            <h1 className="ga-heading">
+              {finishing ? "Sign in to complete your payment" : "Login to your Seerah dashboard"}
+            </h1>
+            <p className="ga-copy" style={{ marginTop: "0.8rem" }}>
+              {finishing
+                ? "Your booking is saved. Sign in with the email and password you used when you registered, and you will go straight back to it to complete your payment."
+                : "Use the same email and password you created during registration. Once your payment is approved, your dashboard and LMS access open automatically."}
+            </p>
+            {finishing ? null : (
             <div className="ga-dashboard-list" style={{ marginTop: "1.2rem" }}>
               <div className="ga-dashboard-list-item">
                 <div>
@@ -34,10 +53,13 @@ export default async function LoginPage() {
                 </div>
               </div>
             </div>
+            )}
           </article>
 
           <article className="ga-dashboard-card">
-            <h2 className="ga-dashboard-card-title">Sign In</h2>
+            <h2 className="ga-dashboard-card-title">
+              {finishing ? "Sign in to continue" : "Sign In"}
+            </h2>
             <LoginForm />
             <p className="ga-dashboard-muted" style={{ marginTop: "1rem" }}>
               No account yet? <Link href="/seerah/register">Create your registration</Link>

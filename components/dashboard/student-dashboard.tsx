@@ -5,7 +5,15 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { countries } from "countries-list";
 import { trackConfirmedSeerahEnrolment } from "@/components/seerah/analytics";
-import { SirahDashboardRegistration } from "@/components/sirah/dashboard-registration";
+import {
+  SirahDashboardRegistration,
+  sirahAmountLabel,
+  sirahMethodLabel,
+  sirahOrderHref,
+  sirahOrderStatus,
+  sirahPlanLabel,
+  type SirahDashboardOrder,
+} from "@/components/sirah/dashboard-registration";
 import LogoutButton from "@/components/dashboard/logout-button";
 import { paymentPlanTypeLabels } from "@/lib/course-payment";
 
@@ -13,6 +21,9 @@ type DashboardProps = {
   user: {
     id: string;
     currentSirahOnly?: boolean;
+    /** Signed-in user may open the admin workspace (super admin or Sīrah team). */
+    showAdminLink?: boolean;
+    sirahOrders?: SirahDashboardOrder[];
     fullName: string;
     email: string;
     phoneCountryCode: string;
@@ -66,12 +77,6 @@ const seerahLessons = [
   { title: "Weekly Live Reflection Circle", type: "Live", access: "Sunday 10:00 AM PKT" },
 ];
 
-const supportLinks = [
-  { label: "Course registration & invitation", href: "/seerah/register" },
-  { label: "Course Registration", href: "/seerah/register" },
-  { label: "Admin Panel", href: "/admin" },
-];
-
 function formatMoney(amount: number, currency: string) {
   const normalizedCurrency = currency.toUpperCase();
   const formattedAmount = normalizedCurrency === "GBP" ? amount / 100 : amount;
@@ -104,6 +109,17 @@ export default function StudentDashboard({ user }: DashboardProps) {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const paymentSyncRan = useRef(false);
+
+  const sirahOrders = user.sirahOrders ?? [];
+  const latestSirahOrder = sirahOrders[0];
+  const pendingSirahOrder = sirahOrders.find((order) => sirahOrderStatus(order).kind === "PAY");
+  const supportLinks = [
+    {
+      label: "Your Sīrah registration",
+      href: pendingSirahOrder ? sirahOrderHref(pendingSirahOrder) : "/seerah/register",
+    },
+    ...(user.showAdminLink ? [{ label: "Admin Panel", href: "/admin" }] : []),
+  ];
 
   const seerahEnrollment = user.enrollments.find((item) => item.course.slug === "seerah-course");
   const latestRegistration = user.registrations.find((item) => item.course.slug === "seerah-course");
@@ -310,7 +326,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
     <main className="ga-page">
       <section className="ga-section">
         <div className="ga-container" style={{ display: "grid", gap: "1.4rem" }}>
-          <SirahDashboardRegistration />
+          <SirahDashboardRegistration orders={sirahOrders} />
           <div className="ga-dashboard-hero">
             <div>
               <p className="ga-dashboard-kicker">Student dashboard</p>
@@ -369,6 +385,35 @@ export default function StudentDashboard({ user }: DashboardProps) {
             </section>
           ) : null}
 
+          {user.currentSirahOnly && latestSirahOrder ? (
+          <section className="ga-dashboard-grid">
+            <article className="ga-dashboard-card">
+              <p className="ga-dashboard-card-title">Overview</p>
+              <div className="ga-dashboard-stack">
+                <p>Email: {user.email}</p>
+                <p>Country: {countryName}</p>
+                <p>Enrolment: {sirahOrderStatus(latestSirahOrder).label}</p>
+                <p>Plan: {sirahPlanLabel(latestSirahOrder)}</p>
+              </div>
+            </article>
+            <article className="ga-dashboard-card">
+              <p className="ga-dashboard-card-title">Payment Status</p>
+              <div className="ga-dashboard-stack">
+                <p>Status: {sirahOrderStatus(latestSirahOrder).label}</p>
+                <p>Method: {sirahMethodLabel(latestSirahOrder)}</p>
+                <p>Amount: {sirahAmountLabel(latestSirahOrder)}</p>
+                <p style={{ overflowWrap: "anywhere" }}>Reference: {latestSirahOrder.reference}</p>
+              </div>
+              {pendingSirahOrder ? null : (
+                <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
+                  <Link href={sirahOrderHref(latestSirahOrder)} className="ga-btn ga-btn-outline">
+                    View your registration
+                  </Link>
+                </div>
+              )}
+            </article>
+          </section>
+          ) : (
           <section className="ga-dashboard-grid">
             <article className="ga-dashboard-card">
               <p className="ga-dashboard-card-title">Overview</p>
@@ -442,6 +487,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
               ) : null}
             </article>
           </section>
+          )}
 
           {!user.currentSirahOnly && <>
           <section className="ga-dashboard-split">
@@ -552,9 +598,21 @@ export default function StudentDashboard({ user }: DashboardProps) {
                       </span>
                     </div>
                   ))
-                ) : (
+                ) : null}
+                {sirahOrders.map((order) => (
+                  <div key={order.id} className="ga-dashboard-list-item">
+                    <div>
+                      <strong>Sīrah | Beyond Chronology</strong>
+                      <p>
+                        {sirahPlanLabel(order)} - {sirahMethodLabel(order)} - {sirahOrderStatus(order).label}
+                      </p>
+                    </div>
+                    <span>{sirahAmountLabel(order)}</span>
+                  </div>
+                ))}
+                {!user.registrations.length && !sirahOrders.length ? (
                   <p className="ga-dashboard-muted">No registrations yet.</p>
-                )}
+                ) : null}
               </div>
             </article>
 

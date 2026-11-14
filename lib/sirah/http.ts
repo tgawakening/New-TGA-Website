@@ -39,7 +39,7 @@ export async function sirahUser(orderId?: string) {
     if (grant?.orderId === orderId) return grant.order.user;
   }
   throw new SirahError(
-    "Please sign in or request a fresh payment link to continue.",
+    "Please sign in to continue.",
     401,
   );
 }

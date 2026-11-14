@@ -35,6 +35,7 @@ import { PaymentMethods } from "./payment-methods";
 import { ManualPaymentFields } from "./manual-payment-fields";
 import { sirahManualSenderSchema } from "@/lib/sirah/registration-payment";
 import { priceFor } from "@/lib/sirah/catalog";
+import { PAYMENT_SUPPORT_URL } from "@/lib/sirah/support";
 import { PhoneControl } from "./phone-control";
 export type RegistrationControls = {
   setPreferences: (choice: {
@@ -267,7 +268,6 @@ export function SirahRegistrationForm({
     cohort: Order["cohort"];
   } | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<SirahMethod | "">("");
-  const [resumeProblem, setResumeProblem] = useState(false);
   const [quoteError, setQuoteError] = useState("");
   const [plan, setPlan] = useState<SirahPlan>(initialPlan || "MONTHLY");
   useEffect(() => { setCouponCode(""); }, [email, billing, plan, selectedMethod]);
@@ -525,11 +525,10 @@ export function SirahRegistrationForm({
             window.history.replaceState(null, "", url);
           } catch (cause) {
             if (active) {
-              setResumeProblem(true);
               setError(
                 cause instanceof Error
                   ? cause.message
-                  : "Request a fresh payment link.",
+                  : "This payment link has expired. Sign in to complete your payment.",
               );
             }
           }
@@ -1196,36 +1195,6 @@ export function SirahRegistrationForm({
     };
   }, [registrationFormShown]);
   const formSteps = ["Your details", "Plan & payment method", "Terms & pay"];
-  const freshLinkForm = (
-    <form
-      className={styles.form}
-      onSubmit={(event) => {
-        event.preventDefault();
-        const data = new FormData(event.currentTarget);
-        void run(async () => {
-          const result = await api("/api/sirah/payment-resume/request", {
-            method: "POST",
-            body: JSON.stringify({ email: data.get("email") }),
-          });
-          setMessage(result.message);
-        });
-      }}
-    >
-      <label>
-        Registration email
-        <input
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          defaultValue={email}
-        />
-      </label>
-      <button type="submit" disabled={busy}>
-        Send a fresh link
-      </button>
-    </form>
-  );
   return (
     <div className={styles.experience}>
       <p className={styles.eyebrow}>
@@ -1312,10 +1281,13 @@ export function SirahRegistrationForm({
           >
             Sign in
           </a>
-          <details className={styles.resumeHelp} open={resumeProblem || undefined}>
-            <summary>Can&apos;t sign in? Get a fresh payment link by email</summary>
-            {freshLinkForm}
-          </details>
+          <p className={styles.signInHelp}>
+            Can&apos;t sign in?{" "}
+            <a href={PAYMENT_SUPPORT_URL} target="_blank" rel="noreferrer">
+              Message us on WhatsApp
+            </a>{" "}
+            and we&apos;ll help you get back to your registration.
+          </p>
           {feedback}
         </div>
       ) : !order ? (
@@ -2553,10 +2525,6 @@ export function SirahRegistrationForm({
               <button type="button" disabled={busy} onClick={() => void refresh()}>
                 Refresh registration status
               </button>
-              <details className={styles.resumeHelp}>
-                <summary>Need a fresh payment link?</summary>
-                {freshLinkForm}
-              </details>
               <p>
                 <a href="/dashboard">Student dashboard</a> ·{" "}
                 <a href={`/seerah/register?order=${order.id}`}>
@@ -2566,12 +2534,6 @@ export function SirahRegistrationForm({
             </div>
           </details>
         </section>
-      )}
-      {!order && !signedOutOrderLink && (
-        <details className={styles.resumeHelp} open={resumeProblem || undefined}>
-          <summary>Need a fresh payment link?</summary>
-          {freshLinkForm}
-        </details>
       )}
       {(!ready || !available) && feedback}
     </div>
