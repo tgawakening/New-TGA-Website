@@ -199,3 +199,137 @@ export function sirahEnrolmentAllows(input: {
   if (order && order.registrationId === enrollment?.registrationId && !orderGrantsAccess) return false;
   return enrollment?.status === "ACTIVE" || Boolean(order && orderGrantsAccess);
 }
+
+/* ---------- Lesson detail, progress and the URL boundary ---------- */
+
+/** A YouTube or Vimeo link -> its privacy-preserving embed URL; anything
+ * else -> null (shown as a plain link). IDs are checked against the
+ * providers' own formats, so nothing else can be framed. */
+export function recordingEmbed(raw: string) {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  const host = url.hostname.replace(/^(www\.|m\.)/, "");
+  const parts = url.pathname.split("/").filter(Boolean);
+  const youtubeId = (id: string | null | undefined) =>
+    id && /^[A-Za-z0-9_-]{11}$/.test(id) ? { provider: "youtube" as const, src: `https://www.youtube-nocookie.com/embed/${id}` } : null;
+  if (host === "youtu.be") return youtubeId(parts[0]);
+  if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    if (parts[0] === "watch") return youtubeId(url.searchParams.get("v"));
+    if (["embed", "live", "shorts"].includes(parts[0])) return youtubeId(parts[1]);
+    return null;
+  }
+  const vimeo = (id: string | undefined, hash?: string | null) =>
+    id && /^\d{6,12}$/.test(id)
+      ? {
+          provider: "vimeo" as const,
+          src: `https://player.vimeo.com/video/${id}${hash && /^[a-f0-9]{6,20}$/.test(hash) ? `?h=${hash}` : ""}`,
+        }
+      : null;
+  if (host === "vimeo.com") return vimeo(parts[0], parts[1] ?? url.searchParams.get("h"));
+  if (host === "player.vimeo.com" && parts[0] === "video") return vimeo(parts[1], url.searchParams.get("h"));
+  return null;
+}
+
+type Orderable = { id: string; weekNumber: number; scheduledAt: Date };
+const scheduleOrder = (a: Orderable, b: Orderable) =>
+  a.weekNumber - b.weekNumber || a.scheduledAt.getTime() - b.scheduledAt.getTime() || a.id.localeCompare(b.id);
+
+/** Previous and next sessions in week order (then start time). */
+export function lessonNeighbours<T extends Orderable>(
+  lessons: T[],
+  lessonId: string,
+): { previous: T | null; next: T | null } {
+  const sorted = [...lessons].sort(scheduleOrder);
+  const index = sorted.findIndex((lesson) => lesson.id === lessonId);
+  if (index < 0) return { previous: null, next: null };
+  return { previous: sorted[index - 1] ?? null, next: sorted[index + 1] ?? null };
+}
+
+/** The overview line: where the course is, and where this student is. */
+export function courseProgress<T extends Orderable>(lessons: T[], completedLessonIds: Set<string>, now = new Date()) {
+  const started = lessons.filter((lesson) => lesson.scheduledAt.getTime() <= now.getTime()).sort(scheduleOrder);
+  const ids = new Set(lessons.map((lesson) => lesson.id));
+  return {
+    currentWeek: started.length ? started[started.length - 1].weekNumber : null,
+    totalWeeks: lessons.reduce((max, lesson) => Math.max(max, lesson.weekNumber), 0),
+    totalSessions: lessons.length,
+    // Only marks on sessions that still exist count.
+    completed: [...completedLessonIds].filter((id) => ids.has(id)).length,
+    next: nextLesson(lessons, now),
+  };
+}
+
+export type MaterialGroupKey = "RECORDING" | "SLIDES" | "READINGS" | "LINKS";
+export const MATERIAL_GROUPS: { key: MaterialGroupKey; label: string; kinds: SirahMaterialKindName[] }[] = [
+  { key: "RECORDING", label: "Recording", kinds: ["RECORDING"] },
+  { key: "SLIDES", label: "Slides", kinds: ["SLIDES"] },
+  { key: "READINGS", label: "Readings", kinds: ["READING", "PDF"] },
+  { key: "LINKS", label: "Links", kinds: ["LINK"] },
+];
+
+type MaterialRecord = { id: string; title: string; kind: SirahMaterialKindName; url: string; order: number };
+type LessonRecord = Orderable & {
+  title: string;
+  summary: string;
+  zoomJoinUrl: string | null;
+  zoomMeetingId: string | null;
+};
+
+export type MaterialView = {
+  id: string;
+  title: string;
+  kind: SirahMaterialKindName;
+  url: string | null;
+  embed: ReturnType<typeof recordingEmbed>;
+};
+
+/** The one place that decides which URLs leave the server. Material and
+ * recording URLs: enrolled students only, at any time. The Zoom link:
+ * enrolled students inside the join window only. Everything rendered for a
+ * student goes through here, so a page cannot leak a field by accident. */
+export function toLessonView(
+  lesson: LessonRecord,
+  materials: MaterialRecord[],
+  viewer: { enrolled: boolean },
+  now = new Date(),
+) {
+  const status = lessonStatus(lesson.scheduledAt, now);
+  const inWindow = canJoinLesson(lesson.scheduledAt, now);
+  const views: MaterialView[] = [...materials]
+    .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
+    .map((material) => ({
+      id: material.id,
+      title: material.title,
+      kind: material.kind,
+      url: viewer.enrolled ? material.url : null,
+      embed: viewer.enrolled && material.kind === "RECORDING" ? recordingEmbed(material.url) : null,
+    }));
+  return {
+    id: lesson.id,
+    title: lesson.title,
+    summary: lesson.summary,
+    weekNumber: lesson.weekNumber,
+    scheduledAt: lesson.scheduledAt,
+    status,
+    inJoinWindow: inWindow,
+    zoomJoinUrl: viewer.enrolled && inWindow ? lesson.zoomJoinUrl : null,
+    zoomMeetingId: viewer.enrolled && inWindow ? lesson.zoomMeetingId : null,
+    hasRecording: materials.some((material) => material.kind === "RECORDING"),
+    materials: views,
+    groups: MATERIAL_GROUPS.map((group) => ({
+      ...group,
+      items: views.filter((material) => group.kinds.includes(material.kind)),
+    })).filter((group) => group.items.length > 0),
+  };
+}
+export type LessonView = ReturnType<typeof toLessonView>;
+
+/** Where the completion form may send the student back to. */
+export function safeClassroomReturn(value: unknown, lessonId: string) {
+  return value === `/seerah/classroom/${lessonId}` ? value : "/seerah/classroom";
+}
