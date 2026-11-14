@@ -4,17 +4,36 @@ import { useRouter } from "next/navigation";
 
 const MINUTE = 60_000;
 
-function remainingText(ms: number) {
-  if (ms <= 0) return "Starting now";
-  const totalMinutes = Math.floor(ms / MINUTE);
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const minutes = totalMinutes % 60;
-  if (days > 0) return `${days} ${days === 1 ? "day" : "days"} ${hours} h`;
-  if (hours > 0) return `${hours} h ${String(minutes).padStart(2, "0")} min`;
-  const seconds = Math.floor((ms % MINUTE) / 1000);
-  return `${minutes} min ${String(seconds).padStart(2, "0")} s`;
+type Unit = { value: number; label: string };
+
+function units(ms: number): Unit[] {
+  const total = Math.max(0, ms);
+  const days = Math.floor(total / (1440 * MINUTE));
+  const hours = Math.floor((total % (1440 * MINUTE)) / (60 * MINUTE));
+  const minutes = Math.floor((total % (60 * MINUTE)) / MINUTE);
+  const seconds = Math.floor((total % MINUTE) / 1000);
+  const name = (n: number, one: string, many: string) => (n === 1 ? one : many);
+  return days > 0
+    ? [
+        { value: days, label: name(days, "day", "days") },
+        { value: hours, label: name(hours, "hour", "hours") },
+        { value: minutes, label: name(minutes, "minute", "minutes") },
+      ]
+    : [
+        { value: hours, label: name(hours, "hour", "hours") },
+        { value: minutes, label: name(minutes, "minute", "minutes") },
+        { value: seconds, label: name(seconds, "second", "seconds") },
+      ];
 }
+
+export type CountdownClasses = {
+  root?: string;
+  units?: string;
+  unit?: string;
+  value?: string;
+  label?: string;
+  note?: string;
+};
 
 /** Ticks down to the session start. The first render uses the server's clock
  * so the markup matches; it then follows the browser's clock. When the join
@@ -24,14 +43,12 @@ export function ClassroomCountdown({
   startsAt,
   serverNow,
   joinWindowMinutes,
-  className,
-  noteClassName,
+  classes = {},
 }: {
   startsAt: string;
   serverNow: string;
   joinWindowMinutes: number;
-  className?: string;
-  noteClassName?: string;
+  classes?: CountdownClasses;
 }) {
   const router = useRouter();
   const start = new Date(startsAt).getTime();
@@ -60,10 +77,23 @@ export function ClassroomCountdown({
     }
   }, [remaining, joinWindowMinutes, now, serverNow, router]);
 
+  const parts = units(remaining);
+  const spoken =
+    remaining > 0 ? `${parts.map((part) => `${part.value} ${part.label}`).join(", ")} until the session starts` : "Starting now";
+
   return (
-    <div role="timer" aria-live="off">
-      <span className={className}>{remainingText(remaining)}</span>
-      <span className={noteClassName}>{remaining > 0 ? "until the session starts" : "The session is open"}</span>
+    <div className={classes.root} role="timer" aria-live="off" aria-label={spoken}>
+      <div className={classes.units} aria-hidden="true">
+        {parts.map((part) => (
+          <span key={part.label.replace(/s$/, "")} className={classes.unit}>
+            <span className={classes.value}>{String(part.value).padStart(2, "0")}</span>
+            <span className={classes.label}>{part.label}</span>
+          </span>
+        ))}
+      </div>
+      <p className={classes.note} aria-hidden="true">
+        {remaining > 0 ? "until the session starts" : "Starting now"}
+      </p>
     </div>
   );
 }
