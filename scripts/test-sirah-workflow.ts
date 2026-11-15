@@ -1,3 +1,4 @@
+import "./assert-local-db"; // must stay first: refuses non-local DATABASE_URL before prisma loads
 import { withManualDiscountTerms } from "../lib/sirah/discount-terms";
 import { discountCodeHash, manualDiscountEligible } from "../lib/sirah/manual-discount";
 import { POST as personalPricing } from "../app/api/pricing/route";

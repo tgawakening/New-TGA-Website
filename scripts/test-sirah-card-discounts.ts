@@ -1,5 +1,6 @@
 // MySQL-backed tests for discount codes on Stripe card checkouts.
 // Run: npm run test:sirah-card-discounts (isolated 127.0.0.1/sirah_test only).
+import "./assert-local-db"; // must stay first: refuses non-local DATABASE_URL before prisma loads
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
