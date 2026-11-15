@@ -106,6 +106,7 @@ model User {
   freeWarriorApplications FreeWarriorApplication[]
   sirahLessonProgress     SirahLessonProgress[]
   sirahClassroomEmails    SirahClassroomEmail[]
+  passwordResetTokens     PasswordResetToken[]
 }
 
 model StudentProfile {
@@ -751,4 +752,18 @@ model SirahClassroomEmail {
 
   @@index([state, lockedUntil])
   @@index([userId])
+}
+
+/// Student password reset links. Only the SHA-256 of the token is stored; a
+/// row is spent (usedAt) on use, on a newer request, or on a successful reset.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique @db.VarChar(64)
+  expiresAt DateTime  @db.DateTime(3)
+  usedAt    DateTime? @db.DateTime(3)
+  createdAt DateTime  @default(now()) @db.DateTime(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

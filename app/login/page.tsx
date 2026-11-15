@@ -14,13 +14,15 @@ function isUnfinishedRegistration(next: string | string[] | undefined) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{ next?: string | string[]; reset?: string }>;
 }) {
   const user = await getCurrentUser();
   if (user) {
     redirect("/dashboard");
   }
-  const finishing = isUnfinishedRegistration((await searchParams).next);
+  const params = await searchParams;
+  const finishing = isUnfinishedRegistration(params.next);
+  const passwordReset = params.reset === "1";
 
   return (
     <main className="ga-page">
@@ -60,8 +62,16 @@ export default async function LoginPage({
             <h2 className="ga-dashboard-card-title">
               {finishing ? "Sign in to continue" : "Sign In"}
             </h2>
+            {passwordReset ? (
+              <p role="status" className="ga-dashboard-muted" style={{ marginTop: "0.9rem" }}>
+                Your password has been changed. Sign in with the new one.
+              </p>
+            ) : null}
             <LoginForm />
             <p className="ga-dashboard-muted" style={{ marginTop: "1rem" }}>
+              <Link href="/forgot-password">Forgot password?</Link>
+            </p>
+            <p className="ga-dashboard-muted" style={{ marginTop: "0.5rem" }}>
               No account yet? <Link href="/seerah/register">Create your registration</Link>
             </p>
           </article>
