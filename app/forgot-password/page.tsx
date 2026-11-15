@@ -43,7 +43,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                 <form action={requestResetAction} style={{ marginTop: "1.2rem", display: "grid", gap: "0.9rem" }}>
                   <div style={{ display: "grid", gap: "0.55rem" }}>
                     <label htmlFor="reset-email">Email</label>
-                    <input id="reset-email" name="email" type="email" autoComplete="email" required maxLength={191} />
+                    <input className="ga-auth-input" id="reset-email" name="email" type="email" autoComplete="email" required maxLength={191} />
                   </div>
                   <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap" }}>
                     <button type="submit" className="ga-btn ga-btn-primary">

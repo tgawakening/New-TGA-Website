@@ -43,6 +43,7 @@ export default function LoginForm() {
       <div style={{ display: "grid", gap: "0.55rem" }}>
         <label htmlFor="login-email">Email</label>
         <input
+          className="ga-auth-input"
           id="login-email"
           type="email"
           value={email}
@@ -53,6 +54,7 @@ export default function LoginForm() {
       <div style={{ display: "grid", gap: "0.55rem" }}>
         <label htmlFor="login-password">Password</label>
         <input
+          className="ga-auth-input"
           id="login-password"
           type="password"
           value={password}

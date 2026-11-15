@@ -43,6 +43,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                   <div style={{ display: "grid", gap: "0.55rem" }}>
                     <label htmlFor="reset-password">New password</label>
                     <input
+                      className="ga-auth-input"
                       id="reset-password"
                       name="password"
                       type="password"
@@ -59,6 +60,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                   <div style={{ display: "grid", gap: "0.55rem" }}>
                     <label htmlFor="reset-confirm">Confirm new password</label>
                     <input
+                      className="ga-auth-input"
                       id="reset-confirm"
                       name="confirmPassword"
                       type="password"
