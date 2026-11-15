@@ -17,6 +17,7 @@ import {
   resetUnsettledSirahCheckout,
   paypalRequest,
 } from "./sirah-online.service";
+import { runClassroomEmails } from "./sirah-classroom-email.service";
 
 /** Minutes a checkout may sit in PROCESSING before the sweep reconciles it. */
 const SIRAH_PROCESSING_GRACE_MS = 20 * 60 * 1000;
@@ -271,11 +272,15 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
   }
   await queuePendingInvitations();
   const notifications = await dispatchSirahNotifications();
+  // Classroom email (welcome backstop, class reminders, announcements). Its
+  // own failure is reported, never allowed to fail the payment sweep.
+  const classroomEmail = await runClassroomEmails(now).catch(() => ({ available: true, error: "Classroom email pass failed." }));
   return {
     ended: ended.length,
     manualReminders: due.length,
     reconciledProcessing,
     failures,
     ...notifications,
+    classroomEmail,
   };
 }

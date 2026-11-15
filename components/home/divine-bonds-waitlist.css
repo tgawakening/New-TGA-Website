@@ -1,7 +1,7 @@
-.ga-waitlist { width: min(590px, calc(100% - 32px)); max-height: calc(100dvh - 40px); margin: auto; padding: 30px; border: 1px solid #d4c49c; border-radius: 16px; color: #142536; background: #fffdf7; box-shadow: 0 24px 80px #0006; overflow: auto; font-family: Arial, sans-serif; }
+.ga-waitlist { width: min(590px, calc(100% - 32px)); max-height: calc(100dvh - 40px); margin: auto; padding: 30px; border: 1px solid #d4c49c; border-radius: 16px; color: #142536; background: #fffdf7; box-shadow: 0 24px 80px #0006; overflow: auto; font-family: "Amiri Marks", Arial, sans-serif; }
 .ga-waitlist::backdrop { background: #071224b8; backdrop-filter: blur(4px); }
 .ga-waitlist-close { position: absolute; top: 8px; right: 10px; width: 40px; height: 40px; font-size: 26px; border-radius: 6px; }
-.ga-waitlist h2 { font-family: Georgia, serif; font-size: 1.8rem; line-height: 1.2; margin: 10px 24px 12px 0; }
+.ga-waitlist h2 { font-family: "Amiri Marks", Georgia, serif; font-size: 1.8rem; line-height: 1.2; margin: 10px 24px 12px 0; }
 .ga-waitlist p { font-size: .88rem; line-height: 1.6; margin-bottom: 16px; }
 .ga-waitlist .ga-waitlist-eyebrow { font-size: .73rem; color: #876925; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 0; }
 .ga-waitlist-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

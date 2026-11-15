@@ -292,6 +292,15 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
     return { duplicate: false };
   });
   await dispatchSirahNotifications(input.orderId).catch(() => {});
+  // The classroom welcome follows a first confirmation. Outside the payment
+  // transaction and best effort: the sweep queues any welcome missed here.
+  // (Loaded lazily: the classroom email service imports canAccessSirah from here.)
+  if (!result.duplicate)
+    await import("./sirah-classroom-email.service")
+      .then(async ({ queueWelcomeForOrder, dispatchClassroomEmails }) => {
+        if (await queueWelcomeForOrder(input.orderId)) await dispatchClassroomEmails({ limit: 5 });
+      })
+      .catch(() => {});
   return result;
 }
 export function canAccessSirah(

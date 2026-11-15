@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { EmailDeliveryError, sendTransactionalEmail } from "@/lib/email";
+import { emailConfigured } from "@/lib/email-config";
 import { sirahNoticeAudience, sirahNoticeRecipients, uniqueEmailRecipients } from "@/lib/sirah/notification-policy";
 import { SIRAH_TITLE, formatSirahMoney } from "@/lib/sirah/catalog";
 import { getGroupInvitation, type SirahTerms } from "@/lib/sirah/config";
@@ -352,7 +353,7 @@ export async function dispatchSirahNotifications(orderId?: string) {
       });
       continue;
     }
-    if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
+    if (!emailConfigured()) {
       await prisma.sirahNotification.update({
         where: { id: item.id },
         data: {

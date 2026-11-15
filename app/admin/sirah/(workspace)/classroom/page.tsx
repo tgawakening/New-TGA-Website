@@ -13,11 +13,14 @@ import {
 import { getClassroomData, sirahClassroomAvailable } from "@/services/sirah-classroom.service";
 import { ScheduleFields, SelectField } from "@/components/sirah/classroom-pickers";
 import "@/app/seerah/classroom/tokens.css";
+import { MaterialSource } from "@/components/sirah/classroom-material-source";
+import { spacesConfigured } from "@/lib/sirah/spaces";
 import styles from "@/components/sirah/admin-classroom.module.css";
 import {
   addMaterial,
   createLesson,
   postAnnouncement,
+  requestMaterialUpload,
   removeAnnouncement,
   removeMaterial,
   setAnnouncementPinned,
@@ -214,10 +217,7 @@ function MaterialForm({ lessonId, idPrefix }: { lessonId?: string; idPrefix: str
             Lower comes first
           </span>
         </label>
-        <label className={`${styles.field} ${styles.span3}`}>
-          <span className={styles.label}>Link</span>
-          <input className={styles.input} name="url" type="url" required maxLength={1024} placeholder="https://" />
-        </label>
+        <MaterialSource idPrefix={idPrefix} requestUpload={requestMaterialUpload} uploadsEnabled={spacesConfigured()} />
         <div className={`${styles.field} ${styles.alignEnd}`}>
           <button type="submit" className={styles.secondary}>
             Add material
@@ -255,11 +255,26 @@ function ConfirmRemove({
   );
 }
 
+function fileSize(bytes: bigint) {
+  const value = Number(bytes);
+  if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(1)} GB`;
+  if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(value / 1024))} KB`;
+}
+
 function MaterialRows({
   materials,
   anchor,
 }: {
-  materials: { id: string; title: string; kind: keyof typeof SIRAH_MATERIAL_LABELS; url: string }[];
+  materials: {
+    id: string;
+    title: string;
+    kind: keyof typeof SIRAH_MATERIAL_LABELS;
+    url: string;
+    storage: "LINK" | "UPLOAD";
+    originalFilename: string | null;
+    sizeBytes: bigint | null;
+  }[];
   anchor: string;
 }) {
   if (!materials.length) return <p className={styles.emptyLine}>No materials yet.</p>;
@@ -269,10 +284,19 @@ function MaterialRows({
         <li key={material.id} className={styles.row}>
           <span className={styles.tag}>{SIRAH_MATERIAL_LABELS[material.kind]}</span>
           <span className={styles.rowMain}>
-            <a href={material.url} target="_blank" rel="noopener noreferrer" className={styles.rowLink}>
+            <a
+              href={material.storage === "UPLOAD" ? `/admin/sirah/classroom/files/${encodeURIComponent(material.id)}` : material.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.rowLink}
+            >
               {material.title}
             </a>
-            <span className={styles.rowMeta}>{host(material.url)}</span>
+            <span className={styles.rowMeta}>
+              {material.storage === "UPLOAD"
+                ? `Uploaded file · ${material.originalFilename ?? "file"}${material.sizeBytes ? ` · ${fileSize(material.sizeBytes)}` : ""}`
+                : host(material.url)}
+            </span>
           </span>
           <ConfirmRemove action={removeMaterial} id={material.id} anchor={anchor} what="this material" />
         </li>
@@ -451,10 +475,19 @@ export default async function SirahClassroomAdminPage({
             </label>
           </div>
           <div className={styles.formFoot}>
-            <label className={styles.check}>
-              <input type="checkbox" name="pinned" className={styles.checkbox} />
-              <span>Pin to the top of the classroom</span>
-            </label>
+            <div className={styles.checks}>
+              <label className={styles.check}>
+                <input type="checkbox" name="pinned" className={styles.checkbox} />
+                <span>Pin to the top of the classroom</span>
+              </label>
+              <label className={styles.check}>
+                <input type="checkbox" name="quiet" className={styles.checkbox} aria-describedby="quiet-help" />
+                <span>Don&rsquo;t email students</span>
+              </label>
+              <span id="quiet-help" className={styles.help}>
+                Otherwise every enrolled student is emailed this announcement once.
+              </span>
+            </div>
             <button type="submit" className={styles.primary}>
               Post announcement
             </button>
@@ -469,7 +502,9 @@ export default async function SirahClassroomAdminPage({
                     {item.title}
                     {item.pinned && <span className={styles.pinned}>Pinned</span>}
                   </span>
-                  <span className={styles.rowMeta}>{shortDate.format(item.publishedAt)}</span>
+                  <span className={styles.rowMeta}>
+                    {shortDate.format(item.publishedAt)} · {item.emailStudents ? "Emailed to students" : "Not emailed"}
+                  </span>
                   <p className={styles.noticeBody}>{item.body}</p>
                 </div>
                 <div className={styles.rowActions}>

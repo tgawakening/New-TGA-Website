@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { emailFrom as configuredFrom, resendApiKey as configuredKey } from "@/lib/email-config";
 
 export class EmailDeliveryError extends Error {
   constructor(message: string, readonly retryAfterMs: number, readonly pauseBatch = false) { super(message); }
@@ -6,6 +7,9 @@ export class EmailDeliveryError extends Error {
 
 type EmailPayload = {
   idempotencyKey?: string;
+  /** The body carries a secret (a password reset link): the email log keeps
+   * the subject and status, never the body. */
+  sensitive?: boolean;
   userId?: string;
   to: string;
   subject: string;
@@ -61,14 +65,17 @@ async function logEmail({
   });
 }
 
-export async function sendTransactionalEmail(payload: EmailPayload) {
+export async function sendTransactionalEmail(message: EmailPayload) {
+  const { sensitive, ...rest } = message;
+  const payload = rest;
+  const logged = sensitive ? { ...rest, html: "[redacted]", text: "[redacted]" } : rest;
   // Operational checks must inspect existing deliveries instead of spending student quota.
   if (payload.emailType.startsWith("SIRAH_OPS_") && process.env.ALLOW_OPERATIONAL_TEST_EMAILS !== "true") {
-    await logEmail({ ...payload, status: "SKIPPED", error: "Operational test emails disabled to preserve transactional quota." });
+    await logEmail({ ...logged, status: "SKIPPED", error: "Operational test emails disabled to preserve transactional quota." });
     return { status: "SKIPPED" as const };
   }
-  const resendApiKey = getOptionalEnv("RESEND_API_KEY");
-  const emailFrom = getOptionalEnv("EMAIL_FROM");
+  const resendApiKey = configuredKey();
+  const emailFrom = configuredFrom();
 
   if (!resendApiKey || !emailFrom) {
     await logEmail({
@@ -77,7 +84,7 @@ export async function sendTransactionalEmail(payload: EmailPayload) {
       subject: payload.subject,
       emailType: payload.emailType,
       status: "SKIPPED",
-      payload,
+      payload: logged,
       error: "RESEND_API_KEY or EMAIL_FROM missing.",
     });
     return { status: "SKIPPED" as const };
@@ -109,7 +116,7 @@ export async function sendTransactionalEmail(payload: EmailPayload) {
       subject: payload.subject,
       emailType: payload.emailType,
       status: "FAILED",
-      payload,
+      payload: logged,
       error: message,
     });
     throw new Error(`Email send failed: ${message}`);
@@ -123,7 +130,7 @@ export async function sendTransactionalEmail(payload: EmailPayload) {
       subject: payload.subject,
       emailType: payload.emailType,
       status: "FAILED",
-      payload,
+      payload: logged,
       error: errorText,
     });
     const retryHeader = response.headers.get("retry-after");
@@ -146,7 +153,7 @@ export async function sendTransactionalEmail(payload: EmailPayload) {
     emailType: payload.emailType,
     status: "SENT",
     providerId: json.id,
-    payload,
+    payload: logged,
   });
   return { status: "SENT" as const, id: json.id ?? null };
 }

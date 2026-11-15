@@ -794,3 +794,104 @@
     transition: none !important;
   }
 }
+
+/* Material source: link or upload */
+.segmented {
+  display: inline-flex;
+  justify-self: start;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.segment {
+  position: relative;
+  display: inline-flex;
+}
+
+.segment + .segment {
+  border-left: 1px solid var(--color-rule-strong);
+}
+
+.segment input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segment span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink-2);
+  transition: background-color var(--dur-micro) ease, color var(--dur-micro) ease;
+}
+
+.segment input:checked + span {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.segment input:focus-visible + span {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.fileRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+/* The native file input stays in the label (so it opens on click and on
+ * Enter/Space) but is visually replaced by the button-styled label. */
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.secondary:has(.fileInput:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.fileStatus {
+  min-width: 0;
+  color: var(--color-ink-2);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.fileError {
+  color: var(--color-danger);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.progress {
+  display: block;
+  height: 4px;
+  background: var(--color-rule);
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent-ink);
+  transition: width var(--dur-micro) linear;
+}
+
+.checks {
+  display: grid;
+  gap: var(--space-2);
+}

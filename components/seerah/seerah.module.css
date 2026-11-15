@@ -4,7 +4,7 @@
   --gold: #d9ad4a;
   background: var(--charcoal);
   color: var(--ivory);
-  font-family: var(--font-montserrat), Arial, sans-serif;
+  font-family: "Amiri Marks", var(--font-montserrat), Arial, sans-serif;
   font-size: 15px;
   line-height: 1.75;
   overflow-x: clip;
@@ -49,7 +49,7 @@
   margin: 0;
 }
 .page h2 {
-  font-family: Georgia, serif;
+  font-family: "Amiri Marks", Georgia, serif;
   font-weight: 400;
   font-size: clamp(32px, 3.5vw, 48px);
   line-height: 1.17;
@@ -193,7 +193,7 @@
   flex-direction: column;
   line-height: 0.98;
   letter-spacing: -3px;
-  font-family: Georgia, serif;
+  font-family: "Amiri Marks", Georgia, serif;
   font-weight: 400;
 }
 .hero h1 > span:first-child {
@@ -201,7 +201,7 @@
   color: var(--gold);
 }
 .heroSubtitle {
-  font-family: var(--font-montserrat), Arial, sans-serif;
+  font-family: "Amiri Marks", var(--font-montserrat), Arial, sans-serif;
   font-size: clamp(32px, 3.7vw, 50px);
   font-weight: 600;
   line-height: 1.08;
@@ -1435,7 +1435,7 @@
 .page :global(.ga-cta-register) {
   background: var(--gold);
   color: var(--charcoal);
-  font-family: var(--font-montserrat), Arial, sans-serif;
+  font-family: "Amiri Marks", var(--font-montserrat), Arial, sans-serif;
 }
 
 /* Readability and spacing refinement, scoped to this course page. */
@@ -1617,7 +1617,7 @@
   background: #11140ff5;
 }
 .page :global(.ga-header-cta) {
-  font-family: var(--font-montserrat), Arial, sans-serif;
+  font-family: "Amiri Marks", var(--font-montserrat), Arial, sans-serif;
 }
 @media (min-width: 761px) and (max-width: 1050px) {
   .section {

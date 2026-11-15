@@ -6,7 +6,7 @@
   --ms-warm: #98603f;
   background: var(--ms-paper);
   color: var(--ms-ink);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Amiri Marks", Arial, Helvetica, sans-serif;
   overflow: clip;
 }
 
@@ -82,7 +82,7 @@
 .ms-principles { margin-top: 20px; }
 .ms-principles > div { display: flex; align-items: flex-start; gap: 14px; padding: 15px 0; border-top: 1px solid #cbd6c9; }
 .ms-principles svg { color: #3c6053; margin-top: 3px; }
-.ms-principles h3 { font-family: Arial, sans-serif; font-size: .93rem; font-weight: 600; letter-spacing: 0; margin-bottom: 4px; }
+.ms-principles h3 { font-family: "Amiri Marks", Arial, sans-serif; font-size: .93rem; font-weight: 600; letter-spacing: 0; margin-bottom: 4px; }
 .ms-principles p { color: #536271; font-size: .85rem; }
 .ms-section-heading { max-width: 760px; margin-bottom: 30px; }
 .ms-section-heading > p:last-child:not(.ms-eyebrow) { color: var(--ms-muted); }
@@ -120,7 +120,7 @@
 .ms-accountability-links a, .ms-company a { display: inline-flex; align-items: center; min-height: 44px; gap: 8px; font-size: .82rem; text-decoration: underline; }
 .ms-company { padding: 28px; border: 1px solid #cbd5cc; border-top: 3px solid #567360; background: #eff2eb; border-radius: 4px; }
 .ms-company-mark { display: flex; align-items: center; gap: 10px; color: #466353; font-size: .73rem; text-transform: uppercase; letter-spacing: .08em; }
-.ms-company h3 { font-family: Arial, sans-serif; font-size: 1rem; font-weight: 600; letter-spacing: .025em; margin: 22px 0 14px; }
+.ms-company h3 { font-family: "Amiri Marks", Arial, sans-serif; font-size: 1rem; font-weight: 600; letter-spacing: .025em; margin: 22px 0 14px; }
 .ms-company p { color: #536271; font-size: .85rem; margin-bottom: 12px; }
 .ms-company small { display: block; color: #536271; font-size: .75rem; margin-top: 12px; }
 .ms-closing { background: #112d3b; color: #fff; padding: 62px 0 56px; }
@@ -186,7 +186,7 @@
   .ms-final-actions { align-items: flex-start; }
   .ms-faq { padding-top: 28px; gap: 12px; }
   .ms-faq h3 { margin: 0; }
-  .ms-mobile-action { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); background: #fffffff5; border-top: 1px solid #d6deda; color: #142536; font-family: Arial, sans-serif; }
+  .ms-mobile-action { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); background: #fffffff5; border-top: 1px solid #d6deda; color: #142536; font-family: "Amiri Marks", Arial, sans-serif; }
   .ms-mobile-action > span { font-size: 1rem; font-weight: 600; }
   .ms-mobile-action small { display: block; font-size: .75rem; font-weight: 400; margin-top: 3px; }
   .ms-mobile-action .ms-button { gap: 8px; padding-inline: 13px; font-size: .78rem; }

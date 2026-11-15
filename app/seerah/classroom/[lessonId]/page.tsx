@@ -15,6 +15,15 @@ import "../tokens.css";
 import styles from "../classroom.module.css";
 
 export const dynamic = "force-dynamic";
+
+const playerClasses = {
+  frame: styles.playerFrame,
+  focused: styles.playerFocused,
+  start: styles.playerStart,
+  startIcon: styles.playIcon,
+  startText: styles.playerStartText,
+  startHint: styles.playerStartHint,
+};
 export const metadata: Metadata = {
   title: `Session | ${SIRAH_TITLE}`,
   robots: { index: false, follow: false },
@@ -87,13 +96,25 @@ export default async function SirahLessonPage({ params }: { params: Promise<{ le
             </p>
           ) : (
             recordings.map((recording) =>
-              recording.embed ? (
+              recording.file && recording.url ? (
                 <figure key={recording.id} className={styles.player}>
                   <ClassroomPlayer
-                    src={recording.embed.src}
+                    kind="video"
+                    src={recording.url}
+                    contentType={recording.file.contentType}
                     title={recording.title}
-                    frameClassName={styles.playerFrame}
-                    focusedClassName={styles.playerFocused}
+                    classes={playerClasses}
+                  />
+                  <figcaption>{recording.title}</figcaption>
+                </figure>
+              ) : recording.embed ? (
+                <figure key={recording.id} className={styles.player}>
+                  <ClassroomPlayer
+                    kind="embed"
+                    src={recording.embed.src}
+                    href={recording.url ?? recording.embed.src}
+                    title={recording.title}
+                    classes={playerClasses}
                   />
                   <figcaption>{recording.title}</figcaption>
                 </figure>

@@ -105,6 +105,8 @@ model User {
   emailLogs               EmailLog[]
   freeWarriorApplications FreeWarriorApplication[]
   sirahLessonProgress     SirahLessonProgress[]
+  sirahClassroomEmails    SirahClassroomEmail[]
+  passwordResetTokens     PasswordResetToken[]
 }
 
 model StudentProfile {
@@ -681,8 +683,20 @@ model SirahMaterial {
   order     Int               @default(0)
   createdAt DateTime          @default(now()) @db.DateTime(3)
   lesson    SirahLesson?      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  /// LINK: url is the pasted link. UPLOAD: the file lives in Spaces under
+  /// objectKey, and url is the enrolment-checked route that serves it.
+  storage          SirahMaterialStorage @default(LINK)
+  objectKey        String?              @unique @db.VarChar(191)
+  contentType      String?              @db.VarChar(191)
+  sizeBytes        BigInt?
+  originalFilename String?              @db.VarChar(255)
 
   @@index([lessonId, order])
+}
+
+enum SirahMaterialStorage {
+  LINK
+  UPLOAD
 }
 
 model SirahAnnouncement {
@@ -692,6 +706,8 @@ model SirahAnnouncement {
   pinned      Boolean  @default(false)
   publishedAt DateTime @default(now()) @db.DateTime(3)
   createdAt   DateTime @default(now()) @db.DateTime(3)
+  /// Whether enrolled students were emailed (false: a quiet post).
+  emailStudents Boolean @default(false)
 
   @@index([pinned, publishedAt])
 }
@@ -710,4 +726,44 @@ model SirahLessonProgress {
 
   @@unique([lessonId, studentId])
   @@index([studentId])
+}
+
+/// Classroom emails: WELCOME (once per student), REMINDER (once per session
+/// per student) and ANNOUNCEMENT (once per post per student). `key` is unique
+/// per kind, subject and student, so nothing can be queued, or sent, twice.
+/// The message is rendered at send time from the current session details.
+model SirahClassroomEmail {
+  id             String    @id @default(cuid())
+  key            String    @unique @db.VarChar(191)
+  kind           String    @db.VarChar(32)
+  userId         String
+  lessonId       String?   @db.VarChar(191)
+  announcementId String?   @db.VarChar(191)
+  toEmail        String    @db.VarChar(191)
+  subject        String?   @db.VarChar(191)
+  state          String    @default("PENDING") @db.VarChar(32)
+  attempts       Int       @default(0)
+  lockedUntil    DateTime? @db.DateTime(3)
+  providerId     String?   @db.VarChar(191)
+  error          String?   @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @db.DateTime(3)
+  sentAt         DateTime? @db.DateTime(3)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([state, lockedUntil])
+  @@index([userId])
+}
+
+/// Student password reset links. Only the SHA-256 of the token is stored; a
+/// row is spent (usedAt) on use, on a newer request, or on a successful reset.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique @db.VarChar(64)
+  expiresAt DateTime  @db.DateTime(3)
+  usedAt    DateTime? @db.DateTime(3)
+  createdAt DateTime  @default(now()) @db.DateTime(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
