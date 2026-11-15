@@ -1,3 +1,4 @@
+import "./assert-local-db"; // must stay first: refuses non-local DATABASE_URL before prisma loads
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";

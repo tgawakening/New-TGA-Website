@@ -23,7 +23,7 @@ After that, the project no longer depends on a MySQL installation on your laptop
 
 ```env
 NEXT_PUBLIC_APP_URL=https://your-domain.com
-DATABASE_URL=mysql://doadmin:password@db-mysql-lon1-97811-do-user-34426921-0.d.db.ondigitalocean.com:25060/defaultdb?sslcert=./certs/ca-certificate.crt&sslaccept=strict
+DATABASE_URL=mysql://USER:PASSWORD@YOUR-DB-HOST.db.ondigitalocean.com:25060/dbname?sslcert=./certs/ca-certificate.crt&sslaccept=strict
 ADMIN_API_TOKEN=replace_with_long_random_admin_token
 
 STRIPE_SECRET_KEY=sk_live_or_test_xxx
