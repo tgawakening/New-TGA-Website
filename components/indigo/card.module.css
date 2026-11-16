@@ -1,0 +1,54 @@
+.card {
+  position: relative;
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.surface {
+  background: var(--surf);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+}
+
+.feature {
+  background: linear-gradient(135deg, var(--surf), #16213c);
+  border-color: var(--line2);
+  border-radius: var(--r-2xl);
+  padding: var(--sp-8) var(--sp-5);
+}
+
+@media (min-width: 48rem) {
+  .feature {
+    padding: var(--sp-12);
+  }
+}
+
+.accentEdge::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--terra));
+}
+
+.interactive {
+  transition:
+    border-color var(--dur) var(--ease),
+    background-color var(--dur) var(--ease),
+    transform 250ms var(--ease);
+}
+
+@media (hover: hover) {
+  .interactive:hover {
+    border-color: var(--teal);
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interactive,
+  .interactive:hover {
+    transition: none;
+    transform: none;
+  }
+}

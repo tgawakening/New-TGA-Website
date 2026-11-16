@@ -1,0 +1,84 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 44px; /* touch target */
+  padding: 0.6875rem 1.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font-family: var(--body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--dur) var(--ease),
+    border-color var(--dur) var(--ease),
+    color var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 3px;
+}
+
+.teal {
+  background: var(--teal);
+  color: var(--on-teal);
+}
+
+.ghost {
+  background: transparent;
+  border-color: var(--line2);
+  color: var(--sand);
+}
+
+/* Quiet teal used inside cards */
+.soft {
+  background: rgba(43, 182, 163, 0.12);
+  border-color: rgba(43, 182, 163, 0.3);
+  color: var(--tealb);
+}
+
+.block {
+  display: flex;
+  width: 100%;
+}
+
+.arrow {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  transition: transform var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  .teal:hover {
+    background: var(--tealb);
+    transform: translateY(-1px);
+  }
+  .ghost:hover {
+    border-color: var(--teal);
+    color: var(--tealb);
+  }
+  .soft:hover {
+    background: var(--teal);
+    color: var(--on-teal);
+  }
+  .btn:hover .arrow {
+    transform: translateX(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .arrow {
+    transition: none;
+  }
+  .teal:hover {
+    transform: none;
+  }
+}

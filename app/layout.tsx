@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import "@/styles/tokens.css";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://example.com";

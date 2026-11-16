@@ -1,0 +1,72 @@
+.head {
+  margin-bottom: var(--sp-8);
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-4);
+}
+
+.titles {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: var(--fs-3xl);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+  color: var(--sand);
+  text-wrap: balance;
+}
+
+.title em {
+  font-style: italic;
+  color: var(--tealb);
+}
+
+.rule {
+  display: none; /* phones: titles wrap, a stub of rule reads as a glitch */
+  flex: 1;
+  min-width: var(--sp-8);
+  height: 1px;
+  margin-bottom: 0.7em;
+  background: linear-gradient(90deg, var(--line2), transparent);
+}
+
+@media (min-width: 48rem) {
+  .rule {
+    display: block;
+  }
+}
+
+.lede {
+  margin: var(--sp-3) 0 0;
+  max-width: 36rem;
+  color: var(--dim);
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--body);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--teal);
+}
+
+.star {
+  width: 15px;
+  height: 15px;
+  color: var(--terra);
+  flex: none;
+}

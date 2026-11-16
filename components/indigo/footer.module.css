@@ -1,0 +1,121 @@
+/* `footer a` in app/globals.css (live site) sets colour and hover; every link
+ * rule here is class-scoped and more specific, so it wins. */
+.footer {
+  margin-top: var(--sp-8);
+  border-top: 1px solid var(--line);
+  padding: var(--sp-12) 0 var(--sp-10);
+}
+
+.wrap {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-8) var(--sp-6);
+  margin-bottom: var(--sp-8);
+}
+
+.brand {
+  grid-column: 1 / -1;
+}
+
+.brand p {
+  max-width: 17rem;
+  margin: var(--sp-4) 0 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--faint);
+}
+
+.col h2 {
+  margin: 0 0 var(--sp-3);
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--sand);
+}
+
+.col ul,
+.social {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.col a {
+  display: block;
+  padding: 0.4375rem 0; /* ~40px tap rows on phones */
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  text-decoration: none;
+  transition: color var(--dur) var(--ease);
+}
+
+.col a:hover,
+.contact a:hover {
+  color: var(--teal);
+}
+
+.contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+
+.contact a {
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  text-decoration: none;
+}
+
+.bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--faint);
+}
+
+.bottom p {
+  margin: 0;
+}
+
+.social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.social a {
+  display: inline-block;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  padding: 0.4375rem 0.875rem;
+  font-size: var(--fs-xs);
+  color: var(--dim);
+  text-decoration: none;
+}
+
+.social a:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+@media (min-width: 48rem) {
+  .cols {
+    grid-template-columns: 1.6fr 1fr 1fr 1fr;
+    gap: var(--sp-8);
+  }
+  .brand {
+    grid-column: auto;
+  }
+}
