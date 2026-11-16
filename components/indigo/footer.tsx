@@ -48,7 +48,7 @@ export function Footer({ homeHref = "/", legalName = "Global Awakening Ltd" }: {
       <div className={styles.wrap}>
         <div className={styles.cols}>
           <div className={styles.brand}>
-            <Wordmark href={homeHref} />
+            <Wordmark href={homeHref} size="footer" />
             <p>Uniting minds, inspiring change. A global Muslim community grounded in the timeless wisdom of the Qur&apos;an.</p>
           </div>
           {groups(homeHref).map((g) => (

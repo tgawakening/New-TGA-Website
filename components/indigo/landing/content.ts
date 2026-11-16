@@ -18,7 +18,7 @@ export const heroAyah = {
 /** "1000+" -> { n: "1,000", suffix: "+" } */
 export const stats = missionStats.map((s) => {
   const digits = Number.parseInt(s.value.replace(/[^\d]/g, ""), 10);
-  return { label: s.label, n: digits.toLocaleString("en-GB"), suffix: s.value.replace(/[\d,]/g, "") };
+  return { label: s.label, value: digits, n: digits.toLocaleString("en-GB"), suffix: s.value.replace(/[\d,]/g, "") };
 });
 
 export const statByLabel = (label: string) => stats.find((s) => s.label === label);
@@ -68,6 +68,7 @@ export const flagship = {
   pillars: ["The Law", "The Power", "The Leadership", "The Movement"],
   body: "Study the life of the Prophet, peace be upon him, through his decisions, leadership, and the community he built.",
   essentials: courseConfig.essentials, // ["12-month programme", "Live teaching", "Discussion & Q&A"]
+  instructor: courseConfig.instructor?.name ?? null,
   href: "/seerah",
 };
 
@@ -99,7 +100,7 @@ export const courseCards: CourseCard[] = [
     tone: "teal",
     title: "Sīrah: Beyond Chronology",
     subtitle: "Law, Power, Leadership & Movement",
-    mentor: null, // courseConfig.instructor is null: not yet approved for publication
+    mentor: courseConfig.instructor?.name ?? null,
     points: learningOutcomes.slice(0, 3).map((o) => o.title),
     meta: ["12 months", "Live"],
     rating: null,

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Star8 } from "./ornaments";
+import { SealMark } from "./ornaments";
 import styles from "./section-heading.module.css";
 
 type Props = {
@@ -8,16 +8,22 @@ type Props = {
   id?: string;
   /** h2 for page sections; h3 inside a section. */
   level?: 2 | 3;
-  /** Trailing hairline rule (section heads). Off for stacked hero-style heads. */
+  /** Trailing hairline rule (section heads). */
   rule?: boolean;
   lede?: ReactNode;
   className?: string;
 };
 
-export function Eyebrow({ children, star = false }: { children: ReactNode; star?: boolean }) {
+/** Letter-spaced label led by the section marker (a small rub el hizb that
+ * turns into place when its section is revealed). */
+export function Eyebrow({ children, marker = true }: { children: ReactNode; marker?: boolean }) {
   return (
     <span className={styles.eyebrow}>
-      {star ? <Star8 className={styles.star} /> : null}
+      {marker ? (
+        <span className={styles.markerWrap} data-marker="">
+          <SealMark className={styles.marker} />
+        </span>
+      ) : null}
       {children}
     </span>
   );
@@ -26,7 +32,7 @@ export function Eyebrow({ children, star = false }: { children: ReactNode; star?
 export function SectionHeading({ eyebrow, title, id, level = 2, rule = true, lede, className }: Props) {
   const H = level === 2 ? "h2" : "h3";
   return (
-    <div className={[styles.head, className ?? ""].join(" ")}>
+    <div className={[styles.head, className ?? ""].join(" ")} data-reveal="">
       <div className={styles.row}>
         <div className={styles.titles}>
           {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}

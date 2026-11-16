@@ -17,9 +17,9 @@ export function Courses() {
           lede="Join our growing community of learners with live sessions and expert instructors."
         />
         <ul className={s.courses}>
-          {courseCards.map((c) => (
-            <li key={c.id}>
-              <Card as="article" accentEdge className={s.course}>
+          {courseCards.map((c, k) => (
+            <li key={c.id} data-reveal="" style={{ "--i": k % 3 } as React.CSSProperties}>
+              <Card as="article" accentEdge interactive className={s.course}>
                 <span className={`${s.badge} ${toneClass[c.tone]}`}>{c.badge}</span>
                 <h3 className={s.courseTitle}>{c.title}</h3>
                 <p className={s.courseSub}>{c.subtitle}</p>

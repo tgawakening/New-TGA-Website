@@ -4,8 +4,10 @@ import styles from "./card.module.css";
 type Props = {
   /** surface: plain tile. feature: the larger gradient panel (flagship, CTA). */
   variant?: "surface" | "feature";
-  /** Lift and teal border on hover. Use only when the whole card is a link target. */
+  /** Lift and coloured edge on hover/focus. */
   interactive?: boolean;
+  /** Edge colour for interactive cards: teal (default) or gold (rare). */
+  edge?: "teal" | "gold";
   /** Teal-to-terracotta hairline across the top edge. */
   accentEdge?: boolean;
   as?: ElementType;
@@ -16,6 +18,7 @@ type Props = {
 export function Card({
   variant = "surface",
   interactive = false,
+  edge = "teal",
   accentEdge = false,
   as: Tag = "div",
   className,
@@ -26,6 +29,7 @@ export function Card({
     styles.card,
     styles[variant],
     interactive ? styles.interactive : "",
+    interactive && edge === "gold" ? styles.gold : "",
     accentEdge ? styles.accentEdge : "",
     className ?? "",
   ]

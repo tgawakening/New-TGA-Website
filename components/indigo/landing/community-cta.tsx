@@ -7,7 +7,7 @@ export function CommunityCta() {
   return (
     <section id="community" className={s.section} aria-labelledby="community-title">
       <div className={s.wrap}>
-        <Card variant="feature" className={s.cta}>
+        <Card variant="feature" className={s.cta} data-reveal="">
           <Rosette className={s.ctaRosette} />
           <h2 id="community-title" className={s.ctaTitle}>
             Join our growing community

@@ -1,17 +1,24 @@
+/* Raised surfaces: a faint top-lit gradient, a 1px inset highlight and a soft
+ * shadow. Interactive cards lift (transform) and show a teal or gold edge
+ * (an overlay that fades: opacity only). */
 .card {
   position: relative;
+  isolation: isolate;
   border: 1px solid var(--line);
+  box-shadow: var(--highlight), var(--shadow-card);
   overflow: hidden;
 }
 
 .surface {
-  background: var(--surf);
+  background: var(--surface-grad);
   border-radius: var(--r-xl);
   padding: var(--sp-6);
 }
 
 .feature {
-  background: linear-gradient(135deg, var(--surf), #16213c);
+  background:
+    linear-gradient(180deg, rgba(237, 234, 223, 0.04), transparent 50%),
+    linear-gradient(135deg, var(--surf), #16213c);
   border-color: var(--line2);
   border-radius: var(--r-2xl);
   padding: var(--sp-8) var(--sp-5);
@@ -27,28 +34,51 @@
   content: "";
   position: absolute;
   inset: 0 0 auto;
-  height: 3px;
+  height: 2px;
   background: linear-gradient(90deg, var(--teal), var(--terra));
+  opacity: 0.85;
+}
+
+/* Hover edge */
+.interactive::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 2;
+  border: 1px solid var(--edge, var(--teal));
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 280ms var(--ease);
 }
 
 .interactive {
-  transition:
-    border-color var(--dur) var(--ease),
-    background-color var(--dur) var(--ease),
-    transform 250ms var(--ease);
+  transition: transform 320ms var(--ease);
+}
+
+.gold {
+  --edge: var(--gold);
 }
 
 @media (hover: hover) {
   .interactive:hover {
-    border-color: var(--teal);
-    transform: translateY(-4px);
+    transform: translate3d(0, -4px, 0);
   }
+  .interactive:hover::before {
+    opacity: 1;
+  }
+}
+
+.interactive:focus-within::before {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .interactive,
-  .interactive:hover {
+  .interactive::before {
     transition: none;
+  }
+  .interactive:hover {
     transform: none;
   }
 }

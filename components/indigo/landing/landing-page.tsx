@@ -1,4 +1,5 @@
 import { Footer } from "../footer";
+import { Experience } from "../motion/experience";
 import { Nav } from "../nav";
 import { CommunityCta } from "./community-cta";
 import { ConnectAkhirah } from "./connect-akhirah";
@@ -15,7 +16,8 @@ import s from "./landing.module.css";
  * Section order follows the live home page. */
 export function LandingPage({ homeHref = "/" }: { homeHref?: string }) {
   return (
-    <div className={s.page}>
+    <div className={s.page} data-experience="">
+      <span data-progress="" aria-hidden="true" />
       <a href="#main" className={s.skip}>
         Skip to content
       </a>
@@ -31,6 +33,7 @@ export function LandingPage({ homeHref = "/" }: { homeHref?: string }) {
         <CommunityCta />
       </main>
       <Footer homeHref={homeHref} />
+      <Experience />
     </div>
   );
 }

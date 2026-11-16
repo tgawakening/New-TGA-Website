@@ -39,12 +39,17 @@ const tones = [s.toneTeal, s.toneTerra, s.toneGold, s.toneTeal];
 
 export function Upcoming() {
   return (
-    <section id="projects" className={s.section} aria-labelledby="upcoming-title">
+    <section id="projects" className={`${s.section} ${s.patterned}`} aria-labelledby="upcoming-title">
       <div className={s.wrap}>
         <SectionHeading id="upcoming-title" eyebrow="Next launches" title="Upcoming courses" />
         <ul className={s.upcoming}>
           {upcomingCourses.map((c, i) => (
-            <li key={c.id} className={`${s.upCard} ${tones[i % tones.length]}`}>
+            <li
+              key={c.id}
+              className={`${s.upCard} ${tones[i % tones.length]}`}
+              data-reveal=""
+              style={{ "--i": i } as React.CSSProperties}
+            >
               <svg className={s.upMotif} viewBox="0 0 100 100" aria-hidden="true">
                 <g fill="none" stroke="currentColor" strokeWidth="2">
                   {motifs[i % motifs.length]}

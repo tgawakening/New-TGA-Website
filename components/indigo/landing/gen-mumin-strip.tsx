@@ -15,7 +15,7 @@ export function GenMuminStrip() {
         <SectionHeading id="gm-title" eyebrow={genMumin.eyebrow} title={genMumin.title} lede={genMumin.lede} rule={false} />
         <ol className={s.progs}>
           {genMuminPrograms.map((p, i) => (
-            <li key={p.id}>
+            <li key={p.id} data-reveal="" style={{ "--i": i } as React.CSSProperties}>
               <Link href={`${genMumin.href}#gen-mumin-programs`} className={s.prog}>
                 <span className={s.progTop}>
                   <span className={s.progIcon}>

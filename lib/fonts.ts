@@ -9,6 +9,9 @@ export const fraunces = Fraunces({
   subsets: ["latin"],
   weight: "variable",
   style: ["normal", "italic"],
+  // Optical sizing: adding axes: ["opsz"] here enables it (CSS already sets
+  // font-optical-sizing: auto), but measured +69 KB (80 -> 149 KB for the two
+  // Fraunces files), so it stays off; display tracking is tuned per size instead.
   display: "swap",
   variable: "--display",
   fallback: ["Georgia", "Times New Roman", "serif"],

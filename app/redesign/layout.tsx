@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { indigoFontVariables } from "@/lib/fonts";
+import "@/styles/indigo-motion.css";
 
 /* Preview of the Indigo Geometry redesign. Kept off search engines and out of
  * the sitemap until switch-over. The font variables are applied here, not on

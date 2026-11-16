@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent } from "react";
+import { Eyebrow } from "../section-heading";
 import type { VisionMissionKey } from "./content";
 import s from "./landing.module.css";
 
@@ -17,14 +18,14 @@ type Panel = {
 
 type Props = {
   panels: Record<VisionMissionKey, Panel>;
-  stats: { label: string; n: string; suffix: string }[];
+  stats: { label: string; value: number; n: string; suffix: string }[];
 };
 
 const order: VisionMissionKey[] = ["vision", "mission"];
 
-/* Accessible tabs (WAI-ARIA pattern): arrow keys move between tabs.
- * No auto-rotation: the reader chooses. Stats sit outside the panels because
- * they describe the organisation, not one tab. */
+/* Accessible tabs (WAI-ARIA pattern; arrows move between tabs). The reader
+ * chooses: no auto-rotation. A swap is a short cross-fade (CSS on the panel
+ * that becomes visible). Stats count up once, on view (motion layer). */
 export function VisionMission({ panels, stats }: Props) {
   const [active, setActive] = useState<VisionMissionKey>("vision");
   const tabs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -38,30 +39,38 @@ export function VisionMission({ panels, stats }: Props) {
   };
 
   return (
-    <section id="mission" className={s.section} aria-label="Our vision and mission">
+    <section id="mission" className={`${s.section} ${s.patterned}`} aria-label="Our vision and mission">
       <div className={s.wrap}>
-        <div className={s.vmToggle} role="tablist" aria-label="Vision or mission">
-          {order.map((key) => (
-            <button
-              key={key}
-              ref={(el) => {
-                tabs.current[key] = el;
-              }}
-              type="button"
-              role="tab"
-              id={`vm-tab-${key}`}
-              aria-selected={active === key}
-              aria-controls={`vm-panel-${key}`}
-              tabIndex={active === key ? 0 : -1}
-              className={active === key ? s.vmOn : undefined}
-              onClick={() => setActive(key)}
-              onKeyDown={onKey}
-            >
-              {panels[key].tab}
-            </button>
-          ))}
+        <div className={s.vmHead} data-reveal="">
+          <Eyebrow>Who we are</Eyebrow>
+          <div className={s.vmToggle} role="tablist" aria-label="Vision or mission">
+            <span
+              className={`${s.vmThumb} ${active === "mission" ? s.vmThumbRight : ""}`}
+              aria-hidden="true"
+            />
+            {order.map((key) => (
+              <button
+                key={key}
+                ref={(el) => {
+                  tabs.current[key] = el;
+                }}
+                type="button"
+                role="tab"
+                id={`vm-tab-${key}`}
+                aria-selected={active === key}
+                aria-controls={`vm-panel-${key}`}
+                tabIndex={active === key ? 0 : -1}
+                className={active === key ? s.vmOn : undefined}
+                onClick={() => setActive(key)}
+                onKeyDown={onKey}
+              >
+                {panels[key].tab}
+              </button>
+            ))}
+          </div>
         </div>
 
+        <div data-reveal="">
         {order.map((key) => {
           const p = panels[key];
           return (
@@ -100,14 +109,15 @@ export function VisionMission({ panels, stats }: Props) {
             </div>
           );
         })}
+        </div>
 
         <dl className={s.stats}>
-          {stats.map((st) => (
-            <div key={st.label} className={s.stat}>
+          {stats.map((st, k) => (
+            <div key={st.label} className={s.stat} data-reveal="" style={{ "--i": k } as React.CSSProperties}>
               <dt>{st.label}</dt>
               <dd>
-                {st.n}
-                <span>{st.suffix}</span>
+                <span data-count={st.value}>{st.n}</span>
+                <span data-suffix="">{st.suffix}</span>
               </dd>
             </div>
           ))}
