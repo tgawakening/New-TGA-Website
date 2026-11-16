@@ -26,11 +26,12 @@ const motifs = [
     <rect x="32" y="32" width="36" height="36" />
     <rect x="32" y="32" width="36" height="36" transform="rotate(45 50 50)" />
   </g>,
-  // Ethics of debate: two triangles in balance
+  // Ethics of debate: a balance, two sides weighed evenly
   <g key="m3">
-    <path d="M50 16 82 72H18Z" />
-    <path d="M50 84 18 28h64Z" />
-    <circle cx="50" cy="50" r="8" />
+    <path d="M50 18v64M36 82h28M20 32h60" />
+    <path d="M26 32v12M74 32v12" />
+    <path d="M14 44a12 12 0 0 0 24 0ZM62 44a12 12 0 0 0 24 0Z" />
+    <circle cx="50" cy="18" r="4" />
   </g>,
 ];
 
