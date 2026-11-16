@@ -1,7 +1,7 @@
 .frame {
   display: grid;
   gap: 1.25rem;
-  color: #173659;
+  color: var(--ai-fg-173659, #173659);
 }
 
 .sidebar {
@@ -9,10 +9,10 @@
   gap: 1rem;
   align-content: start;
   padding: 1rem;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ai-ln-dbe4ef, #dbe4ef);
   border-radius: 1.2rem;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 40px rgba(18, 48, 88, 0.08);
+  background: var(--ai-bg-255_255_255_0_94, rgba(255, 255, 255, 0.94));
+  box-shadow: 0 18px 40px var(--ai-sh-18_48_88_0_08, rgba(18, 48, 88, 0.08));
 }
 
 .brand {
@@ -30,20 +30,20 @@
   display: grid;
   place-items: center;
   border-radius: 0.85rem;
-  background: linear-gradient(135deg, #1f5f93, #2c7bbb);
-  color: #fff;
+  background: linear-gradient(135deg, var(--ai-bg-1f5f93, #1f5f93), var(--ai-bg-2c7bbb, #2c7bbb));
+  color: var(--ai-fg-fff, #fff);
   font-weight: 700;
   font-size: 0.85rem;
 }
 
 .brandText strong {
   display: block;
-  color: #113252;
+  color: var(--ai-fg-113252, #113252);
   font-size: 0.98rem;
 }
 
 .brandText span {
-  color: #536779; /* 5.6:1 on the white sidebar */
+  color: var(--ai-fg-536779, #536779); /* 5.6:1 on the white sidebar */
   font-size: 0.8rem;
 }
 
@@ -71,7 +71,7 @@
   min-height: 2.6rem;
   padding: 0.55rem 0.8rem;
   border-radius: 0.75rem;
-  color: #36526f;
+  color: var(--ai-fg-36526f, #36526f);
   font-weight: 600;
   font-size: 0.93rem;
   text-decoration: none;
@@ -86,19 +86,19 @@
 }
 
 .link:hover {
-  background: #eef4fb;
-  color: #17406a;
+  background: var(--ai-bg-eef4fb, #eef4fb);
+  color: var(--ai-fg-17406a, #17406a);
 }
 
 .link:focus-visible {
-  outline: 2px solid #2c7bbb;
+  outline: 2px solid var(--ai-ln-2c7bbb, #2c7bbb);
   outline-offset: 2px;
 }
 
 .active,
 .active:hover {
-  background: linear-gradient(180deg, #255f91, #1d4f7d);
-  color: #fff;
+  background: linear-gradient(180deg, var(--ai-bg-255f91, #255f91), var(--ai-bg-1d4f7d, #1d4f7d));
+  color: var(--ai-fg-fff, #fff);
 }
 
 .sub {
@@ -119,15 +119,15 @@
   justify-content: space-between;
   gap: 0.75rem 1rem;
   padding: 0.8rem 1rem;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ai-ln-dbe4ef, #dbe4ef);
   border-radius: 1.2rem;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 40px rgba(18, 48, 88, 0.06);
+  background: var(--ai-bg-255_255_255_0_94, rgba(255, 255, 255, 0.94));
+  box-shadow: 0 18px 40px var(--ai-sh-18_48_88_0_06, rgba(18, 48, 88, 0.06));
 }
 
 .headerTitle {
   margin: 0;
-  color: #102844;
+  color: var(--ai-fg-102844, #102844);
   font-size: 1.15rem;
   font-weight: 700;
 }
@@ -147,13 +147,13 @@
 }
 
 .who strong {
-  color: #12314f;
+  color: var(--ai-fg-12314f, #12314f);
   font-size: 0.9rem;
   overflow-wrap: anywhere;
 }
 
 .who span {
-  color: #536779; /* 5.6:1 on the white header */
+  color: var(--ai-fg-536779, #536779); /* 5.6:1 on the white header */
   font-size: 0.78rem;
 }
 
@@ -178,21 +178,21 @@
 }
 
 .SUPER_ADMIN {
-  background: #fdf1dc;
-  border-color: #f0d29b;
-  color: #8a5a00;
+  background: var(--ai-bg-fdf1dc, #fdf1dc);
+  border-color: var(--ai-ln-f0d29b, #f0d29b);
+  color: var(--ai-fg-8a5a00, #8a5a00);
 }
 
 .MANAGER {
-  background: #e3f0fc;
-  border-color: #b6d4f1;
-  color: #1d4f7d;
+  background: var(--ai-bg-e3f0fc, #e3f0fc);
+  border-color: var(--ai-ln-b6d4f1, #b6d4f1);
+  color: var(--ai-fg-1d4f7d, #1d4f7d);
 }
 
 .COMMUNITY_LEAD {
-  background: #e4f5ec;
-  border-color: #b5dfc6;
-  color: #1f6b43;
+  background: var(--ai-bg-e4f5ec, #e4f5ec);
+  border-color: var(--ai-ln-b5dfc6, #b5dfc6);
+  color: var(--ai-fg-1f6b43, #1f6b43);
 }
 
 @media (min-width: 1024px) {
@@ -219,7 +219,7 @@
   .navLabel {
     display: block;
     margin: 0.6rem 0 0.2rem 0.8rem;
-    color: #536779; /* 5.6:1 on the white sidebar */
+    color: var(--ai-fg-536779, #536779); /* 5.6:1 on the white sidebar */
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -228,5 +228,145 @@
 
   .sub {
     padding-left: 2.5rem;
+  }
+}
+
+/* Indigo Geometry preview (styles/admin-indigo.css). Every rule below is
+ * scoped to [data-theme="indigo-admin"], so the live admin is unaffected. */
+.brandSeal {
+  display: none;
+}
+
+:global([data-theme="indigo-admin"]) .brandSeal {
+  display: block;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  color: var(--teal);
+}
+
+:global([data-theme="indigo-admin"]) .brandMark {
+  display: none;
+}
+
+:global([data-theme="indigo-admin"]) .frame {
+  gap: 0;
+  min-height: 100vh;
+  color: var(--sand);
+}
+
+:global([data-theme="indigo-admin"]) .sidebar {
+  gap: 0.75rem;
+  padding: 0.875rem var(--gutter);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:global([data-theme="indigo-admin"]) .brandText strong {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+:global([data-theme="indigo-admin"]) .brandText span {
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+:global([data-theme="indigo-admin"]) .link {
+  min-height: 2.5rem;
+  border-radius: 9px;
+  font-weight: 500;
+  font-size: 0.84375rem;
+  color: var(--dim);
+}
+
+:global([data-theme="indigo-admin"]) .active,
+:global([data-theme="indigo-admin"]) .active:hover {
+  color: var(--tealb);
+  font-weight: 600;
+}
+
+:global([data-theme="indigo-admin"]) .main {
+  gap: 0;
+  background: var(--bg);
+}
+
+/* The page content: the prototype's 30px content column. */
+:global([data-theme="indigo-admin"]) .main > :not(.header) {
+  margin: 1.25rem var(--gutter) 0;
+}
+
+:global([data-theme="indigo-admin"]) .main > :last-child {
+  margin-bottom: 5rem;
+}
+
+:global([data-theme="indigo-admin"]) .header {
+  min-height: 66px;
+  padding: 0.625rem var(--gutter);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--ai-bg-15_23_41_0_6, rgba(15, 23, 41, 0.6));
+}
+
+:global([data-theme="indigo-admin"]) .headerTitle {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+:global([data-theme="indigo-admin"]) .who strong {
+  font-weight: 500;
+  color: var(--dim);
+  font-size: 0.75rem;
+}
+
+:global([data-theme="indigo-admin"]) .who span {
+  color: var(--faint);
+  font-size: 0.75rem;
+}
+
+:global([data-theme="indigo-admin"]) .badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 5px 11px;
+}
+
+@media (min-width: 1024px) {
+  :global([data-theme="indigo-admin"]) .frame {
+    grid-template-columns: 258px minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  :global([data-theme="indigo-admin"]) .sidebar {
+    top: 0;
+    height: 100vh;
+    overflow: auto;
+    padding: 22px 16px;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+  }
+
+  :global([data-theme="indigo-admin"]) .navLabel {
+    margin: 1.1rem 0 0.4rem 0.625rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    color: var(--faint);
+  }
+
+  :global([data-theme="indigo-admin"]) .header {
+    padding: 0 30px;
+  }
+
+  :global([data-theme="indigo-admin"]) .main > :not(.header) {
+    margin: 1.875rem 30px 0;
+    max-width: 980px;
   }
 }

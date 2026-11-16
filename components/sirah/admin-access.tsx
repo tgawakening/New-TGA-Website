@@ -145,7 +145,7 @@ export function SirahAdminAccess() {
     }
   }
 
-  const labelStyle = { color: "#3d668f" };
+  const labelStyle = { color: "var(--ai-fg-3d668f, #3d668f)" };
   return (
     <div className="ga-admin-shell">
       <section className="ga-admin-workspace-card">
@@ -196,7 +196,7 @@ export function SirahAdminAccess() {
 
         {issued && (
           <div className="ga-admin-row" role="status" style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr", gap: "0.6rem" }}>
-            <strong style={{ color: "#17324d" }}>Login ready for {issued.email}. Share this password privately; it is shown only once.</strong>
+            <strong style={{ color: "var(--ai-fg-17324d, #17324d)" }}>Login ready for {issued.email}. Share this password privately; it is shown only once.</strong>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
               <code style={{ fontSize: "1rem", wordBreak: "break-all" }}>{issued.password}</code>
               <button
@@ -254,11 +254,11 @@ export function SirahAdminAccess() {
                       </button>
                     )}
                     {active && (
-                      <button type="button" className="ga-admin-ghost-btn" style={{ color: "#a3332b" }} disabled={!!pending} onClick={() => change(row, "REVOKE")}>
+                      <button type="button" className="ga-admin-ghost-btn" style={{ color: "var(--ai-fg-a3332b, #a3332b)" }} disabled={!!pending} onClick={() => change(row, "REVOKE")}>
                         {pending === `${row.id}:REVOKE` ? "Revoking…" : "Revoke access"}
                       </button>
                     )}
-                    {!active && <span style={{ color: "#667c92" }}>Re-add as Community Lead to restore.</span>}
+                    {!active && <span style={{ color: "var(--ai-fg-667c92, #667c92)" }}>Re-add as Community Lead to restore.</span>}
                   </div>
                 </article>
               );

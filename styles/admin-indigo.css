@@ -1,0 +1,367 @@
+/* Indigo Geometry · Sīrah admin theme.
+ *
+ * Inert unless an ancestor has data-theme="indigo-admin" (set by
+ * app/admin/sirah/layout.tsx only when the preview cookie is present; see
+ * app/redesign/admin/route.ts). Three layers:
+ *   1. --ai-* values for the colour hooks in the admin CSS modules
+ *      (scripts/themeable-admin-colors.mjs put them there; each keeps the
+ *      original colour as its fallback, so the live admin is unchanged).
+ *   2. The Sīrah classroom tokens, re-pointed for the admin Classroom page.
+ *   3. The shared global .ga-admin-* classes the workspace uses.
+ * Restyle only: no selector here hides, adds or reorders anything. */
+
+[data-theme="indigo-admin"] {
+  color-scheme: dark;
+
+  /* ---- 1. Module colour hooks: backgrounds ---- */
+  --ai-bg-fff: var(--surf);
+  --ai-bg-255_255_255_0_94: #0f1729;          /* sidebar, header */
+  --ai-bg-255_255_255_0_97: var(--surf);
+  --ai-bg-f7fafc: rgba(237, 234, 223, 0.04);
+  --ai-bg-f6f9fc: rgba(237, 234, 223, 0.04);
+  --ai-bg-15_23_41_0_6: rgba(15, 23, 41, 0.6); /* theme header (already Indigo) */
+  --ai-bg-f4f8fc: rgba(237, 234, 223, 0.03);
+  --ai-bg-f3f7fc: rgba(237, 234, 223, 0.03);
+  --ai-bg-eef4fb: rgba(237, 234, 223, 0.05);  /* hover */
+  --ai-bg-e9eef5: rgba(237, 234, 223, 0.06);
+  --ai-bg-c3cfdd: rgba(237, 234, 223, 0.18);
+  --ai-bg-e3f0fc: rgba(43, 182, 163, 0.12);   /* selected / manager */
+  --ai-bg-e4f5ec: rgba(43, 182, 163, 0.14);   /* ok / community lead */
+  --ai-bg-fdecea: rgba(217, 121, 79, 0.14);
+  --ai-bg-fdf0ee: rgba(217, 121, 79, 0.12);
+  --ai-bg-fdf1dc: rgba(201, 162, 76, 0.14);   /* super admin */
+  --ai-bg-fff3cf: rgba(201, 162, 76, 0.14);
+  --ai-bg-fff4e0: rgba(201, 162, 76, 0.12);
+  --ai-bg-1d4f7d: rgba(43, 182, 163, 0.12);   /* active nav: tinted, as in the prototype */
+  --ai-bg-255f91: rgba(43, 182, 163, 0.12);
+  --ai-bg-1f5f93: var(--teal);
+  --ai-bg-2c7bbb: var(--tealb);
+  --ai-bg-2f8a5b: var(--teal);
+  --ai-bg-141611: var(--ink);
+  --ai-bg-1f221b: var(--surf);
+  --ai-bg-102c4b88: rgba(6, 10, 20, 0.72);    /* dialog backdrop */
+
+  /* ---- text ---- */
+  --ai-fg-102844: var(--sand);
+  --ai-fg-113252: var(--sand);
+  --ai-fg-12314f: var(--sand);
+  --ai-fg-153654: var(--sand);
+  --ai-fg-163450: var(--sand);
+  --ai-fg-173659: var(--sand);
+  --ai-fg-17406a: var(--sand);
+  --ai-fg-f5efdf: var(--sand);
+  --ai-fg-35516f: var(--dim);
+  --ai-fg-36526f: var(--dim);
+  --ai-fg-4d6680: var(--dim);
+  --ai-fg-526477: var(--dim);
+  --ai-fg-526a80: var(--dim);
+  --ai-fg-536779: var(--dim);
+  --ai-fg-5d7189: var(--dim);
+  --ai-fg-5f758e: var(--dim);
+  --ai-fg-667c92: var(--dim);
+  --ai-fg-6a7f95: var(--dim);
+  --ai-fg-c3c3b7: var(--dim);
+  --ai-fg-3d668f: var(--teal);
+  --ai-fg-1d4f7d: var(--tealb);
+  --ai-fg-17664b: var(--tealb);
+  --ai-fg-1f6b43: var(--tealb);
+  --ai-fg-6a4a00: var(--gold);
+  --ai-fg-7a4b00: var(--gold);
+  --ai-fg-805900: var(--gold);
+  --ai-fg-8a5a00: var(--gold);
+  --ai-fg-8c2721: var(--terrab);
+  --ai-fg-9b2c22: var(--terrab);
+  --ai-fg-a3332b: var(--terrab);
+  --ai-fg-fff: var(--on-teal);                /* text on what were blue fills, now teal */
+  --ai-fg-17324d: var(--sand);                /* inline styles in admin-*.tsx */
+  --ai-bg-92_139_238_0_22: rgba(43, 182, 163, 0.16);
+
+  /* ---- lines ---- */
+  --ai-ln-dbe4ef: var(--line);
+  --ai-ln-dbe4ed: var(--line);
+  --ai-ln-b8c6d4: var(--line2);
+  --ai-ln-d9e2ec: var(--line);
+  --ai-ln-d5e2ec: var(--line2);
+  --ai-ln-e3eaf2: var(--line);
+  --ai-ln-cfdbe8: var(--line2);
+  --ai-ln-b9cbdd: var(--line2);
+  --ai-ln-41463a: var(--line2);
+  --ai-ln-9fc0df: rgba(43, 182, 163, 0.45);
+  --ai-ln-b6d4f1: rgba(43, 182, 163, 0.35);
+  --ai-ln-b5dfc6: rgba(43, 182, 163, 0.35);
+  --ai-ln-2c7bbb: var(--tealb);
+  --ai-ln-d9ad4a: var(--gold);
+  --ai-ln-f0d29b: rgba(201, 162, 76, 0.3);
+  --ai-ln-f2c4bf: rgba(217, 121, 79, 0.4);
+
+  /* ---- shadows ---- */
+  --ai-sh-18_48_88_0_06: rgba(0, 0, 0, 0);
+  --ai-sh-18_48_88_0_08: rgba(0, 0, 0, 0);
+  --ai-sh-18_48_88_0_12: rgba(0, 0, 0, 0.3);
+  --ai-sh-26_76_119_0_18: rgba(0, 0, 0, 0.35);
+  --ai-sh-36_96_148_0_25: rgba(0, 0, 0, 0.4);
+  --ai-sh-44_123_187_0_18: rgba(43, 182, 163, 0.15);
+
+  /* Montserrat/Georgia -> Sora/Fraunces for anything inheriting */
+  font-family: var(--body);
+  color: var(--sand);
+}
+
+/* ---- 2. Admin Classroom page: it runs on the Sīrah classroom tokens ---- */
+[data-theme="indigo-admin"] [data-theme="sirah-classroom"] {
+  --color-paper: var(--bg);
+  --color-paper-2: #17213a;
+  --color-surface: var(--surf);
+  --color-ink: var(--sand);
+  --color-ink-2: var(--dim);
+  --color-muted: var(--dim);
+  --color-rule: var(--line2);
+  --color-rule-strong: rgba(237, 234, 223, 0.3);
+  --color-night: var(--ink);
+  --color-night-2: #111a2e;
+  --color-night-ink: var(--sand);
+  --color-night-muted: var(--dim);
+  --color-night-rule: var(--line2);
+  --color-accent: var(--teal);
+  --color-accent-hover: var(--tealb);
+  --color-accent-soft: rgba(43, 182, 163, 0.14);
+  --color-gold-text: var(--tealb);
+  --color-accent-ink: var(--on-teal);
+  --color-focus: var(--tealb);
+  --color-danger: var(--terrab);
+  --color-danger-soft: rgba(217, 121, 79, 0.14);
+  --color-ok: var(--tealb);
+  --color-ok-soft: rgba(43, 182, 163, 0.14);
+  --font-display: var(--display);
+  --font-body: var(--body);
+  --radius-control: 9px;
+  color-scheme: dark;
+}
+
+/* ---- 3. Shared global admin classes, as used by the workspace ---- */
+[data-theme="indigo-admin"] .ga-admin-page {
+  background: var(--bg);
+  color: var(--sand);
+}
+
+/* Full-bleed app frame (prototype): no outer gutter or card around the shell. */
+[data-theme="indigo-admin"] .ga-admin-page-section {
+  padding: 0;
+}
+
+[data-theme="indigo-admin"] .ga-admin-container {
+  width: 100%;
+}
+
+[data-theme="indigo-admin"] .ga-admin-workspace-card,
+[data-theme="indigo-admin"] .ga-admin-card,
+[data-theme="indigo-admin"] .ga-admin-login-card,
+[data-theme="indigo-admin"] .ga-admin-hero-card {
+  background: var(--surf);
+  border-color: var(--line);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+[data-theme="indigo-admin"] .ga-admin-kicker {
+  color: var(--teal);
+  letter-spacing: 0.2em;
+}
+
+[data-theme="indigo-admin"] .ga-admin-workspace-head h2,
+[data-theme="indigo-admin"] .ga-admin-modal-head h3,
+[data-theme="indigo-admin"] .ga-admin-modal-section h4 {
+  color: var(--sand);
+  font-family: var(--display);
+  font-weight: 500;
+}
+
+[data-theme="indigo-admin"] .ga-admin-workspace-head p,
+[data-theme="indigo-admin"] .ga-admin-modal-grid p,
+[data-theme="indigo-admin"] .ga-admin-copy-stack p,
+[data-theme="indigo-admin"] .ga-admin-empty-state,
+[data-theme="indigo-admin"] .ga-admin-table-row p,
+[data-theme="indigo-admin"] .ga-admin-mini-card p {
+  color: var(--dim);
+}
+
+[data-theme="indigo-admin"] .ga-admin-label,
+[data-theme="indigo-admin"] .ga-admin-table-head {
+  color: var(--dim);
+}
+
+[data-theme="indigo-admin"] .ga-admin-search,
+[data-theme="indigo-admin"] .ga-admin-filter-row select,
+[data-theme="indigo-admin"] .ga-admin-note,
+[data-theme="indigo-admin"] .ga-admin-login-form input {
+  background: var(--ink);
+  border-color: var(--line2);
+  border-radius: 9px;
+  color: var(--sand);
+}
+
+[data-theme="indigo-admin"] .ga-admin-search:focus,
+[data-theme="indigo-admin"] .ga-admin-filter-row select:focus,
+[data-theme="indigo-admin"] .ga-admin-note:focus,
+[data-theme="indigo-admin"] .ga-admin-login-form input:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(43, 182, 163, 0.15);
+}
+
+[data-theme="indigo-admin"] ::placeholder {
+  color: #4e567a;
+}
+
+[data-theme="indigo-admin"] .ga-admin-primary-btn {
+  background: var(--teal);
+  border-color: var(--teal);
+  border-radius: 9px;
+  color: var(--on-teal);
+  box-shadow: none;
+}
+
+[data-theme="indigo-admin"] .ga-admin-primary-btn:hover {
+  background: var(--tealb);
+  border-color: var(--tealb);
+  box-shadow: none;
+}
+
+[data-theme="indigo-admin"] .ga-admin-ghost-btn,
+[data-theme="indigo-admin"] .ga-admin-outline-btn {
+  background: transparent;
+  border-color: var(--line2);
+  border-radius: 9px;
+  color: var(--dim);
+}
+
+[data-theme="indigo-admin"] .ga-admin-ghost-btn:hover,
+[data-theme="indigo-admin"] .ga-admin-outline-btn:hover {
+  background: transparent;
+  border-color: var(--teal);
+  color: var(--tealb);
+}
+
+[data-theme="indigo-admin"] .ga-admin-outline-btn.is-danger {
+  background: transparent;
+  border-color: rgba(217, 121, 79, 0.4);
+  color: var(--terrab);
+}
+
+[data-theme="indigo-admin"] .ga-admin-table-row,
+[data-theme="indigo-admin"] .ga-admin-mini-card,
+[data-theme="indigo-admin"] .ga-admin-fee-card,
+[data-theme="indigo-admin"] .ga-admin-row {
+  background: rgba(237, 234, 223, 0.03);
+  border-color: var(--line);
+}
+
+[data-theme="indigo-admin"] .ga-admin-table-row strong,
+[data-theme="indigo-admin"] .ga-admin-mini-card strong,
+[data-theme="indigo-admin"] .ga-admin-row strong {
+  color: var(--sand);
+}
+
+[data-theme="indigo-admin"] .ga-admin-tag {
+  background: rgba(43, 182, 163, 0.14);
+  color: var(--tealb);
+}
+
+[data-theme="indigo-admin"] .ga-admin-pill,
+[data-theme="indigo-admin"] .ga-admin-status.is-completed,
+[data-theme="indigo-admin"] .ga-admin-status.is-approved,
+[data-theme="indigo-admin"] .ga-admin-status.is-succeeded,
+[data-theme="indigo-admin"] .ga-admin-status.is-confirmed {
+  background: rgba(43, 182, 163, 0.14);
+  color: var(--tealb);
+}
+
+[data-theme="indigo-admin"] .ga-admin-status.is-pending {
+  background: rgba(201, 162, 76, 0.16);
+  color: var(--gold);
+}
+
+[data-theme="indigo-admin"] .ga-admin-status.is-under_review {
+  background: rgba(237, 234, 223, 0.06);
+  color: var(--dim);
+}
+
+[data-theme="indigo-admin"] .ga-admin-status.is-cancelled,
+[data-theme="indigo-admin"] .ga-admin-status.is-rejected,
+[data-theme="indigo-admin"] .ga-admin-status.is-failed {
+  background: rgba(217, 121, 79, 0.16);
+  color: var(--terrab);
+}
+
+[data-theme="indigo-admin"] .ga-admin-success-banner {
+  background: rgba(43, 182, 163, 0.12);
+  border-color: rgba(43, 182, 163, 0.3);
+  color: var(--tealb);
+}
+
+[data-theme="indigo-admin"] .ga-admin-error-banner {
+  background: rgba(217, 121, 79, 0.12);
+  border-color: rgba(217, 121, 79, 0.35);
+  color: var(--terrab);
+}
+
+[data-theme="indigo-admin"] .ga-admin-modal {
+  background: var(--surf);
+  border-color: var(--line2);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  color: var(--sand);
+}
+
+[data-theme="indigo-admin"] .ga-admin-donation-dialog::backdrop {
+  background: rgba(6, 10, 20, 0.72);
+}
+
+[data-theme="indigo-admin"] .ga-admin-notification-close {
+  color: var(--dim);
+}
+
+/* Native form controls inside the workspace that carry no class of their own */
+[data-theme="indigo-admin"] :where(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
+  background-color: var(--ink);
+  color: var(--sand);
+  border-color: var(--line2);
+}
+
+[data-theme="indigo-admin"] :where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--teal);
+}
+
+/* Preview flag (rendered by the layout only when the preview cookie is set) */
+.indigo-preview-flag {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  z-index: 80;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: rgba(13, 20, 36, 0.92);
+  color: var(--faint);
+  font: 600 11px/1 var(--body);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: 0 14px 40px -12px rgba(0, 0, 0, 0.7);
+}
+
+.indigo-preview-flag b {
+  color: var(--teal);
+}
+
+.indigo-preview-flag a {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(237, 234, 223, 0.06);
+  color: var(--sand);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}

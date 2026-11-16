@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
+import { SealMark } from "@/components/indigo/ornaments";
 import { SirahAppInstallButton } from "./admin-app";
 import styles from "./admin-shell.module.css";
 
@@ -84,6 +85,8 @@ export function SirahAdminShell({
       <aside className={styles.sidebar}>
         <a href="/admin/sirah/overview" className={styles.brand}>
           <span className={styles.brandMark}>TGA</span>
+          <SealMark className={styles.brandSeal} />
+
           <span className={styles.brandText}>
             <strong>Sīrah workspace</strong>
             <span>Beyond Chronology</span>

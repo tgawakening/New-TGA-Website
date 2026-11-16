@@ -49,7 +49,7 @@ export function SirahAdminCustomLink({
     () => countries.find((option) => option.code === country),
     [countries, country],
   );
-  const labelStyle = { color: "#3d668f" };
+  const labelStyle = { color: "var(--ai-fg-3d668f, #3d668f)" };
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -215,7 +215,7 @@ export function SirahAdminCustomLink({
             role="status"
             style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr", gap: "0.85rem", alignItems: "start" }}
           >
-            <strong style={{ fontSize: "1rem", color: "#17324d" }}>
+            <strong style={{ fontSize: "1rem", color: "var(--ai-fg-17324d, #17324d)" }}>
               {created.plan === "MONTHLY"
                 ? `Monthly subscription link ready for ${created.amount}/month (catalog ${created.catalogAmount}/month)`
                 : `Link ready for ${created.amount} (catalog ${created.catalogAmount})`}{" "}
@@ -227,7 +227,7 @@ export function SirahAdminCustomLink({
                 {copied ? "Copied" : "Copy link"}
               </button>
             </div>
-            <span style={{ color: "#17324d" }}>
+            <span style={{ color: "var(--ai-fg-17324d, #17324d)" }}>
               Expires {new Date(created.expiresAt).toLocaleString("en-GB")}. {accountEmailText[created.accountEmail]}
             </span>
             <a href={`/admin/sirah?order=${encodeURIComponent(created.orderId)}`} className="ga-admin-outline-btn" style={{ justifySelf: "start" }}>
