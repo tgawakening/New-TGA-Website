@@ -1,4 +1,4 @@
-import { EXCLUDED_ORDERS, INCLUDED_ORDERS } from "@/lib/sirah/admin-records";
+import { ARCHIVED_ORDERS, EXCLUDED_ORDERS, INCLUDED_ORDERS } from "@/lib/sirah/admin-records";
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -20,7 +20,7 @@ export async function setSirahGroupAdded(
   actor: string,
 ) {
   const order = await prisma.sirahOrder.findFirst({
-    where: { id: input.orderId, course: { slug: SIRAH_SLUG } },
+    where: { id: input.orderId, course: { slug: SIRAH_SLUG }, archivedAt: null },
     select: { id: true, groupAddedAt: true },
   });
   if (!order) throw new SirahError("Registration not found.", 404);
@@ -61,7 +61,7 @@ export async function sirahOverviewCounts() {
     paymentState: "PAID",
     enrolmentState: { in: ["ACTIVE", "COMPLETED"] },
   };
-  const [total, paid, pending, needsReview, groupAdded, groupNotAdded, excluded] =
+  const [total, paid, pending, needsReview, groupAdded, groupNotAdded, excluded, archived] =
     await Promise.all([
       prisma.sirahOrder.count({ where: scope }),
       prisma.sirahOrder.count({ where: { ...scope, paymentState: "PAID" } }),
@@ -82,6 +82,9 @@ export async function sirahOverviewCounts() {
       prisma.sirahOrder.count({
         where: { course: { slug: SIRAH_SLUG }, ...EXCLUDED_ORDERS },
       }),
+      prisma.sirahOrder.count({
+        where: { course: { slug: SIRAH_SLUG }, ...ARCHIVED_ORDERS },
+      }),
     ]);
-  return { total, paid, pending, needsReview, groupAdded, groupNotAdded, excluded };
+  return { total, paid, pending, needsReview, groupAdded, groupNotAdded, excluded, archived };
 }

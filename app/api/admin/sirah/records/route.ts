@@ -2,33 +2,45 @@ import { NextResponse } from "next/server";
 import {
   checkSirahOrigin,
   sirahAdmin,
+  sirahExclusionActor,
   sirahResponseError,
   privateJson,
 } from "@/lib/sirah/http";
 import { requireAdminAccess } from "@/lib/auth/admin";
+import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { sirahRecordsActionSchema } from "@/lib/sirah/admin-records";
 import { applySirahRecordsAction } from "@/services/sirah-records.service";
 import { SirahError } from "@/services/sirah-registration.service";
 
-// Exclude / include / delete test records: env super admin only. Reviewers,
-// viewers and community leads cannot reach this, whatever the UI shows.
+// ONE record per request. Exclude / include (mark as test): super admin or
+// manager. Archive ("delete") / restore: env super admin only. Community leads,
+// viewers and everyone else cannot reach this, whatever the UI shows. Nothing
+// here hard-deletes a row, and there is no bulk archive or delete anywhere.
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
-    if (requireAdminAccess(request) !== null)
-      throw new SirahError("Only the super admin can manage test records.", 403);
+    const access = await getSirahWorkspaceAccess(request);
+    if (access?.role !== "SUPER_ADMIN" && access?.role !== "MANAGER")
+      throw new SirahError("Only the super admin or a manager can manage test records.", 403);
     const parsed = sirahRecordsActionSchema.safeParse(await request.json());
     if (!parsed.success)
       return NextResponse.json(
         {
-          error: "Choose an action and between 1 and 100 records.",
+          error: "Choose an action and one record.",
           fields: parsed.error.flatten().fieldErrors,
         },
         { status: 400 },
       );
-    return privateJson(
-      await applySirahRecordsAction(parsed.data, await sirahAdmin(request)),
-    );
+    const { action } = parsed.data;
+    let actor: string;
+    if (action === "ARCHIVE" || action === "RESTORE") {
+      if (requireAdminAccess(request) !== null)
+        throw new SirahError("Only the super admin can delete or restore records.", 403);
+      actor = await sirahAdmin(request);
+    } else {
+      actor = await sirahExclusionActor(request);
+    }
+    return privateJson(await applySirahRecordsAction(parsed.data, actor));
   } catch (error) {
     return sirahResponseError(error);
   }

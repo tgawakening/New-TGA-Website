@@ -455,6 +455,7 @@ export async function queuePendingInvitations() {
       paymentState: "PAID",
       enrolmentState: { in: ["ACTIVE", "COMPLETED"] },
       invitationState: "PENDING",
+      archivedAt: null,
       user: { status: "ACTIVE" },
     },
     take: 100,

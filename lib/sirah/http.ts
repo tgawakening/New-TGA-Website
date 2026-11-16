@@ -4,7 +4,7 @@ import { sirahOriginAllowed } from "@/lib/sirah/origin";
 import { currentSirahResumeGrant } from "@/lib/sirah/resume";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, getSessionIdentity } from "@/lib/auth/session";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { requireAdminAccess } from "@/lib/auth/admin";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
@@ -41,6 +41,24 @@ export async function sirahUser(orderId?: string) {
   throw new SirahError(
     "Please sign in to continue.",
     401,
+  );
+}
+/**
+ * Gate for exclude / un-exclude (mark as test). Super Admin and Manager
+ * (SIRAH_REVIEWER) only; Community Leads and everyone else get 403. Returns the
+ * audit actor. Archive / restore ("delete") do NOT use this: they stay behind
+ * requireAdminAccess (Super Admin only).
+ */
+export async function sirahExclusionActor(request: Request) {
+  const access = await getSirahWorkspaceAccess(request);
+  if (access?.role === "SUPER_ADMIN") return sirahAdmin(request);
+  if (access?.role === "MANAGER") {
+    const email = (await getSessionIdentity(request))?.email;
+    if (email) return `reviewer:${email}`;
+  }
+  throw new SirahError(
+    "Only the super admin or a manager can exclude test records.",
+    403,
   );
 }
 export async function sirahAdmin(request: Request) {

@@ -204,7 +204,8 @@ export async function createSirahAdminCustomLink(
         );
       const changed = await tx.sirahOrder.updateMany({
         where: { id: existing.id, revision: existing.revision, paidCount: 0 },
-        data: { ...orderData, revision: { increment: 1 } },
+        // Reissuing a link to an archived order brings it back from the archive.
+        data: { ...orderData, archivedAt: null, revision: { increment: 1 } },
       });
       if (!changed.count)
         throw new SirahError("The registration changed. Try again.", 409);

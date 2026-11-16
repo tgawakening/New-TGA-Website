@@ -69,7 +69,7 @@ function applyData(row: Row, data: Row) {
   row.updatedAt = new Date();
 }
 export const defaults: Record<string, Row> = {
-  sirahOrder: { paymentState: "UNPAID", enrolmentState: "PENDING", revision: 0, paidMinor: 0, paidCount: 0, refundedMinor: 0, invitationState: "PENDING", method: null, discount: null, terms: null, providerOrderId: null, providerSubscriptionId: null, providerPlanId: null, providerCustomerId: null, checkoutToken: null, cancelledAt: null, accessEndsAt: null, programmeStart: null, programmeEnd: null, nextBillingAt: null, registrationId: null, groupAddedAt: null, groupAddedBy: null, excludedAt: null, excludedBy: null },
+  sirahOrder: { paymentState: "UNPAID", enrolmentState: "PENDING", revision: 0, paidMinor: 0, paidCount: 0, refundedMinor: 0, invitationState: "PENDING", method: null, discount: null, terms: null, providerOrderId: null, providerSubscriptionId: null, providerPlanId: null, providerCustomerId: null, checkoutToken: null, cancelledAt: null, accessEndsAt: null, programmeStart: null, programmeEnd: null, nextBillingAt: null, registrationId: null, groupAddedAt: null, groupAddedBy: null, excludedAt: null, excludedBy: null, archivedAt: null },
   user: { status: "ACTIVE", role: "STUDENT" },
 };
 function attach(row: Row, shape?: Row) {

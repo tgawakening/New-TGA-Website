@@ -62,7 +62,7 @@ type StudentRow = {
 async function latestOrders(userIds: string[]) {
   if (!userIds.length) return new Map<string, Awaited<ReturnType<typeof prisma.sirahOrder.findFirst>>>();
   const orders = await prisma.sirahOrder.findMany({
-    where: { userId: { in: userIds }, course: { slug: SIRAH_SLUG } },
+    where: { userId: { in: userIds }, course: { slug: SIRAH_SLUG }, archivedAt: null },
     orderBy: { createdAt: "desc" },
   });
   const latest = new Map<string, (typeof orders)[number]>();
@@ -87,7 +87,7 @@ const toStudent = (user: StudentRow): Student => ({
 /** Every student the classroom gate would admit right now. */
 export async function listEnrolledStudents(now = new Date()): Promise<Student[]> {
   const [withOrders, withEnrolments] = await Promise.all([
-    prisma.sirahOrder.findMany({ where: { course: { slug: SIRAH_SLUG } }, select: { userId: true } }),
+    prisma.sirahOrder.findMany({ where: { course: { slug: SIRAH_SLUG }, archivedAt: null }, select: { userId: true } }),
     prisma.enrollment.findMany({ where: { course: { slug: SIRAH_SLUG } }, select: { userId: true } }),
   ]);
   const ids = [...new Set([...withOrders, ...withEnrolments].map((row) => row.userId))];
