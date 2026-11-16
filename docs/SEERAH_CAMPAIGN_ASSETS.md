@@ -13,7 +13,9 @@ Both original Git LFS objects were retrieved and probed as real playable H.264/A
 | `public/Seerah new/Comp 1.mp4` | English | 50.25 seconds | 284,857,208 bytes | `/videos/sirah-preview-en.mp4` — 8,348,385 bytes |
 | `public/Seerah new/Comp 1r2.mp4` | Urdu | 51.32 seconds | 290,110,980 bytes | `/videos/sirah-preview-ur.mp4` — 8,137,804 bytes |
 
-The delivery copies retain the complete 9:16 frame at 720×1280, H.264/AAC, with fast-start MP4 metadata. They are ordinary Git files, so hosting does not depend on downloading LFS objects during the build. The original LFS assets remain untouched and their SHA-256 hashes match their committed pointers. Separate extracted JPEG thumbnails are used; no made-up captions are attached. Playback uses native controls and click-to-play, and no video is downloaded before play. Changing language pauses/removes the previous player. Pakistan suggests Urdu; other countries suggest English. An explicit language choice is remembered independently from country.
+The delivery copies retain the complete 9:16 frame at 720×1280, H.264/AAC, with fast-start MP4 metadata. They are ordinary Git files, so hosting does not depend on downloading LFS objects during the build.
+
+The two originals were removed from `public/` on the `redesign/indigo-geometry` branch: nothing in the app referenced them and they added ~575 MB to every deploy. They remain in Git history and Git LFS (last present at `74d82c0`). To restore one for re-encoding: `git checkout 74d82c0 -- "public/Seerah new/Comp 1.mp4"`. Separate extracted JPEG thumbnails are used; no made-up captions are attached. Playback uses native controls and click-to-play, and no video is downloaded before play. Changing language pauses/removes the previous player. Pakistan suggests Urdu; other countries suggest English. An explicit language choice is remembered independently from country.
 
 Recreate a delivery copy with installed FFmpeg (English example):
 

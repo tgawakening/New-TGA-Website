@@ -1,15 +1,18 @@
 import { Footer } from "../footer";
 import { Nav } from "../nav";
 import { CommunityCta } from "./community-cta";
+import { ConnectAkhirah } from "./connect-akhirah";
 import { stats, visionMission } from "./content";
 import { Courses } from "./courses";
 import { Flagship } from "./flagship";
 import { GenMuminStrip } from "./gen-mumin-strip";
 import { Hero } from "./hero";
+import { Upcoming } from "./upcoming";
 import { VisionMission } from "./vision-mission";
 import s from "./landing.module.css";
 
-/** `homeHref`: where "Home" and in-page footer anchors point. "/" after switch-over. */
+/** `homeHref`: where "Home" and in-page footer anchors point. "/" after switch-over.
+ * Section order follows the live home page. */
 export function LandingPage({ homeHref = "/" }: { homeHref?: string }) {
   return (
     <div className={s.page}>
@@ -21,8 +24,10 @@ export function LandingPage({ homeHref = "/" }: { homeHref?: string }) {
         <Hero />
         <Flagship />
         <VisionMission panels={visionMission} stats={stats} />
-        <Courses />
+        <ConnectAkhirah />
         <GenMuminStrip />
+        <Courses />
+        <Upcoming />
         <CommunityCta />
       </main>
       <Footer homeHref={homeHref} />

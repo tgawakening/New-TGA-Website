@@ -10,7 +10,7 @@ import s from "./landing.module.css";
  * Desktop: five equal tiles. */
 export function GenMuminStrip() {
   return (
-    <section id="projects" className={s.section} aria-labelledby="gm-title">
+    <section id="gen-mumin" className={s.section} aria-labelledby="gm-title">
       <div className={s.wrap}>
         <SectionHeading id="gm-title" eyebrow={genMumin.eyebrow} title={genMumin.title} lede={genMumin.lede} rule={false} />
         <ol className={s.progs}>
