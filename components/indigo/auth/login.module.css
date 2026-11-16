@@ -85,14 +85,6 @@
   transform: scaleX(1);
 }
 
-.notice {
-  width: 100%;
-  max-width: var(--wrap);
-  margin: 0 auto;
-  padding: 0 var(--gutter);
-  background: transparent;
-}
-
 /* Split */
 .split {
   flex: 1;

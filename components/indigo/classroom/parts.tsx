@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -7,7 +8,6 @@ import {
   type MaterialView,
 } from "@/lib/sirah/classroom";
 import { ClassroomCountdown } from "@/components/sirah/classroom-countdown";
-import { SealMark } from "../ornaments";
 import type { ClassroomClock } from "./clock";
 import s from "./classroom.module.css";
 
@@ -26,9 +26,18 @@ export function ClassroomHeader({
   return (
     <header className={s.header}>
       <div className={`${s.wrap} ${s.headRow}`}>
-        <Link href={home} className={s.logo}>
-          <SealMark className={s.mark} />
-          <span>
+        {/* The real TGA logo, same asset and sizes as the landing nav */}
+        <Link href={home} className={s.logo} aria-label="Sīrah Classroom: The Global Awakening">
+          <Image
+            src="/logo.webp"
+            alt=""
+            width={640}
+            height={246}
+            sizes="(min-width: 64rem) 160px, 112px"
+            priority
+            className={s.logoImg}
+          />
+          <span className={s.place} aria-hidden="true">
             <b>Sīrah Classroom</b>
             <span>Beyond Chronology</span>
           </span>

@@ -8,7 +8,6 @@ import { Experience } from "@/components/indigo/motion/experience";
 import { Wordmark } from "@/components/indigo/nav";
 import { Rig } from "@/components/indigo/rig";
 import { Eyebrow } from "@/components/indigo/section-heading";
-import { SirahNoticeBanner } from "@/components/sirah/sirah-notice-banner";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export const metadata: Metadata = { title: "Sign in · preview", robots: { index: false, follow: false } };
@@ -32,7 +31,6 @@ export default async function LoginPreviewPage({
   const params = await searchParams;
   const finishing = isUnfinishedRegistration(params.next);
   const passwordReset = params.reset === "1";
-  const notice = process.env.SIRAH_NOTICE?.trim();
 
   return (
     <div className={s.page} data-experience="">
@@ -42,13 +40,6 @@ export default async function LoginPreviewPage({
           ← Back to the site
         </Link>
       </header>
-
-      {notice ? (
-        // The site notice (SIRAH_NOTICE), in the Indigo colours the admin theme already maps.
-        <div className={s.notice} data-theme="indigo-admin">
-          <SirahNoticeBanner text={notice} />
-        </div>
-      ) : null}
 
       <main className={s.split}>
         <section className={s.intro} aria-labelledby="login-title">
