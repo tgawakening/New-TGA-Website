@@ -1,8 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Button } from "./button";
 import { EnrolLink } from "./enrol-link";
 import styles from "./nav.module.css";
+import { BrandLogo } from "@/components/brand-logo";
 
 export type NavLink = { label: string; href: string };
 
@@ -15,16 +15,13 @@ export const defaultNavLinks: NavLink[] = [
   { label: "Projects", href: "/projects/gen-mumin" },
 ];
 
-/** The real TGA logo (public/logo.webp, 640×246), served small by next/image. */
+/** The real TGA logo, pre-sized (components/brand-logo.tsx). */
 export function Wordmark({ href = "/", size = "nav" }: { href?: string; size?: "nav" | "footer" }) {
   return (
     <Link href={href} className={`${styles.logo} ${size === "footer" ? styles.logoFooter : ""}`}>
-      <Image
-        src="/logo.webp"
+      <BrandLogo
         alt="The Global Awakening"
-        width={640}
-        height={246}
-        sizes={size === "footer" ? "160px" : "(min-width: 64rem) 160px, 112px"}
+        sizes={size === "footer" ? "150px" : "(min-width: 64rem) 160px, 112px"}
         priority={size === "nav"}
         className={styles.logoImg}
       />
