@@ -12,7 +12,11 @@ const numerals = ["I", "II", "III", "IV"];
  * arrives the track draws and the seals ignite in order (CSS, keyed on .is-in). */
 function Journey() {
   return (
-    <ol className={s.journey} data-reveal="" aria-label="The four movements of the course">
+    <ol
+      className={s.journey}
+      data-reveal=""
+      aria-label="The four movements of the course"
+    >
       <span className={s.journeyTrack} aria-hidden="true">
         <span className={s.journeyFill} />
       </span>
@@ -22,7 +26,13 @@ function Journey() {
             <svg viewBox="0 0 100 100">
               <g fill="none" stroke="currentColor" strokeWidth="4">
                 <rect x="22" y="22" width="56" height="56" />
-                <rect x="22" y="22" width="56" height="56" transform="rotate(45 50 50)" />
+                <rect
+                  x="22"
+                  y="22"
+                  width="56"
+                  height="56"
+                  transform="rotate(45 50 50)"
+                />
               </g>
               <circle cx="50" cy="50" r="9" className={s.stationCore} />
             </svg>
@@ -35,7 +45,7 @@ function Journey() {
   );
 }
 
-export function Flagship() {
+export function Flagship({ seerahHref = flagship.href }: { seerahHref?: string }) {
   return (
     <section id="sirah" className={s.section} aria-labelledby="flagship-title">
       <div className={s.wrap}>
@@ -47,7 +57,9 @@ export function Flagship() {
               <h2 id="flagship-title" className={s.flagTitle}>
                 {flagship.title}
               </h2>
-              <p className={s.flagSub}>{flagship.pillars.map((p) => p.replace("The ", "")).join(" · ")}</p>
+              <p className={s.flagSub}>
+                {flagship.pillars.map((p) => p.replace("The ", "")).join(" · ")}
+              </p>
               <p className={s.flagBody}>{flagship.body}</p>
               {flagship.instructor ? (
                 <p className={s.flagInstructor}>
@@ -59,13 +71,34 @@ export function Flagship() {
                   <li key={e}>{e}</li>
                 ))}
               </ul>
-              <Button href={flagship.href} arrow>
+              <Button href={seerahHref} arrow>
                 Explore the Sīrah course
               </Button>
             </div>
-            <div className={s.flagArt} aria-hidden="true">
-              <Rosette className={s.flagRosette} accentClassName={s.rosetteAccentGold} />
-            </div>
+            {/* The course's own poster, set into the card: its warm paper edges
+             * fade into the indigo ground, the geometry frames it. */}
+            <figure className={s.flagArt}>
+              <Rosette
+                className={s.flagRosette}
+                accentClassName={s.rosetteAccentGold}
+              />
+              <span className={s.posterWrap}>
+                <span className={s.posterFrame} aria-hidden="true" />
+                <span className={s.poster}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized static files; the optimizer is bypassed on purpose */}
+                  <img
+                    src="/redesign/seerah-poster-640.webp"
+                    srcSet="/redesign/seerah-poster-420.webp 420w, /redesign/seerah-poster-640.webp 640w, /redesign/seerah-poster-792.webp 792w"
+                    sizes="(min-width: 54rem) 360px, (min-width: 30rem) 22rem, calc(100vw - 5rem)"
+                    width={792}
+                    height={941}
+                    loading="lazy"
+                    decoding="async"
+                    alt="Sīrah, from narrative to method: the Sīrah as a study of leadership, power, institutions, alliances, resources and strategy under changing conditions."
+                  />
+                </span>
+              </span>
+            </figure>
           </div>
           <Journey />
         </Card>
