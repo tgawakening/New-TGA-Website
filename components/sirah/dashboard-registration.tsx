@@ -12,6 +12,11 @@ export type SirahDashboardOrder = {
   paymentState: string;
   enrolmentState: string;
   createdAt: string;
+  paidCount?: number;
+  cancelled?: boolean;
+  nextBillingAt?: string | null;
+  accessEndsAt?: string | null;
+  renewalCycle?: { billingDay: number; graceDay: number } | null;
 };
 
 type StatusKind = "PAY" | "VERIFYING" | "ACTIVE" | "CLOSED";

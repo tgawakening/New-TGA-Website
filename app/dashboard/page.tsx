@@ -1,4 +1,5 @@
 import { sirahSchemaAvailable } from "@/lib/sirah/readiness";
+import { orderCycle } from "@/lib/sirah/billing-cycle";
 import { prisma } from "@/lib/prisma";
 import { SIRAH_PRICING_VERSION, SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { redirect } from "next/navigation";
@@ -51,6 +52,13 @@ export default async function DashboardPage() {
           paymentState: true,
           enrolmentState: true,
           createdAt: true,
+          paidCount: true,
+          cancelledAt: true,
+          nextBillingAt: true,
+          accessEndsAt: true,
+          cycleBillingDay: true,
+          cycleGraceDay: true,
+          cycleFirstDueAt: true,
         },
         orderBy: { createdAt: "desc" },
       })
@@ -71,10 +79,18 @@ export default async function DashboardPage() {
             (item) => item.course.slug === "seerah-course",
           ),
         showAdminLink,
-        sirahOrders: sirahOrders.map((order) => ({
-          ...order,
-          createdAt: order.createdAt.toISOString(),
-        })),
+        sirahOrders: sirahOrders.map(
+          ({ cycleBillingDay, cycleGraceDay, cycleFirstDueAt, cancelledAt, nextBillingAt, accessEndsAt, ...order }) => ({
+            ...order,
+            createdAt: order.createdAt.toISOString(),
+            cancelled: !!cancelledAt,
+            nextBillingAt: nextBillingAt?.toISOString() ?? null,
+            accessEndsAt: accessEndsAt?.toISOString() ?? null,
+            renewalCycle: orderCycle({ cycleBillingDay, cycleGraceDay, cycleFirstDueAt })
+              ? { billingDay: cycleBillingDay!, graceDay: cycleGraceDay! }
+              : null,
+          }),
+        ),
         fullName: refreshedUser.fullName,
         email: refreshedUser.email,
         phoneCountryCode: refreshedUser.phoneCountryCode,

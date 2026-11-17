@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RenewalCycle } from "@/components/sirah/renewal-cycle";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { countries } from "countries-list";
@@ -404,6 +405,18 @@ export default function StudentDashboard({ user }: DashboardProps) {
                 <p>Amount: {sirahAmountLabel(latestSirahOrder)}</p>
                 <p style={{ overflowWrap: "anywhere" }}>Reference: {latestSirahOrder.reference}</p>
               </div>
+              <RenewalCycle
+                className="ga-dashboard-stack ga-dashboard-renewal"
+                plan={latestSirahOrder.plan}
+                method={latestSirahOrder.method}
+                cycle={latestSirahOrder.renewalCycle ?? null}
+                paid={(latestSirahOrder.paidCount ?? 0) > 0}
+                paymentState={latestSirahOrder.paymentState}
+                enrolmentState={latestSirahOrder.enrolmentState}
+                cancelled={latestSirahOrder.cancelled}
+                nextBillingAt={latestSirahOrder.nextBillingAt}
+                accessEndsAt={latestSirahOrder.accessEndsAt}
+              />
               {pendingSirahOrder ? null : (
                 <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
                   <Link href={sirahOrderHref(latestSirahOrder)} className="ga-btn ga-btn-outline">

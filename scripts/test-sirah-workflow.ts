@@ -10,6 +10,7 @@ import { maintainSirahOrders } from "../services/sirah-maintenance.service";
 import { publicSirahCohort, updateSirahCohort } from "../services/sirah-cohort.service";
 import { courseStartRefundThrough, pakistanCalendarDate } from "../lib/sirah/cohort-dates";
 import { readFileSync } from "node:fs";
+import { DEFAULT_SIRAH_CYCLE, addCycles, dueInMonthOf, firstRenewalAfterPayment, graceEndFor, startCycle } from "../lib/sirah/billing-cycle";
 import test, { beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -550,6 +551,7 @@ async function stripeOrder(plan: "ANNUAL" | "MONTHLY") {
 function fakeStripe(
   order: { id: string; amountMinor: number; currency: string; plan: string },
   status = "paid",
+  trialEnd: number | null = null,
 ) {
   const start = Math.floor(Date.now() / 1000);
   let cancellation: number | null = null;
@@ -577,6 +579,7 @@ function fakeStripe(
         id: "sub_synthetic",
         metadata: { sirahOrderId: order.id, checkoutToken: "test-checkout" },
         start_date: start,
+        trial_end: trialEnd,
         customer: "cus_synthetic",
       }),
       update: async (_id: string, data: { cancel_at: number }) => {
@@ -659,6 +662,49 @@ test("monthly Stripe settlement is idempotent, schedules a 12-month end and reje
   });
   assert.equal(paid.paidCount, 12);
   assert.equal(paid.nextBillingAt, null);
+});
+test("a monthly Stripe order on the cohort cycle ends its subscription on the cycle's programme end", async () => {
+  const result = await stripeOrder("MONTHLY");
+  const cycle = startCycle(new Date(), DEFAULT_SIRAH_CYCLE);
+  await prisma.sirahOrder.update({
+    where: { id: result.orderId },
+    data: {
+      cycleBillingDay: cycle.cycleBillingDay,
+      cycleGraceDay: cycle.cycleGraceDay,
+      cycleFirstDueAt: cycle.cycleFirstDueAt,
+    },
+  });
+  const order = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: result.orderId } });
+  const fake = fakeStripe(order, "paid", Math.floor(cycle.cycleFirstDueAt.getTime() / 1000));
+  await verifySirahStripeSession(order.id, "cs_synthetic", fake.client);
+  assert.equal(fake.cancellation(), Math.floor(cycle.programmeEnd.getTime() / 1000));
+  const paid = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  assert.equal(paid.programmeEnd?.getTime(), cycle.programmeEnd.getTime());
+  assert.equal(paid.cycleFirstDueAt?.getTime(), cycle.cycleFirstDueAt.getTime());
+  assert.equal(paid.nextBillingAt?.getTime(), cycle.cycleFirstDueAt.getTime());
+});
+test("a Stripe subscription that does not bill on the cycle keeps the anniversary schedule", async () => {
+  const result = await stripeOrder("MONTHLY");
+  const cycle = startCycle(new Date(), DEFAULT_SIRAH_CYCLE);
+  await prisma.sirahOrder.update({
+    where: { id: result.orderId },
+    data: {
+      cycleBillingDay: cycle.cycleBillingDay,
+      cycleGraceDay: cycle.cycleGraceDay,
+      cycleFirstDueAt: cycle.cycleFirstDueAt,
+    },
+  });
+  const order = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: result.orderId } });
+  // No trial on the subscription (e.g. an admin-issued link was paid instead).
+  const fake = fakeStripe(order);
+  await verifySirahStripeSession(order.id, "cs_synthetic", fake.client);
+  assert.equal(
+    fake.cancellation(),
+    Math.floor(addMonthsClamped(new Date(fake.start * 1000), 12).getTime() / 1000),
+  );
+  const paid = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  assert.equal(paid.cycleFirstDueAt, null);
+  assert.equal(paid.cycleBillingDay, null);
 });
 test("PayPal annual verification rejects merchant/amount mismatches and records only completed captures", async () => {
   enableManual();
@@ -1448,6 +1494,24 @@ test("dedicated Sīrah checkout creates a monthly subscription and a single annu
       captured!.line_items![0].price_data!.recurring?.interval,
       plan === "MONTHLY" ? "month" : undefined,
     );
+    // Cohort billing cycle: a monthly card subscription charges the first
+    // month now (a one-off line) and then renews on the 7th, via a trial
+    // that ends on the student's first renewal.
+    const saved = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+    if (plan === "MONTHLY") {
+      const firstDue = firstRenewalAfterPayment(new Date(), DEFAULT_SIRAH_CYCLE);
+      assert.equal(saved.cycleBillingDay, 7);
+      assert.equal(saved.cycleGraceDay, 15);
+      assert.equal(saved.cycleFirstDueAt?.getTime(), firstDue.getTime());
+      assert.equal(captured!.subscription_data?.trial_end, Math.floor(firstDue.getTime() / 1000));
+      assert.equal(captured!.subscription_data?.billing_cycle_anchor, undefined);
+      assert.equal(captured!.line_items!.length, 2);
+      assert.equal(captured!.line_items![1].price_data!.unit_amount, 2999);
+      assert.equal(captured!.line_items![1].price_data!.recurring, undefined);
+    } else {
+      assert.equal(saved.cycleFirstDueAt, null);
+      assert.equal(captured!.line_items!.length, 1);
+    }
     assert.equal(
       (await publicSirahOrder(order.id, result.userId)).paymentState,
       "PROCESSING",
@@ -2835,7 +2899,16 @@ test("manual monthly receipts buy only paid months, legacy access is capped and 
     const first = await prisma.sirahOrder.findUniqueOrThrow({
       where: { id: order.id },
     });
-    const end = addMonthsClamped(first.programmeStart!, 1);
+    // New manual monthly payments follow the cohort cycle: paid to the next
+    // 7th (or the one after, for a late-month joiner), access through the 15th.
+    assert.equal(first.cycleBillingDay, 7);
+    assert.equal(first.cycleGraceDay, 15);
+    assert.equal(
+      first.cycleFirstDueAt?.getTime(),
+      firstRenewalAfterPayment(first.programmeStart!, DEFAULT_SIRAH_CYCLE).getTime(),
+    );
+    assert.equal(first.nextBillingAt?.getTime(), first.cycleFirstDueAt?.getTime());
+    const end = graceEndFor(first.cycleFirstDueAt!, DEFAULT_SIRAH_CYCLE);
     assert.equal(first.accessEndsAt?.getTime(), end.getTime());
     assert.equal(canAccessSirah(first, new Date(end.getTime() - 1)), true);
     assert.equal(canAccessSirah(first, end), false);
@@ -2847,11 +2920,15 @@ test("manual monthly receipts buy only paid months, legacy access is capped and 
       1,
     );
     // Exercise maintenance on a historical pre-fix row and a real next receipt.
+    // (A legacy anniversary row: no cohort cycle fields.)
     const start = addMonthsClamped(new Date(), -1);
     start.setUTCDate(start.getUTCDate() - 1);
     await prisma.sirahOrder.update({
       where: { id: order.id },
       data: {
+        cycleBillingDay: null,
+        cycleGraceDay: null,
+        cycleFirstDueAt: null,
         programmeStart: start,
         programmeEnd: addMonthsClamped(start, 12),
         accessEndsAt: null,
@@ -2902,6 +2979,56 @@ test("manual monthly receipts buy only paid months, legacy access is capped and 
     assert.equal(current.enrolmentState, "PENDING");
     assert.equal(current.paymentState, "UNPAID");
   }
+});
+
+test("manual monthly on the cohort cycle: due keeps access through grace, then pauses, and a receipt restores it", async (t) => {
+  // Billing and grace days are chosen around today (Pakistan) so the sweep's
+  // real clock sits between the due date and the grace end.
+  const today = Number(new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: "Asia/Karachi" }).format(new Date()));
+  if (today > 27) return t.skip("needs a later grace day in the current month");
+  enableManual();
+  const saved = await create();
+  let order = await repriceSirah(saved.orderId, saved.userId, 0, "PK", "MONTHLY", "BANK_TRANSFER");
+  order = await evidence(order, saved.userId);
+  await approve(order, "cycle-first");
+  const cycle = { billingDay: today, graceDay: today + 1 };
+  const due = dueInMonthOf(new Date(), cycle);
+  await prisma.sirahOrder.update({
+    where: { id: order.id },
+    data: {
+      cycleBillingDay: cycle.billingDay,
+      cycleGraceDay: cycle.graceDay,
+      cycleFirstDueAt: due,
+      nextBillingAt: due,
+      accessEndsAt: graceEndFor(due, cycle),
+    },
+  });
+  await maintainSirahOrders();
+  let current = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  assert.equal(current.enrolmentState, "ACTIVE", "inside grace: still active");
+  assert.equal(current.paymentState, "UNPAID");
+  assert.equal(current.accessEndsAt?.getTime(), graceEndFor(due, cycle).getTime());
+  assert.equal(canAccessSirah(current), true);
+  assert.ok((await prisma.sirahNotification.count({ where: { orderId: order.id, kind: "RENEWAL_DUE" } })) >= 1);
+  // Grace over: the next sweep pauses access.
+  await prisma.sirahOrder.update({ where: { id: order.id }, data: { accessEndsAt: new Date(Date.now() - 1000) } });
+  await maintainSirahOrders();
+  current = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  assert.equal(current.enrolmentState, "PENDING");
+  assert.equal(canAccessSirah(current), false);
+  // Paying restores access to the next billing day, plus its grace.
+  order = await evidence(await publicSirahOrder(order.id, saved.userId), saved.userId);
+  await approve(order, "cycle-second");
+  current = await prisma.sirahOrder.findUniqueOrThrow({ where: { id: order.id } });
+  const next = addCycles(due, 1, cycle);
+  assert.equal(current.paidCount, 2);
+  assert.equal(current.enrolmentState, "ACTIVE");
+  assert.equal(current.paymentState, "PAID");
+  assert.equal(current.nextBillingAt?.getTime(), next.getTime());
+  assert.equal(current.accessEndsAt?.getTime(), graceEndFor(next, cycle).getTime());
+  assert.equal(canAccessSirah(current), true);
+  const view = await publicSirahOrder(order.id, saved.userId);
+  assert.deepEqual(view.renewalCycle, cycle);
 });
 
 test("manual annual entitlement and cancelled manual monthly dates survive later confirmations", async () => {
@@ -4091,7 +4218,7 @@ test("staff recover unsubmitted Meezan and JazzCash payments without inventing a
     assert.equal(await prisma.sirahAudit.count({ where: { orderId: order.id, action: "EVIDENCE_SUBMITTED" } }), 0);
     assert.equal(await prisma.sirahAudit.count({ where: { orderId: order.id, action: "MANUAL_PAYMENT_RECOVERED" } }), 1);
     assert.equal(await prisma.enrollment.count({ where: { userId: r.userId, status: "ACTIVE" } }), 1);
-    assert.equal(paid.accessEndsAt?.toISOString(), addMonthsClamped(paid.programmeStart!, 1).toISOString());
+    assert.equal(paid.accessEndsAt?.toISOString(), graceEndFor(paid.cycleFirstDueAt!, DEFAULT_SIRAH_CYCLE).toISOString());
     assert.equal(await prisma.sirahNotification.count({ where: { orderId: order.id, kind: "CONFIRMED" } }), 2);
   }
 });

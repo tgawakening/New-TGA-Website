@@ -1,4 +1,5 @@
 import { withDiscountTerms } from "@/lib/sirah/discount-terms";
+import { orderCycle } from "@/lib/sirah/billing-cycle";
 import { isCardDiscount, personalSirahPrice } from "@/lib/sirah/manual-discount";
 import {
   ADMIN_CUSTOM_PRICING_VERSION,
@@ -317,6 +318,10 @@ export async function publicSirahOrder(orderId: string, userId: string) {
     cancelledAt: order.cancelledAt,
     accessEndsAt: order.accessEndsAt,
     nextBillingAt: order.nextBillingAt,
+    // The cohort billing cycle this order follows, or null (legacy schedule).
+    renewalCycle: orderCycle(order)
+      ? { billingDay: order.cycleBillingDay!, graceDay: order.cycleGraceDay! }
+      : null,
     hasBillingProfile: !!order.providerSubscriptionId,
     receipts: order.receipts,
     terms:

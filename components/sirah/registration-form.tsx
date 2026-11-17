@@ -1,5 +1,6 @@
 "use client";
 import { prepareSirahReceipt } from "@/lib/sirah/receipt-upload";
+import { RenewalCycle } from "./renewal-cycle";
 import { PersonalDiscount, personalDiscountAvailable } from "./personal-discount";
 import {
   sirahAccessConsentsComplete,
@@ -1881,7 +1882,23 @@ export function SirahRegistrationForm({
               </div>
             )}
           <div className={styles.summary}>
-            {order.nextBillingAt && <p>Next renewal: {new Date(order.nextBillingAt).toLocaleDateString()}.</p>}
+            <RenewalCycle
+              className={styles.renewal}
+              plan={order.plan}
+              method={order.method}
+              cycle={order.renewalCycle}
+              cohortCycle={
+                order.cohort?.billingDay
+                  ? { billingDay: order.cohort.billingDay, graceDay: order.cohort.graceDay }
+                  : null
+              }
+              paid={order.paidMinor > 0}
+              paymentState={order.paymentState}
+              enrolmentState={order.enrolmentState}
+              cancelled={!!order.cancelledAt}
+              nextBillingAt={order.nextBillingAt}
+              accessEndsAt={order.accessEndsAt}
+            />
             {order.programmeEnd && (
               <p>
                 Programme access end:{" "}
@@ -1943,6 +1960,7 @@ export function SirahRegistrationForm({
               not start another subscription. Access is restored after verified
               payment.
               {order.accessEndsAt &&
+                !order.renewalCycle &&
                 ` Current access or grace expires on ${new Date(order.accessEndsAt).toLocaleDateString()}.`}
             </p>
           )}

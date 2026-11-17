@@ -1,4 +1,5 @@
 import "server-only";
+import { cycleCopy, cycleDateLabel, orderCycle } from "@/lib/sirah/billing-cycle";
 import { courseStartRefundThrough } from "@/lib/sirah/cohort-dates";
 import { createSirahResumeLink } from "@/lib/sirah/resume";
 import { createHash } from "node:crypto";
@@ -107,6 +108,15 @@ export async function queueSirahNotice(
     if (order.programmeStart) rows.push(`Paid access starts: ${order.programmeStart.toISOString()}`);
     if (order.programmeEnd) rows.push(`Programme expires: ${order.programmeEnd.toISOString()}`);
     if (order.accessEndsAt) rows.push(`Paid access ends: ${order.accessEndsAt.toISOString()}`);
+  }
+  // Cohort billing cycle: the same three lines the student sees on the site.
+  const cycle = order.plan === "MONTHLY" ? orderCycle(order) : null;
+  if (cycle && ["CONFIRMED", "RENEWED", "RENEWAL_DUE", "FAILED"].includes(kind)) {
+    const copy = cycleCopy(cycle);
+    rows.push(copy.due, copy.grace, copy.explain);
+    if (order.nextBillingAt) rows.push(`Next renewal: ${cycleDateLabel(order.nextBillingAt)}`);
+    if (["RENEWAL_DUE", "FAILED"].includes(kind) && order.accessEndsAt)
+      rows.push(`Your access continues until the end of ${cycleDateLabel(new Date(order.accessEndsAt.getTime() - 1))}.`);
   }
   if (kind === "FAILED" && order.accessEndsAt)
     rows.push(`Renewal grace ends: ${order.accessEndsAt.toISOString()}. Update the existing subscription's payment details; access resumes only after verified payment.`);

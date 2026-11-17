@@ -1013,3 +1013,18 @@
     scroll-margin-bottom: 110px;
   }
 }
+
+/* Monthly renewal rules: always visible inside the order summary. */
+.renewal {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: #fbf8ef;
+  border: 1px solid #c9b98a;
+  border-radius: 6px;
+  color: #2b2414;
+}
+.renewal p {
+  margin: 0;
+}
