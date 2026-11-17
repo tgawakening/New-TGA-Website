@@ -1,9 +1,9 @@
 "use client";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import Link from "next/link";
 import type { SirahPlan } from "@/lib/sirah/catalog";
 import styles from "./registration.module.css";
+import { BrandLogo } from "@/components/brand-logo";
 
 // Same client-only form the course page's dialog renders; no logic changes.
 const SirahRegistrationForm = dynamic(
@@ -35,11 +35,9 @@ export function SirahRegistrationPage({
     <div className={styles.registerPage}>
       <header className={styles.registerHeader}>
         <Link href="/" aria-label="The Global Awakening home">
-          <Image
-            src="/logo.webp"
+          <BrandLogo
             alt="The Global Awakening"
-            width={220}
-            height={74}
+            sizes="(min-width: 768px) 168px, 132px"
             className={styles.registerLogo}
             priority
           />

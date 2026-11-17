@@ -274,3 +274,19 @@
   overflow-wrap: anywhere;
 }
 
+
+/* Sīrah admin theme (styles/admin-indigo.css): the Amount column reads as a
+ * figure: one line, strong, tabular. Scoped to [data-theme="indigo-admin"]. */
+:global([data-theme="indigo-admin"]) .row > div:nth-child(3) > strong {
+  white-space: nowrap;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Phones: the customer cell takes the full row so emails and phone numbers
+ * stay whole instead of breaking mid-value. */
+@media (max-width: 899px) {
+  :global([data-theme="indigo-admin"]) .row > div:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+}

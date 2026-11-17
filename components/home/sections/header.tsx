@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, type MouseEvent } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { navItems } from "@/components/home/data";
+import { BrandLogo } from "@/components/brand-logo";
 
 const SHOW_AUTH_BUTTONS = false;
 
@@ -62,11 +62,9 @@ export function Header({
       <div className="ga-container flex h-24 items-center justify-between gap-4">
         <div className="flex items-center">
           <Link href="/" aria-label="Go to homepage">
-            <Image
-              src="/logo.webp"
+            <BrandLogo
               alt="Global Awakening"
-              width={220}
-              height={74}
+              sizes="(min-width: 768px) 182px, 110px"
               className="ga-header-logo h-auto w-[110px] md:w-[182px]"
               priority
             />

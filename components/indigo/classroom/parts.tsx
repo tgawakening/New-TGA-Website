@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -10,6 +9,7 @@ import {
 import { ClassroomCountdown } from "@/components/sirah/classroom-countdown";
 import type { ClassroomClock } from "./clock";
 import s from "./classroom.module.css";
+import { BrandLogo } from "@/components/brand-logo";
 
 /* ---------- Header ---------- */
 export function ClassroomHeader({
@@ -28,15 +28,7 @@ export function ClassroomHeader({
       <div className={`${s.wrap} ${s.headRow}`}>
         {/* The real TGA logo, same asset and sizes as the landing nav */}
         <Link href={home} className={s.logo} aria-label="Sīrah Classroom: The Global Awakening">
-          <Image
-            src="/logo.webp"
-            alt=""
-            width={640}
-            height={246}
-            sizes="(min-width: 64rem) 160px, 112px"
-            priority
-            className={s.logoImg}
-          />
+          <BrandLogo alt="" sizes="(min-width: 64rem) 160px, 112px" priority className={s.logoImg} />
           <span className={s.place} aria-hidden="true">
             <b>Sīrah Classroom</b>
             <span>Beyond Chronology</span>

@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand-logo";
 
 const footerGroups = [
   {
@@ -36,7 +36,7 @@ const footerGroups = [
 const socialLinks = [
   { label: "Facebook", href: "https://www.facebook.com/profile.php?id=61563366532245" },
   { label: "YouTube", href: "https://www.youtube.com/@Globalawakeningchannel" },
-  { label: "Instagram", href: "https://www.instagram.com/global_awakening_channel/" },
+  { label: "Instagram", href: "https://www.instagram.com/theglobalawakeningofficial" },
 ];
 
 export function Footer({ legalName = "Global Awakening Ltd" }: { legalName?: string } = {}) {
@@ -44,13 +44,7 @@ export function Footer({ legalName = "Global Awakening Ltd" }: { legalName?: str
     <footer className="border-t border-white/10 bg-[#060c1f]">
       <div className="ga-container footer-main-grid">
         <div className="footer-brand-column">
-          <Image
-            src="/logo.webp"
-            alt="Global Awakening"
-            width={220}
-            height={74}
-            className="footer-logo"
-          />
+          <BrandLogo alt="Global Awakening" sizes="170px" className="footer-logo" />
           <p>
             Uniting minds, inspiring change. A global Muslim community grounded
             in the timeless wisdom of Qur&apos;an.

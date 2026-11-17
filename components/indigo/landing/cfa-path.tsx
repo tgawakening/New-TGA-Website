@@ -8,6 +8,34 @@ import s from "./landing.module.css";
 type Phase = (typeof CONNECT_PHASES)[number];
 const numerals = ["I", "II", "III", "IV"];
 
+/** First sentence only (phones). */
+const firstSentence = (text: string) => text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text;
+
+/* Phones: the same phase, condensed so the open station stays about a
+ * screen tall. One sentence, two points as chips, the stats on one line.
+ * The panel beside the path (wider screens) keeps the full detail. */
+function CompactDetail({ p }: { p: Phase }) {
+  return (
+    <div className={`${s.cfaDetail} ${s.cfaCompact}`}>
+      <p className={s.phaseBody}>{firstSentence(p.description)}</p>
+      <ul className={s.cfaChips}>
+        {p.points.slice(0, 2).map((pt) => (
+          <li key={pt}>{pt}</li>
+        ))}
+      </ul>
+      <p className={s.cfaStatLine}>
+        {p.stats.map((st) => `${st.value} ${st.label.toLowerCase()}`).join(" · ")}
+      </p>
+      <div className={s.phaseFoot}>
+        <span className={s.phaseNext}>
+          Leads to <b>{p.leadsTo}</b>
+        </span>
+        {p.id === "divine-bonds" ? <WaitlistButton label={p.cta} /> : <span className={s.phaseSoon}>{p.cta}</span>}
+      </div>
+    </div>
+  );
+}
+
 function Detail({ p, id }: { p: Phase; id?: string }) {
   return (
     <div className={s.cfaDetail} id={id}>
@@ -108,7 +136,7 @@ export function CfaPath({ phases }: { phases: readonly Phase[] }) {
               {/* Phones: detail inline under the open station */}
               {on ? (
                 <div className={s.cfaInline} id={`${base}-${k}`}>
-                  <Detail p={p} />
+                  <CompactDetail p={p} />
                 </div>
               ) : null}
             </li>

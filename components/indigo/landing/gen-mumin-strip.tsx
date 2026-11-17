@@ -8,7 +8,7 @@ import s from "./landing.module.css";
 
 /* Phones: a swipeable row (scroll-snap, no JS, no carousel library).
  * Desktop: five equal tiles. */
-export function GenMuminStrip() {
+export function GenMuminStrip({ projectsHref = genMumin.href }: { projectsHref?: string }) {
   return (
     <section id="gen-mumin" className={s.section} aria-labelledby="gm-title">
       <div className={s.wrap}>
@@ -16,7 +16,7 @@ export function GenMuminStrip() {
         <ol className={s.progs}>
           {genMuminPrograms.map((p, i) => (
             <li key={p.id} data-reveal="" style={{ "--i": i } as React.CSSProperties}>
-              <Link href={`${genMumin.href}#gen-mumin-programs`} className={s.prog}>
+              <Link href={`${projectsHref}#gen-mumin-programs`} className={s.prog}>
                 <span className={s.progTop}>
                   <span className={s.progIcon}>
                     <ProgramIcon program={p.id} />
@@ -30,7 +30,7 @@ export function GenMuminStrip() {
           ))}
         </ol>
         <div className={s.stripCta}>
-          <Button href={genMumin.href} variant="ghost" arrow>
+          <Button href={projectsHref} variant="ghost" arrow>
             Explore Gen-Mu&apos;min
           </Button>
         </div>

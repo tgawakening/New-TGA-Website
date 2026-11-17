@@ -7,7 +7,7 @@ import s from "./landing.module.css";
 
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
-export function Hero() {
+export function Hero({ seerahHref = "/seerah" }: { seerahHref?: string }) {
   const students = statByLabel("Students");
   const countries = statByLabel("Countries");
   const words = heroAyah.arabic.split(" ");
@@ -46,7 +46,7 @@ export function Hero() {
           </figure>
 
           <div className={s.ctaRow} data-rise="" style={i(4)}>
-            <Button href="/seerah" arrow>
+            <Button href={seerahHref} arrow>
               Explore the Sīrah course
             </Button>
             <Button href="#mission" variant="ghost">
