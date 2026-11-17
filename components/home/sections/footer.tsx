@@ -36,7 +36,7 @@ const footerGroups = [
 const socialLinks = [
   { label: "Facebook", href: "https://www.facebook.com/profile.php?id=61563366532245" },
   { label: "YouTube", href: "https://www.youtube.com/@Globalawakeningchannel" },
-  { label: "Instagram", href: "https://www.instagram.com/global_awakening_channel/" },
+  { label: "Instagram", href: "https://www.instagram.com/theglobalawakeningofficial" },
 ];
 
 export function Footer({ legalName = "Global Awakening Ltd" }: { legalName?: string } = {}) {
