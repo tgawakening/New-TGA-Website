@@ -4,7 +4,8 @@ import { Button } from "../button";
 import { Card } from "../card";
 import { Footer } from "../footer";
 import { Experience } from "../motion/experience";
-import { Nav, defaultNavLinks } from "../nav";
+import { Nav } from "../nav";
+import { liveLinks, type SiteLinks } from "../site-links";
 import { Rosette } from "../ornaments";
 import { Eyebrow, SectionHeading } from "../section-heading";
 import { closing, hero, launch, links, offer, path, preview, programmes, transformations } from "./content";
@@ -44,21 +45,8 @@ function Transformations() {
   );
 }
 
-/** `homeHref` / `aboutHref` / `projectsHref`: "/" , "/about" and
- * "/projects/gen-mumin" after switch-over; the hidden preview passes its own. */
-export function ProjectsPage({
-  homeHref = "/",
-  aboutHref = "/about",
-  projectsHref = "/projects/gen-mumin",
-}: {
-  homeHref?: string;
-  aboutHref?: string;
-  projectsHref?: string;
-}) {
-  const navLinks = defaultNavLinks.map((l) =>
-    l.href === "/about" ? { ...l, href: aboutHref } : l.href === "/projects/gen-mumin" ? { ...l, href: projectsHref } : l,
-  );
-
+/** `site`: live routes by default; the hidden preview passes its own. */
+export function ProjectsPage({ site = liveLinks }: { site?: SiteLinks }) {
   return (
     <div className={s.page} data-experience="">
       <span data-progress="" aria-hidden="true" />
@@ -81,8 +69,7 @@ export function ProjectsPage({
       </aside>
 
       <Nav
-        links={navLinks}
-        homeHref={homeHref}
+        site={site}
         support={{ href: links.whatsapp, label: "Join Community" }}
         enrol={{ href: links.registration, label: "Register now" }}
       />
@@ -217,7 +204,7 @@ export function ProjectsPage({
         </section>
       </main>
 
-      <Footer homeHref={homeHref} aboutHref={aboutHref} />
+      <Footer site={site} />
       <Experience />
     </div>
   );

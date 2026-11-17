@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { previewLinks } from "@/components/indigo/site-links";
 import { ProjectsPage } from "@/components/indigo/projects/projects-page";
 
 /* Hidden preview of the redesigned Gen-Mu'min project page. Not linked from
@@ -10,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function RedesignProjectsPage() {
-  return <ProjectsPage homeHref="/redesign" aboutHref="/redesign/about" projectsHref="/redesign/projects" />;
+  return <ProjectsPage site={previewLinks} />;
 }

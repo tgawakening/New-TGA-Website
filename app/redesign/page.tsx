@@ -1,5 +1,6 @@
 import { LandingPage } from "@/components/indigo/landing/landing-page";
+import { previewLinks } from "@/components/indigo/site-links";
 
 export default function RedesignPreviewPage() {
-  return <LandingPage homeHref="/redesign" aboutHref="/redesign/about" />;
+  return <LandingPage site={previewLinks} />;
 }

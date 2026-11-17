@@ -3,17 +3,12 @@ import { Button } from "./button";
 import { EnrolLink, type EnrolAction } from "./enrol-link";
 import styles from "./nav.module.css";
 import { BrandLogo } from "@/components/brand-logo";
+import { liveLinks, navLinksFor, type SiteLinks } from "./site-links";
 
 export type NavLink = { label: string; href: string };
 
-/* Real destinations. The live header's "Courses" and "Projects" are dropdowns
- * with one child each, so they link straight to that child. */
-export const defaultNavLinks: NavLink[] = [
-  { label: "Home", href: "/" },
-  { label: "About", href: "/about" },
-  { label: "Courses", href: "/seerah" },
-  { label: "Projects", href: "/projects/gen-mumin" },
-];
+/** The live destinations (components/indigo/site-links.ts). */
+export const defaultNavLinks: NavLink[] = navLinksFor(liveLinks);
 
 /** The real TGA logo, pre-sized (components/brand-logo.tsx). */
 export function Wordmark({ href = "/", size = "nav" }: { href?: string; size?: "nav" | "footer" }) {
@@ -30,18 +25,20 @@ export function Wordmark({ href = "/", size = "nav" }: { href?: string; size?: "
 }
 
 export function Nav({
-  links: given = defaultNavLinks,
-  homeHref = "/",
+  site = liveLinks,
+  links: given,
   enrol,
-  support = { href: "/support-our-mission", label: "Support our mission" },
+  support = { href: site.support, label: "Support our mission" },
 }: {
+  /** Live routes by default; the /redesign preview passes its own. */
+  site?: SiteLinks;
   links?: NavLink[];
-  homeHref?: string;
   /** Replaces the default "Enrol now" link (signed-in visitors still get "Your dashboard"). */
   enrol?: EnrolAction;
   support?: { href: string; label: string };
 }) {
-  const links = given.map((l) => (l.href === "/" ? { ...l, href: homeHref } : l));
+  const links = given ?? navLinksFor(site);
+  const homeHref = site.home;
   return (
     <header className={styles.header} data-nav="">
       <nav className={styles.bar} aria-label="Main">

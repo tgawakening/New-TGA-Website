@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { previewLinks } from "@/components/indigo/site-links";
 import { countries } from "countries-list";
 import { SeerahPage } from "@/components/indigo/seerah/seerah-page";
 import { activeCampaign } from "@/components/seerah/course-config";
@@ -43,8 +44,7 @@ export default async function RedesignSeerahPage({
       }
       paymentReceived={paymentReceived}
       countryOptions={countryOptions}
-      homeHref="/redesign"
-      aboutHref="/redesign/about"
+      site={previewLinks}
     />
   );
 }

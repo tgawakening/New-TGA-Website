@@ -5,7 +5,8 @@ import { Button } from "../button";
 import { Card } from "../card";
 import { Footer } from "../footer";
 import { Experience } from "../motion/experience";
-import { Nav, defaultNavLinks } from "../nav";
+import { Nav } from "../nav";
+import { liveLinks, type SiteLinks } from "../site-links";
 import { Rosette, SealMark, Star8 } from "../ornaments";
 import { Eyebrow, SectionHeading } from "../section-heading";
 import { CauseMark, CausePick, GiveButton, ReturnStatus, StickyGive } from "./actions";
@@ -18,31 +19,21 @@ import s from "./support.module.css";
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 const areaGlyph = [Star8, Rosette, SealMark];
 
-/** `homeHref` / `aboutHref` / `projectsHref` / `seerahHref`: the live routes
- * after switch-over; the hidden preview passes its sibling previews. Every
- * giving link, policy link and API call is the live one. */
+/** `site`: live routes by default; the hidden preview passes its sibling
+ * previews. Every giving link, policy link and API call is the live one. */
 export function SupportPage({
   config,
   params,
   countries,
   accounts,
-  homeHref = "/",
-  aboutHref = "/about",
-  projectsHref = "/projects/gen-mumin",
-  seerahHref = "/seerah",
+  site = liveLinks,
 }: {
   config: MissionSupportConfig;
   params: ReturnParams;
   countries: Country[];
   accounts: ManualAccounts;
-  homeHref?: string;
-  aboutHref?: string;
-  projectsHref?: string;
-  seerahHref?: string;
+  site?: SiteLinks;
 }) {
-  const navLinks = defaultNavLinks.map(l =>
-    l.href === "/about" ? { ...l, href: aboutHref } : l.href === "/projects/gen-mumin" ? { ...l, href: projectsHref } : l.href === "/seerah" ? { ...l, href: seerahHref } : l,
-  );
   const contributionTermsUrl = config.policyUrl || missionContributionPolicyPath;
   const allocationSummary = config.allocationNotice || missionAllocationNotice;
 
@@ -54,7 +45,7 @@ export function SupportPage({
           Skip to contribution form
         </a>
 
-        <Nav links={navLinks} homeHref={homeHref} support={{ href: "#mission-giving", label: "Give now" }} />
+        <Nav site={site} support={{ href: "#mission-giving", label: "Give now" }} />
 
         <main id="main">
           <ReturnStatus />
@@ -165,7 +156,7 @@ export function SupportPage({
                   <Eyebrow>Gen-Mu’min</Eyebrow>
                   <h3>Knowledge, character and community.</h3>
                   <p>Arabic-Tajweed, Seerah, life skills and leadership sit alongside community building and parental sessions. The programme brings purposeful learning into family life.</p>
-                  <Button href={projectsHref} variant="ghost" arrow>
+                  <Button href={site.projects} variant="ghost" arrow>
                     Explore Gen-Mu’min
                   </Button>
                 </Card>
@@ -173,7 +164,7 @@ export function SupportPage({
                   <Eyebrow>Seerah &amp; Prophetic leadership</Eyebrow>
                   <h3>Guidance for thoughtful action.</h3>
                   <p>Study the Prophetic example and reflect on responsibility, relationships and leadership through TGA’s online educational work.</p>
-                  <Button href={seerahHref} variant="ghost" arrow>
+                  <Button href={site.seerah} variant="ghost" arrow>
                     Explore Seerah
                   </Button>
                 </Card>
@@ -261,7 +252,7 @@ export function SupportPage({
           </section>
         </main>
 
-        <Footer homeHref={homeHref} aboutHref={aboutHref} legalName="GLOBAL AWAKENING CIC" />
+        <Footer site={site} legalName="GLOBAL AWAKENING CIC" />
         <StickyGive />
         <Experience />
       </div>

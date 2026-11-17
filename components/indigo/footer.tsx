@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Wordmark } from "./nav";
+import { liveLinks, type SiteLinks } from "./site-links";
 import styles from "./footer.module.css";
 
 /* Same destinations as the live footer (components/home/sections/footer.tsx).
- * `homeHref` lets the preview route keep in-page anchors on itself. */
-function groups(home: string, about: string) {
+ * `site` maps the page links to the /redesign preview; policies stay live. */
+function groups({ home, about, seerah, projects, support }: SiteLinks) {
   return [
     {
       title: "Explore",
@@ -12,15 +13,15 @@ function groups(home: string, about: string) {
         { label: "Home", href: home },
         { label: "About us", href: about },
         { label: "Our mission", href: `${home}#mission` },
-        { label: "Support us", href: "/support-our-mission" },
+        { label: "Support us", href: support },
       ],
     },
     {
       title: "Programs",
       links: [
         { label: "All courses", href: `${home}#courses` },
-        { label: "Sīrah course", href: "/seerah" },
-        { label: "Gen-Mu'min", href: "/projects/gen-mumin" },
+        { label: "Sīrah course", href: seerah },
+        { label: "Gen-Mu'min", href: projects },
         { label: "Future projects", href: `${home}#projects` },
       ],
     },
@@ -39,16 +40,14 @@ function groups(home: string, about: string) {
 const social = [
   { label: "Facebook", href: "https://www.facebook.com/profile.php?id=61563366532245" },
   { label: "YouTube", href: "https://www.youtube.com/@Globalawakeningchannel" },
-  { label: "Instagram", href: "https://www.instagram.com/global_awakening_channel/" },
+  { label: "Instagram", href: "https://www.instagram.com/theglobalawakeningofficial" },
 ];
 
 export function Footer({
-  homeHref = "/",
-  aboutHref = "/about",
+  site = liveLinks,
   legalName = "Global Awakening Ltd",
 }: {
-  homeHref?: string;
-  aboutHref?: string;
+  site?: SiteLinks;
   legalName?: string;
 }) {
   return (
@@ -56,10 +55,10 @@ export function Footer({
       <div className={styles.wrap}>
         <div className={styles.cols}>
           <div className={styles.brand}>
-            <Wordmark href={homeHref} size="footer" />
+            <Wordmark href={site.home} size="footer" />
             <p>Uniting minds, inspiring change. A global Muslim community grounded in the timeless wisdom of the Qur&apos;an.</p>
           </div>
-          {groups(homeHref, aboutHref).map((g) => (
+          {groups(site).map((g) => (
             <div key={g.title} className={styles.col}>
               <h2>{g.title}</h2>
               <ul>

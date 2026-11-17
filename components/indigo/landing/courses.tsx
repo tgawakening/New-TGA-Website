@@ -6,7 +6,8 @@ import s from "./landing.module.css";
 
 const toneClass = { teal: s.bTeal, gold: s.bGold, terra: s.bTerra };
 
-export function Courses() {
+/** `seerahHref` replaces the live "/seerah" course link (preview). */
+export function Courses({ seerahHref = "/seerah" }: { seerahHref?: string }) {
   return (
     <section id="courses" className={s.section} aria-labelledby="courses-title">
       <div className={s.wrap}>
@@ -39,7 +40,7 @@ export function Courses() {
                     </span>
                   ) : null}
                 </p>
-                <Button href={c.action.href} variant="soft" block arrow>
+                <Button href={c.action.href === "/seerah" ? seerahHref : c.action.href} variant="soft" block arrow>
                   {c.action.label}
                 </Button>
               </Card>

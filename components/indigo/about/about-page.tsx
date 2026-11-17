@@ -4,7 +4,8 @@ import { Button } from "../button";
 import { Card } from "../card";
 import { Footer } from "../footer";
 import { Experience } from "../motion/experience";
-import { Nav, defaultNavLinks } from "../nav";
+import { Nav } from "../nav";
+import { liveLinks, type SiteLinks } from "../site-links";
 import { ArrowRight, Rosette } from "../ornaments";
 import { Eyebrow, SectionHeading } from "../section-heading";
 import { aboutCta, pathways, visionMission } from "./content";
@@ -14,10 +15,10 @@ import s from "./about.module.css";
 
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
-/** `homeHref` / `aboutHref`: "/" and "/about" after switch-over; the hidden
- * preview passes its own routes so its links stay inside the preview. */
-export function AboutPage({ homeHref = "/", aboutHref = "/about" }: { homeHref?: string; aboutHref?: string }) {
-  const links = defaultNavLinks.map((l) => (l.href === "/about" ? { ...l, href: aboutHref } : l));
+/** `site`: live routes by default; the hidden preview passes its own so
+ * its links stay inside the preview. */
+export function AboutPage({ site = liveLinks }: { site?: SiteLinks }) {
+  const homeHref = site.home;
 
   return (
     <div className={s.page} data-experience="">
@@ -25,7 +26,7 @@ export function AboutPage({ homeHref = "/", aboutHref = "/about" }: { homeHref?:
       <a href="#main" className={s.skip}>
         Skip to content
       </a>
-      <Nav links={links} homeHref={homeHref} />
+      <Nav site={site} />
       <main id="main">
         <DawnHero homeHref={homeHref} />
         <Story />
@@ -75,7 +76,7 @@ export function AboutPage({ homeHref = "/", aboutHref = "/about" }: { homeHref?:
             <ol className={s.pathways}>
               {pathways.map((p, k) => (
                 <li key={p.id} data-reveal="" style={i(k)}>
-                  <Card as={Link} href={p.href ?? `${homeHref}#courses`} interactive className={s.pathway}>
+                  <Card as={Link} href={p.href === "/seerah" ? site.seerah : (p.href ?? `${homeHref}#courses`)} interactive className={s.pathway}>
                     <span className={s.pathNum} aria-hidden="true">
                       {String(k + 1).padStart(2, "0")}
                     </span>
@@ -102,7 +103,7 @@ export function AboutPage({ homeHref = "/", aboutHref = "/about" }: { homeHref?:
                 <Button href={`${homeHref}#courses`} arrow>
                   Explore courses
                 </Button>
-                <Button href="/support-our-mission" variant="ghost">
+                <Button href={site.support} variant="ghost">
                   Support our mission
                 </Button>
               </div>
@@ -110,7 +111,7 @@ export function AboutPage({ homeHref = "/", aboutHref = "/about" }: { homeHref?:
           </div>
         </section>
       </main>
-      <Footer homeHref={homeHref} aboutHref={aboutHref} />
+      <Footer site={site} />
       <Experience />
     </div>
   );

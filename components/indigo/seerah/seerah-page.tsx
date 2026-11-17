@@ -6,7 +6,8 @@ import { consultationDestinations } from "@/components/seerah/consultation-confi
 import { saveResidence, useResidenceSelection } from "@/lib/sirah/use-residence";
 import { Footer } from "../footer";
 import { Experience } from "../motion/experience";
-import { Nav, defaultNavLinks } from "../nav";
+import { Nav } from "../nav";
+import { liveLinks, type SiteLinks } from "../site-links";
 import { Eyebrow, SectionHeading } from "../section-heading";
 import { AskAction, ConsultationProvider } from "./consultation";
 import { activeCampaign, copy, courseConfig, learningOutcomes, sectionLinks } from "./content";
@@ -29,8 +30,8 @@ export type SeerahPageProps = {
   paymentReceived?: { reference: string | null };
   /** [code, name] for the residence select, sorted; built on the server. */
   countryOptions: [string, string][];
-  homeHref?: string;
-  aboutHref?: string;
+  /** Live routes by default; the hidden preview passes its own. */
+  site?: SiteLinks;
 };
 
 /* Section sub-nav: marks the section under the upper third of the viewport. */
@@ -63,8 +64,7 @@ export function SeerahPage({
   availability,
   paymentReceived,
   countryOptions,
-  homeHref = "/",
-  aboutHref = "/about",
+  site = liveLinks,
 }: SeerahPageProps) {
   const { country, hasResidence } = useResidenceSelection(visitorCountry);
   // Explicit Pakistan/Overseas choice, used only while residence is unknown.
@@ -79,7 +79,6 @@ export function SeerahPage({
     return () => window.clearInterval(t);
   }, []);
   const active = useActiveSection();
-  const links = defaultNavLinks.map((l) => (l.href === "/about" ? { ...l, href: aboutHref } : l));
   const cfg = courseConfig;
 
   return (
@@ -94,9 +93,8 @@ export function SeerahPage({
           Skip to course content
         </a>
         <Nav
-          links={links}
-          homeHref={homeHref}
-          support={copy.sponsor}
+          site={site}
+          support={{ ...copy.sponsor, href: copy.sponsor.href.replace("/support-our-mission", site.support) }}
           enrol={{
             href: registerHref({ country: heroCountry, requireBillingCountry: needsCountryChoice }),
             label: "Register for the course",
@@ -324,7 +322,7 @@ export function SeerahPage({
           </section>
         </main>
 
-        <Footer homeHref={homeHref} aboutHref={aboutHref} />
+        <Footer site={site} />
 
         {/* Phones: the register action stays in reach. */}
         <div className={s.mobileBar}>

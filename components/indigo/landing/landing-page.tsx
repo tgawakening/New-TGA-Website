@@ -1,6 +1,7 @@
 import { Footer } from "../footer";
 import { Experience } from "../motion/experience";
-import { Nav, defaultNavLinks } from "../nav";
+import { Nav } from "../nav";
+import { liveLinks, type SiteLinks } from "../site-links";
 import { CommunityCta } from "./community-cta";
 import { ConnectAkhirah } from "./connect-akhirah";
 import { stats, visionMission } from "./content";
@@ -12,29 +13,27 @@ import { Upcoming } from "./upcoming";
 import { VisionMission } from "./vision-mission";
 import s from "./landing.module.css";
 
-/** `homeHref` / `aboutHref`: where "Home" (and in-page footer anchors) and
- * "About" point. "/" and "/about" after switch-over.
+/** `site`: live routes by default; the /redesign preview passes its own.
  * Section order follows the live home page. */
-export function LandingPage({ homeHref = "/", aboutHref = "/about" }: { homeHref?: string; aboutHref?: string }) {
-  const links = defaultNavLinks.map((l) => (l.href === "/about" ? { ...l, href: aboutHref } : l));
+export function LandingPage({ site = liveLinks }: { site?: SiteLinks }) {
   return (
     <div className={s.page} data-experience="">
       <span data-progress="" aria-hidden="true" />
       <a href="#main" className={s.skip}>
         Skip to content
       </a>
-      <Nav links={links} homeHref={homeHref} />
+      <Nav site={site} />
       <main id="main">
-        <Hero />
-        <Flagship />
+        <Hero seerahHref={site.seerah} />
+        <Flagship seerahHref={site.seerah} />
         <VisionMission panels={visionMission} stats={stats} />
         <ConnectAkhirah />
-        <GenMuminStrip />
-        <Courses />
+        <GenMuminStrip projectsHref={site.projects} />
+        <Courses seerahHref={site.seerah} />
         <Upcoming />
         <CommunityCta />
       </main>
-      <Footer homeHref={homeHref} aboutHref={aboutHref} />
+      <Footer site={site} />
       <Experience />
     </div>
   );

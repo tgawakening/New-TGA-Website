@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { previewLinks } from "@/components/indigo/site-links";
 import { SupportPage } from "@/components/indigo/support/support-page";
 import { donationCountries, manualDonationAccounts } from "@/lib/mission-payment-options";
 import { getMissionSupportConfig } from "@/lib/mission-support-config";
@@ -34,10 +35,7 @@ export default async function RedesignSupportPage({ searchParams }: { searchPara
         session_id: pick(q.session_id),
         manage: pick(q.manage),
       }}
-      homeHref="/redesign"
-      aboutHref="/redesign/about"
-      projectsHref="/redesign/projects"
-      seerahHref="/redesign/seerah"
+      site={previewLinks}
     />
   );
 }

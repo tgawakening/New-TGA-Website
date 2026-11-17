@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { previewLinks } from "@/components/indigo/site-links";
 import { AboutPage } from "@/components/indigo/about/about-page";
 
 /* Hidden preview of the redesigned About page. Not linked from the live site;
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function RedesignAboutPage() {
-  return <AboutPage homeHref="/redesign" aboutHref="/redesign/about" />;
+  return <AboutPage site={previewLinks} />;
 }
