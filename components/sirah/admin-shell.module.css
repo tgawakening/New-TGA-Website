@@ -233,9 +233,8 @@
 
 /* Sīrah admin theme (styles/admin-indigo.css). Every rule below is scoped to
  * [data-theme="indigo-admin"], set by app/admin/sirah/layout.tsx. The data
- * area is light; the sidebar is a dark navy brand rail, so it re-declares
- * the dark values (checked: text 14.7:1, links 9.3:1, labels 6.1:1, active
- * 11.1:1 on #0f1729). */
+ * area and the sidebar are both light; the sidebar re-declares the colour
+ * hooks its children use so they read on white. */
 .brandSeal {
   display: none;
 }
@@ -259,24 +258,27 @@
 }
 
 :global([data-theme="indigo-admin"]) .sidebar {
-  /* The rail's own palette: the tokens and colour hooks its children use. */
-  --sand: #ede9df;
-  --dim: #b4bbcf;
-  --faint: #8e97b2;
-  --line: rgba(237, 234, 223, 0.1);
-  --teal: #2bb6a3;
-  --tealb: #5fe0cc;
-  --ai-bg-255_255_255_0_94: #0f1729;
-  --ai-ln-dbe4ef: rgba(237, 234, 223, 0.1);
-  --ai-fg-113252: #ede9df;
-  --ai-fg-536779: #8e97b2;
-  --ai-fg-36526f: #b4bbcf;
-  --ai-fg-17406a: #ede9df;
-  --ai-bg-eef4fb: rgba(237, 234, 223, 0.07);
-  --ai-bg-255f91: rgba(95, 224, 204, 0.13);
-  --ai-fg-fff: #5fe0cc;
-  --ai-ln-2c7bbb: #5fe0cc;
-  color-scheme: dark;
+  /* The rail's own palette: light, like the data area (white rail, hairline
+   * edge). Checked: names 15.9:1, links 9.6:1, labels 6.0:1, active
+   * 6.6:1 on its teal tint. */
+  --sand: var(--adm-ink);
+  --dim: var(--adm-neutral);
+  --faint: var(--adm-muted);
+  --line: var(--adm-rule);
+  --teal: var(--adm-teal);
+  --tealb: var(--adm-teal-ink);
+  --ai-bg-255_255_255_0_94: var(--adm-card);
+  --ai-ln-dbe4ef: var(--adm-rule);
+  --ai-fg-113252: var(--adm-ink);
+  --ai-fg-536779: var(--adm-muted);
+  --ai-fg-36526f: var(--adm-neutral);
+  --ai-fg-17406a: var(--adm-ink);
+  --ai-bg-eef4fb: var(--adm-row-hover);
+  --ai-bg-255f91: var(--adm-teal-soft);
+  --ai-fg-fff: var(--adm-teal-ink);
+  --ai-ln-2c7bbb: var(--adm-teal);
+  color-scheme: light;
+  background: var(--adm-card);
   gap: 0.75rem;
   padding: 0.875rem var(--gutter);
   border: 0;
