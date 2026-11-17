@@ -1,4 +1,10 @@
-import { EXCLUDED_ORDERS, INCLUDED_ORDERS, sirahDeletionRefusal } from "@/lib/sirah/admin-records";
+import {
+  ARCHIVED_ORDERS,
+  EXCLUDED_ORDERS,
+  INCLUDED_ORDERS,
+  sirahArchivePurgeAt,
+  sirahDeletionRefusal,
+} from "@/lib/sirah/admin-records";
 import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import "server-only";
 import { calculateSirahAnnualUnusedMonths } from "@/lib/sirah/annual-refund";
@@ -41,8 +47,10 @@ import {
 } from "./sirah-online.service";
 export async function listSirahAdmin(search: URLSearchParams) {
   // Test / junk records a super admin excluded stay out of the lists and CSV
-  // unless the (super-admin only) excluded view is requested.
-  const excludedView = search.get("excluded") === "only";
+  // unless the (super-admin only) excluded view is requested. Archived
+  // (soft-deleted) records appear only in the (super-admin only) archive view.
+  const archivedView = search.get("archived") === "only";
+  const excludedView = !archivedView && search.get("excluded") === "only";
   const page = Math.max(1, Math.min(10000, Number(search.get("page")) || 1));
   const pageSize = 25;
   const q = (search.get("q") || "").slice(0, 150);
@@ -71,7 +79,11 @@ export async function listSirahAdmin(search: URLSearchParams) {
     throw new SirahError("Choose a valid payment method.");
   const where: Prisma.SirahOrderWhereInput = {
     course: { slug: SIRAH_SLUG },
-    ...(excludedView ? EXCLUDED_ORDERS : INCLUDED_ORDERS),
+    ...(archivedView
+      ? ARCHIVED_ORDERS
+      : excludedView
+        ? EXCLUDED_ORDERS
+        : INCLUDED_ORDERS),
     ...(payment === "NEEDS_ATTENTION"
       ? { paymentState: { in: ["AWAITING_REVIEW", "PROCESSING", "FAILED"] } }
       : payment
@@ -112,7 +124,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
       where,
       skip: (page - 1) * pageSize,
       take: pageSize,
-      orderBy: { createdAt: "desc" },
+      orderBy: archivedView ? { archivedAt: "desc" } : { createdAt: "desc" },
       select: {
         id: true,
         reference: true,
@@ -142,6 +154,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
         groupAddedBy: true,
         excludedAt: true,
         excludedBy: true,
+        archivedAt: true,
         registrationId: true,
         providerOrderId: true,
         providerSubscriptionId: true,
@@ -186,6 +199,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
     page,
     pageSize,
     excludedView,
+    archivedView,
     rows: rows.map(({ discount, registrationId, providerOrderId, providerSubscriptionId, ...row }) => {
       const custom = adminCustomSnapshot({ discount });
       // Whether a super admin may delete it permanently (payment-free junk only).
@@ -196,6 +210,8 @@ export async function listSirahAdmin(search: URLSearchParams) {
       return {
         ...row,
         deleteRefusal,
+        // Archive view: when the maintenance job will delete it for good.
+        purgeAt: row.archivedAt ? sirahArchivePurgeAt(row.archivedAt) : null,
         // Admin custom payment link: catalog vs agreed price, sponsor, creator.
         customLink: custom
           ? {
@@ -431,7 +447,8 @@ export async function actOnSirahOrder(
   actor: string,
 ) {
   const order = await prisma.sirahOrder.findUnique({
-    where: { id: input.orderId, course: { slug: SIRAH_SLUG } },
+    // Archived (soft-deleted) orders take no enrolment actions until restored.
+    where: { id: input.orderId, course: { slug: SIRAH_SLUG }, archivedAt: null },
     include: { events: { where: { kind: { in: ["FIRST", "RENEWAL"] } } } },
   });
   if (!order) throw new SirahError("Registration not found.", 404);

@@ -511,6 +511,10 @@ model SirahOrder {
   /// CSV and Overview counts. Data kept; null = included (reversible).
   excludedAt             DateTime?           @db.DateTime(3)
   excludedBy             String?             @db.VarChar(320)
+  /// Super admin "deleted" this payment-free record: a soft delete, hidden
+  /// everywhere except the admin Archive view. Restorable until the
+  /// maintenance job purges it 7 days after this time. Separate from excludedAt.
+  archivedAt             DateTime?           @db.DateTime(3)
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
   user                   User                @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -526,6 +530,7 @@ model SirahOrder {
   @@index([paymentState, enrolmentState, createdAt])
   @@index([groupAddedAt])
   @@index([excludedAt])
+  @@index([archivedAt])
 }
 
 model SirahReceipt {

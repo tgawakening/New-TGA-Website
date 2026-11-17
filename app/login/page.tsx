@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import LoginForm from "@/components/auth/login-form";
+import { SirahNotice } from "@/components/sirah/sirah-notice";
 import { getCurrentUser } from "@/lib/auth/session";
 
 // True only for a same-site return to a saved Sirah booking (?order=...).
@@ -26,6 +27,7 @@ export default async function LoginPage({
 
   return (
     <main className="ga-page">
+      <SirahNotice placement="page" />
       <section className="ga-section">
         <div className="ga-container ga-login-shell">
           <article className="ga-login-copy">

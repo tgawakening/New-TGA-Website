@@ -7,6 +7,7 @@ import {
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { getSessionIdentity } from "@/lib/auth/session";
 import { SirahAdminShell } from "@/components/sirah/admin-shell";
+import { SirahNotice } from "@/components/sirah/sirah-notice";
 
 /** Sīrah workspace shell (left nav, header, role badge). Renders inside the
  * installable-app provider from app/admin/sirah/layout.tsx; the (workspace)
@@ -23,6 +24,7 @@ export default async function SirahAdminLayout({ children }: { children: ReactNo
     <main className="ga-admin-page">
       <section className="ga-admin-page-section">
         <div className="ga-admin-container">
+          <SirahNotice />
           <SirahAdminShell
             access={{
               role: access.role,

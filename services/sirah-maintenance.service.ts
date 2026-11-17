@@ -18,6 +18,7 @@ import {
   paypalRequest,
 } from "./sirah-online.service";
 import { runClassroomEmails } from "./sirah-classroom-email.service";
+import { purgeExpiredArchivedSirahOrders } from "./sirah-records.service";
 
 /** Minutes a checkout may sit in PROCESSING before the sweep reconciles it. */
 const SIRAH_PROCESSING_GRACE_MS = 20 * 60 * 1000;
@@ -112,6 +113,7 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
     where: {
       OR: [{ programmeEnd: { lte: now } }, { accessEndsAt: { lte: now } }],
       enrolmentState: { in: ["ACTIVE", "PENDING"] },
+      archivedAt: null,
     },
     take: 100,
   });
@@ -208,6 +210,7 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
       refundedMinor: { gt: 0 },
       providerSubscriptionId: { not: null },
       cancelledAt: null,
+      archivedAt: null,
     },
     take: 100,
   });
@@ -241,6 +244,7 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
       nextBillingAt: { lte: now },
       paidCount: { lt: 12 },
       method: { in: ["BANK_TRANSFER", "JAZZCASH"] },
+      archivedAt: null,
     },
     take: 100,
   });
@@ -275,6 +279,12 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
   // Classroom email (welcome backstop, class reminders, announcements). Its
   // own failure is reported, never allowed to fail the payment sweep.
   const classroomEmail = await runClassroomEmails(now).catch(() => ({ available: true, error: "Classroom email pass failed." }));
+  // Hard-delete orders archived (admin "Delete") more than 7 days ago. This is
+  // the only place an order is ever deleted. Its failure never fails the sweep.
+  const archivePurge = await purgeExpiredArchivedSirahOrders(now).catch(() => {
+    console.warn("[sirah-archive-purge] pass failed; nothing was deleted by it.");
+    return { error: "Archive purge pass failed." };
+  });
   return {
     ended: ended.length,
     manualReminders: due.length,
@@ -282,5 +292,6 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
     failures,
     ...notifications,
     classroomEmail,
+    archivePurge,
   };
 }
