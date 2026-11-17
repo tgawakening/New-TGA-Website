@@ -1,6 +1,6 @@
 import { Footer } from "../footer";
 import { Experience } from "../motion/experience";
-import { Nav } from "../nav";
+import { Nav, defaultNavLinks } from "../nav";
 import { CommunityCta } from "./community-cta";
 import { ConnectAkhirah } from "./connect-akhirah";
 import { stats, visionMission } from "./content";
@@ -12,16 +12,18 @@ import { Upcoming } from "./upcoming";
 import { VisionMission } from "./vision-mission";
 import s from "./landing.module.css";
 
-/** `homeHref`: where "Home" and in-page footer anchors point. "/" after switch-over.
+/** `homeHref` / `aboutHref`: where "Home" (and in-page footer anchors) and
+ * "About" point. "/" and "/about" after switch-over.
  * Section order follows the live home page. */
-export function LandingPage({ homeHref = "/" }: { homeHref?: string }) {
+export function LandingPage({ homeHref = "/", aboutHref = "/about" }: { homeHref?: string; aboutHref?: string }) {
+  const links = defaultNavLinks.map((l) => (l.href === "/about" ? { ...l, href: aboutHref } : l));
   return (
     <div className={s.page} data-experience="">
       <span data-progress="" aria-hidden="true" />
       <a href="#main" className={s.skip}>
         Skip to content
       </a>
-      <Nav homeHref={homeHref} />
+      <Nav links={links} homeHref={homeHref} />
       <main id="main">
         <Hero />
         <Flagship />
@@ -32,7 +34,7 @@ export function LandingPage({ homeHref = "/" }: { homeHref?: string }) {
         <Upcoming />
         <CommunityCta />
       </main>
-      <Footer homeHref={homeHref} />
+      <Footer homeHref={homeHref} aboutHref={aboutHref} />
       <Experience />
     </div>
   );

@@ -4,13 +4,13 @@ import styles from "./footer.module.css";
 
 /* Same destinations as the live footer (components/home/sections/footer.tsx).
  * `homeHref` lets the preview route keep in-page anchors on itself. */
-function groups(home: string) {
+function groups(home: string, about: string) {
   return [
     {
       title: "Explore",
       links: [
         { label: "Home", href: home },
-        { label: "About us", href: "/about" },
+        { label: "About us", href: about },
         { label: "Our mission", href: `${home}#mission` },
         { label: "Support us", href: "/support-our-mission" },
       ],
@@ -42,7 +42,15 @@ const social = [
   { label: "Instagram", href: "https://www.instagram.com/global_awakening_channel/" },
 ];
 
-export function Footer({ homeHref = "/", legalName = "Global Awakening Ltd" }: { homeHref?: string; legalName?: string }) {
+export function Footer({
+  homeHref = "/",
+  aboutHref = "/about",
+  legalName = "Global Awakening Ltd",
+}: {
+  homeHref?: string;
+  aboutHref?: string;
+  legalName?: string;
+}) {
   return (
     <footer className={styles.footer}>
       <div className={styles.wrap}>
@@ -51,7 +59,7 @@ export function Footer({ homeHref = "/", legalName = "Global Awakening Ltd" }: {
             <Wordmark href={homeHref} size="footer" />
             <p>Uniting minds, inspiring change. A global Muslim community grounded in the timeless wisdom of the Qur&apos;an.</p>
           </div>
-          {groups(homeHref).map((g) => (
+          {groups(homeHref, aboutHref).map((g) => (
             <div key={g.title} className={styles.col}>
               <h2>{g.title}</h2>
               <ul>
