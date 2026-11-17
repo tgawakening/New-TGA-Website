@@ -145,7 +145,7 @@ export async function GET() {
     const user = await sirahUser();
     if (!(await sirahSchemaAvailable())) return privateJson({ orders: [] });
     const rows = await prisma.sirahOrder.findMany({
-      where: { userId: user.id, course: { slug: SIRAH_SLUG } },
+      where: { userId: user.id, course: { slug: SIRAH_SLUG }, archivedAt: null },
       select: {
         id: true,
         reference: true,

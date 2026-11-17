@@ -168,6 +168,18 @@ test("a Community Lead stays read-only on every other endpoint, but can read and
   assert.match((await csv.text()).split("\r\n")[0], /,Added to group,Group added at,Group added by$/);
 });
 
+test("a Manager can approve / complete a payment; refunds stay Super Admin only", async () => {
+  const manager = await sessionFor("SIRAH_REVIEWER");
+  const o = order({ paymentState: "AWAITING_REVIEW", enrolmentState: "PENDING", method: "BANK_TRANSFER", paidCount: 0, paidMinor: 0 });
+  const approved = await enrolmentsPost(req("/api/admin/sirah", manager, { orderId: o.id, revision: 4, action: "APPROVE", verifiedTransfer: true }));
+  assert.equal(approved.status, 200, await approved.clone().text());
+  assert.equal(sirahOrderRow(o.id).paymentState, "PAID");
+  assert.equal(sirahOrderRow(o.id).enrolmentState, "ACTIVE");
+  const refund = await enrolmentsPost(req("/api/admin/sirah", manager, { orderId: o.id, revision: sirahOrderRow(o.id).revision, action: "REFUND", note: "manager attempt" }));
+  assert.equal(refund.status, 403);
+  assert.equal(sirahOrderRow(o.id).paymentState, "PAID");
+});
+
 test("Managers cannot reach Access and roles", async () => {
   const manager = await sessionFor("SIRAH_REVIEWER");
   const other = user("SIRAH_REVIEWER");
@@ -280,5 +292,5 @@ test("Students list filters not-yet-added and needs-attention; CSV and overview 
   await assert.rejects(listSirahAdmin(new URLSearchParams({ group: "MAYBE" })), /valid group status/);
   const csv = sirahCsv(yes).split("\r\n");
   assert.match(csv[1], /"Yes","2026-11-10T10:00:00\.000Z","lead:a@example\.test"$/);
-  assert.deepEqual(await sirahOverviewCounts(), { total: 4, paid: 2, pending: 2, needsReview: 1, groupAdded: 1, groupNotAdded: 1, excluded: 0 });
+  assert.deepEqual(await sirahOverviewCounts(), { total: 4, paid: 2, pending: 2, needsReview: 1, groupAdded: 1, groupNotAdded: 1, excluded: 0, archived: 0 });
 });

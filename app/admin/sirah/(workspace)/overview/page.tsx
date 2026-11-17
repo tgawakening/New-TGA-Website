@@ -27,13 +27,23 @@ export default async function SirahOverviewPage() {
           <h2>Sīrah | Beyond Chronology at a glance</h2>
           <p>
             Live counts from the enrolment records.
-            {access.role === "SUPER_ADMIN" && counts.excluded > 0 && (
+            {(access.role === "SUPER_ADMIN" || access.role === "MANAGER") &&
+              counts.excluded > 0 && (
               <>
                 {" "}
                 {number(counts.excluded)} test{" "}
                 {counts.excluded === 1 ? "record is" : "records are"} excluded
                 from these counts.{" "}
                 <a href="/admin/sirah?excluded=only">View excluded</a>
+              </>
+            )}
+            {access.role === "SUPER_ADMIN" && counts.archived > 0 && (
+              <>
+                {" "}
+                {number(counts.archived)} deleted{" "}
+                {counts.archived === 1 ? "record is" : "records are"} in the
+                archive awaiting permanent deletion.{" "}
+                <a href="/admin/sirah?archived=only">View archive</a>
               </>
             )}
           </p>

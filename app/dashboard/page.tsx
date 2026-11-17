@@ -40,7 +40,7 @@ export default async function DashboardPage() {
   // Read-only: the student's Sīrah bookings, so an unpaid one is visible here.
   const sirahOrders = (await sirahSchemaAvailable())
     ? await prisma.sirahOrder.findMany({
-        where: { userId: refreshedUser.id, course: { slug: SIRAH_SLUG } },
+        where: { userId: refreshedUser.id, course: { slug: SIRAH_SLUG }, archivedAt: null },
         select: {
           id: true,
           reference: true,

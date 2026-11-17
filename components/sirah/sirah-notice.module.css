@@ -1,0 +1,65 @@
+/* Sīrah night band with the one gold signal (values from
+ * app/seerah/classroom/tokens.css, inlined because the banner sits outside
+ * the classroom theme scope). */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 8px 10px 16px;
+  border: 1px solid #41463a;
+  border-left: 3px solid #d9ad4a;
+  background: #141611;
+  color: #f5efdf;
+  font-family: "Amiri Marks", var(--font-montserrat), Arial, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Public pages: the banner sits above the hero, inside the site container. */
+.pageTop {
+  padding-top: 16px;
+}
+
+.pageTop .notice {
+  margin-bottom: 0;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding-block: 8px;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.dismiss {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: #c3c3b7;
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+
+.dismiss:hover {
+  color: #f5efdf;
+  background: #1f221b;
+}
+
+.dismiss:focus-visible {
+  outline: 3px solid #d9ad4a;
+  outline-offset: -3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dismiss {
+    transition: none;
+  }
+}

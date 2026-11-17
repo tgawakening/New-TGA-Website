@@ -8,6 +8,7 @@ import { Experience } from "@/components/indigo/motion/experience";
 import { Wordmark } from "@/components/indigo/nav";
 import { Rig } from "@/components/indigo/rig";
 import { Eyebrow } from "@/components/indigo/section-heading";
+import { SirahNotice } from "@/components/sirah/sirah-notice";
 import { getCurrentUser } from "@/lib/auth/session";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailable } from "@/lib/db-errors";
 import { indigoFontVariables } from "@/lib/fonts";
@@ -99,6 +100,8 @@ export default async function LoginPage({
 
         <section className={s.panel} aria-labelledby="signin-title" data-rise="" style={i(2)}>
           <div className={s.card}>
+            {/* Operational notice from SIRAH_NOTICE (renders nothing when unset). */}
+            <SirahNotice />
             <h2 id="signin-title" className={s.cardTitle}>
               {finishing ? "Sign in to continue" : "Sign in"}
             </h2>

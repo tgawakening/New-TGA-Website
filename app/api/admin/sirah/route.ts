@@ -24,8 +24,12 @@ export async function GET(request: Request) {
   try {
     const access = await sirahReadAccess(request);
     const params = new URL(request.url).searchParams;
-    // The excluded (test / junk) view is for the super admin only.
-    if (access.role !== "SUPER_ADMIN") params.delete("excluded");
+    // The excluded (test / junk) view is for the super admin and managers,
+    // who can exclude / un-exclude. The archive (soft-deleted records
+    // awaiting purge) stays super-admin only.
+    if (access.role !== "SUPER_ADMIN" && access.role !== "MANAGER")
+      params.delete("excluded");
+    if (access.role !== "SUPER_ADMIN") params.delete("archived");
     const data = await listSirahAdmin(params);
     if (params.get("format") === "csv")
       return new Response(sirahCsv(data), {

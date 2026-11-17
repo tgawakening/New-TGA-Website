@@ -210,74 +210,67 @@
   }
 }
 
-/* Super-admin test-record housekeeping: selection, bulk bar, excluded view. */
+/* Record housekeeping. Delete / restore: one record at a time, super admin.
+   The checkbox selection and bulk bar drive exclude / un-exclude only. */
 .bulkBar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.6rem 0.9rem;
   margin: 0.75rem 0;
-  padding: 0.65rem 0.85rem;
-  border: 1px solid var(--ai-ln-dbe4ed, #dbe4ed);
-  border-radius: 12px;
-  background: var(--ai-bg-f6f9fc, #f6f9fc);
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--ai-ln-d9e2ec, #d9e2ec);
+  border-radius: 0.6rem;
+  background: var(--ai-bg-f7fafc, #f7fafc);
 }
-.selectAll {
+.bulkBar :global(.ga-admin-error-banner) {
+  flex-basis: 100%;
+  margin: 0;
+}
+.bulkSelectAll {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 44px;
+  gap: 0.45rem;
   font-weight: 600;
-  color: var(--ai-fg-17324d, #17324d);
 }
-.selectAll input,
-.selectCell input {
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  accent-color: var(--ai-fg-17324d, #17324d);
+.bulkCount {
+  color: var(--ai-fg-526477, #526477);
+  font-size: 0.9rem;
+}
+.rowSelect {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+.bulkSelectAll input,
+.rowSelect input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--ai-fg-17664b, #17664b);
   cursor: pointer;
-}
-.selectCell {
-  display: flex;
-  align-items: flex-start;
-  padding-top: 0.2rem;
 }
 .excludedPill {
   margin-left: 0.35rem;
   background: var(--ai-bg-fdecea, #fdecea);
   color: var(--ai-fg-8c2721, #8c2721);
 }
-.bulkMessage {
+.archivedPill {
+  margin-left: 0.35rem;
+  background: var(--ai-bg-fff4e0, #fff4e0);
+  color: var(--ai-fg-7a4b00, #7a4b00);
+}
+.purgeNote {
+  color: var(--ai-fg-7a4b00, #7a4b00);
+  font-weight: 600;
+}
+.recordMessage {
   margin: 0.5rem 0 0;
   color: var(--ai-fg-17664b, #17664b);
   font-weight: 600;
 }
-.bulkList {
+.recordSummary {
   margin: 0.5rem 0 1rem;
-  padding-left: 1.2rem;
-  max-height: 240px;
-  overflow: auto;
   overflow-wrap: anywhere;
 }
-.deleteConfirm {
-  display: grid;
-  gap: 0.35rem;
-  max-width: 280px;
-  margin-bottom: 1rem;
-  font-weight: 600;
-}
-.deleteConfirm input {
-  min-height: 44px;
-  padding: 0 0.75rem;
-  border: 1px solid var(--ai-ln-b8c6d4, #b8c6d4);
-  border-radius: 10px;
-  font: inherit;
-  font-size: 16px;
-}
-@media (min-width: 1024px) {
-  :global(.ga-admin-table-head).table.selectable,
-  :global(.ga-admin-table-row).table.selectable {
-    grid-template-columns: 36px 1.15fr 1.2fr 0.85fr 0.85fr 0.75fr 0.8fr 0.75fr 1.15fr;
-  }
-}
+

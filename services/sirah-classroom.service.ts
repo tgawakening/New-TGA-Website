@@ -31,7 +31,7 @@ export async function getSirahStudentAccess(): Promise<
 
 function latestOrder(userId: string) {
   return prisma.sirahOrder.findFirst({
-    where: { userId, course: { slug: SIRAH_SLUG } },
+    where: { userId, course: { slug: SIRAH_SLUG }, archivedAt: null },
     orderBy: { createdAt: "desc" },
   });
 }

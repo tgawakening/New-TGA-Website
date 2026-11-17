@@ -188,8 +188,23 @@ export async function registerSirah(
         },
       },
     });
-    if (previous)
+    if (previous) {
+      // The same student registering again brings back an archived
+      // (soft-deleted, still within its 7 days) order rather than being
+      // blocked by the one-order-per-batch key.
+      if (previous.archivedAt) {
+        const restored = await tx.sirahOrder.updateMany({
+          where: { id: previous.id, archivedAt: { not: null } },
+          data: { archivedAt: null },
+        });
+        if (restored.count)
+          await auditSirah(tx, previous.id, `student:${userId}`, "RESTORED_FROM_ARCHIVE", {
+            archivedAt: previous.archivedAt.toISOString(),
+            via: "re-registration",
+          });
+      }
       return { userId: userId!, orderId: previous.id, existing: true };
+    }
     const order = await tx.sirahOrder.create({
       data: {
         userId: userId!,
@@ -236,7 +251,7 @@ export async function registerSirah(
 }
 export async function ownedSirahOrder(orderId: string, userId: string) {
   const order = await prisma.sirahOrder.findFirst({
-    where: { id: orderId, userId, course: { slug: SIRAH_SLUG } },
+    where: { id: orderId, userId, course: { slug: SIRAH_SLUG }, archivedAt: null },
     include: {
       receipts: {
         select: { id: true, revision: true, filename: true, createdAt: true },
