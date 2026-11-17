@@ -18,6 +18,8 @@
     "prisma:seed": "node prisma/seed.mjs",
     "sirah:classroom:seed": "node prisma/seed-sirah-classroom.mjs",
     "test:seerah": "node --test scripts/test-seerah-config.mjs",
+    "test:sirah-billing-cycle": "node --conditions=react-server --import tsx --test scripts/test-sirah-billing-cycle.ts",
+    "sirah:billing-cycle:move": "node --conditions=react-server --import tsx scripts/sirah-move-to-cohort-cycle.ts",
     "test:sirah-workflow": "node --conditions=react-server --import tsx --test scripts/test-sirah-workflow.ts",
     "test:sirah-team": "node --conditions=react-server --import tsx --test scripts/test-sirah-team-access.ts",
     "sirah:database:status": "node scripts/sirah-database-status.cjs",

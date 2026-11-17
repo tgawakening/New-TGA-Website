@@ -10,6 +10,7 @@ import "server-only";
 import { calculateSirahAnnualUnusedMonths } from "@/lib/sirah/annual-refund";
 import { quoteSirahAnnualRefund } from "./sirah-refunds.service";
 import { paidSirahPeriodEnd } from "@/lib/sirah/subscription-access";
+import { dueAfterPayments, orderCycle } from "@/lib/sirah/billing-cycle";
 import { createHash } from "node:crypto";
 import { countries } from "countries-list";
 import { Prisma } from "@prisma/client";
@@ -385,10 +386,12 @@ export async function recordSirahRefund(
                       ? "QUEUED"
                       : "PENDING",
                 nextBillingAt:
-                  order.plan === "MONTHLY" &&
-                  order.paidCount < 12 &&
-                  order.programmeStart
-                    ? addMonthsClamped(order.programmeStart, order.paidCount)
+                  order.plan === "MONTHLY" && order.paidCount < 12
+                    ? orderCycle(order)
+                      ? dueAfterPayments(order, order.paidCount)
+                      : order.programmeStart
+                        ? addMonthsClamped(order.programmeStart, order.paidCount)
+                        : null
                     : null,
               }
             : {}),

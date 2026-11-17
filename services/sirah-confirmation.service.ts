@@ -9,6 +9,14 @@ import {
 } from "@/lib/sirah/catalog";
 import { getGroupInvitation } from "@/lib/sirah/config";
 import {
+  afterCyclePayment,
+  cycleAccessCeiling,
+  orderCycle,
+  startCycle,
+  type CycleFields,
+} from "@/lib/sirah/billing-cycle";
+import { sirahBillingCycle } from "./sirah-billing-cycle.service";
+import {
   auditSirah,
   jsonValue,
   SirahError,
@@ -132,10 +140,37 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
     });
     const now = new Date();
     const start = order.programmeStart || now;
-    const end = order.programmeEnd || addMonthsClamped(start, SIRAH_MONTHS);
+    // Cohort billing cycle (lib/sirah/billing-cycle.ts). On the first monthly
+    // payment the method decides: bank / JazzCash start the cycle from this
+    // verified payment; Stripe keeps exactly the cycle its checkout sent to
+    // Stripe (or none, for a checkout made before the cycle existed); PayPal
+    // bills on its own anniversary schedule, so never a cycle. Orders without
+    // cycle fields keep the legacy anniversary schedule.
+    const firstMonthly =
+      order.plan === "MONTHLY" && order.paidCount === 0 && !terminal;
+    const joinCycle =
+      firstMonthly && ["BANK_TRANSFER", "JAZZCASH"].includes(method || "")
+        ? startCycle(start, await sirahBillingCycle(tx))
+        : null;
+    const leaveCycle = firstMonthly && method === "PAYPAL" && !!orderCycle(order);
+    const effective = joinCycle
+      ? { ...order, ...joinCycle }
+      : leaveCycle
+        ? { ...order, cycleBillingDay: null, cycleGraceDay: null, cycleFirstDueAt: null }
+        : order;
+    const cycled =
+      order.plan === "MONTHLY"
+        ? afterCyclePayment(effective, order.paidCount + 1)
+        : null;
+    const end =
+      joinCycle?.programmeEnd ||
+      order.programmeEnd ||
+      addMonthsClamped(start, SIRAH_MONTHS);
     const next =
       order.plan === "MONTHLY" && order.paidCount + 1 < SIRAH_MONTHS
-        ? addMonthsClamped(start, order.paidCount + 1)
+        ? cycled
+          ? cycled.nextBillingAt
+          : addMonthsClamped(start, order.paidCount + 1)
         : null;
     let registrationId = order.registrationId;
     if (!registrationId) {
@@ -211,13 +246,24 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
         paidCount: { increment: 1 },
         programmeStart: start,
         programmeEnd: end,
+        ...(joinCycle || leaveCycle
+          ? {
+              cycleBillingDay: effective.cycleBillingDay,
+              cycleGraceDay: effective.cycleGraceDay,
+              cycleFirstDueAt: effective.cycleFirstDueAt,
+            }
+          : {}),
         nextBillingAt: terminal ? null : next,
         ...(!terminal
           ? {
+              // Manual monthly: paid through the next due date; on the cohort
+              // cycle access also runs through that month's grace day.
               accessEndsAt:
                 order.plan === "MONTHLY" &&
                 ["BANK_TRANSFER", "JAZZCASH"].includes(method || "")
-                  ? addMonthsClamped(start, order.paidCount + 1)
+                  ? cycled
+                    ? cycled.graceEnd
+                    : addMonthsClamped(start, order.paidCount + 1)
                   : null,
             }
           : {}),
@@ -304,7 +350,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
   return result;
 }
 export function canAccessSirah(
-  order: Pick<SirahOrder, "enrolmentState" | "paidCount" | "programmeEnd"> & {
+  order: Pick<SirahOrder, "enrolmentState" | "paidCount" | "programmeEnd"> & CycleFields & {
     accessEndsAt?: Date | null;
     plan?: SirahOrder["plan"];
     method?: SirahOrder["method"];
@@ -313,16 +359,21 @@ export function canAccessSirah(
   now = new Date(),
 ) {
   // Also protect pre-fix rows with a null/overlong accessEndsAt. A receipt
-  // buys a month of the original programme schedule, never the whole year.
-  const manualEnd =
+  // buys a month of the programme schedule, never the whole year. On the
+  // cohort cycle that month runs to a billing day, plus its grace period.
+  const manual =
     order.plan === "MONTHLY" &&
-    ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "") &&
-    order.programmeStart
-      ? addMonthsClamped(
-          order.programmeStart,
-          Math.min(order.paidCount, SIRAH_MONTHS),
-        )
-      : null;
+    ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "");
+  const manualEnd = !manual
+    ? null
+    : orderCycle(order)
+      ? cycleAccessCeiling(order)
+      : order.programmeStart
+        ? addMonthsClamped(
+            order.programmeStart,
+            Math.min(order.paidCount, SIRAH_MONTHS),
+          )
+        : null;
   return (
     (!manualEnd || manualEnd > now) &&
     order.paidCount > 0 &&

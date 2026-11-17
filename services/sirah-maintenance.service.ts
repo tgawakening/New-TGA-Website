@@ -10,6 +10,7 @@ import {
   queueSirahNotice,
 } from "./sirah-notifications.service";
 import { addMonthsClamped, serializable } from "./sirah-confirmation.service";
+import { cycleGraceEnd, orderCycle } from "@/lib/sirah/billing-cycle";
 import { auditSirah } from "./sirah-registration.service";
 import {
   verifySirahStripeSession,
@@ -160,7 +161,8 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
         order.plan === "MONTHLY" &&
         order.paymentState === "FAILED" &&
         !order.cancelledAt &&
-        (order.terms as SirahTerms | null)?.failedPaymentGraceDays &&
+        ((order.terms as SirahTerms | null)?.failedPaymentGraceDays ||
+          orderCycle(order)) &&
         (!order.programmeEnd || order.programmeEnd > now)
       ) {
         await prisma.$transaction(async (tx) => {
@@ -256,6 +258,9 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
         "RENEWAL_DUE",
         order.nextBillingAt!.toISOString(),
       );
+      // Cohort cycle: the renewal is now due and unpaid, but access stays
+      // open through the grace day; the boundary pass above pauses it after.
+      const graceEnd = cycleGraceEnd(order, order.nextBillingAt!);
       if (order.paymentState === "PAID")
         await tx.sirahOrder.updateMany({
           where: {
@@ -263,14 +268,25 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
             revision: order.revision,
             paymentState: "PAID",
           },
-          data: {
-            paymentState: "UNPAID",
-            enrolmentState: "PENDING",
-            accessEndsAt: order.programmeStart
-              ? addMonthsClamped(order.programmeStart, order.paidCount)
-              : order.nextBillingAt,
-            revision: { increment: 1 },
-          },
+          data: graceEnd
+            ? {
+                paymentState: "UNPAID",
+                accessEndsAt: new Date(
+                  Math.min(
+                    graceEnd.getTime(),
+                    order.programmeEnd?.getTime() ?? Infinity,
+                  ),
+                ),
+                revision: { increment: 1 },
+              }
+            : {
+                paymentState: "UNPAID",
+                enrolmentState: "PENDING",
+                accessEndsAt: order.programmeStart
+                  ? addMonthsClamped(order.programmeStart, order.paidCount)
+                  : order.nextBillingAt,
+                revision: { increment: 1 },
+              },
         });
     });
   }

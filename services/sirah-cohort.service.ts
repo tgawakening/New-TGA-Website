@@ -9,6 +9,7 @@ import { SirahError } from "./sirah-registration.service";
 // Calendar dates, not invented lesson times. Refund protection is inclusive
 // through the date fourteen days after commencement, in Pakistan's time zone.
 import { courseStartRefundThrough } from "@/lib/sirah/cohort-dates";
+import { DEFAULT_SIRAH_CYCLE, validCycle } from "@/lib/sirah/billing-cycle";
 export async function publicSirahCohort(
   db: Pick<Prisma.TransactionClient, "sirahCohort"> = prisma,
 ) {
@@ -30,9 +31,12 @@ export async function publicSirahCohort(
     row?.confirmedAt && row.commencementAt
       ? row.commencementAt.toISOString().slice(0, 10)
       : null;
+  const cycle = row && validCycle(row) ? { billingDay: row.billingDay, graceDay: row.graceDay } : DEFAULT_SIRAH_CYCLE;
   return {
     batchCode: SIRAH_BATCH,
     schemaAvailable,
+    billingDay: cycle.billingDay,
+    graceDay: cycle.graceDay,
     confirmed: !!date,
     revision: row?.revision || 0,
     commencementDate: date,

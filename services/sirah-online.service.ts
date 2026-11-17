@@ -14,6 +14,14 @@ import {
   type SirahPlan,
 } from "@/lib/sirah/catalog";
 import { methodAvailable, termsFor, paypalMonthlyPlanId } from "@/lib/sirah/config";
+import {
+  cycleDateLabel,
+  cycleGraceEnd,
+  cycleProgrammeEnd,
+  orderCycle,
+  startCycle,
+} from "@/lib/sirah/billing-cycle";
+import { sirahBillingCycle } from "./sirah-billing-cycle.service";
 import { withDiscountTerms } from "@/lib/sirah/discount-terms";
 import { assertCardDiscountRedeemable } from "@/lib/sirah/manual-discount";
 import {
@@ -260,6 +268,27 @@ export async function startSirahCheckout(
   if (method === "STRIPE") {
     const stripe = stripeOverride || stripeClient();
     await verifyStripeMerchant(stripe);
+    // Cohort billing cycle: the recurring charge starts on the student's
+    // first renewal (a billing day, lib/sirah/billing-cycle.ts) and repeats on
+    // that day every month. The first month is charged in full now as a
+    // one-off line on the first invoice. Stored before the session is
+    // created, so confirmation uses exactly what Stripe was sent.
+    const cycle =
+      order.plan === "MONTHLY" && order.paidCount === 0
+        ? startCycle(new Date(), await sirahBillingCycle())
+        : null;
+    if (cycle) {
+      const saved = await prisma.sirahOrder.updateMany({
+        where: { id, checkoutToken: order.checkoutToken, paidCount: 0 },
+        data: {
+          cycleBillingDay: cycle.cycleBillingDay,
+          cycleGraceDay: cycle.cycleGraceDay,
+          cycleFirstDueAt: cycle.cycleFirstDueAt,
+        },
+      });
+      if (saved.count !== 1)
+        throw new SirahError("Checkout changed before it was created.", 409);
+    }
     const session = await stripe.checkout.sessions.create(
       {
         // Keep TGA as the seller; account defaults must not opt this existing
@@ -290,6 +319,17 @@ export async function startSirahCheckout(
                   sirahOrderId: order.id,
                   checkoutToken: order.checkoutToken,
                 },
+                // trial_end, not billing_cycle_anchor: an anchor may not be
+                // later than the next natural billing date, and a late-month
+                // joiner's first renewal can be ~45 days away. The recurring
+                // charge then starts on the first renewal and repeats monthly.
+                ...(cycle
+                  ? {
+                      trial_end: Math.floor(
+                        cycle.cycleFirstDueAt.getTime() / 1000,
+                      ),
+                    }
+                  : {}),
               },
             }
           : {}),
@@ -305,6 +345,20 @@ export async function startSirahCheckout(
                 : {}),
             },
           },
+          ...(cycle
+            ? [
+                {
+                  quantity: 1,
+                  price_data: {
+                    currency: order.currency.toLowerCase(),
+                    unit_amount: order.amountMinor,
+                    product_data: {
+                      name: `${SIRAH_TITLE} · first month (to ${cycleDateLabel(cycle.cycleFirstDueAt)})`,
+                    },
+                  },
+                },
+              ]
+            : []),
         ],
       },
       { idempotencyKey: `sirah:${order.checkoutToken}` },
@@ -486,9 +540,20 @@ export async function verifySirahStripeSession(
       sub.metadata.checkoutToken !== order.checkoutToken
     )
       throw new SirahError("Subscription ownership mismatch.");
+    // The order follows the cohort cycle only if Stripe really bills it that
+    // way: its trial must end on the stored first renewal. Otherwise (e.g. an
+    // admin-issued link paid instead of the student's own checkout) Stripe
+    // renews on the anniversary, and so must our dates.
+    const stored = orderCycle(order);
+    const cycle =
+      stored && sub.trial_end === Math.floor(stored.firstDue.getTime() / 1000)
+        ? stored
+        : null;
     const end =
       order.programmeEnd ||
-      addMonthsClamped(new Date(sub.start_date * 1000), 12);
+      (cycle
+        ? cycleProgrammeEnd(cycle.firstDue, cycle)
+        : addMonthsClamped(new Date(sub.start_date * 1000), 12));
     await stripe.subscriptions.update(
       subId,
       {
@@ -505,6 +570,9 @@ export async function verifySirahStripeSession(
           typeof sub.customer === "string" ? sub.customer : sub.customer.id,
         programmeStart: new Date(sub.start_date * 1000),
         programmeEnd: end,
+        ...(stored && !cycle
+          ? { cycleBillingDay: null, cycleGraceDay: null, cycleFirstDueAt: null }
+          : {}),
       },
     });
     const invoiceId =
@@ -723,19 +791,24 @@ export async function markSirahProviderFailure(
       },
     });
     const terms = current.terms as import("@/lib/sirah/config").SirahTerms | null;
-    const days = terms?.failedPaymentGraceDays || 0;
     const now = new Date();
     const due = current.nextBillingAt || now;
+    // Cohort cycle (management decision): a failed renewal keeps access
+    // through the grace day of the due month, then pauses until payment.
+    // Legacy orders keep their accepted terms (KEEP, or PAUSE after N days).
+    const cycleGrace = cycleGraceEnd(current, due);
+    const pause = cycleGrace ? true : terms?.failedPaymentAccess === "PAUSE";
+    const days = cycleGrace ? 1 : terms?.failedPaymentGraceDays || 0;
     const graceEnd = current.paymentState === "FAILED" && current.accessEndsAt
       ? current.accessEndsAt
-      : new Date(Math.min(due.getTime() + days * 86400000, current.programmeEnd?.getTime() ?? Infinity));
-    const allowGrace = terms?.failedPaymentAccess === "PAUSE" && days > 0 &&
+      : new Date(Math.min((cycleGrace ?? new Date(due.getTime() + days * 86400000)).getTime(), current.programmeEnd?.getTime() ?? Infinity));
+    const allowGrace = pause && days > 0 &&
       current.paidCount > 0 && !current.cancelledAt && graceEnd > now;
     await tx.sirahOrder.update({
       where: { id: order.id },
       data: {
         paymentState: "FAILED",
-        ...(terms?.failedPaymentAccess === "PAUSE"
+        ...(pause
           ? { enrolmentState: allowGrace ? "ACTIVE" : "PENDING",
               ...(days > 0 && !current.cancelledAt ? { accessEndsAt: graceEnd } : {}) }
           : {}),

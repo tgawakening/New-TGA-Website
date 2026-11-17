@@ -500,6 +500,13 @@ model SirahOrder {
   programmeStart         DateTime?
   programmeEnd           DateTime?
   nextBillingAt          DateTime?
+  /// Cohort billing cycle this order follows (lib/sirah/billing-cycle.ts),
+  /// copied from SirahCohort when the order joined it. All three null: the
+  /// legacy anniversary schedule (existing card subscriptions, PayPal).
+  cycleBillingDay        Int?
+  cycleGraceDay          Int?
+  /// The renewal due after the first payment; later dues are whole months on.
+  cycleFirstDueAt        DateTime?           @db.DateTime(3)
   paidMinor              Int                 @default(0)
   paidCount              Int                 @default(0)
   invitationState        String              @default("PENDING")
@@ -613,6 +620,12 @@ model SirahCohort {
   sourceReference String?
   revision       Int      @default(0)
   history        Json?
+  /// Monthly renewals fall due on this day of every month (Pakistan calendar),
+  /// the same day for every student in the cohort. 1–28.
+  billingDay     Int      @default(7)
+  /// An unpaid renewal keeps access open through the end of this day of the
+  /// same month; after it, access pauses until payment. Must be after billingDay.
+  graceDay       Int      @default(15)
   updatedAt      DateTime @updatedAt
 }
 
