@@ -231,8 +231,11 @@
   }
 }
 
-/* Indigo Geometry theme (styles/admin-indigo.css). Every rule below is
- * scoped to [data-theme="indigo-admin"], set by app/admin/sirah/layout.tsx. */
+/* Sīrah admin theme (styles/admin-indigo.css). Every rule below is scoped to
+ * [data-theme="indigo-admin"], set by app/admin/sirah/layout.tsx. The data
+ * area is light; the sidebar is a dark navy brand rail, so it re-declares
+ * the dark values (checked: text 14.7:1, links 9.3:1, labels 6.1:1, active
+ * 11.1:1 on #0f1729). */
 .brandSeal {
   display: none;
 }
@@ -256,6 +259,24 @@
 }
 
 :global([data-theme="indigo-admin"]) .sidebar {
+  /* The rail's own palette: the tokens and colour hooks its children use. */
+  --sand: #ede9df;
+  --dim: #b4bbcf;
+  --faint: #8e97b2;
+  --line: rgba(237, 234, 223, 0.1);
+  --teal: #2bb6a3;
+  --tealb: #5fe0cc;
+  --ai-bg-255_255_255_0_94: #0f1729;
+  --ai-ln-dbe4ef: rgba(237, 234, 223, 0.1);
+  --ai-fg-113252: #ede9df;
+  --ai-fg-536779: #8e97b2;
+  --ai-fg-36526f: #b4bbcf;
+  --ai-fg-17406a: #ede9df;
+  --ai-bg-eef4fb: rgba(237, 234, 223, 0.07);
+  --ai-bg-255f91: rgba(95, 224, 204, 0.13);
+  --ai-fg-fff: #5fe0cc;
+  --ai-ln-2c7bbb: #5fe0cc;
+  color-scheme: dark;
   gap: 0.75rem;
   padding: 0.875rem var(--gutter);
   border: 0;
@@ -289,6 +310,7 @@
 :global([data-theme="indigo-admin"]) .active:hover {
   color: var(--tealb);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--tealb);
 }
 
 :global([data-theme="indigo-admin"]) .main {
@@ -311,7 +333,7 @@
   border: 0;
   border-bottom: 1px solid var(--line);
   border-radius: 0;
-  box-shadow: none;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
   background: var(--ai-bg-15_23_41_0_6, rgba(15, 23, 41, 0.6));
 }
 
@@ -319,16 +341,17 @@
   font-family: var(--display);
   font-weight: 600;
   font-size: 1.25rem;
+  color: var(--sand);
 }
 
 :global([data-theme="indigo-admin"]) .who strong {
-  font-weight: 500;
-  color: var(--dim);
+  font-weight: 600;
+  color: var(--sand);
   font-size: 0.75rem;
 }
 
 :global([data-theme="indigo-admin"]) .who span {
-  color: var(--faint);
+  color: var(--dim);
   font-size: 0.75rem;
 }
 
@@ -367,6 +390,6 @@
 
   :global([data-theme="indigo-admin"]) .main > :not(.header) {
     margin: 1.875rem 30px 0;
-    max-width: 980px;
+    max-width: 1320px; /* room for the records table: amounts never wrap */
   }
 }

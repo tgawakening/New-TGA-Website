@@ -1,149 +1,212 @@
-/* Indigo Geometry · Sīrah admin theme.
+/* Sīrah admin theme: light, high-contrast, built for reading data all day.
  *
  * Applies under data-theme="indigo-admin", which app/admin/sirah/layout.tsx
- * sets on every Sīrah admin page. Three layers:
+ * sets on every Sīrah admin page. The admin deliberately differs from the
+ * dark marketing site: a light data surface with dark ink, hairline-ruled
+ * records, unambiguous status pills, and a dark navy brand rail on the left
+ * (components/sirah/admin-shell.module.css re-declares the dark values for
+ * the sidebar only). Brand: Fraunces headings, Sora body, teal and
+ * terracotta accents in deeper shades that meet WCAG AA on white.
+ *
+ * Contrast (WCAG 2.x, checked): ink #1a2233 on white 15.9:1; muted #5b6472
+ * 6.0:1 (5.5:1 on the page ground); deep teal #0b7566 links and button fills
+ * 5.6:1; terracotta #a8431f 6.0:1; pills 6.4–8.0:1; form-control borders
+ * #8a93a3 3.1:1 (non-text, 1.4.11).
+ *
+ * Layers:
+ *   0. The Indigo design tokens, re-pointed to the light palette, so every
+ *      rule written against them (module overrides, fonts) follows.
  *   1. --ai-* values for the colour hooks in the admin CSS modules
- *      (scripts/themeable-admin-colors.mjs put them there; each keeps the
- *      original colour as its fallback, so the live admin is unchanged).
- *   2. The Sīrah classroom tokens, re-pointed for the admin Classroom page.
+ *      (scripts/themeable-admin-colors.mjs; each keeps its original colour
+ *      as a fallback outside this theme).
+ *   2. The Sīrah classroom tokens, for the admin Classroom page.
  *   3. The shared global .ga-admin-* classes the workspace uses.
  * Restyle only: no selector here hides, adds or reorders anything. */
 
 [data-theme="indigo-admin"] {
-  color-scheme: dark;
+  color-scheme: light;
+
+  /* ---- Palette ---- */
+  --adm-page: #f5f6f8;
+  --adm-card: #ffffff;
+  --adm-row-hover: #f8f9fb;
+  --adm-ink: #1a2233;
+  --adm-muted: #5b6472;
+  --adm-faint: #6b7380;
+  --adm-rule: #e3e7ee;          /* hairlines between records */
+  --adm-rule-strong: #cfd5df;   /* card and button outlines */
+  --adm-control: #8a93a3;       /* form-control borders, 3.1:1 */
+  --adm-teal: #0b7566;          /* buttons, links, active */
+  --adm-teal-hover: #095e52;
+  --adm-teal-soft: #dcf1ed;
+  --adm-teal-ink: #0a5f54;
+  --adm-terra: #a8431f;         /* destructive actions */
+  --adm-terra-soft: #fdf1ec;
+  --adm-ok: #13603a;
+  --adm-ok-soft: #dcf2e4;
+  --adm-ok-line: #b7e0c6;
+  --adm-warn: #7a4100;
+  --adm-warn-soft: #fcefd2;
+  --adm-warn-line: #f0d29b;
+  --adm-bad: #9c2318;
+  --adm-bad-soft: #fde4e1;
+  --adm-bad-line: #f2c4bf;
+  --adm-neutral: #3d4757;
+  --adm-neutral-soft: #eaedf2;
+  --adm-gold: #6e4a00;
+  --adm-gold-soft: #f8edd0;
+  --adm-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --adm-shadow-pop: 0 20px 48px -12px rgba(16, 24, 40, 0.25);
+  --adm-focus: 0 0 0 3px rgba(11, 117, 102, 0.22);
+
+  /* ---- 0. Indigo tokens, re-pointed (module overrides use these) ---- */
+  --bg: var(--adm-page);
+  --surf: var(--adm-card);
+  --surf2: var(--adm-row-hover);
+  --ink: var(--adm-card);
+  --sand: var(--adm-ink);
+  --dim: var(--adm-muted);
+  --faint: var(--adm-faint);
+  --line: var(--adm-rule);
+  --line2: var(--adm-rule-strong);
+  --teal: var(--adm-teal);
+  --tealb: var(--adm-teal);
+  --terra: var(--adm-terra);
+  --terrab: var(--adm-terra);
+  --gold: var(--adm-warn);
+  --on-teal: #ffffff;
 
   /* ---- 1. Module colour hooks: backgrounds ---- */
-  --ai-bg-fff: var(--surf);
-  --ai-bg-255_255_255_0_94: #0f1729;          /* sidebar, header */
-  --ai-bg-255_255_255_0_97: var(--surf);
-  --ai-bg-f7fafc: rgba(237, 234, 223, 0.04);
-  --ai-bg-f6f9fc: rgba(237, 234, 223, 0.04);
-  --ai-bg-15_23_41_0_6: rgba(15, 23, 41, 0.6); /* theme header (already Indigo) */
-  --ai-bg-f4f8fc: rgba(237, 234, 223, 0.03);
-  --ai-bg-f3f7fc: rgba(237, 234, 223, 0.03);
-  --ai-bg-eef4fb: rgba(237, 234, 223, 0.05);  /* hover */
-  --ai-bg-e9eef5: rgba(237, 234, 223, 0.06);
-  --ai-bg-c3cfdd: rgba(237, 234, 223, 0.18);
-  --ai-bg-e3f0fc: rgba(43, 182, 163, 0.12);   /* selected / manager */
-  --ai-bg-e4f5ec: rgba(43, 182, 163, 0.14);   /* ok / community lead */
-  --ai-bg-fdecea: rgba(217, 121, 79, 0.14);
-  --ai-bg-fdf0ee: rgba(217, 121, 79, 0.12);
-  --ai-bg-fdf1dc: rgba(201, 162, 76, 0.14);   /* super admin */
-  --ai-bg-fff3cf: rgba(201, 162, 76, 0.14);
-  --ai-bg-fff4e0: rgba(201, 162, 76, 0.12);
-  --ai-bg-1d4f7d: rgba(43, 182, 163, 0.12);   /* active nav: tinted, as in the prototype */
-  --ai-bg-255f91: rgba(43, 182, 163, 0.12);
-  --ai-bg-1f5f93: var(--teal);
-  --ai-bg-2c7bbb: var(--tealb);
-  --ai-bg-2f8a5b: var(--teal);
-  --ai-bg-141611: var(--ink);
-  --ai-bg-1f221b: var(--surf);
-  --ai-bg-102c4b88: rgba(6, 10, 20, 0.72);    /* dialog backdrop */
+  --ai-bg-fff: var(--adm-card);
+  --ai-bg-255_255_255_0_94: var(--adm-card);    /* header (sidebar: see shell module) */
+  --ai-bg-255_255_255_0_97: var(--adm-card);    /* login card */
+  --ai-bg-15_23_41_0_6: var(--adm-card);        /* header */
+  --ai-bg-f7fafc: var(--adm-row-hover);         /* bulk bar */
+  --ai-bg-f6f9fc: var(--adm-row-hover);
+  --ai-bg-f4f8fc: var(--adm-row-hover);         /* cohort panel */
+  --ai-bg-f3f7fc: var(--adm-page);              /* app root */
+  --ai-bg-eef4fb: var(--adm-neutral-soft);      /* hover */
+  --ai-bg-e9eef5: var(--adm-rule);              /* meter track */
+  --ai-bg-c3cfdd: var(--adm-rule-strong);
+  --ai-bg-e3f0fc: var(--adm-teal-soft);         /* Manager badge */
+  --ai-bg-e4f5ec: var(--adm-ok-soft);           /* Community lead badge */
+  --ai-bg-fdecea: var(--adm-bad-soft);          /* excluded pill */
+  --ai-bg-fdf0ee: var(--adm-bad-soft);          /* login error */
+  --ai-bg-fdf1dc: var(--adm-gold-soft);         /* Super admin badge */
+  --ai-bg-fff3cf: var(--adm-warn-soft);         /* offline notice */
+  --ai-bg-fff4e0: var(--adm-warn-soft);         /* archived pill */
+  --ai-bg-1d4f7d: var(--adm-teal);
+  --ai-bg-255f91: var(--adm-teal);              /* login submit (sidebar active: see shell) */
+  --ai-bg-1f5f93: var(--adm-teal);              /* login mark */
+  --ai-bg-2c7bbb: var(--adm-teal-hover);
+  --ai-bg-2f8a5b: var(--adm-teal);              /* meter fill, dot */
+  --ai-bg-141611: var(--adm-ink);
+  --ai-bg-1f221b: var(--adm-card);
+  --ai-bg-102c4b88: rgba(16, 24, 40, 0.45);     /* dialog backdrop */
+  --ai-bg-92_139_238_0_22: var(--adm-teal-soft);
 
   /* ---- text ---- */
-  --ai-fg-102844: var(--sand);
-  --ai-fg-113252: var(--sand);
-  --ai-fg-12314f: var(--sand);
-  --ai-fg-153654: var(--sand);
-  --ai-fg-163450: var(--sand);
-  --ai-fg-173659: var(--sand);
-  --ai-fg-17406a: var(--sand);
-  --ai-fg-f5efdf: var(--sand);
-  --ai-fg-35516f: var(--dim);
-  --ai-fg-36526f: var(--dim);
-  --ai-fg-4d6680: var(--dim);
-  --ai-fg-526477: var(--dim);
-  --ai-fg-526a80: var(--dim);
-  --ai-fg-536779: var(--dim);
-  --ai-fg-5d7189: var(--dim);
-  --ai-fg-5f758e: var(--dim);
-  --ai-fg-667c92: var(--dim);
-  --ai-fg-6a7f95: var(--dim);
-  --ai-fg-c3c3b7: var(--dim);
-  --ai-fg-3d668f: var(--teal);
-  --ai-fg-1d4f7d: var(--tealb);
-  --ai-fg-17664b: var(--tealb);
-  --ai-fg-1f6b43: var(--tealb);
-  --ai-fg-6a4a00: var(--gold);
-  --ai-fg-7a4b00: var(--gold);
-  --ai-fg-805900: var(--gold);
-  --ai-fg-8a5a00: var(--gold);
-  --ai-fg-8c2721: var(--terrab);
-  --ai-fg-9b2c22: var(--terrab);
-  --ai-fg-a3332b: var(--terrab);
-  --ai-fg-fff: var(--on-teal);                /* text on what were blue fills, now teal */
-  --ai-fg-17324d: var(--sand);                /* inline styles in admin-*.tsx */
-  --ai-bg-92_139_238_0_22: rgba(43, 182, 163, 0.16);
+  --ai-fg-102844: var(--adm-ink);   /* titles, big numbers */
+  --ai-fg-113252: var(--adm-ink);
+  --ai-fg-12314f: var(--adm-ink);
+  --ai-fg-153654: var(--adm-ink);
+  --ai-fg-163450: var(--adm-ink);
+  --ai-fg-173659: var(--adm-ink);
+  --ai-fg-17406a: var(--adm-ink);
+  --ai-fg-17324d: var(--adm-ink);
+  --ai-fg-f5efdf: var(--adm-ink);
+  --ai-fg-35516f: var(--adm-muted);
+  --ai-fg-36526f: var(--adm-muted);
+  --ai-fg-4d6680: var(--adm-muted);
+  --ai-fg-526477: var(--adm-muted);
+  --ai-fg-526a80: var(--adm-muted);
+  --ai-fg-536779: var(--adm-muted);
+  --ai-fg-5d7189: var(--adm-muted);
+  --ai-fg-5f758e: var(--adm-muted);
+  --ai-fg-667c92: var(--adm-muted);
+  --ai-fg-6a7f95: var(--adm-muted);
+  --ai-fg-c3c3b7: var(--adm-muted);
+  --ai-fg-3d668f: var(--adm-teal-ink);  /* small labels / kickers */
+  --ai-fg-1d4f7d: var(--adm-teal-ink);  /* Manager badge */
+  --ai-fg-17664b: var(--adm-ok);        /* completed status, record message */
+  --ai-fg-1f6b43: var(--adm-ok);        /* Community lead badge */
+  --ai-fg-6a4a00: var(--adm-warn);
+  --ai-fg-7a4b00: var(--adm-warn);
+  --ai-fg-805900: var(--adm-warn);      /* pending status */
+  --ai-fg-8a5a00: var(--adm-gold);      /* Super admin badge */
+  --ai-fg-8c2721: var(--adm-bad);
+  --ai-fg-9b2c22: var(--adm-bad);
+  --ai-fg-a3332b: var(--adm-terra);
+  --ai-fg-fff: #ffffff;                 /* text on teal fills */
 
   /* ---- lines ---- */
-  --ai-ln-dbe4ef: var(--line);
-  --ai-ln-dbe4ed: var(--line);
-  --ai-ln-b8c6d4: var(--line2);
-  --ai-ln-d9e2ec: var(--line);
-  --ai-ln-d5e2ec: var(--line2);
-  --ai-ln-e3eaf2: var(--line);
-  --ai-ln-cfdbe8: var(--line2);
-  --ai-ln-b9cbdd: var(--line2);
-  --ai-ln-41463a: var(--line2);
-  --ai-ln-9fc0df: rgba(43, 182, 163, 0.45);
-  --ai-ln-b6d4f1: rgba(43, 182, 163, 0.35);
-  --ai-ln-b5dfc6: rgba(43, 182, 163, 0.35);
-  --ai-ln-2c7bbb: var(--tealb);
-  --ai-ln-d9ad4a: var(--gold);
-  --ai-ln-f0d29b: rgba(201, 162, 76, 0.3);
-  --ai-ln-f2c4bf: rgba(217, 121, 79, 0.4);
+  --ai-ln-dbe4ef: var(--adm-rule);
+  --ai-ln-dbe4ed: var(--adm-rule);
+  --ai-ln-d9e2ec: var(--adm-rule);
+  --ai-ln-e3eaf2: var(--adm-rule);
+  --ai-ln-d5e2ec: var(--adm-rule-strong);
+  --ai-ln-cfdbe8: var(--adm-control);   /* login inputs */
+  --ai-ln-b9cbdd: var(--adm-control);   /* form inputs */
+  --ai-ln-b8c6d4: var(--adm-control);
+  --ai-ln-41463a: var(--adm-rule-strong);
+  --ai-ln-9fc0df: var(--adm-teal);      /* tile hover */
+  --ai-ln-b6d4f1: #b5ddd6;              /* Manager badge */
+  --ai-ln-b5dfc6: var(--adm-ok-line);
+  --ai-ln-2c7bbb: var(--adm-teal);      /* focus */
+  --ai-ln-d9ad4a: var(--adm-warn-line);
+  --ai-ln-f0d29b: #ead9a8;              /* Super admin badge */
+  --ai-ln-f2c4bf: var(--adm-bad-line);
 
   /* ---- shadows ---- */
-  --ai-sh-18_48_88_0_06: rgba(0, 0, 0, 0);
-  --ai-sh-18_48_88_0_08: rgba(0, 0, 0, 0);
-  --ai-sh-18_48_88_0_12: rgba(0, 0, 0, 0.3);
-  --ai-sh-26_76_119_0_18: rgba(0, 0, 0, 0.35);
-  --ai-sh-36_96_148_0_25: rgba(0, 0, 0, 0.4);
-  --ai-sh-44_123_187_0_18: rgba(43, 182, 163, 0.15);
+  --ai-sh-18_48_88_0_06: rgba(16, 24, 40, 0.05);
+  --ai-sh-18_48_88_0_08: rgba(16, 24, 40, 0.08);
+  --ai-sh-18_48_88_0_12: rgba(16, 24, 40, 0.1);
+  --ai-sh-26_76_119_0_18: rgba(11, 117, 102, 0.2);
+  --ai-sh-36_96_148_0_25: rgba(11, 117, 102, 0.25);
+  --ai-sh-44_123_187_0_18: rgba(11, 117, 102, 0.22);
 
-  /* Montserrat/Georgia -> Sora/Fraunces for anything inheriting */
   font-family: var(--body);
-  color: var(--sand);
+  color: var(--adm-ink);
 }
 
 /* ---- 2. Admin Classroom page: it runs on the Sīrah classroom tokens ---- */
 [data-theme="indigo-admin"] [data-theme="sirah-classroom"] {
-  --color-paper: var(--bg);
-  --color-paper-2: #17213a;
-  --color-surface: var(--surf);
-  --color-ink: var(--sand);
-  --color-ink-2: var(--dim);
-  --color-muted: var(--dim);
-  --color-rule: var(--line2);
-  --color-rule-strong: rgba(237, 234, 223, 0.3);
-  --color-night: var(--ink);
-  --color-night-2: #111a2e;
-  --color-night-ink: var(--sand);
-  --color-night-muted: var(--dim);
-  --color-night-rule: var(--line2);
-  --color-accent: var(--teal);
-  --color-accent-hover: var(--tealb);
-  --color-accent-soft: rgba(43, 182, 163, 0.14);
-  --color-gold-text: var(--tealb);
-  --color-accent-ink: var(--on-teal);
-  --color-focus: var(--tealb);
-  --color-danger: var(--terrab);
-  --color-danger-soft: rgba(217, 121, 79, 0.14);
-  --color-ok: var(--tealb);
-  --color-ok-soft: rgba(43, 182, 163, 0.14);
+  --color-paper: var(--adm-page);
+  --color-paper-2: var(--adm-row-hover);
+  --color-surface: var(--adm-card);
+  --color-ink: var(--adm-ink);
+  --color-ink-2: var(--adm-muted);
+  --color-muted: var(--adm-muted);
+  --color-rule: var(--adm-rule);
+  --color-rule-strong: var(--adm-rule-strong);
+  --color-night: #0f1729;
+  --color-night-2: #16213a;
+  --color-night-ink: #ede9df;
+  --color-night-muted: #b4bbcf;
+  --color-night-rule: rgba(237, 234, 223, 0.16);
+  --color-accent: var(--adm-teal);
+  --color-accent-hover: var(--adm-teal-hover);
+  --color-accent-soft: var(--adm-teal-soft);
+  --color-gold-text: var(--adm-gold);
+  --color-accent-ink: #ffffff;
+  --color-focus: var(--adm-teal);
+  --color-danger: var(--adm-terra);
+  --color-danger-soft: var(--adm-bad-soft);
+  --color-ok: var(--adm-ok);
+  --color-ok-soft: var(--adm-ok-soft);
   --font-display: var(--display);
   --font-body: var(--body);
-  --radius-control: 9px;
-  color-scheme: dark;
+  --radius-control: 8px;
+  color-scheme: light;
 }
 
 /* ---- 3. Shared global admin classes, as used by the workspace ---- */
 [data-theme="indigo-admin"] .ga-admin-page {
-  background: var(--bg);
-  color: var(--sand);
+  background: var(--adm-page);
+  color: var(--adm-ink);
 }
 
-/* Full-bleed app frame (prototype): no outer gutter or card around the shell. */
+/* Full-bleed app frame: no outer gutter or card around the shell. */
 [data-theme="indigo-admin"] .ga-admin-page-section {
   padding: 0;
 }
@@ -156,47 +219,78 @@
 [data-theme="indigo-admin"] .ga-admin-card,
 [data-theme="indigo-admin"] .ga-admin-login-card,
 [data-theme="indigo-admin"] .ga-admin-hero-card {
-  background: var(--surf);
-  border-color: var(--line);
-  border-radius: 16px;
-  box-shadow: none;
+  background: var(--adm-card);
+  border-color: var(--adm-rule);
+  border-radius: 12px;
+  box-shadow: var(--adm-shadow);
+  color: var(--adm-ink);
 }
 
 [data-theme="indigo-admin"] .ga-admin-kicker {
-  color: var(--teal);
-  letter-spacing: 0.2em;
+  color: var(--adm-teal-ink);
+  font-weight: 600;
+  letter-spacing: 0.16em;
 }
 
 [data-theme="indigo-admin"] .ga-admin-workspace-head h2,
 [data-theme="indigo-admin"] .ga-admin-modal-head h3,
 [data-theme="indigo-admin"] .ga-admin-modal-section h4 {
-  color: var(--sand);
+  color: var(--adm-ink);
   font-family: var(--display);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 [data-theme="indigo-admin"] .ga-admin-workspace-head p,
-[data-theme="indigo-admin"] .ga-admin-modal-grid p,
 [data-theme="indigo-admin"] .ga-admin-copy-stack p,
 [data-theme="indigo-admin"] .ga-admin-empty-state,
 [data-theme="indigo-admin"] .ga-admin-table-row p,
 [data-theme="indigo-admin"] .ga-admin-mini-card p {
-  color: var(--dim);
+  color: var(--adm-muted);
 }
 
-[data-theme="indigo-admin"] .ga-admin-label,
+[data-theme="indigo-admin"] .ga-admin-workspace-head a:not([class]),
+[data-theme="indigo-admin"] .ga-admin-modal a:not([class]),
+[data-theme="indigo-admin"] .ga-admin-copy-stack a:not([class]) {
+  color: var(--adm-teal);
+  text-underline-offset: 2px;
+}
+
+/* Record details ("Label: value"): the value is the data, so it takes the
+ * ink; the label steps back to muted. */
+[data-theme="indigo-admin"] .ga-admin-modal-grid p {
+  color: var(--adm-ink);
+}
+
+[data-theme="indigo-admin"] .ga-admin-modal-grid p > strong:first-child {
+  color: var(--adm-muted);
+  font-weight: 600;
+}
+
+[data-theme="indigo-admin"] .ga-admin-label {
+  color: var(--adm-muted);
+  font-weight: 600;
+}
+
+/* Column heads: small, uppercase, muted, but still 6:1. */
 [data-theme="indigo-admin"] .ga-admin-table-head {
-  color: var(--dim);
+  color: var(--adm-muted);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+[data-theme="indigo-admin"] .ga-admin-filter-row label {
+  color: var(--adm-ink);
+  font-weight: 600;
 }
 
 [data-theme="indigo-admin"] .ga-admin-search,
 [data-theme="indigo-admin"] .ga-admin-filter-row select,
 [data-theme="indigo-admin"] .ga-admin-note,
 [data-theme="indigo-admin"] .ga-admin-login-form input {
-  background: var(--ink);
-  border-color: var(--line2);
-  border-radius: 9px;
-  color: var(--sand);
+  background: var(--adm-card);
+  border-color: var(--adm-control);
+  border-radius: 8px;
+  color: var(--adm-ink);
 }
 
 [data-theme="indigo-admin"] .ga-admin-search:focus,
@@ -204,129 +298,180 @@
 [data-theme="indigo-admin"] .ga-admin-note:focus,
 [data-theme="indigo-admin"] .ga-admin-login-form input:focus {
   outline: none;
-  border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(43, 182, 163, 0.15);
+  border-color: var(--adm-teal);
+  box-shadow: var(--adm-focus);
 }
 
 [data-theme="indigo-admin"] ::placeholder {
-  color: #4e567a;
+  color: var(--adm-faint);
+  opacity: 1;
 }
 
 [data-theme="indigo-admin"] .ga-admin-primary-btn {
-  background: var(--teal);
-  border-color: var(--teal);
-  border-radius: 9px;
-  color: var(--on-teal);
+  background: var(--adm-teal);
+  border-color: var(--adm-teal);
+  border-radius: 8px;
+  color: #ffffff;
   box-shadow: none;
 }
 
 [data-theme="indigo-admin"] .ga-admin-primary-btn:hover {
-  background: var(--tealb);
-  border-color: var(--tealb);
+  background: var(--adm-teal-hover);
+  border-color: var(--adm-teal-hover);
+  color: #ffffff;
   box-shadow: none;
 }
 
 [data-theme="indigo-admin"] .ga-admin-ghost-btn,
 [data-theme="indigo-admin"] .ga-admin-outline-btn {
-  background: transparent;
-  border-color: var(--line2);
-  border-radius: 9px;
-  color: var(--dim);
+  background: var(--adm-card);
+  border-color: var(--adm-rule-strong);
+  border-radius: 8px;
+  color: var(--adm-ink);
 }
 
 [data-theme="indigo-admin"] .ga-admin-ghost-btn:hover,
 [data-theme="indigo-admin"] .ga-admin-outline-btn:hover {
-  background: transparent;
-  border-color: var(--teal);
-  color: var(--tealb);
+  background: var(--adm-teal-soft);
+  border-color: var(--adm-teal);
+  color: var(--adm-teal-ink);
 }
 
 [data-theme="indigo-admin"] .ga-admin-outline-btn.is-danger {
-  background: transparent;
-  border-color: rgba(217, 121, 79, 0.4);
-  color: var(--terrab);
+  background: var(--adm-card);
+  border-color: var(--adm-bad-line);
+  color: var(--adm-terra);
 }
 
+[data-theme="indigo-admin"] .ga-admin-outline-btn.is-danger:hover {
+  background: var(--adm-terra-soft);
+  border-color: var(--adm-terra);
+  color: var(--adm-terra);
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-primary-btn, .ga-admin-ghost-btn, .ga-admin-outline-btn):focus-visible {
+  outline: 2px solid var(--adm-teal);
+  outline-offset: 2px;
+}
+
+/* Records: white rows on the light ground, separated by clear hairlines. */
 [data-theme="indigo-admin"] .ga-admin-table-row,
 [data-theme="indigo-admin"] .ga-admin-mini-card,
 [data-theme="indigo-admin"] .ga-admin-fee-card,
 [data-theme="indigo-admin"] .ga-admin-row {
-  background: rgba(237, 234, 223, 0.03);
-  border-color: var(--line);
+  background: var(--adm-card);
+  border-color: var(--adm-rule);
+}
+
+[data-theme="indigo-admin"] .ga-admin-table-row:hover {
+  background: var(--adm-row-hover);
 }
 
 [data-theme="indigo-admin"] .ga-admin-table-row strong,
 [data-theme="indigo-admin"] .ga-admin-mini-card strong,
-[data-theme="indigo-admin"] .ga-admin-row strong {
-  color: var(--sand);
+[data-theme="indigo-admin"] .ga-admin-row strong,
+[data-theme="indigo-admin"] .ga-admin-fee-card strong {
+  color: var(--adm-ink);
 }
 
-[data-theme="indigo-admin"] .ga-admin-tag {
-  background: rgba(43, 182, 163, 0.14);
-  color: var(--tealb);
+/* Numbers line up: tabular figures wherever records and amounts appear. */
+[data-theme="indigo-admin"] :is(.ga-admin-data-table, .ga-admin-table-row, .ga-admin-mini-card, .ga-admin-fee-card, .ga-admin-row, .ga-admin-modal) {
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
-[data-theme="indigo-admin"] .ga-admin-pill,
+/* Tags and status pills: tinted ground, dark text, a hairline edge so the
+ * pill reads as a pill on white. */
+[data-theme="indigo-admin"] .ga-admin-tag,
+[data-theme="indigo-admin"] .ga-admin-pill {
+  background: var(--adm-teal-soft);
+  border: 1px solid #b5ddd6;
+  color: var(--adm-teal-ink);
+  font-weight: 600;
+}
+
+[data-theme="indigo-admin"] .ga-admin-status {
+  border: 1px solid transparent;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
 [data-theme="indigo-admin"] .ga-admin-status.is-completed,
 [data-theme="indigo-admin"] .ga-admin-status.is-approved,
 [data-theme="indigo-admin"] .ga-admin-status.is-succeeded,
 [data-theme="indigo-admin"] .ga-admin-status.is-confirmed {
-  background: rgba(43, 182, 163, 0.14);
-  color: var(--tealb);
+  background: var(--adm-ok-soft);
+  border-color: var(--adm-ok-line);
+  color: var(--adm-ok);
 }
 
 [data-theme="indigo-admin"] .ga-admin-status.is-pending {
-  background: rgba(201, 162, 76, 0.16);
-  color: var(--gold);
+  background: var(--adm-warn-soft);
+  border-color: var(--adm-warn-line);
+  color: var(--adm-warn);
 }
 
 [data-theme="indigo-admin"] .ga-admin-status.is-under_review {
-  background: rgba(237, 234, 223, 0.06);
-  color: var(--dim);
+  background: var(--adm-neutral-soft);
+  border-color: var(--adm-rule-strong);
+  color: var(--adm-neutral);
 }
 
 [data-theme="indigo-admin"] .ga-admin-status.is-cancelled,
 [data-theme="indigo-admin"] .ga-admin-status.is-rejected,
 [data-theme="indigo-admin"] .ga-admin-status.is-failed {
-  background: rgba(217, 121, 79, 0.16);
-  color: var(--terrab);
+  background: var(--adm-bad-soft);
+  border-color: var(--adm-bad-line);
+  color: var(--adm-bad);
 }
 
 [data-theme="indigo-admin"] .ga-admin-success-banner {
-  background: rgba(43, 182, 163, 0.12);
-  border-color: rgba(43, 182, 163, 0.3);
-  color: var(--tealb);
+  background: var(--adm-ok-soft);
+  border-color: var(--adm-ok-line);
+  color: var(--adm-ok);
 }
 
 [data-theme="indigo-admin"] .ga-admin-error-banner {
-  background: rgba(217, 121, 79, 0.12);
-  border-color: rgba(217, 121, 79, 0.35);
-  color: var(--terrab);
+  background: var(--adm-bad-soft);
+  border-color: var(--adm-bad-line);
+  color: var(--adm-bad);
 }
 
 [data-theme="indigo-admin"] .ga-admin-modal {
-  background: var(--surf);
-  border-color: var(--line2);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
-  color: var(--sand);
+  background: var(--adm-card);
+  border-color: var(--adm-rule);
+  box-shadow: var(--adm-shadow-pop);
+  color: var(--adm-ink);
+}
+
+[data-theme="indigo-admin"] .ga-admin-modal-section {
+  border-color: var(--adm-rule);
 }
 
 [data-theme="indigo-admin"] .ga-admin-donation-dialog::backdrop {
-  background: rgba(6, 10, 20, 0.72);
+  background: rgba(16, 24, 40, 0.45);
 }
 
 [data-theme="indigo-admin"] .ga-admin-notification-close {
-  color: var(--dim);
+  color: var(--adm-muted);
 }
 
 /* Native form controls inside the workspace that carry no class of their own */
 [data-theme="indigo-admin"] :where(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
-  background-color: var(--ink);
-  color: var(--sand);
-  border-color: var(--line2);
+  background-color: var(--adm-card);
+  color: var(--adm-ink);
+  border-color: var(--adm-control);
 }
 
 [data-theme="indigo-admin"] :where(input[type="checkbox"], input[type="radio"]) {
-  accent-color: var(--teal);
+  accent-color: var(--adm-teal);
 }
 
+[data-theme="indigo-admin"] :where(summary) {
+  color: var(--adm-ink);
+}
+
+/* Notification count: white on a deeper red (6.6:1). */
+[data-theme="indigo-admin"] .ga-admin-bell-badge {
+  background: #b42318;
+  color: #ffffff;
+}
