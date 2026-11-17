@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
 import { SirahAppProvider } from "@/components/sirah/admin-app";
 import styles from "@/components/sirah/admin-app.module.css";
-import { indigoFontVariablesOnDemand } from "@/lib/fonts-on-demand";
-import { INDIGO_PREVIEW_COOKIE, INDIGO_PREVIEW_VALUE } from "@/lib/indigo-preview";
+import { indigoFontVariables } from "@/lib/fonts";
 import "@/styles/admin-indigo.css";
 
 export const metadata: Metadata = {
@@ -19,21 +17,15 @@ export const metadata: Metadata = {
   },
   robots: { index: false, follow: false },
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#1d5b8f" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0f1729" };
 
-export default async function SirahAdminLayout({ children }: { children: React.ReactNode }) {
-  // Indigo Geometry preview: styling only, opt-in per browser via /redesign/admin.
-  const preview = (await cookies()).get(INDIGO_PREVIEW_COOKIE)?.value === INDIGO_PREVIEW_VALUE;
-  if (!preview) {
-    return <div className={styles.root}><SirahAppProvider>{children}</SirahAppProvider></div>;
-  }
+/* The Sīrah admin always renders in the Indigo Geometry theme
+ * (styles/admin-indigo.css, scoped by data-theme="indigo-admin"). Styling
+ * only: access, data and behaviour are unchanged. */
+export default function SirahAdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${styles.root} ${indigoFontVariablesOnDemand}`} data-theme="indigo-admin">
+    <div className={`${styles.root} ${indigoFontVariables}`} data-theme="indigo-admin">
       <SirahAppProvider>{children}</SirahAppProvider>
-      <p className="indigo-preview-flag">
-        Preview · <b>Indigo Geometry</b>
-        <a href="/redesign/admin/exit">Exit preview</a>
-      </p>
     </div>
   );
 }

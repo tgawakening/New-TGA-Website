@@ -231,8 +231,8 @@
   }
 }
 
-/* Indigo Geometry preview (styles/admin-indigo.css). Every rule below is
- * scoped to [data-theme="indigo-admin"], so the live admin is unaffected. */
+/* Indigo Geometry theme (styles/admin-indigo.css). Every rule below is
+ * scoped to [data-theme="indigo-admin"], set by app/admin/sirah/layout.tsx. */
 .brandSeal {
   display: none;
 }

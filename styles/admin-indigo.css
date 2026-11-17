@@ -1,8 +1,7 @@
 /* Indigo Geometry · Sīrah admin theme.
  *
- * Inert unless an ancestor has data-theme="indigo-admin" (set by
- * app/admin/sirah/layout.tsx only when the preview cookie is present; see
- * app/redesign/admin/route.ts). Three layers:
+ * Applies under data-theme="indigo-admin", which app/admin/sirah/layout.tsx
+ * sets on every Sīrah admin page. Three layers:
  *   1. --ai-* values for the colour hooks in the admin CSS modules
  *      (scripts/themeable-admin-colors.mjs put them there; each keeps the
  *      original colour as its fallback, so the live admin is unchanged).
@@ -331,37 +330,3 @@
   accent-color: var(--teal);
 }
 
-/* Preview flag (rendered by the layout only when the preview cookie is set) */
-.indigo-preview-flag {
-  position: fixed;
-  left: 50%;
-  bottom: 16px;
-  z-index: 80;
-  transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 6px 6px 14px;
-  border: 1px solid var(--line2);
-  border-radius: 999px;
-  background: rgba(13, 20, 36, 0.92);
-  color: var(--faint);
-  font: 600 11px/1 var(--body);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  box-shadow: 0 14px 40px -12px rgba(0, 0, 0, 0.7);
-}
-
-.indigo-preview-flag b {
-  color: var(--teal);
-}
-
-.indigo-preview-flag a {
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: rgba(237, 234, 223, 0.06);
-  color: var(--sand);
-  text-decoration: none;
-  letter-spacing: 0.04em;
-  text-transform: none;
-}

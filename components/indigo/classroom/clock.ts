@@ -1,8 +1,6 @@
 import { SIRAH_DEFAULT_TIMEZONE, isValidTimeZone, type SirahLessonStatus } from "@/lib/sirah/classroom";
 
-/* Same rules as app/seerah/classroom/parts.tsx (copied, not imported, so the
- * redesign does not pull in the live classroom stylesheet). At switch-over the
- * live parts file should import these from here. */
+/* Status labels and the student's clock for the classroom pages. */
 
 export const STATUS_TEXT: Record<SirahLessonStatus, string> = {
   upcoming: "Upcoming",

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "../ornaments";
 import s from "./login.module.css";
 
-/* Same behaviour as components/auth/login-form.tsx (live): POST /api/login,
+/* The live sign-in form (app/login/page.tsx): POST /api/login,
  * then go to ?next= or /dashboard and refresh; "Create account" goes to ?next=
  * or the registration flow. Only the presentation differs. */
 export function IndigoLoginForm() {
@@ -21,13 +21,26 @@ export function IndigoLoginForm() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Login failed.");
+      let response: Response;
+      try {
+        response = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+      } catch {
+        throw new Error("We couldn't reach the server. Check your connection and try again.");
+      }
+      // A crashed or unreachable backend may not answer with JSON at all.
+      const data: { error?: string } = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            (response.status >= 500
+              ? "We can't sign you in right now because our system is temporarily unavailable. Please try again in a few minutes."
+              : "Login failed."),
+        );
+      }
       const nextPath = searchParams.get("next");
       router.push(nextPath || "/dashboard");
       router.refresh();

@@ -896,8 +896,8 @@
   gap: var(--space-2);
 }
 
-/* Indigo Geometry preview (styles/admin-indigo.css): rounded panels and
- * status pills. Scoped to [data-theme="indigo-admin"]; the live page is unaffected. */
+/* Indigo Geometry theme (styles/admin-indigo.css): rounded panels and
+ * status pills. Scoped to [data-theme="indigo-admin"]. */
 :global([data-theme="indigo-admin"]) .card {
   border-color: var(--line);
   border-radius: 16px;
