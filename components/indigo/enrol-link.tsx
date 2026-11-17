@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import { Button } from "./button";
 
-/* Same rule as the live header: signed-in students go to their dashboard. */
-export function EnrolLink({ block = false }: { block?: boolean }) {
+export type EnrolAction = { href: string; label: string; onClick?: () => void };
+
+/* Same rule as the live header: signed-in students go to their dashboard.
+ * `action` replaces the default link (the Sīrah page passes its register
+ * link with the visitor's country preselected, as the live header does). */
+export function EnrolLink({ block = false, action }: { block?: boolean; action?: EnrolAction }) {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
@@ -19,8 +23,8 @@ export function EnrolLink({ block = false }: { block?: boolean }) {
       Your dashboard
     </Button>
   ) : (
-    <Button href="/seerah/register" arrow block={block}>
-      Enrol now
+    <Button href={action?.href ?? "/seerah/register"} arrow block={block} onClick={action?.onClick}>
+      {action?.label ?? "Enrol now"}
     </Button>
   );
 }

@@ -32,7 +32,8 @@ export function Button(props: LinkButton | NativeButton) {
     const { href, ...linkRest } = rest as LinkButton;
     const external = /^https?:\/\//.test(href);
     return external ? (
-      <a href={href} className={cls} target="_blank" rel="noreferrer">
+      // onClick is forwarded so outbound links (WhatsApp) can still be tracked.
+      <a href={href} className={cls} target="_blank" rel="noopener noreferrer" onClick={linkRest.onClick}>
         {content}
       </a>
     ) : (

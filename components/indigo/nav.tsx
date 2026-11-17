@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "./button";
-import { EnrolLink } from "./enrol-link";
+import { EnrolLink, type EnrolAction } from "./enrol-link";
 import styles from "./nav.module.css";
 import { BrandLogo } from "@/components/brand-logo";
 
@@ -29,7 +29,18 @@ export function Wordmark({ href = "/", size = "nav" }: { href?: string; size?: "
   );
 }
 
-export function Nav({ links: given = defaultNavLinks, homeHref = "/" }: { links?: NavLink[]; homeHref?: string }) {
+export function Nav({
+  links: given = defaultNavLinks,
+  homeHref = "/",
+  enrol,
+  support = { href: "/support-our-mission", label: "Support our mission" },
+}: {
+  links?: NavLink[];
+  homeHref?: string;
+  /** Replaces the default "Enrol now" link (signed-in visitors still get "Your dashboard"). */
+  enrol?: EnrolAction;
+  support?: { href: string; label: string };
+}) {
   const links = given.map((l) => (l.href === "/" ? { ...l, href: homeHref } : l));
   return (
     <header className={styles.header} data-nav="">
@@ -47,11 +58,11 @@ export function Nav({ links: given = defaultNavLinks, homeHref = "/" }: { links?
         </ul>
 
         <div className={styles.actions}>
-          <Button href="/support-our-mission" variant="ghost" className={styles.support}>
-            Support our mission
+          <Button href={support.href} variant="ghost" className={styles.support}>
+            {support.label}
           </Button>
           <span className={styles.enrol}>
-            <EnrolLink />
+            <EnrolLink action={enrol} />
           </span>
 
           {/* Phone menu: a native disclosure (works before and without JavaScript,
@@ -70,10 +81,10 @@ export function Nav({ links: given = defaultNavLinks, homeHref = "/" }: { links?
                   </li>
                 ))}
                 <li style={{ "--i": links.length } as React.CSSProperties}>
-                  <Link href="/support-our-mission">Support our mission</Link>
+                  <Link href={support.href}>{support.label}</Link>
                 </li>
               </ul>
-              <EnrolLink block />
+              <EnrolLink block action={enrol} />
             </div>
           </details>
         </div>
