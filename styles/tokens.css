@@ -13,8 +13,8 @@
   --line: rgba(237, 234, 223, 0.1);
   --line2: rgba(237, 234, 223, 0.18);
   --sand: #ede9df;
-  --dim: #99a1ba;
-  --faint: #717a9c;
+  --dim: #c9c3b6;   /* body copy: warm parchment, 9.6:1 on --bg, 7.4:1 on --surf2 */
+  --faint: #aeaab5; /* meta / labels: 7.4:1 on --bg, 5.7:1 on --surf2 (AA) */
   --teal: #2bb6a3;
   --tealb: #48d6c2;
   --terra: #d9794f;
