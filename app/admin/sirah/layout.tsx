@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { SirahAppProvider } from "@/components/sirah/admin-app";
 import styles from "@/components/sirah/admin-app.module.css";
+import { indigoFontVariables } from "@/lib/fonts";
+import "@/styles/admin-indigo.css";
 
 export const metadata: Metadata = {
   title: "Sīrah Admin | TGA",
@@ -15,8 +17,15 @@ export const metadata: Metadata = {
   },
   robots: { index: false, follow: false },
 };
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#1d5b8f" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0f1729" };
 
+/* The Sīrah admin always renders in the Indigo Geometry theme
+ * (styles/admin-indigo.css, scoped by data-theme="indigo-admin"). Styling
+ * only: access, data and behaviour are unchanged. */
 export default function SirahAdminLayout({ children }: { children: React.ReactNode }) {
-  return <div className={styles.root}><SirahAppProvider>{children}</SirahAppProvider></div>;
+  return (
+    <div className={`${styles.root} ${indigoFontVariables}`} data-theme="indigo-admin">
+      <SirahAppProvider>{children}</SirahAppProvider>
+    </div>
+  );
 }

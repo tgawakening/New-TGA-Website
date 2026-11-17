@@ -1,0 +1,110 @@
+/* Indigo Geometry · motion layer (global, attribute-driven; see
+ * components/indigo/motion/experience.tsx). Only transform and opacity move.
+ * Final states are the defaults: nothing is hidden unless .has-motion is on
+ * the page root, which the script adds only when motion is allowed. */
+
+:root {
+  --ease-rise: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---- 1. Entrance choreography: pure CSS, runs on first paint ---- */
+[data-rise] {
+  animation: indigo-rise 0.85s var(--ease-rise) both;
+  animation-delay: calc(var(--i, 0) * 0.15s);
+}
+
+@keyframes indigo-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+}
+
+/* The ayah, word by word (signature moment): RTL words arrive in reading order. */
+[data-words] > span {
+  display: inline-block;
+  animation: indigo-word 0.7s var(--ease-rise) both;
+  animation-delay: calc(0.45s + var(--w, 0) * 0.07s);
+}
+
+@keyframes indigo-word {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.35em, 0);
+  }
+}
+
+/* ---- 2. Scroll reveals ---- */
+.has-motion [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition:
+    opacity 0.8s var(--ease-out-soft),
+    transform 0.8s var(--ease-out-soft);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+
+.has-motion [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Section marker: the rub el hizb turns into place as its section arrives. */
+.has-motion [data-reveal] [data-marker] {
+  transform: rotate(-45deg) scale(0.6);
+  opacity: 0;
+  transition:
+    transform 0.9s var(--ease-out-soft) 0.15s,
+    opacity 0.6s ease 0.15s;
+}
+
+.has-motion [data-reveal].is-in [data-marker] {
+  transform: none;
+  opacity: 1;
+}
+
+/* Count-ups: the "+" lands after the number. */
+.has-motion [data-count] + [data-suffix] {
+  display: inline-block;
+  opacity: 0;
+  transform: translate3d(0, -0.2em, 0);
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s var(--ease-out-soft);
+}
+
+.has-motion [data-count][data-counted] + [data-suffix] {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- 3. Scroll progress ---- */
+[data-progress] {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 70;
+  height: 2px;
+  background: linear-gradient(90deg, var(--teal), var(--tealb) 70%, var(--gold));
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+/* ---- Reduced motion: everything final, nothing moves ---- */
+@media (prefers-reduced-motion: reduce) {
+  [data-rise],
+  [data-words] > span {
+    animation: none;
+  }
+  .has-motion [data-reveal],
+  .has-motion [data-reveal] [data-marker],
+  .has-motion [data-count] + [data-suffix] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  [data-progress] {
+    display: none;
+  }
+}

@@ -59,7 +59,7 @@ export function SirahAdminDiscount() {
   // Match the light admin theme (page body #17324d, kicker/label #3d668f);
   // the shared ga-admin-label/-tag/-row strong rules were authored for the
   // dark card and render too faint on the light workspace card.
-  const labelStyle = { color: "#3d668f" };
+  const labelStyle = { color: "var(--ai-fg-3d668f, #3d668f)" };
 
   const loadCodes = useCallback(async () => {
     setListError("");
@@ -225,7 +225,7 @@ export function SirahAdminDiscount() {
             role="status"
             style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "1fr", gap: "0.85rem", alignItems: "start" }}
           >
-            <strong style={{ fontSize: "1rem", color: "#17324d" }}>{created.message}</strong>
+            <strong style={{ fontSize: "1rem", color: "var(--ai-fg-17324d, #17324d)" }}>{created.message}</strong>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
               <code style={{ fontSize: "1.25rem", letterSpacing: "0.06em", fontWeight: 600, wordBreak: "break-all" }}>
                 {created.code}
@@ -234,7 +234,7 @@ export function SirahAdminDiscount() {
                 {copied ? "Copied" : "Copy code"}
               </button>
             </div>
-            <span className="ga-admin-tag" style={{ justifySelf: "start", color: "#17324d", background: "rgba(92, 139, 238, 0.22)" }}>
+            <span className="ga-admin-tag" style={{ justifySelf: "start", color: "var(--ai-fg-17324d, #17324d)", background: "var(--ai-bg-92_139_238_0_22, rgba(92, 139, 238, 0.22))" }}>
               Stored hashed — it will not be shown again.
             </span>
           </div>
@@ -262,10 +262,10 @@ export function SirahAdminDiscount() {
           </p>
         )}
 
-        {rows === null && !listError && <p style={{ color: "#6a7f95" }}>Loading codes…</p>}
+        {rows === null && !listError && <p style={{ color: "var(--ai-fg-6a7f95, #6a7f95)" }}>Loading codes…</p>}
 
         {rows !== null && rows.length === 0 && (
-          <p style={{ color: "#6a7f95" }}>No discount codes have been created yet.</p>
+          <p style={{ color: "var(--ai-fg-6a7f95, #6a7f95)" }}>No discount codes have been created yet.</p>
         )}
 
         {rows !== null && rows.length > 0 && (
@@ -283,7 +283,7 @@ export function SirahAdminDiscount() {
               <div className="ga-admin-table-row ga-admin-table-row-discounts" key={row.id}>
                 <div>
                   <strong style={{ wordBreak: "break-all" }}>{row.code || "hidden"}</strong>
-                  <div style={{ fontSize: "0.8rem", color: "#3d668f" }}>{appliesTo(row)}</div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--ai-fg-3d668f, #3d668f)" }}>{appliesTo(row)}</div>
                 </div>
                 <div>{formatAmount(row)}</div>
                 <div style={{ wordBreak: "break-word" }}>{row.binding}</div>

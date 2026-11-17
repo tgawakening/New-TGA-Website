@@ -1,5 +1,5 @@
 .shell {
-  color: #173659;
+  color: var(--ai-fg-173659, #173659);
 }
 
 .topbar {
@@ -17,9 +17,9 @@
 .cohort {
   margin-top: 1rem;
   padding: 0.8rem 1rem;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ai-ln-dbe4ef, #dbe4ef);
   border-radius: 0.9rem;
-  background: #f4f8fc;
+  background: var(--ai-bg-f4f8fc, #f4f8fc);
 }
 
 .cohort summary {
@@ -34,7 +34,7 @@
 
 .resultCount {
   margin-top: 1rem;
-  color: #526477;
+  color: var(--ai-fg-526477, #526477);
 }
 
 .row > div {
@@ -51,7 +51,7 @@
 }
 
 .modal {
-  color: #173659;
+  color: var(--ai-fg-173659, #173659);
   overflow-wrap: anywhere;
 }
 
@@ -65,11 +65,11 @@
 .form :is(input, select, textarea):not([type="checkbox"]) {
   width: 100%;
   min-height: 2.75rem;
-  border: 1px solid #b9cbdd;
+  border: 1px solid var(--ai-ln-b9cbdd, #b9cbdd);
   border-radius: 0.65rem;
   padding: 0.5rem 0.7rem;
-  background: #fff;
-  color: #173659;
+  background: var(--ai-bg-fff, #fff);
+  color: var(--ai-fg-173659, #173659);
 }
 
 .form textarea {
@@ -92,7 +92,7 @@
 }
 
 .records details {
-  border-top: 1px solid #dbe4ef;
+  border-top: 1px solid var(--ai-ln-dbe4ef, #dbe4ef);
   padding-top: 0.65rem;
 }
 
@@ -171,17 +171,17 @@
 }
 
 /* Keep small student-card labels readable against their status backgrounds. */
-.row p { color: #526477; }
+.row p { color: var(--ai-fg-526477, #526477); }
 .row :global(.ga-admin-pill),
 .row :global(.ga-admin-status.is-completed),
 .row :global(.ga-admin-status.is-approved),
 .row :global(.ga-admin-status.is-succeeded),
-.row :global(.ga-admin-status.is-confirmed) { color: #17664b; }
-.row :global(.ga-admin-status.is-pending) { color: #805900; }
+.row :global(.ga-admin-status.is-confirmed) { color: var(--ai-fg-17664b, #17664b); }
+.row :global(.ga-admin-status.is-pending) { color: var(--ai-fg-805900, #805900); }
 
 /* Course group column (8-column table on wide screens) */
 .groupMeta {
-  color: #5d7189;
+  color: var(--ai-fg-5d7189, #5d7189);
   font-size: 0.8rem;
 }
 
@@ -219,9 +219,9 @@
   gap: 0.6rem 0.9rem;
   margin: 0.75rem 0;
   padding: 0.6rem 0.8rem;
-  border: 1px solid #d9e2ec;
+  border: 1px solid var(--ai-ln-d9e2ec, #d9e2ec);
   border-radius: 0.6rem;
-  background: #f7fafc;
+  background: var(--ai-bg-f7fafc, #f7fafc);
 }
 .bulkBar :global(.ga-admin-error-banner) {
   flex-basis: 100%;
@@ -234,7 +234,7 @@
   font-weight: 600;
 }
 .bulkCount {
-  color: #526477;
+  color: var(--ai-fg-526477, #526477);
   font-size: 0.9rem;
 }
 .rowSelect {
@@ -247,26 +247,26 @@
 .rowSelect input {
   width: 1.1rem;
   height: 1.1rem;
-  accent-color: #17664b;
+  accent-color: var(--ai-fg-17664b, #17664b);
   cursor: pointer;
 }
 .excludedPill {
   margin-left: 0.35rem;
-  background: #fdecea;
-  color: #8c2721;
+  background: var(--ai-bg-fdecea, #fdecea);
+  color: var(--ai-fg-8c2721, #8c2721);
 }
 .archivedPill {
   margin-left: 0.35rem;
-  background: #fff4e0;
-  color: #7a4b00;
+  background: var(--ai-bg-fff4e0, #fff4e0);
+  color: var(--ai-fg-7a4b00, #7a4b00);
 }
 .purgeNote {
-  color: #7a4b00;
+  color: var(--ai-fg-7a4b00, #7a4b00);
   font-weight: 600;
 }
 .recordMessage {
   margin: 0.5rem 0 0;
-  color: #17664b;
+  color: var(--ai-fg-17664b, #17664b);
   font-weight: 600;
 }
 .recordSummary {

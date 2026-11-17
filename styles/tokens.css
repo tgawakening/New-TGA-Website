@@ -1,0 +1,98 @@
+/* Indigo Geometry · global design tokens.
+ * Imported once in app/layout.tsx. Variables only, no selectors that paint,
+ * so importing it app-wide changes nothing on pages that do not use it.
+ * Fonts: --display and --body are fallbacks here; the next/font classes from
+ * lib/fonts.ts override them with self-hosted Fraunces and Sora wherever applied. */
+
+:root {
+  /* Colour */
+  --ink: #0d1424;
+  --bg: #141d33;
+  --surf: #1b2742;
+  --surf2: #223052;
+  --line: rgba(237, 234, 223, 0.1);
+  --line2: rgba(237, 234, 223, 0.18);
+  --sand: #ede9df;
+  --dim: #99a1ba;
+  --faint: #717a9c;
+  --teal: #2bb6a3;
+  --tealb: #48d6c2;
+  --terra: #d9794f;
+  --terrab: #e89068;
+  --gold: #c9a24c;
+  --on-teal: #06211c; /* text on a teal fill, 7.9:1 */
+
+  /* Font families (overridden by next/font variables) */
+  --display: Georgia, "Times New Roman", serif;
+  --body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --arabic: "Amiri", "Noto Naskh Arabic", "Traditional Arabic", "Geeza Pro", "Segoe UI", serif;
+
+  /* Type scale: mobile-first, fluid where it matters */
+  --fs-2xs: 0.6875rem;                          /* 11px  labels, eyebrows */
+  --fs-xs: 0.78125rem;                          /* 12.5px meta */
+  --fs-sm: 0.84375rem;                          /* 13.5px small body */
+  --fs-base: 0.9375rem;                         /* 15px  body on phones */
+  --fs-md: 1rem;                                /* 16px */
+  --fs-lg: 1.125rem;                            /* 18px  lede */
+  --fs-xl: 1.3125rem;                           /* 21px  card title */
+  --fs-2xl: clamp(1.5rem, 1.1rem + 1.8vw, 2.125rem);  /* 24 → 34  h3 */
+  --fs-3xl: clamp(1.625rem, 1.2rem + 2vw, 2.375rem);  /* 26 → 38  h2 */
+  --fs-4xl: clamp(2rem, 1.3rem + 3.2vw, 3rem);        /* 32 → 48  flagship */
+  --fs-5xl: clamp(2.5rem, 1.6rem + 4.4vw, 4.25rem);   /* 40 → 68  hero */
+  --lh-tight: 1.04;
+  --lh-snug: 1.25;
+  --lh-body: 1.6;
+  --tracking-label: 0.24em;
+
+  /* Spacing scale (4px base) */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-7: 1.75rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+  --sp-20: 5rem;
+  --section-y: clamp(3.5rem, 2.5rem + 4vw, 4.5rem);
+  --gutter: 1rem;          /* 16px on phones */
+  --wrap: 73.75rem;        /* 1180px */
+
+  /* Radius scale */
+  --r-xs: 6px;
+  --r-sm: 9px;             /* buttons */
+  --r-md: 12px;            /* pillars, small tiles */
+  --r-lg: 14px;            /* program tiles, badges */
+  --r-xl: 18px;            /* course cards */
+  --r-2xl: 22px;           /* feature panels */
+  --r-pill: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 220ms;
+  --shadow-float: 0 20px 50px -22px rgba(0, 0, 0, 0.6);
+
+  /* Depth: one recipe for every raised surface */
+  --surface-grad: linear-gradient(180deg, rgba(237, 234, 223, 0.035), rgba(237, 234, 223, 0) 60%), var(--surf);
+  --highlight: inset 0 1px 0 rgba(237, 234, 223, 0.07);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.25), 0 18px 40px -24px rgba(0, 0, 0, 0.55);
+  --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.25), 0 28px 56px -26px rgba(0, 0, 0, 0.7);
+  --focus-ring: 0 0 0 3px rgba(72, 214, 194, 0.28);
+
+  /* Display tracking: tighter as size grows */
+  --track-display: -0.022em;
+  --track-title: -0.012em;
+
+  /* Geometry as a system: a faint eight-point-star lattice for section grounds */
+  --pattern-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23ede9df' stroke-width='.7'%3E%3Crect x='24' y='24' width='24' height='24'/%3E%3Crect x='24' y='24' width='24' height='24' transform='rotate(45 36 36)'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+@media (min-width: 40rem) {
+  :root {
+    --gutter: 2rem;
+    --fs-base: 1rem;
+  }
+}

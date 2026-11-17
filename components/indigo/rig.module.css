@@ -1,0 +1,65 @@
+/* The living geometry: three stroke-only layers turning at different speeds
+ * and directions (CSS), on wrappers the motion layer shifts by depth under a
+ * fine pointer (components/indigo/motion/experience.tsx). */
+.rig {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  transform-style: preserve-3d;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.layer svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.spin {
+  animation: spin 160s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+.spinSlow { animation-duration: 160s; }
+.spinMid { animation-duration: 110s; animation-direction: reverse; }
+.spinFast { animation-duration: 70s; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.tTeal { color: var(--teal); }
+.tTealb { color: var(--tealb); }
+.tTerra { color: var(--terra); }
+.tGold { color: var(--gold); }
+
+/* A soft glow that breathes behind the rings */
+.glow {
+  position: absolute;
+  inset: 16%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(43, 182, 163, 0.26), rgba(43, 182, 163, 0.06) 45%, transparent 70%);
+  animation: breathe 7s ease-in-out infinite alternate;
+}
+
+@keyframes breathe {
+  from {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin,
+  .glow {
+    animation: none;
+  }
+}

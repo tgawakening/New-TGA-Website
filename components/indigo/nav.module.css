@@ -1,0 +1,296 @@
+/* Sticky nav. Transparent over the hero; after 40px of scroll the motion layer
+ * sets [data-scrolled] and a blurred ground plus a hairline fade in (opacity
+ * only). Without JavaScript the ground is simply always on. */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  isolation: isolate;
+}
+
+.header::before,
+.header::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 0.35s var(--ease);
+}
+
+.header::before {
+  background: rgba(15, 23, 41, 0.9);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .header::before {
+    background: rgba(15, 23, 41, 0.7);
+    backdrop-filter: blur(14px) saturate(1.2);
+  }
+}
+
+.header::after {
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--line);
+}
+
+:global(.has-motion) .header:not([data-scrolled])::before,
+:global(.has-motion) .header:not([data-scrolled])::after {
+  opacity: 0;
+}
+
+/* The phone sheet needs the ground even at the top of the page. */
+:global(.has-motion) .header:has(details[open])::before {
+  opacity: 1;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  height: 64px;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  flex: none;
+  border-radius: var(--r-xs);
+}
+
+.logoImg {
+  display: block;
+  width: 112px;
+  height: auto;
+}
+
+.logoFooter .logoImg {
+  width: 150px;
+}
+
+.logo:focus-visible,
+.link:focus-visible,
+.menuButton:focus-visible,
+.sheet a:focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 4px;
+}
+
+/* Desktop links, with a drawn underline */
+.links {
+  display: none;
+  gap: var(--sp-6);
+  margin: 0 0 0 var(--sp-2);
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  position: relative;
+  display: inline-block;
+  padding: var(--sp-2) 0;
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 1px;
+  background: var(--teal);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.3s var(--ease);
+}
+
+.link:hover,
+.link:focus-visible {
+  color: var(--sand);
+}
+
+.link:hover::after,
+.link:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-left: auto;
+}
+
+.support,
+.enrol {
+  display: none;
+}
+
+/* Phone menu */
+.menu {
+  position: static;
+}
+
+.menuButton {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  background: rgba(13, 20, 36, 0.4);
+  cursor: pointer;
+  list-style: none;
+}
+
+.menuButton::-webkit-details-marker {
+  display: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.burger,
+.burger::before,
+.burger::after {
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  background: var(--sand);
+  border-radius: 1px;
+  transition:
+    transform var(--dur) var(--ease),
+    opacity var(--dur);
+}
+
+.burger {
+  position: relative;
+}
+
+.burger::before,
+.burger::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.burger::before {
+  transform: translate3d(0, -6px, 0);
+}
+
+.burger::after {
+  transform: translate3d(0, 6px, 0);
+}
+
+.menu[open] .burger {
+  background: transparent;
+}
+
+.menu[open] .burger::before {
+  transform: rotate(45deg);
+}
+
+.menu[open] .burger::after {
+  transform: rotate(-45deg);
+}
+
+.sheet {
+  position: absolute;
+  inset: 64px 0 auto;
+  display: grid;
+  gap: var(--sp-5);
+  padding: var(--sp-2) var(--gutter) var(--sp-6);
+  background: var(--ink);
+  border-bottom: 1px solid var(--line2);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8);
+}
+
+.menu[open] .sheet {
+  animation: sheetIn 0.32s var(--ease) both;
+}
+
+.menu[open] .sheet li {
+  animation: sheetIn 0.4s var(--ease) both;
+  animation-delay: calc(0.04s + var(--i, 0) * 0.04s);
+}
+
+@keyframes sheetIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+.sheet ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet li + li {
+  border-top: 1px solid var(--line);
+}
+
+.sheet ul a {
+  display: block;
+  padding: 0.9375rem 0;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  color: var(--sand);
+  text-decoration: none;
+}
+
+@media (min-width: 40rem) {
+  .enrol {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 64rem) {
+  .bar {
+    height: 76px;
+    gap: var(--sp-8);
+  }
+  .logoImg {
+    width: 160px;
+  }
+  .links {
+    display: flex;
+  }
+  .support {
+    display: inline-flex;
+  }
+  .menu {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header::before,
+  .header::after,
+  .link::after,
+  .burger,
+  .burger::before,
+  .burger::after {
+    transition: none;
+  }
+  .menu[open] .sheet,
+  .menu[open] .sheet li {
+    animation: none;
+  }
+}
