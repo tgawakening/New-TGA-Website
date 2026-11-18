@@ -1,60 +1,60 @@
-/* About content for the Indigo Geometry redesign. Every string is the live
- * site's own: app/about/page.tsx (hero, story, pillars, pathways) and
- * components/home/data.ts (stats, courses, mission pillars, via the landing's
- * content module). Nothing here is invented copy. */
-import { courses } from "@/components/home/data";
-
-export { stats, visionMission } from "../landing/content";
+/* About content for the Indigo Geometry redesign: the page's marketing copy.
+ * The numbers are not repeated here; they come from the live site's own stats
+ * (components/home/data.ts, via the landing's content module). */
+export { stats } from "../landing/content";
 
 export const aboutHero = {
-  eyebrow: "About Global Awakening",
-  titleA: "Faith-led learning for a",
-  titleB: "global Ummah.",
-  lede: "Global Awakening is a faith-driven learning platform and community helping Muslims grow through revelation-grounded education, meaningful projects, and supportive collaboration.",
-  note: { title: "Faith-led learning", body: "For students, families, and future community builders." },
+  eyebrow: "Our story",
+  titleA: "A generation is",
+  titleB: "waking up.",
+  lede: "We exist to raise Muslims who lead with their faith, grounded in revelation, equipped to build, serve, and shape the world.",
 };
 
-/* The story: the live "What We Are Building" block. Its three pillars become
- * the first three chapters; its paragraph is the fourth, where the figure
- * completes. Each chapter adds one layer to the same geometry. */
+export const whyWeExist = {
+  eyebrow: "Why we exist",
+  titleA: "Faith was never meant to be",
+  titleB: "passive.",
+  body: "Too often Islam is inherited as ritual and left there. We see revelation as a blueprint, for leaders, for families, for a Ummah that builds rather than watches. This is where that belief turns into action.",
+};
+
+/* Each pillar adds one layer to the same geometry (see story.tsx). */
 export const story = {
   eyebrow: "What we are building",
-  titleA: "Education that connects belief with",
-  titleB: "confident action.",
-  chapters: [
+  titleA: "Three pillars.",
+  titleB: "One Ummah that leads.",
+  pillars: [
     {
-      key: "revelation",
-      label: "Revelation",
-      text: "Learning begins with Qur'an, Seerah, adab, and a clear Islamic worldview.",
+      key: "education",
+      label: "Education",
+      text: "We teach the Sīrah not as dates to memorise but as a method for leadership, power and change. Live, not recorded.",
     },
     {
-      key: "leadership",
-      label: "Leadership",
-      text: "Students are guided to think, plan, serve, and lead with responsibility.",
+      key: "projects",
+      label: "Projects",
+      text: "Through Gen-Mu'min we equip the next generation from the ground up: marriage, parenting, homeschooling and more.",
     },
     {
-      key: "action",
-      label: "Action",
-      text: "Courses and projects turn knowledge into family, community, and Ummah benefit.",
-    },
-    {
-      key: "direction",
-      label: "One shared direction",
-      text: "The platform brings together live courses, youth tracks, Seerah strategy, social projects, student support, and community spaces with one shared direction: learning that serves deen and prepares people for beneficial work.",
+      key: "community",
+      label: "Community",
+      text: "A global family of learners carrying each other toward the Akhirah.",
     },
   ],
 } as const;
 
-/* Pathways: the same four courses and links as the live About page. */
-export const pathways = courses.slice(0, 4).map((c) => ({
-  id: c.id,
-  category: c.category,
-  title: c.title,
-  href: c.id === "prophetic-strategy" ? "/seerah" : null, // null: the home page's #courses
-}));
+export const difference = {
+  eyebrow: "The difference",
+  titleA: "Not another",
+  titleB: "course library.",
+  points: [
+    { lead: "Live teaching", rest: "instead of a shelf of recordings." },
+    { lead: "A method", rest: "instead of a syllabus." },
+    { lead: "A community", rest: "that learns with purpose and holds each other to it." },
+  ],
+};
 
-/* Closing call: the live community line (components/home/sections). */
-export const aboutCta = {
-  title: "Join our growing community",
-  body: "Be part of a global movement to unite Muslims through faith, knowledge, and compassion.",
+export const invitation = {
+  titleA: "This is your",
+  titleB: "awakening",
+  titleC: "too.",
+  body: "Wherever you are in the world, there's a place for you here.",
 };
