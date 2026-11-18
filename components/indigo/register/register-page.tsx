@@ -10,11 +10,14 @@ import { OrderSummary } from "./order-summary";
 import form from "./register-form.module.css";
 import s from "./register.module.css";
 
-/* The live registration form, loaded exactly as /seerah/register loads it
- * (client only, same props). The Indigo class map and the order summary below
- * are what switch it to the split checkout layout. */
+/* The live registration form, loaded client only as /seerah/register loads it.
+ * The Indigo class map and the order summary below switch it to the split
+ * checkout layout; the wrapper applies the page's country order. */
 const SirahRegistrationForm = dynamic(
-  () => import("@/components/sirah/registration-form").then((m) => m.SirahRegistrationForm),
+  () =>
+    import("@/components/sirah/residence-first-registration-form").then(
+      (m) => m.ResidenceFirstRegistrationForm,
+    ),
   {
     ssr: false,
     loading: () => (
@@ -28,17 +31,19 @@ const SirahRegistrationForm = dynamic(
 const renderSummary = (summary: CheckoutSummaryData) => <OrderSummary summary={summary} />;
 
 /** /seerah/register in Indigo Geometry: a compact header, then the checkout.
- * Same three props as the live page; `site` maps the header links and tells
- * the form which page it is on. */
+ * The live page's three props, plus the server-detected country; `site` maps
+ * the header links and tells the form which page it is on. */
 export function RegisterPage({
   initialCountry,
   initialPlan,
   requireBillingCountry,
+  detectedCountry,
   site = liveLinks,
 }: {
   initialCountry?: string;
   initialPlan?: SirahPlan;
   requireBillingCountry?: boolean;
+  detectedCountry?: string;
   site?: SiteLinks;
 }) {
   return (
@@ -55,6 +60,7 @@ export function RegisterPage({
             initialCountry={initialCountry}
             initialPlan={initialPlan}
             requireBillingCountry={requireBillingCountry}
+            detectedCountry={detectedCountry}
             registerPath={site.register}
             checkoutSummary={renderSummary}
           />

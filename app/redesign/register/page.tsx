@@ -7,13 +7,15 @@ import { getCurrentUser } from "@/lib/auth/session";
 import LegacyRegistration from "@/components/sirah/legacy-registration";
 import { RegisterPage } from "@/components/indigo/register/register-page";
 import { previewLinks } from "@/components/indigo/site-links";
+import { detectedResidence } from "@/lib/sirah/geolocation";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 
 /* Hidden preview of the redesigned Sīrah registration. Not linked from the
  * live site; noindex here and in app/redesign/layout.tsx. The server logic
  * is app/seerah/register/page.tsx line for line (resume, country, plan,
- * billing-country flag); the only difference is that a resume link that
- * does not belong to you returns to this preview instead of the live page. */
+ * billing-country flag), with two differences: a resume link that does not
+ * belong to you returns to this preview instead of the live page, and a visit
+ * with no ?country= starts from the detected country. */
 export const metadata: Metadata = {
   title: `Register | ${SIRAH_TITLE} · preview`,
   robots: { index: false, follow: false },
@@ -57,6 +59,7 @@ export default async function RedesignRegisterPage({
       initialCountry={initialCountry}
       initialPlan={initialPlan}
       requireBillingCountry={Boolean(params.country && !initialCountry)}
+      detectedCountry={params.country ? undefined : await detectedResidence()}
       site={previewLinks}
     />
   );

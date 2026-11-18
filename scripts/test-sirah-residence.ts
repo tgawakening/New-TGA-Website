@@ -88,6 +88,18 @@ test("only configured trusted country headers suggest residence; missing lookup 
   );
 });
 
+test("a slow or failed country lookup never holds the page", async () => {
+  const { withinDetectionBudget } = await import("../lib/sirah/geolocation");
+  assert.equal(await withinDetectionBudget(Promise.resolve("GB"), 50), "GB");
+  const slow = new Promise<string>((resolve) =>
+    setTimeout(() => resolve("GB"), 200),
+  );
+  const started = Date.now();
+  assert.equal(await withinDetectionBudget(slow, 20), undefined);
+  assert.ok(Date.now() - started < 150);
+  assert.equal(resolveResidence(null, null, undefined), "PK");
+});
+
 test("synthetically verified card readiness selects 3000; manual remains 3500 independently", () => {
   const keys = [
     "SIRAH_PK_RECURRING_VERIFIED",
