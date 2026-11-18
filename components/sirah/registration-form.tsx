@@ -1567,6 +1567,16 @@ export function SirahRegistrationForm({
         priceNote: "Choose your country to see your fee",
         priceState: "unavailable",
       };
+    // No confirmed fee: the summary stays calm and shows no figure. The form
+    // column still says why the visitor cannot continue.
+    if (quoteError)
+      return {
+        ...base,
+        ...noDiscount,
+        priceText: null,
+        priceNote: "Your fee is confirmed before you pay.",
+        priceState: "unavailable",
+      };
     // The form's own catalogue estimate, always labelled until the server confirms.
     const estimate = priceFor(
       billing,
@@ -1577,8 +1587,8 @@ export function SirahRegistrationForm({
       ...base,
       ...noDiscount,
       priceText: formatSirahMoney(estimate.amountMinor, estimate.currency),
-      priceNote: quoteError || "Confirming your fee…",
-      priceState: quoteError ? "unavailable" : "confirming",
+      priceNote: "Confirming your fee…",
+      priceState: "confirming",
     };
   }
   const stepHeading = (step: number) => {
@@ -1683,8 +1693,10 @@ export function SirahRegistrationForm({
         ? "Continue"
         : !selectedMethod
           ? "Choose an available payment method"
-          : ["STRIPE", "PAYPAL"].includes(selectedMethod) && quote
-            ? `Pay ${formatSirahMoney(quote.amountMinor, quote.currency)}`
+          : ["STRIPE", "PAYPAL"].includes(selectedMethod)
+            ? quote
+              ? `Pay ${formatSirahMoney(quote.amountMinor, quote.currency)}`
+              : "Pay"
             : "Submit registration & transfer receipt";
   const experience = (
     <div className={styles.experience}>

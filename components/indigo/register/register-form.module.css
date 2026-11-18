@@ -6,7 +6,11 @@
  * (components/sirah/registration-styles.tsx). The live page keeps
  * components/sirah/registration.module.css. Mobile first: one column with a
  * sticky summary above and a sticky action below; two columns from 1024px.
- * Only transform and opacity animate. */
+ * Only transform and opacity animate.
+ *
+ * Two-tone: the summary stays on the dark brand ground, and this column is a
+ * light surface. The shared tokens take light values inside .experience (as
+ * styles/admin-indigo.css does), so every rule below reads them unchanged. */
 
 /* ---------- The checkout grid ---------- */
 .checkoutShell {
@@ -16,23 +20,47 @@
 
 /* ---------- The form column ---------- */
 .experience {
-  --field: #f8f5ec;
-  --field-ink: #141d33;       /* 15:1 on the field */
-  --field-muted: #4f566c;     /* placeholder: 6.6:1 on the field */
-  --field-line: #8d94ae;
-  --field-focus: #0d7a6d;
-  --field-readonly: #dcd8cc;
-  --danger: #e5484d;
-  --error: #ffc2b4;           /* message text: 10:1 on --bg */
+  --paper: #fbf9f4;           /* the column's warm near-white */
+  --sand: var(--bg);          /* headings and labels: 16:1 on paper */
+  --dim: #454d63;             /* body and helper text: 8:1 */
+  --faint: #5f667b;           /* upcoming steps, placeholders: 5.5:1 */
+  --line: rgba(20, 29, 51, 0.12);
+  --line2: rgba(20, 29, 51, 0.24);
+  --surf: #ffffff;
+  --surf2: #ffffff;
+  --teal: #0b7566;            /* brand fill: white text at 5.6:1 */
+  --tealb: #2f3f86;           /* links, icons and focus: indigo, 9:1 */
+  --gold: #96741f;
+  --on-teal: #ffffff;
+  --field: #ffffff;
+  --field-ink: var(--bg);
+  --field-muted: var(--faint);
+  --field-line: #767d93;      /* field edge: 4:1 on white and on paper */
+  --field-focus: var(--tealb);
+  --field-readonly: #ece9e0;
+  --danger: #c62828;          /* error edge and text: 5:1 on paper */
+  --error: var(--danger);
   --accent: var(--tealb);
   position: relative;
+  isolation: isolate;
   min-width: 0;
+  padding-top: 24px;
   padding-bottom: 32px;
   color: var(--sand);
   font-family: var(--body);
   font-size: 15px;
   line-height: 1.6;
-  color-scheme: dark;
+  color-scheme: light;
+}
+
+/* Below 1024px the light surface runs edge to edge and on to the page end. */
+.experience::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  background: var(--paper);
+  box-shadow: 0 100vh 0 var(--paper);
 }
 
 .experience:has(.stickyAction) {
@@ -194,9 +222,17 @@
   border-color: var(--danger);
 }
 
+.experience input[aria-invalid="true"]:not([type="checkbox"], [type="radio"]):focus,
+.experience label:has(> .fieldError) > input:not([type="checkbox"], [type="radio"]):focus,
+.experience label:has(> .fieldError) > select:focus,
+.experience .passwordField:has(> [role="alert"]) input:not([type="checkbox"], [type="radio"]):focus,
+.experience .phoneControl[data-invalid="true"]:focus-within {
+  outline-color: var(--danger);
+}
+
 /* Success stays quiet: a green edge once the password checks pass. */
 .passwordField:has(> .validHint):not(:has(> [role="alert"])) input {
-  border-color: #2f9e77;
+  border-color: #1f8a63;
 }
 
 .experience input:read-only:not([type="checkbox"], [type="radio"], [type="file"]) {
@@ -261,9 +297,9 @@
 .experience a.primary {
   min-height: 44px;
   padding: 11px 17px;
-  border: 1px solid var(--line2);
+  border: 1px solid var(--field-line);
   border-radius: var(--r-sm);
-  background: rgba(237, 234, 223, 0.03);
+  background: var(--surf);
   color: var(--sand);
   font: 600 14px/1.4 var(--body);
   cursor: pointer;
@@ -285,7 +321,7 @@
   text-decoration: none;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 10px 24px -14px rgba(43, 182, 163, 0.8);
+    0 10px 24px -14px rgba(11, 117, 102, 0.8);
 }
 
 @media (hover: hover) {
@@ -300,7 +336,7 @@
 
 /* Waiting on the form, but still plainly the next action. */
 .experience .primary:disabled {
-  opacity: 0.72;
+  opacity: 0.92;
 }
 
 /* The discount code's Apply button and hint, clear of the field above. */
@@ -320,7 +356,7 @@
   padding: 16px;
   border-left: 3px solid var(--gold);
   border-radius: 0 var(--r-md) var(--r-md) 0;
-  background: rgba(237, 234, 223, 0.045);
+  background: rgba(20, 29, 51, 0.04);
   color: var(--dim);
   overflow-wrap: anywhere;
 }
@@ -333,10 +369,10 @@
 
 .error {
   padding: 14px;
-  border: 1px solid rgba(255, 140, 110, 0.55);
+  border: 1px solid var(--danger);
   border-radius: var(--r-sm);
-  background: rgba(217, 121, 79, 0.13);
-  color: #ffc4b2;
+  background: #fdeeee;
+  color: #8f1d1d;
 }
 
 .status {
@@ -421,7 +457,7 @@
   margin: 0;
   border: 1px solid var(--line2);
   border-radius: var(--r-md);
-  background: rgba(237, 234, 223, 0.04);
+  background: var(--surf);
 }
 
 .reviewList > div {
@@ -634,7 +670,7 @@
 
 .phoneOptions button[data-highlighted="true"],
 .phoneOptions button[aria-selected="true"] {
-  background: rgba(43, 182, 163, 0.16);
+  background: rgba(11, 117, 102, 0.12);
 }
 
 .phoneControl img,
@@ -726,7 +762,7 @@
 }
 
 .experience .validHint {
-  color: #7fe0b4;
+  color: #0f6b4f;
 }
 
 .strengthMeter {
@@ -795,7 +831,7 @@
 
 .methodTab[data-selected="true"] {
   border-color: var(--teal);
-  background: rgba(43, 182, 163, 0.14);
+  background: rgba(11, 117, 102, 0.08);
   box-shadow: inset 0 0 0 1px var(--teal);
 }
 
@@ -1007,8 +1043,8 @@
 }
 
 /* ---------- Steps: the stepper and step headings ---------- */
-/* The three steps as a short path. Each number sits in an eight-point seal; the
- * current one fills teal, finished ones keep a gold seal and a tick. */
+/* The three steps as a short path. Each number sits in an eight-point seal: the
+ * current one fills teal, finished ones fill indigo, upcoming ones stay grey. */
 .formProgress {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1036,7 +1072,7 @@
   border-bottom: 2px solid var(--line2);
   border-radius: 0;
   background: transparent;
-  color: var(--dim);
+  color: var(--faint);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -1059,7 +1095,7 @@
   height: 26px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--sand);
+  color: var(--faint);
 }
 
 .formProgress button span::before,
@@ -1080,14 +1116,18 @@
 }
 
 .experience .formProgressDone button {
-  border-bottom-color: rgba(201, 162, 76, 0.7);
+  border-bottom-color: var(--tealb);
   color: var(--sand);
+}
+
+.formProgressDone button span {
+  color: var(--on-teal);
 }
 
 .formProgressDone button span::before,
 .formProgressDone button span::after {
-  border-color: var(--gold);
-  background: rgba(201, 162, 76, 0.22);
+  border-color: var(--tealb);
+  background: var(--tealb);
 }
 
 .experience .formProgress [aria-current="step"] button {
@@ -1153,9 +1193,16 @@
   z-index: 30;
   margin: 4px calc(-1 * var(--gutter)) 0;
   padding: 10px var(--gutter) max(10px, env(safe-area-inset-bottom));
+}
+
+.stickyAction::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
   border-top: 1px solid var(--line2);
-  background: var(--surf2);
-  box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.35);
+  background: var(--paper);
+  box-shadow: 0 -8px 24px rgba(20, 29, 51, 0.1);
 }
 
 /* Keep focused fields clear of the two sticky bars. */
@@ -1165,24 +1212,6 @@
 .compactForm button {
   scroll-margin-top: 76px;
   scroll-margin-bottom: 96px;
-}
-
-/* ---------- The annual price summary (its own stylesheet, light-themed) ---------- */
-/* Colours only, scoped to this preview: its muted text and badge are drawn
- * for a light card. */
-.experience [class*="annual-price-summary-module__"] s,
-.experience [class*="annual-price-summary-module__"][class$="__label"] {
-  color: var(--dim) !important;
-}
-
-.experience [class*="annual-price-summary-module__"][class$="__badge"] {
-  border-color: rgba(201, 162, 76, 0.6) !important;
-  background: rgba(201, 162, 76, 0.18) !important;
-  color: #f1d58f !important;
-}
-
-.experience [class*="annual-price-summary-module__"][class$="__totals"] {
-  border-top-color: var(--line2) !important;
 }
 
 /* ---------- Tablet: the single column stays a readable width ---------- */
@@ -1213,8 +1242,12 @@
     padding: 36px;
     border: 1px solid var(--line2);
     border-radius: var(--r-2xl);
-    background: var(--surface-grad);
-    box-shadow: var(--highlight), var(--shadow-lift);
+    background: var(--paper);
+    box-shadow: var(--shadow-lift);
+  }
+  .experience::before,
+  .stickyAction::before {
+    display: none;
   }
   .grid,
   .planChoice {

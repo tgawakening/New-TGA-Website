@@ -33,7 +33,7 @@ export function OrderSummary({ summary }: { summary: CheckoutSummaryData }) {
           </svg>
         </span>
         <strong className={s.togglePrice} data-state={summary.priceState}>
-          {summary.priceText}
+          {summary.priceText || summary.planLabel}
         </strong>
       </button>
 
