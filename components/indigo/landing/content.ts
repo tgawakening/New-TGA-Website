@@ -12,9 +12,6 @@ export const heroAyah = {
   // Live wording; only the capitalisation is normalised.
   translation:
     "And among His signs is the creation of the heavens and the earth and the difference of your tongues and colours. Surely in this there are signs for the persons having knowledge.",
-  // Condensed rendering for the centered hero preview; review before it ships.
-  concise:
-    "Among His signs: the creation of the heavens and earth, and your diverse tongues and colours. In this are signs for those who know.",
   reference: "Ar-Rūm 30:22",
 };
 

@@ -14,15 +14,8 @@ import { VisionMission } from "./vision-mission";
 import s from "./landing.module.css";
 
 /** `site`: live routes by default; the /redesign preview passes its own.
- * `geometryPreview`: the hero's current/celestial toggle, preview only.
  * Section order follows the live home page. */
-export function LandingPage({
-  site = liveLinks,
-  geometryPreview = false,
-}: {
-  site?: SiteLinks;
-  geometryPreview?: boolean;
-}) {
+export function LandingPage({ site = liveLinks }: { site?: SiteLinks }) {
   return (
     <div className={s.page} data-experience="">
       <span data-progress="" aria-hidden="true" />
@@ -31,7 +24,7 @@ export function LandingPage({
       </a>
       <Nav site={site} />
       <main id="main">
-        <Hero seerahHref={site.seerah} geometryPreview={geometryPreview} />
+        <Hero seerahHref={site.seerah} />
         <Flagship seerahHref={site.seerah} />
         <VisionMission panels={visionMission} stats={stats} />
         <ConnectAkhirah />

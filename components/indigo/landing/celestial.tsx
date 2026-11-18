@@ -1,10 +1,8 @@
 import c from "./celestial.module.css";
 
-/* Celestial variant of the hero geometry, for comparison on /redesign. It adds
- * to the existing Rig instead of replacing it: the rings keep their rotation
- * and read as orbits, and each body shares its ring's parallax depth so it stays
- * on that ring. Server-rendered, no client JavaScript. Hidden layers are
- * display:none, so they cost nothing until selected. */
+/* The hero's celestial layer. It adds to the Rig instead of replacing it: the
+ * rings keep their rotation and read as orbits, and each body shares its ring's
+ * parallax depth so it stays on that ring. Server-rendered, no client JavaScript. */
 
 /* r is the ring radius in the Rig's 200-unit viewBox, set in the stylesheet. */
 const orbits = [
@@ -29,8 +27,6 @@ export function CelestialBodies() {
           </div>
         </div>
       ))}
-      {/* Centered variant only: recesses the rings, leaving the sun above it */}
-      <div className={c.ringVeil} />
       {/* Same depth as the Rig's gold centre, which the sun sits over */}
       <div className={`${c.layer} ${c.sun}`} data-depth="1.6">
         <div className={c.corona} />
@@ -43,31 +39,5 @@ export function CelestialBodies() {
         <div className={c.core} />
       </div>
     </>
-  );
-}
-
-/** Preview-only control. Remove it, and the unchosen variants, once a hero is picked. */
-export function GeometrySwitch() {
-  return (
-    <div className={c.switch} role="radiogroup" aria-label="Hero geometry, preview only">
-      <span className={c.switchTag}>Dev preview</span>
-      <label className={c.option}>
-        <input className={c.pick} type="radio" name="hero-geometry" value="current" defaultChecked />
-        <span>Current</span>
-      </label>
-      <label className={c.option}>
-        <input className={`${c.pick} ${c.pickCelestial}`} type="radio" name="hero-geometry" value="celestial" />
-        <span>Celestial</span>
-      </label>
-      <label className={c.option}>
-        <input
-          className={`${c.pick} ${c.pickCelestial} ${c.pickCentered}`}
-          type="radio"
-          name="hero-geometry"
-          value="centered"
-        />
-        <span>Centered</span>
-      </label>
-    </div>
   );
 }
