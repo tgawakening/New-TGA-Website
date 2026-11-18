@@ -5,22 +5,22 @@ import { Eyebrow } from "../section-heading";
 import { story } from "./content";
 import s from "./about.module.css";
 
-const numerals = ["I", "II", "III", "IV"];
+const numerals = ["I", "II", "III"];
 
-/* The four layers of one figure, innermost first. Stroke-only inline SVG on
- * a 200 grid; each layer is its own box so it can turn about its centre. */
+/* The three layers of one figure, innermost first, one per pillar. Stroke-only
+ * inline SVG on a 200 grid; each layer is its own box so it can turn about its
+ * centre. */
 const layers: ReactNode[] = [
-  // I · Revelation: the seed. A still gold centre inside one ring.
+  // I · Education: the seed. A gold centre inside the rub el hizb of the TGA seal.
   <g key="seed">
-    <circle cx="100" cy="100" r="22" fill="none" stroke="var(--tealb)" strokeWidth="1.2" />
+    <g fill="none" stroke="var(--teal)" strokeWidth="1.2">
+      <rect x="62" y="62" width="76" height="76" />
+      <rect x="62" y="62" width="76" height="76" transform="rotate(45 100 100)" />
+      <circle cx="100" cy="100" r="22" stroke="var(--tealb)" />
+    </g>
     <circle cx="100" cy="100" r="7" fill="var(--gold)" />
   </g>,
-  // II · Leadership: the rub el hizb, the mark in the TGA seal.
-  <g key="seal" fill="none" stroke="var(--teal)" strokeWidth="1.2">
-    <rect x="62" y="62" width="76" height="76" />
-    <rect x="62" y="62" width="76" height="76" transform="rotate(45 100 100)" />
-  </g>,
-  // III · Action: the rosette, three squares at 30°, with twelve beads.
+  // II · Projects: the rosette, three squares at 30°, with twelve beads.
   <g key="rosette">
     <g fill="none" stroke="var(--terra)" strokeWidth="1">
       <rect x="40" y="40" width="120" height="120" />
@@ -34,7 +34,7 @@ const layers: ReactNode[] = [
       })}
     </g>
   </g>,
-  // IV · One direction: the outer ring that holds it all, with its ticks.
+  // III · Community: the outer ring that holds it all, with its ticks.
   <g key="ring" fill="none" stroke="var(--sand)">
     <circle cx="100" cy="100" r="93" strokeWidth="0.8" opacity=".55" />
     <circle cx="100" cy="100" r="98" strokeWidth="0.5" opacity=".3" />
@@ -71,14 +71,13 @@ function Mini({ upTo }: { upTo: number }) {
   );
 }
 
-/* Signature moment two: the pattern grows. The live page's three pillars and
- * its "what we are building" paragraph become four chapters; each one adds a
- * layer to the same figure, so the brand's geometry is told as the story.
+/* Signature moment two: the pattern grows. Each pillar adds a layer to the same
+ * figure, so three pillars visibly make one thing.
  *
- * Wide screens: the figure is sticky beside the chapters and follows the one
- * at the middle of the viewport (scroll back and it unbuilds). Phones: the
- * figure assembles layer by layer when it scrolls into view, and each chapter
- * carries its own layer as its marker.
+ * Wide screens: the figure is sticky beside the pillars and follows the one at
+ * the middle of the viewport (scroll back and it unbuilds). Phones: the figure
+ * assembles layer by layer when it scrolls into view, and each pillar carries
+ * its own stage as its marker.
  *
  * Reveal (.is-in, from the motion layer) lives only on wrappers whose
  * className never changes; the stage lives on data attributes React owns. */
@@ -114,7 +113,7 @@ export function Story() {
         <div className={s.storyGrid}>
           <div className={s.figCol}>
             <div className={s.figWrap} data-reveal="">
-              <div className={s.fig} data-stage={stage} data-complete={stage === 3 ? "" : undefined}>
+              <div className={s.fig} data-stage={stage} data-complete={stage === layers.length - 1 ? "" : undefined}>
                 <span className={s.figGlow} aria-hidden="true" />
                 {layers.map((_, n) => (
                   <div
@@ -130,14 +129,14 @@ export function Story() {
               <p className={s.figCaption} aria-hidden="true">
                 <span className={s.figNum}>{numerals[stage]}</span>
                 <span key={stage} className={s.figLabel}>
-                  {story.chapters[stage].label}
+                  {story.pillars[stage].label}
                 </span>
               </p>
             </div>
           </div>
 
           <ol className={s.chapters}>
-            {story.chapters.map((c, k) => (
+            {story.pillars.map((c, k) => (
               <li
                 key={c.key}
                 ref={(el) => {
@@ -150,10 +149,8 @@ export function Story() {
                   <span className={s.chapterMark} aria-hidden="true">
                     <Mini upTo={k} />
                   </span>
-                  <p className={s.chapterLabel}>
-                    <span>{numerals[k]}</span> {c.label}
-                  </p>
-                  <p className={k === 3 ? s.chapterTextLong : s.chapterText}>{c.text}</p>
+                  <h3 className={s.chapterTitle}>{c.label}</h3>
+                  <p className={s.chapterText}>{c.text}</p>
                 </div>
               </li>
             ))}
