@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { SirahPlan } from "@/lib/sirah/catalog";
 import styles from "./registration.module.css";
+import { RegistrationStylesProvider } from "./registration-styles";
 import { BrandLogo } from "@/components/brand-logo";
 
 // Same client-only form the course page's dialog renders; no logic changes.
@@ -47,11 +48,13 @@ export function SirahRegistrationPage({
         </Link>
       </header>
       <main className={styles.registerMain}>
-        <SirahRegistrationForm
-          initialCountry={initialCountry}
-          initialPlan={initialPlan}
-          requireBillingCountry={requireBillingCountry}
-        />
+        <RegistrationStylesProvider value={styles}>
+          <SirahRegistrationForm
+            initialCountry={initialCountry}
+            initialPlan={initialPlan}
+            requireBillingCountry={requireBillingCountry}
+          />
+        </RegistrationStylesProvider>
       </main>
     </div>
   );

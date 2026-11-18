@@ -63,7 +63,7 @@ class ApiError extends Error {
   fields?: Record<string, string[]>;
 }
 import type { publicSirahOrder } from "@/services/sirah-registration.service";
-import styles from "./registration.module.css";
+import { useRegistrationStyles } from "./registration-styles";
 type Order = Awaited<ReturnType<typeof publicSirahOrder>>;
 type User = {
   fullName: string;
@@ -109,6 +109,7 @@ function Terms({
   accessConsents: SirahAccessConsents;
   onAccessConsentChange: (v: SirahAccessConsents) => void;
 }) {
+  const styles = useRegistrationStyles();
   return order.terms ? (
     <div className={styles.terms}>
       <details className={styles.paymentTermsDetails}>
@@ -196,13 +197,17 @@ export function SirahRegistrationForm({
   initialPlan,
   requireBillingCountry = false,
   controlRef,
+  registerPath = "/seerah/register",
 }: {
   initialCountry?: string;
   detectedCountry?: string;
   initialPlan?: SirahPlan;
   requireBillingCountry?: boolean;
   controlRef?: Ref<RegistrationControls>;
+  /** The page this form lives on; only the /redesign preview passes its own. */
+  registerPath?: string;
 } = {}) {
+  const styles = useRegistrationStyles();
   const suggestedResidence = useResidence(detectedCountry);
   const [residenceConfirmed, setResidenceConfirmed] = useState(false);
   const [residenceOverride, setResidenceOverride] = useState(
@@ -820,7 +825,7 @@ export function SirahRegistrationForm({
       );
       setMessage(result.message);
       const url = new URL(window.location.href);
-      if (url.pathname === "/seerah/register") {
+      if (url.pathname === registerPath) {
         url.searchParams.set("order", result.order.id);
         window.history.replaceState(null, "", url);
       }
@@ -1246,7 +1251,7 @@ export function SirahRegistrationForm({
         <p className={styles.signIn}>
           Already have an account?{" "}
           <a
-            href={`/login?next=${encodeURIComponent(`/seerah/register?country=${billing}&plan=${plan}`)}`}
+            href={`/login?next=${encodeURIComponent(`${registerPath}?country=${billing}&plan=${plan}`)}`}
           >
             Sign in
           </a>
@@ -2545,7 +2550,7 @@ export function SirahRegistrationForm({
               </button>
               <p>
                 <a href="/dashboard">Student dashboard</a> ·{" "}
-                <a href={`/seerah/register?order=${order.id}`}>
+                <a href={`${registerPath}?order=${order.id}`}>
                   Open this registration page
                 </a>
               </p>

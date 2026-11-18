@@ -1,0 +1,1283 @@
+/* Indigo Geometry skin for the Sīrah registration form.
+ *
+ * The form is the live one (components/sirah/registration-form.tsx and its
+ * helpers), rendered unchanged; this file replaces only its class map
+ * (components/sirah/registration-styles.tsx). Every class the live
+ * stylesheet (components/sirah/registration.module.css) gives the form is
+ * defined here with the same layout rules, including the phone layout, the
+ * sticky progress strip and the sticky action bar; only the look changes.
+ * Mobile first where it is new; the live breakpoints are kept as they are so
+ * the form behaves identically. Only transform and opacity animate. */
+
+/* ---------- The card ---------- */
+.experience {
+  --field: #0d1424;
+  --field-line: #7d84a0;   /* input borders: 4.9:1 on the field, 3.6:1 on the card */
+  --field-text: var(--sand);
+  --accent: var(--tealb);
+  --error: #ffb4a0;
+  position: relative;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-2xl);
+  background: var(--surface-grad);
+  box-shadow: var(--highlight), var(--shadow-lift);
+  color: var(--sand);
+  font-family: var(--body);
+  font-size: 14px;
+  line-height: 1.6;
+  color-scheme: dark;
+}
+
+/* The card's top edge is the horizon: brightest where the sun meets it. */
+.experience::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(242, 198, 107, 0.2),
+    rgba(242, 198, 107, 0.65) 28%,
+    #fff0cb 50%,
+    rgba(242, 198, 107, 0.65) 72%,
+    rgba(242, 198, 107, 0.2)
+  );
+}
+
+/* ---------- Signature moment: the sun rises as the form is completed ----------
+ * A short strip above the card. The sun sits behind the horizon and climbs with
+ * the form's own state: a sliver at step 1, higher at 2 and 3, clear of the line
+ * once the booking is saved. Only transform and opacity change. */
+.dawnScope {
+  --sun-y: 74%;
+  --dawn-light: 0.5;
+}
+
+.dawnScope:has(.formProgress li:nth-child(2)[aria-current="step"]) {
+  --sun-y: 54%;
+  --dawn-light: 0.72;
+}
+
+.dawnScope:has(.formProgress li:nth-child(3)[aria-current="step"]) {
+  --sun-y: 34%;
+  --dawn-light: 0.88;
+}
+
+.dawnScope:has(.summary) {
+  --sun-y: 14%;
+  --dawn-light: 1;
+}
+
+.dawn {
+  position: relative;
+  z-index: 1;
+  max-width: 680px;
+  height: 3.75rem;
+  margin: 0 auto;
+  pointer-events: none;
+}
+
+.dawnClip {
+  position: absolute;
+  inset: -2rem 0 0;
+  overflow: hidden;
+}
+
+.dawnLight {
+  position: absolute;
+  inset: auto 0 0;
+  height: 100%;
+  background: radial-gradient(44% 100% at 50% 100%, rgba(246, 190, 96, 0.34), rgba(232, 150, 70, 0.1) 58%, transparent 100%);
+  opacity: var(--dawn-light);
+  transition: opacity 0.9s var(--ease);
+}
+
+.sunEnter {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 4rem;
+  height: 4rem;
+  margin-left: -2rem;
+  animation: dawnRise 1.6s var(--ease) 0.1s both;
+}
+
+@keyframes dawnRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 45%, 0);
+  }
+}
+
+.sun {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 62%, #fffaf0 0, #ffedc2 36%, #f8d488 68%, #eeb45c 92%, #e2a04c 100%);
+  box-shadow: 0 0 2.25rem 0.5rem rgba(246, 190, 96, 0.26);
+  transform: translate3d(0, var(--sun-y), 0);
+  transition: transform 0.9s var(--ease);
+}
+
+.dawnArc {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 7.5rem;
+  height: 3.75rem;
+  margin-left: -3.75rem;
+  overflow: visible;
+}
+
+.dawnArc path {
+  vector-effect: non-scaling-stroke;
+}
+
+@media (min-width: 768px) {
+  .dawn {
+    height: 4.75rem;
+  }
+  .sunEnter {
+    width: 5rem;
+    height: 5rem;
+    margin-left: -2.5rem;
+  }
+  .dawnArc {
+    width: 9.5rem;
+    height: 4.75rem;
+    margin-left: -4.75rem;
+  }
+}
+
+/* Monthly renewal rules: always visible inside the order summary. */
+.renewal {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(201, 162, 76, 0.45);
+  border-radius: var(--r-sm);
+  background: rgba(201, 162, 76, 0.09);
+  color: var(--dim);
+}
+
+.experience .renewal p {
+  margin: 0;
+}
+
+.experience * {
+  box-sizing: border-box;
+}
+
+.experience h2 {
+  margin: 0 0 8px;
+  padding-right: 24px;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: clamp(26px, 4vw, 32px);
+  line-height: 1.15;
+  letter-spacing: var(--track-title);
+  color: var(--sand);
+  text-wrap: balance;
+}
+
+.experience h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 19px;
+  line-height: 1.35;
+  color: var(--sand);
+}
+
+.experience p {
+  margin: 12px 0;
+}
+
+.experience a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.experience small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--faint);
+}
+
+.experience code {
+  overflow-wrap: anywhere;
+}
+
+.experience :focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 3px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--tealb);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.experience .eyebrow {
+  margin: 0 0 12px;
+}
+
+.experience .introduction {
+  margin: 0;
+  color: var(--dim);
+  font-size: 14px;
+}
+
+.experience .signIn {
+  margin: 10px 0 22px;
+  font-size: 13px;
+  color: var(--dim);
+}
+
+/* ---------- Fields ---------- */
+.form {
+  display: grid;
+  gap: 18px;
+  margin: 24px 0;
+}
+
+.experience label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--sand);
+}
+
+.experience input,
+.experience select,
+.experience textarea {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 11px;
+  border: 1px solid var(--field-line);
+  border-radius: var(--r-sm);
+  background: var(--field);
+  color: var(--field-text);
+  font: inherit;
+  font-size: 16px; /* iOS zooms into any text field under 16px */
+  font-weight: 400;
+}
+
+.experience input::placeholder,
+.experience textarea::placeholder {
+  color: var(--faint);
+}
+
+.experience input:focus,
+.experience select:focus,
+.experience textarea:focus {
+  border-color: var(--teal);
+}
+
+.experience input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.experience input:read-only {
+  background: rgba(237, 234, 223, 0.06);
+  color: var(--dim);
+}
+
+.experience input[type="checkbox"],
+.experience input[type="radio"] {
+  accent-color: var(--teal);
+}
+
+.experience .fieldError {
+  margin: 2px 0 0;
+  color: var(--error);
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.experience .check {
+  display: flex;
+  flex-direction: row;
+  align-items: start;
+  gap: 12px;
+}
+
+.experience .check input {
+  width: 20px;
+  min-height: 20px;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+/* ---------- Buttons ---------- */
+.experience button,
+.experience a.primary {
+  min-height: 44px;
+  padding: 11px 17px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  background: rgba(237, 234, 223, 0.03);
+  color: var(--sand);
+  font: 600 13px/1.4 var(--body);
+  cursor: pointer;
+  transition: transform var(--dur) var(--ease);
+}
+
+.experience button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.experience .primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: var(--teal);
+  background: var(--teal);
+  color: var(--on-teal);
+  text-decoration: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 24px -14px rgba(43, 182, 163, 0.8);
+}
+
+@media (hover: hover) {
+  .experience .primary:not(:disabled):hover {
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+.experience .primary:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+/* Waiting on the form, but still plainly the next action. */
+.experience .primary:disabled {
+  opacity: 0.68;
+}
+
+/* The discount code's Apply button and hint, clear of the field above. */
+.experience .notice > label + button {
+  margin-top: 2px;
+}
+
+.experience .notice > label + button + small {
+  margin-top: 8px;
+}
+
+/* ---------- Panels ---------- */
+.notice,
+.summary,
+.terms {
+  margin: 20px 0;
+  padding: 18px;
+  border-left: 3px solid var(--gold);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: rgba(237, 234, 223, 0.045);
+  color: var(--dim);
+  overflow-wrap: anywhere;
+}
+
+.notice strong,
+.summary strong,
+.terms strong {
+  color: var(--sand);
+}
+
+.error {
+  padding: 14px;
+  border: 1px solid rgba(255, 140, 110, 0.55);
+  border-radius: var(--r-sm);
+  background: rgba(217, 121, 79, 0.13);
+  color: #ffc4b2;
+}
+
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+/* ---------- The compact registration form ---------- */
+.compactForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+
+.compactForm,
+.compactForm > * {
+  min-width: 0;
+}
+
+.experience .compactForm label {
+  margin: 0;
+  font-size: 13px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.planChoice {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 16px;
+  padding-top: 4px;
+  align-items: end;
+}
+
+.pricePreview {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: 66px;
+  padding: 10px 14px;
+  border: 1px solid rgba(201, 162, 76, 0.4);
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, rgba(201, 162, 76, 0.1), rgba(43, 182, 163, 0.06));
+  overflow-wrap: anywhere;
+}
+
+.pricePreview strong {
+  font: 500 24px/1.25 var(--display);
+  color: var(--sand);
+  font-variant-numeric: tabular-nums;
+}
+
+.pricePreview span {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.experience .submitRegistration {
+  grid-column: 1 / -1;
+  min-height: 50px;
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+.cardIntroduction {
+  grid-column: 1 / -1;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+.experience .cardIntroduction small {
+  display: inline;
+  margin-left: 6px;
+  font-size: inherit;
+}
+
+.planNotes {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--dim);
+}
+
+.experience .planNotes p {
+  margin: 0;
+}
+
+.experience .planNotes p + p {
+  margin-top: 4px;
+}
+
+.planNotes:empty {
+  display: none;
+}
+
+/* ---------- Phone and residence ---------- */
+.phoneField {
+  position: relative;
+  min-width: 0;
+}
+
+.phoneField > label {
+  margin-bottom: 6px !important;
+}
+
+.phoneControl {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border: 1px solid var(--field-line);
+  border-radius: var(--r-sm);
+  background: var(--field);
+}
+
+.phoneControl:focus-within {
+  border-color: var(--teal);
+  outline: 2px solid var(--tealb);
+  outline-offset: 2px;
+}
+
+.phoneControl[data-invalid="true"] {
+  border-color: var(--error);
+}
+
+.experience .phoneControl input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding-left: 8px;
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+
+.experience .phoneControl .callingSelector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 5px;
+  padding: 8px;
+  border: 0;
+  border-right: 1px solid var(--line2);
+  border-radius: var(--r-sm) 0 0 var(--r-sm);
+  background: transparent;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.callingSelector > span:first-child {
+  font-size: 18px;
+}
+
+.phonePicker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 30;
+  width: min(340px, calc(100vw - 64px));
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-md);
+  background: var(--surf2);
+  box-shadow: var(--shadow-lift);
+}
+
+.phonePicker > input {
+  position: sticky;
+  top: 0;
+  margin-bottom: 8px;
+}
+
+.phoneOptions {
+  max-height: 210px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.experience .phoneOptions button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.phoneOptions button > span:nth-child(2) {
+  flex: 1;
+}
+
+.phoneOptions button[data-highlighted="true"],
+.phoneOptions button[aria-selected="true"] {
+  background: rgba(43, 182, 163, 0.16);
+}
+
+.phoneControl img,
+.phoneOptions img,
+.residenceControl img {
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.phoneAndResidence {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.residenceCompact {
+  min-width: 0;
+  padding-top: 25px;
+}
+
+.residenceControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.residenceControl select {
+  flex: 1;
+  min-width: 0;
+}
+
+.experience .residenceConfirmation {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-weight: 400;
+  color: var(--dim);
+}
+
+.experience .residenceConfirmation input {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  margin: 0 8px 0 0;
+  padding: 0;
+  vertical-align: middle;
+}
+
+.experience .residenceChange,
+.experience .paymentLater,
+.experience .suggestPassword {
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--tealb);
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---------- Password ---------- */
+.passwordField {
+  min-width: 0;
+}
+
+.experience .passwordField > label {
+  margin: 0 0 6px;
+}
+
+.passwordControl {
+  position: relative;
+}
+
+.experience .passwordControl input {
+  padding-right: 48px;
+}
+
+.experience .passwordControl button {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+}
+
+.experience .passwordHint {
+  color: var(--dim);
+}
+
+.experience .validHint {
+  color: #7fe0b4;
+}
+
+.strengthMeter {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: 5px;
+  accent-color: var(--teal);
+}
+
+/* ---------- Payment ---------- */
+.paymentOptions {
+  grid-column: 1 / -1;
+  padding-top: 16px;
+  border-top: 1px solid var(--line2);
+}
+
+.paymentOptions p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+.methodChoices {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.methodChoices legend {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sand);
+}
+
+.methodTabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr));
+  gap: 8px;
+}
+
+.experience .methodTab,
+.experience .compactForm .methodTab {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-content: center;
+  column-gap: 9px;
+  row-gap: 3px;
+  min-height: 78px;
+  margin: 0;
+  padding: 12px 10px;
+  border: 1px solid var(--field-line);
+  border-radius: var(--r-md);
+  background: var(--field);
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.methodTab[data-selected="true"] {
+  border-color: var(--teal);
+  background: rgba(43, 182, 163, 0.14);
+  box-shadow: inset 0 0 0 1px var(--teal);
+}
+
+.methodTab:focus-within {
+  outline: 2px solid var(--tealb);
+  outline-offset: 3px;
+}
+
+.experience .methodTab input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 1px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+}
+
+.methodTab svg {
+  grid-row: 1 / 3;
+  align-self: center;
+  color: var(--tealb);
+}
+
+.methodTitle {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--sand);
+}
+
+.methodProcessor {
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 400;
+  color: var(--dim);
+}
+
+.methodChoices:disabled .methodTab {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+/* Signature moment two: the chosen method is sealed. A small eight-point
+ * star scales and turns into the corner of the selected tab. */
+.methodTab::before,
+.methodTab::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 9px;
+  height: 9px;
+  background: var(--tealb);
+  opacity: 0;
+  transform: scale(0.2) rotate(-90deg);
+  transition:
+    opacity 0.25s var(--ease),
+    transform 0.5s var(--ease);
+}
+
+.methodTab[data-selected="true"]::before {
+  opacity: 1;
+  transform: none;
+}
+
+.methodTab[data-selected="true"]::after {
+  opacity: 1;
+  transform: rotate(45deg);
+}
+
+/* ---------- Terms ---------- */
+.experience .terms {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-left-width: 2px;
+  font-size: 12px;
+}
+
+.paymentTermsDetails summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sand);
+}
+
+.paymentTermsDetails p {
+  font-size: 12px;
+}
+
+.experience .terms .check {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--sand);
+}
+
+.experience .terms > small {
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+/* ---------- Manual payment ---------- */
+.manualPayment,
+.manualFields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.experience .manualPayment .notice {
+  margin: 8px 0;
+  padding: 12px;
+}
+
+.experience .manualFields label {
+  margin: 0;
+}
+
+.manualFields input[type="file"] {
+  max-width: 100%;
+  font-size: 13px;
+}
+
+/* ---------- Saved booking ---------- */
+.savedDetails {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-md);
+}
+
+.savedDetails summary {
+  cursor: pointer;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.signInHelp {
+  margin: 16px 0 0;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+  color: var(--dim);
+}
+
+.nextStep {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.nextStep > .primary {
+  width: 100%;
+}
+
+.secondaryActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.secondaryActions p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.feedback {
+  margin: 12px 0;
+  scroll-margin: 16px;
+}
+
+.moreOptions {
+  margin: 20px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line2);
+}
+
+.moreOptions > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.moreOptionsBody {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.discountToggle > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--tealb);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.discountToggle > div {
+  margin-top: 4px;
+}
+
+/* ---------- Steps: progress strip and section headings ---------- */
+/* Signature moment one: the three steps as a short path. Each step number
+ * sits in an eight-point seal; the current one turns into place and fills,
+ * finished ones keep a gold seal. Driven by the form's own aria-current and
+ * done class, so nothing about the form changes. */
+.formProgress {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.formProgress li {
+  display: grid; /* equal heights, so the three underlines share one line */
+  min-width: 0;
+}
+
+.formProgress button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 4px;
+  border: 0;
+  border-bottom: 2px solid var(--line2);
+  border-radius: 0;
+  background: transparent;
+  color: var(--dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.formProgress button span {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sand);
+}
+
+.formProgress button span::before,
+.formProgress button span::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  z-index: -1;
+  border: 1px solid var(--faint);
+  background: var(--surf);
+  transition:
+    transform 0.6s var(--ease),
+    opacity 0.3s var(--ease);
+}
+
+.formProgress button span::after {
+  transform: rotate(45deg);
+}
+
+.formProgressDone button {
+  border-bottom-color: rgba(201, 162, 76, 0.7);
+  color: var(--sand);
+}
+
+.formProgressDone button span::before,
+.formProgressDone button span::after {
+  border-color: var(--gold);
+  background: rgba(201, 162, 76, 0.22);
+}
+
+.formProgress [aria-current="step"] button {
+  border-bottom-color: var(--teal);
+  color: var(--sand);
+}
+
+.formProgress [aria-current="step"] button span {
+  color: var(--on-teal);
+}
+
+.formProgress [aria-current="step"] button span::before,
+.formProgress [aria-current="step"] button span::after {
+  border-color: var(--teal);
+  background: var(--teal);
+}
+
+/* The seal turns into place when its step becomes current. */
+.formProgress li:not([aria-current="step"]) button span::before {
+  transform: rotate(-45deg);
+}
+
+.formProgress li:not([aria-current="step"]) button span::after {
+  transform: rotate(0deg);
+}
+
+.experience .formStep {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 0;
+  font: 500 19px/1.3 var(--display);
+  color: var(--sand);
+  scroll-margin-top: 72px;
+}
+
+.experience .paymentOptions .formStep {
+  margin-top: 22px;
+}
+
+.formStep span {
+  position: relative;
+  isolation: isolate;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font: 700 13px/1 var(--body);
+  color: var(--sand);
+}
+
+.formStep span::before,
+.formStep span::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  z-index: -1;
+  border: 1px solid var(--gold);
+  background: rgba(201, 162, 76, 0.16);
+}
+
+.formStep span::after {
+  transform: rotate(45deg);
+}
+
+.experience .stepHint {
+  margin: 4px 0 0;
+  color: var(--dim);
+}
+
+.stickyAction {
+  grid-column: 1 / -1;
+}
+
+.experience .stickyAction .submitRegistration {
+  width: 100%;
+  margin-top: 0;
+}
+
+/* ---------- The annual price summary (its own stylesheet, light-themed) ---------- */
+/* Colours only, scoped to this preview: its muted text and badge are drawn
+ * for a light card. */
+.experience [class*="annual-price-summary-module__"] s,
+.experience [class*="annual-price-summary-module__"][class$="__label"] {
+  color: var(--dim) !important;
+}
+
+.experience [class*="annual-price-summary-module__"][class$="__badge"] {
+  border-color: rgba(201, 162, 76, 0.6) !important;
+  background: rgba(201, 162, 76, 0.18) !important;
+  color: #f1d58f !important;
+}
+
+.experience [class*="annual-price-summary-module__"][class$="__totals"] {
+  border-top-color: var(--line2) !important;
+}
+
+/* ---------- The live breakpoints, unchanged ---------- */
+@media (max-width: 600px) {
+  .experience {
+    padding: 24px 20px;
+    font-size: 13px;
+  }
+  .experience h2 {
+    font-size: 26px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .status {
+    gap: 8px 22px;
+  }
+  .notice,
+  .terms {
+    padding: 14px;
+  }
+  .summary h3 {
+    font-size: 22px;
+  }
+  .compactForm {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .planChoice {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .pricePreview {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    min-height: 54px;
+  }
+  .phonePicker {
+    width: 100%;
+  }
+  .phoneAndResidence {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .residenceCompact {
+    padding-top: 0;
+  }
+  .methodTabs {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 135px), 1fr));
+  }
+  .secondaryActions button {
+    flex: 1 1 100%;
+  }
+  .moreOptionsBody .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .formProgress {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0 -20px;
+    padding: max(4px, env(safe-area-inset-top)) 20px 0;
+    background: #1d2945;
+    box-shadow: 0 1px 0 var(--line2);
+  }
+  .formProgress button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    font-size: 11px;
+    text-align: center;
+  }
+  .stickyAction {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin: 0 -20px;
+    padding: 12px 20px max(12px, env(safe-area-inset-bottom));
+    background: #1d2945;
+    border-top: 1px solid var(--line2);
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.35);
+  }
+  /* Keep focused fields clear of the sticky strip and bar. */
+  .compactForm input,
+  .compactForm select,
+  .compactForm textarea,
+  .compactForm button {
+    scroll-margin-top: 80px;
+    scroll-margin-bottom: 110px;
+  }
+}
+
+/* ---------- Reduced motion: final states ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .dawnLight,
+  .sunEnter,
+  .sun {
+    animation: none !important;
+    transition: none !important;
+  }
+  .experience * {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+  .experience .primary:not(:disabled):hover,
+  .experience .primary:not(:disabled):active {
+    transform: none;
+  }
+}

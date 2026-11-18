@@ -59,7 +59,7 @@ export function Nav({
             {support.label}
           </Button>
           <span className={styles.enrol}>
-            <EnrolLink action={enrol} />
+            <EnrolLink action={enrol} href={site.register} />
           </span>
 
           {/* Phone menu: a native disclosure (works before and without JavaScript,
@@ -81,7 +81,7 @@ export function Nav({
                   <Link href={support.href}>{support.label}</Link>
                 </li>
               </ul>
-              <EnrolLink block action={enrol} />
+              <EnrolLink block action={enrol} href={site.register} />
             </div>
           </details>
         </div>

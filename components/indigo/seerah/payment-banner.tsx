@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSiteLinks } from "../site-links-context";
 import s from "./seerah.module.css";
 
 /* Same behaviour and copy as components/seerah/payment-received-banner.tsx
@@ -10,6 +11,7 @@ import s from "./seerah.module.css";
  * shared link doesn't show it again. */
 export function PaymentBanner({ reference }: { reference: string | null }) {
   const [open, setOpen] = useState(true);
+  const site = useSiteLinks();
   useEffect(() => {
     const url = new URL(window.location.href);
     url.searchParams.delete("payment");
@@ -35,7 +37,7 @@ export function PaymentBanner({ reference }: { reference: string | null }) {
             then activates automatically and we&apos;ll email you once your enrolment is confirmed.
           </p>
           <p>To see your registration, sign in with the account details the TGA team emailed you, or your existing account.</p>
-          <a className={s.paidAction} href={`/login?next=${encodeURIComponent("/seerah/register")}`}>
+          <a className={s.paidAction} href={`/login?next=${encodeURIComponent(site.register)}`}>
             Sign in to see your registration
           </a>
         </div>
