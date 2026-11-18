@@ -29,6 +29,8 @@ export function CelestialBodies() {
           </div>
         </div>
       ))}
+      {/* Centered variant only: recesses the rings, leaving the sun above it */}
+      <div className={c.ringVeil} />
       {/* Same depth as the Rig's gold centre, which the sun sits over */}
       <div className={`${c.layer} ${c.sun}`} data-depth="1.6">
         <div className={c.corona} />
@@ -44,7 +46,7 @@ export function CelestialBodies() {
   );
 }
 
-/** Preview-only control. Remove it, and the Current option, once a hero is chosen. */
+/** Preview-only control. Remove it, and the unchosen variants, once a hero is picked. */
 export function GeometrySwitch() {
   return (
     <div className={c.switch} role="radiogroup" aria-label="Hero geometry, preview only">
@@ -57,8 +59,15 @@ export function GeometrySwitch() {
         <input className={`${c.pick} ${c.pickCelestial}`} type="radio" name="hero-geometry" value="celestial" />
         <span>Celestial</span>
       </label>
+      <label className={c.option}>
+        <input
+          className={`${c.pick} ${c.pickCelestial} ${c.pickCentered}`}
+          type="radio"
+          name="hero-geometry"
+          value="centered"
+        />
+        <span>Centered</span>
+      </label>
     </div>
   );
 }
-
-export const celestialScope = c.scope;
