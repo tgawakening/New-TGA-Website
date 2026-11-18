@@ -3,7 +3,7 @@ import { Card } from "../card";
 import { Rosette } from "../ornaments";
 import s from "./landing.module.css";
 
-export function CommunityCta() {
+export function CommunityCta({ registerHref = "/seerah/register" }: { registerHref?: string }) {
   return (
     <section id="community" className={s.section} aria-labelledby="community-title">
       <div className={s.wrap}>
@@ -19,7 +19,7 @@ export function CommunityCta() {
             <Button href="#courses" arrow>
               Explore courses
             </Button>
-            <Button href="/seerah/register" variant="ghost">
+            <Button href={registerHref} variant="ghost">
               Start your journey
             </Button>
           </div>

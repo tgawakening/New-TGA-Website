@@ -8,7 +8,16 @@ export type EnrolAction = { href: string; label: string; onClick?: () => void };
 /* Same rule as the live header: signed-in students go to their dashboard.
  * `action` replaces the default link (the Sīrah page passes its register
  * link with the visitor's country preselected, as the live header does). */
-export function EnrolLink({ block = false, action }: { block?: boolean; action?: EnrolAction }) {
+export function EnrolLink({
+  block = false,
+  action,
+  href = "/seerah/register",
+}: {
+  block?: boolean;
+  action?: EnrolAction;
+  /** Default destination when no action is given (the preview passes its own). */
+  href?: string;
+}) {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
@@ -23,7 +32,7 @@ export function EnrolLink({ block = false, action }: { block?: boolean; action?:
       Your dashboard
     </Button>
   ) : (
-    <Button href={action?.href ?? "/seerah/register"} arrow block={block} onClick={action?.onClick}>
+    <Button href={action?.href ?? href} arrow block={block} onClick={action?.onClick}>
       {action?.label ?? "Enrol now"}
     </Button>
   );

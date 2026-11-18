@@ -2,6 +2,7 @@
 
 import { trackSeerah } from "@/components/seerah/analytics";
 import { Button } from "../button";
+import { useSiteLinks } from "../site-links-context";
 
 /** Same URL rule as PrimaryAction in components/seerah/seerah-page.tsx:
  * a known country is carried through; an unknown one opens registration
@@ -10,17 +11,20 @@ export function registerHref({
   country,
   plan,
   requireBillingCountry,
+  base = "/seerah/register",
 }: {
   country?: string;
   plan?: "MONTHLY" | "ANNUAL";
   requireBillingCountry?: boolean;
+  /** The registration page; the /redesign preview passes its own. */
+  base?: string;
 }) {
   const params = new URLSearchParams();
   if (country) params.set("country", country);
   else if (requireBillingCountry) params.set("country", "OVERSEAS");
   if (plan) params.set("plan", plan);
   const q = params.toString();
-  return `/seerah/register${q ? `?${q}` : ""}`;
+  return `${base}${q ? `?${q}` : ""}`;
 }
 
 /** A normal link to the registration page; the click is only tracked. */
@@ -35,9 +39,10 @@ export function RegisterButton({
   plan?: "MONTHLY" | "ANNUAL";
   requireBillingCountry?: boolean;
 }) {
+  const site = useSiteLinks();
   return (
     <Button
-      href={registerHref(target)}
+      href={registerHref({ ...target, base: site.register })}
       arrow
       block={block}
       prefetch={false}

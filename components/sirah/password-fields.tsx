@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import styles from "./registration.module.css";
+import { useRegistrationStyles } from "./registration-styles";
 function Eye({ visible }: { visible: boolean }) {
   return (
     <svg
@@ -27,6 +27,7 @@ export function PasswordFields({
   onEdit: (name: string) => void;
   onPassword: (value: string) => void;
 }) {
+  const styles = useRegistrationStyles();
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [show, setShow] = useState(false);

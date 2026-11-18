@@ -1,7 +1,7 @@
 "use client";
 import { useId } from "react";
 import type { SirahMethod } from "@/lib/sirah/catalog";
-import styles from "./registration.module.css";
+import { useRegistrationStyles } from "./registration-styles";
 
 const labels: Record<SirahMethod, { title: string; processor: string }> = {
   STRIPE: { title: "Pay by debit/credit card", processor: "Stripe · Google Pay · Apple Pay on eligible devices" },
@@ -24,6 +24,7 @@ export function PaymentMethods({
   disabled?: boolean;
   describedBy?: string;
 }) {
+  const styles = useRegistrationStyles();
   const id = useId();
   return (
     <fieldset

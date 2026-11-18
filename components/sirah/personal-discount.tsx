@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import styles from "./registration.module.css";
+import { useRegistrationStyles } from "./registration-styles";
 /** Whether a discount code can apply to this country, plan and method. */
 export function personalDiscountAvailable(country: string, plan: string, method: string) {
   // Pakistan monthly: bank transfer / JazzCash codes (original) or card codes.
@@ -10,6 +10,7 @@ export function personalDiscountAvailable(country: string, plan: string, method:
 export function PersonalDiscount({ country, plan, method, applied, disabled, onApply }: {
   email?: string; country: string; plan: string; method: string; applied: boolean; disabled?: boolean; onApply: (code: string) => void;
 }) {
+  const styles = useRegistrationStyles();
   const [code, setCode] = useState("");
   // Never hidden behind an email pre-check; validation happens server-side.
   // Pakistan monthly: bank transfer / JazzCash codes (original) or card codes.

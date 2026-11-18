@@ -31,7 +31,7 @@ export function LandingPage({ site = liveLinks }: { site?: SiteLinks }) {
         <GenMuminStrip projectsHref={site.projects} />
         <Courses seerahHref={site.seerah} />
         <Upcoming />
-        <CommunityCta />
+        <CommunityCta registerHref={site.register} />
       </main>
       <Footer site={site} />
       <Experience />

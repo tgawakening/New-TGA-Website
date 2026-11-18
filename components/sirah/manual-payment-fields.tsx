@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { SIRAH_RECEIPT_ACCEPT, sirahReceiptSelectionError } from "@/lib/sirah/receipt-upload";
-import styles from "./registration.module.css";
+import { useRegistrationStyles } from "./registration-styles";
 
 /** Shared by initial submission and a saved registration's receipt correction. */
 export function ManualPaymentFields({
@@ -13,6 +13,7 @@ export function ManualPaymentFields({
   amount: string;
   errors?: Record<string, string[]>;
 }) {
+  const styles = useRegistrationStyles();
   const [receiptError, setReceiptError] = useState("");
   const error = (key: string) =>
     errors[key]?.[0] ? (

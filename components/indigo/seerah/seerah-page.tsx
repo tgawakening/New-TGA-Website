@@ -8,6 +8,7 @@ import { Footer } from "../footer";
 import { Experience } from "../motion/experience";
 import { Nav } from "../nav";
 import { liveLinks, type SiteLinks } from "../site-links";
+import { SiteLinksProvider } from "../site-links-context";
 import { Eyebrow, SectionHeading } from "../section-heading";
 import { AskAction, ConsultationProvider } from "./consultation";
 import { activeCampaign, copy, courseConfig, learningOutcomes, sectionLinks } from "./content";
@@ -82,6 +83,7 @@ export function SeerahPage({
   const cfg = courseConfig;
 
   return (
+    <SiteLinksProvider value={site}>
     <ConsultationProvider
       country={hasResidence ? country : undefined}
       regionChoice={regionChoice}
@@ -96,7 +98,7 @@ export function SeerahPage({
           site={site}
           support={{ ...copy.sponsor, href: copy.sponsor.href.replace("/support-our-mission", site.support) }}
           enrol={{
-            href: registerHref({ country: heroCountry, requireBillingCountry: needsCountryChoice }),
+            href: registerHref({ country: heroCountry, requireBillingCountry: needsCountryChoice, base: site.register }),
             label: "Register for the course",
           }}
         />
@@ -331,5 +333,6 @@ export function SeerahPage({
         <Experience />
       </div>
     </ConsultationProvider>
+    </SiteLinksProvider>
   );
 }

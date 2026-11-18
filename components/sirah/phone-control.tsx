@@ -8,7 +8,7 @@ import {
   getCountryCallingCode,
   type CountryCode,
 } from "libphonenumber-js/max";
-import styles from "./registration.module.css";
+import { useRegistrationStyles } from "./registration-styles";
 const options = getCountries()
   .map((code) => ({
     code,
@@ -40,6 +40,7 @@ export function PhoneControl({
   onChange: (value: string) => void;
   error?: string;
 }) {
+  const styles = useRegistrationStyles();
   const parsedValue = value.startsWith("+")
     ? parsePhoneNumberFromString(value)
     : undefined;
