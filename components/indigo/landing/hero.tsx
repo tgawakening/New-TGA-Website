@@ -2,18 +2,27 @@ import { Fragment, type CSSProperties } from "react";
 import { Button } from "../button";
 import { Rig } from "../rig";
 import { Eyebrow } from "../section-heading";
+import { CelestialBodies, CelestialSky, GeometrySwitch, celestialScope } from "./celestial";
 import { heroAyah, statByLabel } from "./content";
 import s from "./landing.module.css";
 
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 
-export function Hero({ seerahHref = "/seerah" }: { seerahHref?: string }) {
+export function Hero({
+  seerahHref = "/seerah",
+  geometryPreview = false,
+}: {
+  seerahHref?: string;
+  /** Adds the celestial variant and its dev toggle. /redesign only. */
+  geometryPreview?: boolean;
+}) {
   const students = statByLabel("Students");
   const countries = statByLabel("Countries");
   const words = heroAyah.arabic.split(" ");
 
   return (
-    <section className={s.hero} aria-labelledby="hero-title">
+    <section className={geometryPreview ? `${s.hero} ${celestialScope}` : s.hero} aria-labelledby="hero-title">
+      {geometryPreview ? <CelestialSky /> : null}
       <div className={s.stars} aria-hidden="true" />
       <div className={`${s.wrap} ${s.heroGrid}`}>
         <div className={s.heroCopy}>
@@ -57,7 +66,7 @@ export function Hero({ seerahHref = "/seerah" }: { seerahHref?: string }) {
 
         <div className={s.heroArt} data-rig-scope="">
           <div className={s.rigStage} data-rise="" style={i(1)}>
-            <Rig />
+            <Rig>{geometryPreview ? <CelestialBodies /> : null}</Rig>
           </div>
           <div className={`${s.heroBadge} ${s.hbTop}`} data-rise="" style={i(5)}>
             <div data-depth="2.2">
@@ -88,6 +97,7 @@ export function Hero({ seerahHref = "/seerah" }: { seerahHref?: string }) {
         <span>Scroll</span>
         <i aria-hidden="true" />
       </a>
+      {geometryPreview ? <GeometrySwitch /> : null}
     </section>
   );
 }
