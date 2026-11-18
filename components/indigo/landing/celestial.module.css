@@ -1,0 +1,169 @@
+/* The hero's celestial layer. Mobile first: phones get two slow orbits and no
+ * halos; the third orbit and the halos arrive with the desktop layout. Only
+ * transform and opacity animate. Orbits turn HTML wrappers, not SVG nodes, so the
+ * compositor can run them without repainting. */
+
+.sky,
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ---------- Deep sky: static, painted once ---------- */
+.sky {
+  --warmth: radial-gradient(ellipse 80% 42% at 78% 16%, rgba(240, 178, 84, 0.05), transparent 70%);
+  --depth: radial-gradient(ellipse 110% 70% at 70% 18%, rgba(6, 10, 23, 0.62), transparent 75%);
+  background-image:
+    radial-gradient(1px 1px at 37px 59px, rgba(237, 233, 223, 0.42) 50%, transparent 51%),
+    radial-gradient(1px 1px at 151px 23px, rgba(237, 233, 223, 0.26) 50%, transparent 51%),
+    radial-gradient(1px 1px at 203px 171px, rgba(72, 214, 194, 0.3) 50%, transparent 51%),
+    radial-gradient(1px 1px at 89px 197px, rgba(237, 233, 223, 0.3) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 281px 109px, rgba(242, 198, 107, 0.42) 50%, transparent 51%),
+    radial-gradient(1px 1px at 331px 277px, rgba(237, 233, 223, 0.34) 50%, transparent 51%),
+    var(--warmth),
+    var(--depth);
+  background-size: 241px 241px, 241px 241px, 241px 241px, 241px 241px, 373px 373px, 373px 373px, 100% 100%, 100% 100%;
+}
+
+/* ---------- Orbiting stars: small rub el hizb marks on the rings ---------- */
+.orbit {
+  position: absolute;
+  inset: 0;
+  transform: rotate(var(--from));
+  animation: orbit var(--duration) linear infinite;
+}
+
+@keyframes orbit {
+  from { transform: rotate(var(--from)); }
+  to { transform: rotate(calc(var(--from) + var(--turn))); }
+}
+
+.outer {
+  --r: 96;
+  --from: -50deg;
+  --turn: 360deg;
+  --duration: 130s;
+  --size: 2.4%;
+  --tone: var(--sand);
+}
+
+.mid {
+  --r: 62;
+  --from: 150deg;
+  --turn: -360deg;
+  --duration: 80s;
+  --size: 2.8%;
+  --tone: #f2c66b;
+}
+
+.inner {
+  --r: 22;
+  --from: 35deg;
+  --turn: 360deg;
+  --duration: 28s;
+  --size: 1.8%;
+  --tone: var(--sand);
+  display: none;
+}
+
+.star,
+.star::after {
+  position: absolute;
+  background: var(--tone);
+}
+
+.star {
+  left: calc(50% + var(--r) * 0.5%);
+  top: 50%;
+  width: var(--size);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+
+.star::after {
+  content: "";
+  inset: 0;
+  transform: rotate(45deg);
+}
+
+/* ---------- The sun: the centre seal, lit ---------- */
+/* On phones the rig sits behind the copy, so the sun stays dim enough to read over. */
+.sun {
+  opacity: 0.5;
+}
+
+.corona,
+.core {
+  position: absolute;
+  border-radius: 50%;
+  animation: sun-breathe 8s ease-in-out infinite alternate;
+}
+
+.corona {
+  inset: 27%;
+  background: radial-gradient(
+    circle,
+    rgba(246, 190, 96, 0.5),
+    rgba(240, 170, 76, 0.2) 34%,
+    rgba(232, 150, 70, 0.06) 56%,
+    transparent 70%
+  );
+}
+
+.core {
+  inset: 45%;
+  background: radial-gradient(circle at 50% 46%, #fff4d2, #f6cf7c 46%, #dc9f45 78%, #c9863a);
+  animation-name: core-breathe;
+}
+
+.seal {
+  position: absolute;
+  inset: 0;
+  color: #f2c66b;
+  opacity: 0.75;
+}
+
+@keyframes sun-breathe {
+  from {
+    opacity: 0.62;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes core-breathe {
+  from { transform: scale(0.96); }
+  to { transform: scale(1.05); }
+}
+
+/* ---------- Desktop: art column, third orbit, halos, livelier pace ---------- */
+@media (min-width: 56rem) {
+  .sky {
+    --warmth: radial-gradient(ellipse 34% 52% at 73% 50%, rgba(240, 178, 84, 0.07), transparent 72%);
+    --depth: radial-gradient(ellipse 62% 86% at 73% 50%, rgba(6, 10, 23, 0.66), transparent 76%);
+  }
+  .sun { opacity: 1; }
+  .outer { --duration: 90s; }
+  .mid { --duration: 52s; }
+  .inner { display: block; }
+  .star::before {
+    content: "";
+    position: absolute;
+    inset: -130%;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--tone) 42%, transparent), transparent 68%);
+  }
+}
+
+/* ---------- Reduced motion: the final, still composition ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .orbit,
+  .corona,
+  .core {
+    animation: none;
+  }
+}

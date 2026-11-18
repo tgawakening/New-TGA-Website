@@ -2,6 +2,7 @@ import { Fragment, type CSSProperties } from "react";
 import { Button } from "../button";
 import { Rig } from "../rig";
 import { Eyebrow } from "../section-heading";
+import { CelestialBodies, CelestialSky } from "./celestial";
 import { heroAyah, statByLabel } from "./content";
 import s from "./landing.module.css";
 
@@ -14,6 +15,7 @@ export function Hero({ seerahHref = "/seerah" }: { seerahHref?: string }) {
 
   return (
     <section className={s.hero} aria-labelledby="hero-title">
+      <CelestialSky />
       <div className={s.stars} aria-hidden="true" />
       <div className={`${s.wrap} ${s.heroGrid}`}>
         <div className={s.heroCopy}>
@@ -57,7 +59,9 @@ export function Hero({ seerahHref = "/seerah" }: { seerahHref?: string }) {
 
         <div className={s.heroArt} data-rig-scope="">
           <div className={s.rigStage} data-rise="" style={i(1)}>
-            <Rig />
+            <Rig>
+              <CelestialBodies />
+            </Rig>
           </div>
           <div className={`${s.heroBadge} ${s.hbTop}`} data-rise="" style={i(5)}>
             <div data-depth="2.2">

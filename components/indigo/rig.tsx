@@ -1,9 +1,11 @@
+import type { ReactNode } from "react";
 import s from "./rig.module.css";
 
 /* The hero geometry: three stroke-only layers that turn at different speeds and
  * directions (CSS), mounted on wrappers the motion layer shifts by depth under
- * a fine pointer. Inline SVG, no requests. */
-export function Rig({ className }: { className?: string }) {
+ * a fine pointer. Inline SVG, no requests. `children` stack above the geometry
+ * and share its tilt. */
+export function Rig({ className, children }: { className?: string; children?: ReactNode }) {
   return (
     <div className={`${s.rig} ${className ?? ""}`} data-rig="" aria-hidden="true">
       <div className={s.glow} />
@@ -50,6 +52,7 @@ export function Rig({ className }: { className?: string }) {
           <circle cx="100" cy="100" r="6" className={s.tGold} fill="currentColor" />
         </svg>
       </div>
+      {children}
     </div>
   );
 }
