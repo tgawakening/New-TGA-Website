@@ -46,14 +46,59 @@ import {
   verifySirahStripeSession,
   verifySirahPaypal,
 } from "./sirah-online.service";
-export async function listSirahAdmin(search: URLSearchParams) {
+/** Payment-ledger kinds that move money: a verified payment received (first or
+ * renewal) and a recorded refund. FAILED events carry no money. */
+export const SIRAH_RECEIVED_KINDS = ["FIRST", "RENEWAL"];
+export const SIRAH_LEDGER_KINDS = [...SIRAH_RECEIVED_KINDS, "REFUND"];
+
+const DATE_PARAM = /^\d{4}-\d{2}-\d{2}$/;
+function dateParam(value: string | null, label: string) {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (!DATE_PARAM.test(value) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value)
+    throw new SirahError(`Choose a valid ${label} date.`);
+  return parsed;
+}
+/** The optional From / To filter (YYYY-MM-DD, whole UTC days, both inclusive),
+ * applied to the date a payment or refund was recorded in the ledger. */
+export function sirahPaidRange(search: URLSearchParams) {
+  const from = dateParam(search.get("from"), "From");
+  const to = dateParam(search.get("to"), "To");
+  if (from && to && from > to)
+    throw new SirahError("The From date must be on or before the To date.");
+  if (!from && !to) return null;
+  return {
+    ...(from ? { gte: from } : {}),
+    ...(to ? { lt: new Date(to.getTime() + 24 * 60 * 60 * 1000) } : {}),
+  };
+}
+
+/** Ledger providers that correspond to a Payment method filter, or null when
+ * the filter does not name a provider (no filter, custom link, unselected). */
+export function sirahMethodProviders(search: URLSearchParams) {
+  const method = (search.get("method") || "").trim().toUpperCase();
+  if (method === "MANUAL") return ["BANK_TRANSFER", "JAZZCASH"];
+  return ["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"].includes(method)
+    ? [method]
+    : null;
+}
+
+/**
+ * The Prisma filter behind the admin Students / Payments list. Shared by the
+ * list, both CSV exports and the payment totals so they always agree.
+ * `scope: "counted"` forces the records counted in analytics (no excluded
+ * test / junk rows, no archive) whatever records view was requested.
+ */
+export async function sirahAdminOrderWhere(
+  search: URLSearchParams,
+  scope: "view" | "counted" = "view",
+) {
   // Test / junk records a super admin excluded stay out of the lists and CSV
   // unless the (super-admin only) excluded view is requested. Archived
   // (soft-deleted) records appear only in the (super-admin only) archive view.
-  const archivedView = search.get("archived") === "only";
-  const excludedView = !archivedView && search.get("excluded") === "only";
-  const page = Math.max(1, Math.min(10000, Number(search.get("page")) || 1));
-  const pageSize = 25;
+  const archivedView = scope === "view" && search.get("archived") === "only";
+  const excludedView =
+    scope === "view" && !archivedView && search.get("excluded") === "only";
   const q = (search.get("q") || "").slice(0, 150);
   const payment = search.get("payment") || "";
   const enrolment = search.get("enrolment") || "";
@@ -119,6 +164,22 @@ export async function listSirahAdmin(search: URLSearchParams) {
         }
       : {}),
   };
+  // From / To: only orders with a payment or refund recorded in that period.
+  const range = sirahPaidRange(search);
+  if (range) {
+    const inRange = await prisma.sirahPaymentEvent.findMany({
+      where: { kind: { in: SIRAH_LEDGER_KINDS }, createdAt: range },
+      select: { orderId: true },
+    });
+    where.id = { in: [...new Set(inRange.map((event) => event.orderId))] };
+  }
+  return { where, archivedView, excludedView };
+}
+
+export async function listSirahAdmin(search: URLSearchParams) {
+  const { where, archivedView, excludedView } = await sirahAdminOrderWhere(search);
+  const page = Math.max(1, Math.min(10000, Number(search.get("page")) || 1));
+  const pageSize = 25;
   const [total, rows] = await Promise.all([
     prisma.sirahOrder.count({ where }),
     prisma.sirahOrder.findMany({
@@ -806,7 +867,75 @@ export function sirahCsvCell(value: unknown) {
   if (/^[=+@\-\t\r\n]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 }
-export function sirahCsv(data: Awaited<ReturnType<typeof listSirahAdmin>>) {
+/** Most rows one CSV export returns (well above the whole Sīrah cohort). */
+export const SIRAH_CSV_MAX_ROWS = 20000;
+
+type SirahCsvRow = Pick<
+  Awaited<ReturnType<typeof listSirahAdmin>>["rows"][number],
+  | "reference"
+  | "user"
+  | "phoneE164"
+  | "countryName"
+  | "batchCode"
+  | "plan"
+  | "method"
+  | "amountMinor"
+  | "paidMinor"
+  | "currency"
+  | "paymentState"
+  | "enrolmentState"
+  | "customLink"
+  | "groupAddedAt"
+  | "groupAddedBy"
+>;
+
+/** Every record matching the list filters (not just one page), with only the
+ * columns the students CSV needs. */
+export async function listSirahAdminForCsv(search: URLSearchParams) {
+  const { where, archivedView } = await sirahAdminOrderWhere(search);
+  const rows = await prisma.sirahOrder.findMany({
+    where,
+    take: SIRAH_CSV_MAX_ROWS,
+    orderBy: archivedView ? { archivedAt: "desc" } : { createdAt: "desc" },
+    select: {
+      reference: true,
+      phoneE164: true,
+      countryName: true,
+      batchCode: true,
+      plan: true,
+      method: true,
+      amountMinor: true,
+      paidMinor: true,
+      currency: true,
+      paymentState: true,
+      enrolmentState: true,
+      discount: true,
+      groupAddedAt: true,
+      groupAddedBy: true,
+      user: { select: { fullName: true, email: true } },
+    },
+  });
+  return {
+    rows: rows.map(({ discount, ...row }): SirahCsvRow => {
+      const custom = adminCustomSnapshot({ discount });
+      return {
+        ...row,
+        customLink: custom
+          ? {
+              catalogAmountMinor: custom.catalogAmountMinor,
+              catalogCurrency: custom.catalogCurrency,
+              amountMinor: custom.amountMinor,
+              sponsorLabel: custom.sponsorLabel,
+              createdBy: custom.createdBy,
+              createdAt: custom.createdAt,
+            }
+          : null,
+      };
+    }),
+  };
+}
+
+export function sirahCsv(data: { rows: SirahCsvRow[] }) {
   return [
     [
       "Reference",
