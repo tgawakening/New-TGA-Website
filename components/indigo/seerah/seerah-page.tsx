@@ -31,7 +31,7 @@ export type SeerahPageProps = {
   paymentReceived?: { reference: string | null };
   /** [code, name] for the residence select, sorted; built on the server. */
   countryOptions: [string, string][];
-  /** Live routes by default; the hidden preview passes its own. */
+  /** Live routes by default. */
   site?: SiteLinks;
 };
 

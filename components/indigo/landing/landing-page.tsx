@@ -13,7 +13,7 @@ import { Upcoming } from "./upcoming";
 import { VisionMission } from "./vision-mission";
 import s from "./landing.module.css";
 
-/** `site`: live routes by default; the /redesign preview passes its own.
+/** `site`: live routes by default.
  * Section order follows the live home page. */
 export function LandingPage({ site = liveLinks }: { site?: SiteLinks }) {
   return (

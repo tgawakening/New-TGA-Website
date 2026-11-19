@@ -5,7 +5,7 @@
   isolation: isolate;
   min-height: 100vh;
   min-height: 100dvh;
-  padding-bottom: max(40px, env(safe-area-inset-bottom));
+  overflow-x: clip; /* a sliding step must never widen the page */
   background: var(--bg);
   color: var(--sand);
   font-family: var(--body);
@@ -51,7 +51,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  max-width: 712px; /* the form card (680px) plus its 16px gutters */
+  max-width: 1164px; /* the 1100px checkout plus its widest gutters */
   margin: 0 auto;
   padding: max(12px, env(safe-area-inset-top)) 16px 12px;
 }
@@ -79,11 +79,12 @@
 }
 
 .main {
-  padding: 0 16px;
+  --gutter: 16px;
+  padding: 0 var(--gutter);
 }
 
 .loading {
-  max-width: 680px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 28px;
   border: 1px solid var(--line2);
@@ -94,7 +95,15 @@
 
 @media (min-width: 768px) {
   .header {
-    padding-top: max(18px, env(safe-area-inset-top));
-    padding-bottom: 18px;
+    padding: max(18px, env(safe-area-inset-top)) 32px 18px;
+  }
+  .main {
+    --gutter: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page {
+    padding-bottom: max(56px, env(safe-area-inset-bottom));
   }
 }

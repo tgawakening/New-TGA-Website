@@ -33,6 +33,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // The Indigo redesign was previewed under /redesign; it now serves the live
+  // paths. Old preview links land on the live page. Temporary (307), so a
+  // restore of the old design is not fighting cached redirects.
+  async redirects() {
+    return [
+      ["/redesign", "/"],
+      ["/redesign/about", "/about"],
+      ["/redesign/seerah", "/seerah"],
+      ["/redesign/projects", "/projects/gen-mumin"],
+      ["/redesign/support", "/support-our-mission"],
+      ["/redesign/register", "/seerah/register"],
+    ].map(([source, destination]) => ({ source, destination, permanent: false }));
+  },
   async headers() {
     return [
       {

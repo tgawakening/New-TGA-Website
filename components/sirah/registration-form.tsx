@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
   type Ref,
 } from "react";
 import { countries } from "countries-list";
@@ -25,6 +26,7 @@ import {
 import {
   formatSirahMoney,
   minorToDecimal,
+  SIRAH_TITLE,
   type SirahPlan,
   type SirahMethod,
 } from "@/lib/sirah/catalog";
@@ -95,6 +97,115 @@ async function api(path: string, init?: RequestInit) {
     throw error;
   }
   return result;
+}
+/** What the checkout layout's order summary shows. Derived from form state only. */
+export type CheckoutSummaryData = {
+  courseTitle: string;
+  planLabel: string;
+  priceText: string | null;
+  priceNote: string;
+  priceState: "confirmed" | "confirming" | "unavailable";
+  originalPriceText: string | null;
+  discountLabel: string | null;
+  firstClass: string | null;
+  refundThrough: string | null;
+  manualPayment: boolean;
+};
+const checkoutSteps = ["Your details", "Plan & payment", "Review & pay"];
+const planLabel = (plan: string) =>
+  plan === "ANNUAL" ? "Annual upfront · 12 months" : "Monthly payment";
+const firstClassDate = (date: string) =>
+  new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+// Checkout order of every field an error can point at.
+const detailFieldKeys = [
+  "fullName",
+  "email",
+  "password",
+  "confirmPassword",
+  "phone",
+  "phoneCountry",
+  "callingCode",
+  "countryCode",
+];
+const paymentFieldKeys = [
+  "plan",
+  "method",
+  "couponCode",
+  "receipt",
+  "payerName",
+  "senderAccount",
+  "transactionReference",
+  "paymentDate",
+];
+// Wording only: the rules are the schema's. Specific messages are left alone.
+const genericFieldMessage =
+  /^(Too (small|big)|Invalid (input|email|string|format|option)|Expected )/i;
+const friendlyFieldMessages: Record<string, string> = {
+  fullName: "Please enter your full name.",
+  email: "Please enter a valid email address.",
+  password: "Please use between 8 and 72 characters.",
+  confirmPassword: "Please enter the same password again.",
+  phone: "Please enter a valid phone number.",
+  phoneCountry: "Please choose your phone country.",
+  callingCode: "Please choose your phone country.",
+  countryCode: "Please choose your country of residence.",
+};
+const motionSafeScroll = (): ScrollBehavior =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
+function revealElement(element: HTMLElement | null) {
+  element?.scrollIntoView({ block: "center", behavior: motionSafeScroll() });
+  element?.focus({ preventScroll: true });
+}
+function checkoutFieldElement(form: HTMLFormElement | null, key: string) {
+  if (!form) return null;
+  if (["phone", "phoneCountry", "callingCode"].includes(key))
+    return form.querySelector<HTMLElement>("#sirah-phone");
+  if (key === "countryCode")
+    return (
+      form.querySelector<HTMLElement>("#sirah-residence-country") ||
+      form.querySelector<HTMLElement>("#sirah-residence-confirm")
+    );
+  if (key === "method")
+    return (
+      form.querySelector<HTMLElement>('input[name^="payment-method-"]') ||
+      form.querySelector<HTMLElement>("#sirah-step-2")
+    );
+  return form.querySelector<HTMLElement>(`[name="${key}"]`);
+}
+/** One step of the checkout layout. Every step stays mounted so uncontrolled
+ * fields (passwords, receipt) still reach the form's single submit. Without
+ * the checkout layout it adds no element at all. */
+function CheckoutStepPanel({
+  enabled,
+  step,
+  current,
+  direction,
+  children,
+}: {
+  enabled: boolean;
+  step: number;
+  current: number;
+  direction: "" | "forward" | "back";
+  children: ReactNode;
+}) {
+  const styles = useRegistrationStyles();
+  if (!enabled) return <>{children}</>;
+  return (
+    <div
+      className={styles.checkoutStep}
+      hidden={step !== current}
+      data-direction={direction || undefined}
+    >
+      {children}
+    </div>
+  );
 }
 function Terms({
   order,
@@ -198,16 +309,20 @@ export function SirahRegistrationForm({
   requireBillingCountry = false,
   controlRef,
   registerPath = "/seerah/register",
+  checkoutSummary,
 }: {
   initialCountry?: string;
   detectedCountry?: string;
   initialPlan?: SirahPlan;
   requireBillingCountry?: boolean;
   controlRef?: Ref<RegistrationControls>;
-  /** The page this form lives on; only the /redesign preview passes its own. */
+  /** The page this form lives on. */
   registerPath?: string;
+  /** Turns on the stepped checkout layout and renders its order summary. */
+  checkoutSummary?: (summary: CheckoutSummaryData) => ReactNode;
 } = {}) {
   const styles = useRegistrationStyles();
+  const checkoutLayout = Boolean(checkoutSummary);
   const suggestedResidence = useResidence(detectedCountry);
   const [residenceConfirmed, setResidenceConfirmed] = useState(false);
   const [residenceOverride, setResidenceOverride] = useState(
@@ -257,6 +372,18 @@ export function SirahRegistrationForm({
     ),
   );
   const [fields, setFields] = useState<Record<string, string[]>>({});
+  const shownFields = checkoutLayout
+    ? Object.fromEntries(
+        Object.entries(fields).map(([key, messages]) => [
+          key,
+          messages.map((text) =>
+            genericFieldMessage.test(text) && friendlyFieldMessages[key]
+              ? friendlyFieldMessages[key]
+              : text,
+          ),
+        ]),
+      )
+    : fields;
   const [quote, setQuote] = useState<{
     country: string;
     email: string;
@@ -434,7 +561,7 @@ export function SirahRegistrationForm({
     selectedMethod,
   ]);
   function fieldError(key: string) {
-    return fields[key]?.[0];
+    return shownFields[key]?.[0];
   }
   function clearField(key: string) {
     setFields((current) => {
@@ -1145,9 +1272,12 @@ export function SirahRegistrationForm({
   const feedbackScroll = useRef(true);
   useEffect(() => {
     if (error && feedbackScroll.current)
-      feedbackRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      feedbackRef.current?.scrollIntoView({
+        block: "nearest",
+        behavior: checkoutLayout ? motionSafeScroll() : "smooth",
+      });
     feedbackScroll.current = true;
-  }, [error]);
+  }, [error, checkoutLayout]);
   const feedback =
     error || message ? (
       <div ref={feedbackRef} className={styles.feedback}>
@@ -1174,7 +1304,7 @@ export function SirahRegistrationForm({
   const registrationFormShown = ready && available && !order && !signedOutOrderLink;
   useEffect(() => {
     const form = registrationForm.current;
-    if (!registrationFormShown || !form) return;
+    if (checkoutLayout || !registrationFormShown || !form) return;
     let frame = 0;
     const update = () => {
       cancelAnimationFrame(frame);
@@ -1199,9 +1329,375 @@ export function SirahRegistrationForm({
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, [registrationFormShown]);
+  }, [registrationFormShown, checkoutLayout]);
   const formSteps = ["Your details", "Plan & payment method", "Terms & pay"];
-  return (
+
+  // Checkout layout only. These decide which step is showing and when to move
+  // on; the final submit still goes through register() unchanged.
+  const [checkoutStep, setCheckoutStep] = useState(1);
+  const [stepDirection, setStepDirection] = useState<"" | "forward" | "back">("");
+  const [submitAttempt, setSubmitAttempt] = useState(0);
+  const handledAttempt = useRef(0);
+  const lastStepChange = useRef(0);
+  const pendingFocus = useRef<(() => HTMLElement | null) | null>(null);
+  const [knownCohort, setKnownCohort] = useState<Order["cohort"] | null>(null);
+  useEffect(() => {
+    // The quote is cleared while re-pricing; keep the date from flickering.
+    if (quote?.cohort) setKnownCohort(quote.cohort);
+  }, [quote?.cohort]);
+  const activeStep = checkoutLayout ? checkoutStep : formStep;
+  const stepLabels = checkoutLayout ? checkoutSteps : formSteps;
+  const quoteCurrent = Boolean(
+    quote &&
+      quote.country === billing &&
+      quote.plan === plan &&
+      quote.method === selectedMethod &&
+      quote.couponCode === couponCode &&
+      (!couponCode || quote.email === email.trim().toLowerCase()),
+  );
+  const manualMethod = ["BANK_TRANSFER", "JAZZCASH"].includes(selectedMethod);
+  function changeStep(next: number, focusTarget?: () => HTMLElement | null) {
+    pendingFocus.current = focusTarget || null;
+    lastStepChange.current = performance.now();
+    setStepDirection(next > checkoutStep ? "forward" : "back");
+    setCheckoutStep(next);
+    setError("");
+    setMessage("");
+  }
+  useEffect(() => {
+    if (!checkoutLayout || !stepDirection) return;
+    const target = pendingFocus.current;
+    pendingFocus.current = null;
+    if (target) {
+      revealElement(target());
+      return;
+    }
+    document
+      .getElementById(`sirah-step-${checkoutStep}`)
+      ?.focus({ preventScroll: true });
+    const form = registrationForm.current;
+    if (!form) return;
+    const top = form.getBoundingClientRect().top;
+    if (top < 56 || top > window.innerHeight * 0.5)
+      form.scrollIntoView({ block: "start", behavior: motionSafeScroll() });
+  }, [checkoutLayout, checkoutStep, stepDirection]);
+  // After a failed attempt (ours or the server's), go to the first invalid field.
+  useEffect(() => {
+    if (!checkoutLayout || busy || submitAttempt === handledAttempt.current) return;
+    handledAttempt.current = submitAttempt;
+    const key = [...detailFieldKeys, ...paymentFieldKeys].find(
+      (name) => fields[name],
+    );
+    if (!key) return;
+    const target = () => checkoutFieldElement(registrationForm.current, key);
+    const step = detailFieldKeys.includes(key) ? 1 : 2;
+    if (step === checkoutStep) revealElement(target());
+    else changeStep(step, target);
+    // changeStep only reads checkoutStep, which is already a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkoutLayout, busy, submitAttempt, fields, checkoutStep]);
+  // A saved booking replaces the form: start the reader at the top of it.
+  const savedOrderId = order?.id;
+  useEffect(() => {
+    if (checkoutLayout && savedOrderId && handledAttempt.current > 0)
+      window.scrollTo({ top: 0, behavior: motionSafeScroll() });
+  }, [checkoutLayout, savedOrderId]);
+  /** Step 1: the same schema and residence rule register() applies. */
+  function validateDetails(form: HTMLFormElement) {
+    const data = new FormData(form);
+    const parsed = sirahRegistrationSchema.safeParse({
+      fullName: name,
+      email,
+      ...(!user
+        ? {
+            password: data.get("password"),
+            confirmPassword: data.get("confirmPassword"),
+          }
+        : {}),
+      phoneCountry,
+      callingCode: `+${getCountryCallingCode(phoneCountry)}`,
+      phone,
+      countryCode: billing,
+      plan,
+      requestKey: requestKey.current || crypto.randomUUID(),
+      method: selectedMethod || null,
+      ...(couponCode ? { couponCode } : {}),
+    });
+    const next: Record<string, string[]> = parsed.success
+      ? {}
+      : parsed.error.flatten().fieldErrors;
+    if (!residenceConfirmed && !next.countryCode)
+      next.countryCode = ["Please confirm your current country of residence."];
+    setPhoneError("");
+    setFields(next);
+    return Object.keys(next).length === 0;
+  }
+  /** Step 2: the same method, fee and manual-transfer checks as register(). */
+  function validatePayment(form: HTMLFormElement) {
+    if (!selectedMethod) {
+      setFields({ method: ["Choose an available payment method."] });
+      return false;
+    }
+    if (!quoteCurrent) {
+      setError(
+        quoteError ||
+          "Review your selected fee and accept the required payment and access choices.",
+      );
+      return false;
+    }
+    if (manualMethod) {
+      const target = () => document.getElementById("sirah-manual-confirm");
+      if (!manualConfirmed) {
+        setFields({});
+        if (checkoutStep === 2) {
+          setError("Confirm the manual payment amount.");
+          revealElement(target());
+        } else {
+          changeStep(2, target);
+          setError("Confirm the manual payment amount.");
+        }
+        return false;
+      }
+      const data = new FormData(form);
+      const sender = sirahManualSenderSchema.safeParse({
+        payerName: data.get("payerName"),
+        senderAccount: data.get("senderAccount"),
+        transactionReference: data.get("transactionReference"),
+        paymentDate: data.get("paymentDate"),
+      });
+      if (!sender.success) {
+        setFields(sender.error.flatten().fieldErrors);
+        return false;
+      }
+      const receipt = data.get("receipt");
+      if (!(receipt instanceof File) || !receipt.size) {
+        setFields({ receipt: ["Upload your payment receipt."] });
+        return false;
+      }
+    }
+    setFields({});
+    return true;
+  }
+  function submitCheckout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    // A double click on Continue must not also press the next step's button.
+    if (busy || performance.now() - lastStepChange.current < 400) return;
+    setSubmitAttempt((value) => value + 1);
+    if (checkoutStep === 1) {
+      if (validateDetails(form)) changeStep(2);
+      return;
+    }
+    if (checkoutStep === 2) {
+      if (validatePayment(form)) changeStep(3);
+      return;
+    }
+    if (!validateDetails(form) || !validatePayment(form)) return;
+    const unticked = [
+      quote?.terms?.earlyServiceRequestText &&
+        accessConsents.earlyServiceRequested !== true &&
+        "sirah-consent-early-service",
+      quote?.terms?.digitalContentConsentText &&
+        accessConsents.digitalContentConsented !== true &&
+        "sirah-consent-digital-content",
+      !accepted && "sirah-accept-terms",
+    ].find(Boolean);
+    if (unticked) feedbackScroll.current = false;
+    void register(event);
+    if (unticked) revealElement(document.getElementById(unticked as string));
+  }
+  const summaryCohort = order?.cohort || quote?.cohort || knownCohort;
+  function summaryData(): CheckoutSummaryData {
+    const base = {
+      courseTitle: order?.courseTitle || SIRAH_TITLE,
+      planLabel: planLabel(order?.plan || plan),
+      firstClass: summaryCohort?.commencementDate
+        ? firstClassDate(summaryCohort.commencementDate)
+        : null,
+      refundThrough:
+        summaryCohort?.confirmed && summaryCohort.courseStartFullRefundThrough
+          ? /^\d{4}-\d{2}-\d{2}$/.test(summaryCohort.courseStartFullRefundThrough)
+            ? firstClassDate(summaryCohort.courseStartFullRefundThrough)
+            : summaryCohort.courseStartFullRefundThrough
+          : null,
+      manualPayment: order
+        ? ["BANK_TRANSFER", "JAZZCASH"].includes(order.method || "")
+        : manualMethod,
+    };
+    const noDiscount = { originalPriceText: null, discountLabel: null };
+    if (order)
+      return {
+        ...base,
+        priceText: formatSirahMoney(order.amountMinor, order.currency),
+        priceNote:
+          order.plan === "ANNUAL" ? "One payment for all 12 months" : "Per month",
+        priceState: "confirmed",
+        originalPriceText: order.discount
+          ? formatSirahMoney(order.discount.originalAmountMinor, order.currency)
+          : null,
+        discountLabel: order.discount?.label || null,
+      };
+    if (ready && (!available || signedOutOrderLink))
+      return {
+        ...base,
+        ...noDiscount,
+        priceText: null,
+        priceNote: available
+          ? "Sign in to see your fee"
+          : "Registration is being set up",
+        priceState: "unavailable",
+      };
+    if (quote && quoteCurrent)
+      return {
+        ...base,
+        priceText: formatSirahMoney(quote.amountMinor, quote.currency),
+        priceNote: plan === "ANNUAL" ? "One payment for all 12 months" : "Per month",
+        priceState: "confirmed",
+        originalPriceText: quote.discount
+          ? formatSirahMoney(quote.discount.originalAmountMinor, quote.currency)
+          : null,
+        discountLabel: quote.discount?.label || null,
+      };
+    if (!billing)
+      return {
+        ...base,
+        ...noDiscount,
+        priceText: null,
+        priceNote: "Choose your country to see your fee",
+        priceState: "unavailable",
+      };
+    // No confirmed fee: the summary stays calm and shows no figure. The form
+    // column still says why the visitor cannot continue.
+    if (quoteError)
+      return {
+        ...base,
+        ...noDiscount,
+        priceText: null,
+        priceNote: "Your fee is confirmed before you pay.",
+        priceState: "unavailable",
+      };
+    // The form's own catalogue estimate, always labelled until the server confirms.
+    const estimate = priceFor(
+      billing,
+      plan,
+      selectedMethod || (billing === "PK" ? "BANK_TRANSFER" : null),
+    );
+    return {
+      ...base,
+      ...noDiscount,
+      priceText: formatSirahMoney(estimate.amountMinor, estimate.currency),
+      priceNote: "Confirming your fee…",
+      priceState: "confirming",
+    };
+  }
+  const stepHeading = (step: number) => {
+    const heading = (
+      <h3
+        className={styles.formStep}
+        id={`sirah-step-${step}`}
+        data-form-step={step}
+        tabIndex={checkoutLayout ? -1 : undefined}
+      >
+        <span aria-hidden="true">{step}</span> {stepLabels[step - 1]}
+      </h3>
+    );
+    if (!checkoutLayout || step === 1) return heading;
+    return (
+      <div className={styles.stepHead}>
+        {heading}
+        <button
+          type="button"
+          className={styles.stepBack}
+          disabled={busy}
+          onClick={() => changeStep(step - 1)}
+        >
+          <span aria-hidden="true">←</span> Back
+        </button>
+      </div>
+    );
+  };
+  const reviewRows: [string, string, number][] = [
+    ["Name", name, 1],
+    ["Email", email, 1],
+    ["Phone", `+${getCountryCallingCode(phoneCountry)} ${phone}`, 1],
+    [
+      "Country of residence",
+      (billing && countries[billing as keyof typeof countries]?.name) || "",
+      1,
+    ],
+    ["Plan", planLabel(plan), 2],
+    ["Payment method", selectedMethod ? methodLabel(selectedMethod) : "", 2],
+  ];
+  const reviewStep = (
+    <>
+      {stepHeading(3)}
+      {checkoutLayout && (
+        <dl className={styles.reviewList}>
+          {reviewRows.map(([label, value, step]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+              <button
+                type="button"
+                className={styles.reviewEdit}
+                aria-label={`Edit ${label.toLowerCase()}`}
+                disabled={busy}
+                onClick={() => changeStep(step)}
+              >
+                Edit
+              </button>
+            </div>
+          ))}
+        </dl>
+      )}
+      {!(selectedMethod && quote?.country === billing && quote?.plan === plan) && (
+        <p className={styles.stepHint}>
+          Choose a payment method above to see its terms.
+        </p>
+      )}
+      {selectedMethod &&
+        quote?.country === billing &&
+        quote?.plan === plan && (
+          <Terms
+            order={{ terms: quote.terms, plan }}
+            accepted={accepted}
+            onChange={setAccepted}
+            accessConsents={accessConsents}
+            onAccessConsentChange={setAccessConsents}
+          />
+        )}
+      {checkoutLayout && ["STRIPE", "PAYPAL"].includes(selectedMethod) && (
+        <p className={styles.stepHint}>
+          You will confirm the payment on our provider’s secure checkout page.
+        </p>
+      )}
+    </>
+  );
+  const confirmingFee =
+    checkoutLayout &&
+    !quoteCurrent &&
+    !quoteError &&
+    Boolean(billing) &&
+    checkoutStep > 1;
+  const checkoutActionBlocked =
+    busy ||
+    !ready ||
+    confirmingFee ||
+    (checkoutStep === 3 && (!quote?.terms || Boolean(quoteError)));
+  const checkoutActionLabel = busy
+    ? "Submitting registration & payment…"
+    : confirmingFee
+      ? "Confirming your fee…"
+      : checkoutStep < 3
+        ? "Continue"
+        : !selectedMethod
+          ? "Choose an available payment method"
+          : ["STRIPE", "PAYPAL"].includes(selectedMethod)
+            ? quote
+              ? `Pay ${formatSirahMoney(quote.amountMinor, quote.currency)}`
+              : "Pay"
+            : "Submit registration & transfer receipt";
+  const experience = (
     <div className={styles.experience}>
       <p className={styles.eyebrow}>
         The Global Awakening · Course registration
@@ -1210,7 +1706,10 @@ export function SirahRegistrationForm({
       <p className={styles.introduction}>
         Create your account and choose your payment plan.
       </p>
-      {ready && (order?.cohort || quote?.cohort) && (
+      {ready &&
+        (order?.cohort || quote?.cohort) &&
+        // The order summary carries a confirmed date and refund window.
+        !(checkoutLayout && !order && summaryCohort?.confirmed) && (
         <div className={styles.notice} role="status">
           <strong>First paid class: </strong>
           {(order?.cohort || quote?.cohort)?.commencementDate
@@ -1320,11 +1819,24 @@ export function SirahRegistrationForm({
           )}
           <form
             ref={registrationForm}
-            onSubmit={register}
+            onSubmit={checkoutLayout ? submitCheckout : register}
+            onChange={
+              checkoutLayout
+                ? (event) => {
+                    // A message goes away as soon as its field is answered.
+                    const field = event.target as unknown as HTMLInputElement;
+                    if (field.name.startsWith("payment-method-"))
+                      clearField("method");
+                    else if (field.name) clearField(field.name);
+                    if (field.type === "checkbox") setError("");
+                  }
+                : undefined
+            }
             noValidate
             className={`${styles.form} ${styles.compactForm}`}
             aria-busy={busy}
             onFocus={(event) => {
+              if (checkoutLayout) return;
               let step = 1;
               event.currentTarget
                 .querySelectorAll<HTMLElement>("[data-form-step]")
@@ -1339,29 +1851,40 @@ export function SirahRegistrationForm({
             }}
           >
             <ol className={styles.formProgress} aria-label="Registration steps">
-              {formSteps.map((label, index) => (
+              {stepLabels.map((label, index) => (
                 <li
                   key={label}
-                  aria-current={formStep === index + 1 ? "step" : undefined}
-                  className={formStep > index + 1 ? styles.formProgressDone : undefined}
+                  aria-current={activeStep === index + 1 ? "step" : undefined}
+                  className={activeStep > index + 1 ? styles.formProgressDone : undefined}
                 >
                   <button
                     type="button"
-                    onClick={() =>
+                    disabled={checkoutLayout && (busy || index + 1 > checkoutStep)}
+                    aria-label={
+                      checkoutLayout && activeStep > index + 1
+                        ? `${label}, completed. Go back to this step`
+                        : undefined
+                    }
+                    onClick={() => {
+                      if (checkoutLayout) {
+                        if (index + 1 < checkoutStep) changeStep(index + 1);
+                        return;
+                      }
                       document
                         .getElementById(`sirah-step-${index + 1}`)
-                        ?.scrollIntoView({ block: "start", behavior: "smooth" })
-                    }
+                        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+                    }}
                   >
-                    <span aria-hidden="true">{index + 1}</span>
+                    <span aria-hidden="true">
+                      {checkoutLayout && activeStep > index + 1 ? "✓" : index + 1}
+                    </span>
                     {label}
                   </button>
                 </li>
               ))}
             </ol>
-            <h3 className={styles.formStep} id="sirah-step-1" data-form-step="1">
-              <span aria-hidden="true">1</span> Your details
-            </h3>
+            <CheckoutStepPanel enabled={checkoutLayout} step={1} current={checkoutStep} direction={stepDirection}>
+            {stepHeading(1)}
             <label>
               Full name
               <input
@@ -1390,6 +1913,14 @@ export function SirahRegistrationForm({
                 name="email"
                 aria-label="Email"
                 type="email"
+                {...(checkoutLayout
+                  ? {
+                      inputMode: "email" as const,
+                      autoCapitalize: "none",
+                      autoCorrect: "off",
+                      spellCheck: false,
+                    }
+                  : {})}
                 value={email}
                 readOnly={!!user}
                 onChange={(event) => {
@@ -1407,7 +1938,7 @@ export function SirahRegistrationForm({
             </label>
             {!user && (
               <PasswordFields
-                errors={fields}
+                errors={shownFields}
                 onEdit={clearField}
                 onPassword={setPasswordForManager}
               />
@@ -1439,6 +1970,7 @@ export function SirahRegistrationForm({
                   <label>
                     Country of residence
                     <select
+                      id="sirah-residence-country"
                       aria-label="Country of residence"
                       autoComplete="country"
                       value={billing}
@@ -1472,6 +2004,7 @@ export function SirahRegistrationForm({
                 <label className={styles.residenceConfirmation}>
                   <span>
                     <input
+                      id="sirah-residence-confirm"
                       type="checkbox"
                       checked={residenceConfirmed}
                       required
@@ -1510,9 +2043,9 @@ export function SirahRegistrationForm({
                 </button>
               </div>
             </div>
-            <h3 className={styles.formStep} id="sirah-step-2" data-form-step="2">
-              <span aria-hidden="true">2</span> Plan &amp; payment method
-            </h3>
+            </CheckoutStepPanel>
+            <CheckoutStepPanel enabled={checkoutLayout} step={2} current={checkoutStep} direction={stepDirection}>
+            {stepHeading(2)}
             <div className={styles.planChoice}>
               <label>
                 Payment plan
@@ -1693,11 +2226,12 @@ export function SirahRegistrationForm({
                     <ManualPaymentFields
                       payerName={name}
                       amount={minorToDecimal(quote.amountMinor, quote.currency)}
-                      errors={fields}
+                      errors={shownFields}
                     />
                     <label className={styles.residenceConfirmation}>
                       <span>
                         <input
+                          id="sirah-manual-confirm"
                           type="checkbox"
                           required
                           checked={manualConfirmed}
@@ -1712,31 +2246,21 @@ export function SirahRegistrationForm({
                     </label>
                   </div>
                 )}
-              <h3 className={styles.formStep} id="sirah-step-3" data-form-step="3">
-                <span aria-hidden="true">3</span> Terms &amp; pay
-              </h3>
-              {!(selectedMethod && quote?.country === billing && quote?.plan === plan) && (
-                <p className={styles.stepHint}>
-                  Choose a payment method above to see its terms.
-                </p>
-              )}
-              {selectedMethod &&
-                quote?.country === billing &&
-                quote?.plan === plan && (
-                  <Terms
-                    order={{ terms: quote.terms, plan }}
-                    accepted={accepted}
-                    onChange={setAccepted}
-                    accessConsents={accessConsents}
-                    onAccessConsentChange={setAccessConsents}
-                  />
-                )}
+              {!checkoutLayout && reviewStep}
             </div>
+            </CheckoutStepPanel>
+            {checkoutLayout && (
+              <CheckoutStepPanel enabled step={3} current={checkoutStep} direction={stepDirection}>
+                {reviewStep}
+              </CheckoutStepPanel>
+            )}
+            {checkoutLayout && feedback}
             <div className={styles.stickyAction}>
               <button
                 className={`${styles.primary} ${styles.submitRegistration}`}
                 type="submit"
                 disabled={
+                  checkoutLayout ? checkoutActionBlocked :
                   busy ||
                   !ready ||
                   !selectedMethod ||
@@ -1756,7 +2280,7 @@ export function SirahRegistrationForm({
                     !manualConfirmed)
                 }
               >
-                {busy
+                {checkoutLayout ? checkoutActionLabel : busy
                   ? "Submitting registration & payment…"
                   : !selectedMethod
                     ? "Choose an available payment method"
@@ -1766,7 +2290,7 @@ export function SirahRegistrationForm({
               </button>
             </div>
           </form>
-          {feedback}
+          {!checkoutLayout && feedback}
         </>
       ) : (
         <section aria-label="Your course registration">
@@ -2559,6 +3083,13 @@ export function SirahRegistrationForm({
         </section>
       )}
       {(!ready || !available) && feedback}
+    </div>
+  );
+  if (!checkoutSummary) return experience;
+  return (
+    <div className={styles.checkoutShell}>
+      {checkoutSummary(summaryData())}
+      {experience}
     </div>
   );
 }

@@ -16,7 +16,7 @@ export function registerHref({
   country?: string;
   plan?: "MONTHLY" | "ANNUAL";
   requireBillingCountry?: boolean;
-  /** The registration page; the /redesign preview passes its own. */
+  /** The registration page. */
   base?: string;
 }) {
   const params = new URLSearchParams();
