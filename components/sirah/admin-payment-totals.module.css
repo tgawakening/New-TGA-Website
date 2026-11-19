@@ -1,10 +1,18 @@
-/* Payments received: read-only reconciliation panel on the admin list. */
+/* Payments received: read-only reconciliation card on the Overview page.
+ * A white card with the workspace elevation; each currency is an inner card
+ * on the soft panel tint. Contrast: captions #5b6472 6.2:1 on white, the
+ * currency code #0a5f54 on #f8f7f4 6.9:1, method rows #1a2233 14:1. */
 .panel {
-  margin-top: 1rem;
-  padding: 1rem;
+  padding: var(--sp-4, 1rem);
   border: 1px solid var(--adm-rule, #e3e7ee);
-  border-radius: var(--r-md, 0.75rem);
-  background: var(--adm-panel, #f8f9fb);
+  border-radius: var(--r-lg, 14px);
+  background: var(--adm-card, #ffffff);
+  box-shadow: var(--adm-shadow-card, none);
+}
+@media (min-width: 640px) {
+  .panel {
+    padding: var(--sp-6, 1.5rem);
+  }
 }
 .head {
   display: flex;
@@ -16,7 +24,7 @@
 .head h3 {
   margin: 0;
   font-family: var(--display, Georgia, serif);
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: var(--adm-ink, #1a2233);
 }
@@ -56,11 +64,10 @@
 }
 .card {
   min-width: 0;
-  padding: 0.9rem 1rem 0.6rem;
+  padding: 1rem 1.125rem 0.75rem;
   border: 1px solid var(--adm-rule, #e3e7ee);
-  border-radius: var(--r-sm, 0.5rem);
-  background: var(--adm-card, #ffffff);
-  box-shadow: var(--adm-shadow, none);
+  border-radius: var(--r-md, 12px);
+  background: var(--adm-panel, #f8f7f4);
 }
 .cardHead {
   display: grid;
@@ -131,4 +138,72 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Date range (Overview): From – To, and a reset to all dates. */
+.range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
+  margin-top: var(--sp-4, 1rem);
+  padding: var(--sp-3, 0.75rem) 0;
+  border-block: 1px solid var(--adm-rule, #e3e7ee);
+}
+.range label {
+  display: grid;
+  gap: 4px;
+  color: var(--adm-muted, #5b6472);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.range input {
+  min-width: 10.5rem;
+  min-height: var(--adm-control-h, 2.5rem);
+  padding: 0 0.75rem;
+  border: 1px solid var(--adm-control, #8a93a3);
+  border-radius: var(--r-sm, 9px);
+  background: var(--adm-card, #ffffff);
+  color: var(--adm-ink, #1a2233);
+  font: inherit;
+  font-size: 0.875rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.rangeDash {
+  padding-bottom: 0.6rem;
+  color: var(--adm-muted, #5b6472);
+}
+.rangeClear {
+  min-height: var(--adm-control-h, 2.5rem);
+  padding: 0 var(--sp-2, 0.5rem);
+  border: 0;
+  background: transparent;
+  color: var(--adm-teal-ink, #0a5f54);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.rangeClear:hover {
+  text-decoration-color: currentColor;
+}
+.rangeClear:focus-visible {
+  outline: 2px solid var(--adm-teal, #0b7566);
+  outline-offset: 2px;
+  border-radius: var(--r-xs, 6px);
+}
+@media (max-width: 639px) {
+  .range input {
+    min-width: 0;
+    font-size: 16px; /* no iOS zoom on focus */
+  }
+  .range label {
+    flex: 1 1 9rem;
+  }
 }

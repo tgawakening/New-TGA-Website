@@ -84,12 +84,15 @@ export function SirahAdminShell({
     <div className={styles.frame}>
       <aside className={styles.sidebar}>
         <a href="/admin/sirah/overview" className={styles.brand}>
-          <BrandLogo
-            alt="The Global Awakening"
-            sizes="(min-width: 1024px) 168px, 128px"
-            className={styles.brandLogo}
-            priority
-          />
+          {/* The official lockup is a white knockout: it sits on a navy plate. */}
+          <span className={styles.brandPlate}>
+            <BrandLogo
+              alt="The Global Awakening"
+              sizes="(min-width: 1024px) 168px, 112px"
+              className={styles.brandLogo}
+              priority
+            />
+          </span>
           <span className={styles.brandText}>
             <strong>Sīrah workspace</strong>
             <span>Beyond Chronology</span>
@@ -128,7 +131,7 @@ export function SirahAdminShell({
             <span className={styles.who}>
               <span className={styles.avatar} aria-hidden="true">{signedInAs.slice(0, 1).toUpperCase()}</span>
               <span className={styles.whoText}>
-                <strong>{signedInAs}</strong>
+                <strong title={signedInAs}>{signedInAs}</strong>
                 <span>Signed in</span>
               </span>
             </span>
