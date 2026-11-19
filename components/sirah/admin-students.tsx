@@ -8,6 +8,7 @@ import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import { SirahAdminCohort } from "./admin-cohort";
+import { SirahPaymentTotalsPanel } from "./admin-payment-totals";
 import styles from "./admin-students.module.css";
 
 type Snapshot = Awaited<ReturnType<typeof listSirahAdmin>>;
@@ -191,6 +192,7 @@ export function SirahAdminStudents({
   canExcludeRecords = false,
   initialExcluded = false,
   initialArchived = false,
+  canViewTotals = false,
 }: {
   view?: "students" | "payments";
   initialOrder?: string;
@@ -208,6 +210,9 @@ export function SirahAdminStudents({
   canExcludeRecords?: boolean;
   initialExcluded?: boolean;
   initialArchived?: boolean;
+  /** Super admin or manager: the read-only payment totals panel and the
+   * per-payment CSV. */
+  canViewTotals?: boolean;
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
@@ -217,6 +222,9 @@ export function SirahAdminStudents({
   const [enrolment, setEnrolment] = useState("");
   const [country, setCountry] = useState("");
   const [method, setMethod] = useState("");
+  // From / To (YYYY-MM-DD, UTC): the date a payment or refund was recorded.
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
@@ -259,20 +267,24 @@ export function SirahAdminStudents({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState("");
-  const query = new URLSearchParams({
+  // The list filters without the page number: shared by the totals panel and
+  // both CSV exports, which cover the whole filtered set.
+  const filterQuery = new URLSearchParams({
     q,
     payment,
     enrolment,
     country,
     method,
     group,
-    page: String(page),
+    from,
+    to,
     ...(recordsView === "ARCHIVED"
       ? { archived: "only" }
       : recordsView === "EXCLUDED"
         ? { excluded: "only" }
         : {}),
   }).toString();
+  const query = `${filterQuery}&page=${page}`;
 
   function openRecordAction(kind: RecordAction, student: Student) {
     setRecordAction({ kind, student });
@@ -584,9 +596,9 @@ export function SirahAdminStudents({
             </button>
             <a
               className="ga-admin-outline-btn"
-              href={`/api/admin/sirah?${query}&format=csv`}
+              href={`/api/admin/sirah?${filterQuery}&format=csv`}
             >
-              Export this page (CSV)
+              Export students (CSV)
             </a>
             {!readOnly && <a className="ga-admin-outline-btn" href="/api/admin/sirah/legacy">
               Historical records
@@ -723,11 +735,39 @@ export function SirahAdminStudents({
               </select>
             </label>
           )}
+          <label>
+            Paid from
+            <input
+              type="date"
+              aria-label="Paid from (UTC)"
+              value={from}
+              max={to || undefined}
+              onChange={(event) => {
+                setFrom(event.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
+          <label>
+            Paid to
+            <input
+              type="date"
+              aria-label="Paid to (UTC)"
+              value={to}
+              min={from || undefined}
+              onChange={(event) => {
+                setTo(event.target.value);
+                setPage(1);
+              }}
+            />
+          </label>
           <button
             type="button"
             className="ga-admin-outline-btn"
             onClick={() => {
               setQ("");
+              setFrom("");
+              setTo("");
               setCountry("");
               setMethod("");
               setPayment("");
@@ -740,6 +780,13 @@ export function SirahAdminStudents({
             Clear filters
           </button>
         </div>
+        {canViewTotals && (
+          <SirahPaymentTotalsPanel
+            query={filterQuery}
+            reloadKey={reload}
+            countedView={recordsView === ""}
+          />
+        )}
         {loadError && (
           <p className="ga-admin-error-banner" role="alert">
             {loadError}

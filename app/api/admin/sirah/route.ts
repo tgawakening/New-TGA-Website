@@ -8,6 +8,7 @@ import {
 } from "@/lib/sirah/http";
 import {
   listSirahAdmin,
+  listSirahAdminForCsv,
   actOnSirahOrder,
   sirahCsv,
 } from "@/services/sirah-admin.service";
@@ -30,16 +31,16 @@ export async function GET(request: Request) {
     if (access.role !== "SUPER_ADMIN" && access.role !== "MANAGER")
       params.delete("excluded");
     if (access.role !== "SUPER_ADMIN") params.delete("archived");
-    const data = await listSirahAdmin(params);
+    // The CSV covers every record matching the filters, not just one page.
     if (params.get("format") === "csv")
-      return new Response(sirahCsv(data), {
+      return new Response(sirahCsv(await listSirahAdminForCsv(params)), {
         headers: {
           "Content-Type": "text/csv;charset=utf-8",
-          "Content-Disposition": "attachment; filename=sirah-students-page.csv",
+          "Content-Disposition": "attachment; filename=sirah-students.csv",
           "Cache-Control": "private,no-store",
         },
       });
-    return privateJson(data);
+    return privateJson(await listSirahAdmin(params));
   } catch (error) {
     return sirahResponseError(error);
   }

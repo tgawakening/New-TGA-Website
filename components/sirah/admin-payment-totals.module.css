@@ -1,0 +1,134 @@
+/* Payments received: read-only reconciliation panel on the admin list. */
+.panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--adm-rule, #e3e7ee);
+  border-radius: var(--r-md, 0.75rem);
+  background: var(--adm-panel, #f8f9fb);
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.head h3 {
+  margin: 0;
+  font-family: var(--display, Georgia, serif);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--adm-ink, #1a2233);
+}
+.caption {
+  margin: 0.25rem 0 0;
+  max-width: 60ch;
+  color: var(--adm-muted, #5b6472);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.summary,
+.none {
+  margin: 0.85rem 0 0;
+  color: var(--adm-ink, #1a2233);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.none {
+  color: var(--adm-muted, #5b6472);
+  font-weight: 500;
+}
+.stale {
+  opacity: 0.6;
+  transition: opacity 120ms ease;
+}
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+  }
+}
+.card {
+  min-width: 0;
+  padding: 0.9rem 1rem 0.6rem;
+  border: 1px solid var(--adm-rule, #e3e7ee);
+  border-radius: var(--r-sm, 0.5rem);
+  background: var(--adm-card, #ffffff);
+  box-shadow: var(--adm-shadow, none);
+}
+.cardHead {
+  display: grid;
+  gap: 0.1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--adm-rule, #e3e7ee);
+}
+.code {
+  color: var(--adm-teal-ink, #0a5f54);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-variant: all-small-caps;
+}
+.big {
+  color: var(--adm-ink, #1a2233);
+  font-family: var(--display, Georgia, serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums lining-nums;
+  overflow-wrap: anywhere;
+}
+.sub {
+  color: var(--adm-muted, #5b6472);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.table th,
+.table td {
+  padding: 0.45rem 0;
+  text-align: left;
+  border-bottom: 1px solid var(--adm-rule, #e3e7ee);
+}
+.table thead th {
+  color: var(--adm-muted, #5b6472);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.table tbody th {
+  font-weight: 500;
+  color: var(--adm-ink, #1a2233);
+}
+.table tfoot th,
+.table tfoot td {
+  border-bottom: 0;
+  font-weight: 700;
+  color: var(--adm-ink, #1a2233);
+}
+.table tfoot tr:first-child :is(th, td) {
+  border-top: 1px solid var(--adm-rule-strong, #cfd5df);
+}
+.table .num {
+  padding-left: 0.75rem;
+  text-align: right;
+  white-space: nowrap;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
