@@ -1,5 +1,6 @@
 "use client";
 import { prepareSirahReceipt } from "@/lib/sirah/receipt-upload";
+import { confirmDialog, promptDialog } from "@/components/confirm-dialog";
 import { RenewalCycle } from "./renewal-cycle";
 import { PersonalDiscount, personalDiscountAvailable } from "./personal-discount";
 import {
@@ -1121,14 +1122,23 @@ export function SirahRegistrationForm({
   }
   async function cancelRegistration() {
     if (!order) return;
-    const reason = window.prompt(
-      "Reason for cancellation (the approved terms apply):",
-    );
+    // Same two steps as before: a reason, then an explicit confirmation.
+    const reason = await promptDialog({
+      title: "Cancel registration",
+      label: "Reason for cancellation (the approved terms apply):",
+      multiline: true,
+      confirmLabel: "Continue",
+      cancelLabel: "Keep registration",
+    });
     if (!reason) return;
     if (
-      !window.confirm(
-        "Request cancellation under the displayed approved terms?",
-      )
+      !(await confirmDialog({
+        title: "Request cancellation?",
+        message: "Request cancellation under the displayed approved terms?",
+        confirmLabel: "Request cancellation",
+        cancelLabel: "Keep registration",
+        tone: "danger",
+      }))
     )
       return;
     await run(async () => {
@@ -1148,9 +1158,11 @@ export function SirahRegistrationForm({
   async function resumeRenewals() {
     if (
       !order?.terms ||
-      !window.confirm(
-        `Resume future voluntary renewals of ${formatSirahMoney(order.amountMinor, order.currency)} per month on your existing PayPal subscription? This does not confirm payment or restore access.`,
-      )
+      !(await confirmDialog({
+        title: "Resume renewals?",
+        message: `Resume future voluntary renewals of ${formatSirahMoney(order.amountMinor, order.currency)} per month on your existing PayPal subscription? This does not confirm payment or restore access.`,
+        confirmLabel: "Resume renewals",
+      }))
     )
       return;
     await run(async () => {
@@ -1167,9 +1179,12 @@ export function SirahRegistrationForm({
   }
   async function requestRefundReview() {
     if (!order) return;
-    const reason = window.prompt(
-      "Reason for requesting an upfront payment refund review:",
-    );
+    const reason = await promptDialog({
+      title: "Request a refund review",
+      label: "Reason for requesting an upfront payment refund review:",
+      multiline: true,
+      confirmLabel: "Send request",
+    });
     if (!reason) return;
     await run(async () => {
       const result = await api(`/api/sirah/orders/${order.id}/refund-request`, {

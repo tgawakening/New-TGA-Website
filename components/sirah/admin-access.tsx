@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { confirmDialog } from "@/components/confirm-dialog";
 
 type TeamRow = {
   id: string;
@@ -99,7 +100,21 @@ export function SirahAdminAccess() {
   }
 
   async function change(row: TeamRow, action: Change) {
-    if (!window.confirm(confirmText[action](row))) return;
+    if (
+      !(await confirmDialog({
+        title:
+          action === "PROMOTE"
+            ? "Promote to Manager?"
+            : action === "DEMOTE"
+              ? "Demote to Community Lead?"
+              : "Revoke workspace access?",
+        message: confirmText[action](row),
+        confirmLabel:
+          action === "PROMOTE" ? "Promote" : action === "DEMOTE" ? "Demote" : "Revoke access",
+        tone: action === "PROMOTE" ? "default" : "danger",
+      }))
+    )
+      return;
     setPending(`${row.id}:${action}`);
     setError("");
     setNotice("");
@@ -126,7 +141,13 @@ export function SirahAdminAccess() {
     const form = new FormData(formEl);
     const email = String(form.get("email") || "").trim();
     const fullName = String(form.get("fullName") || "").trim();
-    if (!window.confirm(`Create a Community Lead login for ${fullName} (${email})? If the account exists, its password is replaced and access restored.`))
+    if (
+      !(await confirmDialog({
+        title: "Create a Community Lead login?",
+        message: `Create a Community Lead login for ${fullName} (${email})? If the account exists, its password is replaced and access restored.`,
+        confirmLabel: "Create login",
+      }))
+    )
       return;
     setBusy(true);
     setError("");

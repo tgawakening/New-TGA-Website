@@ -1,0 +1,229 @@
+/* Branded confirm / prompt dialog (components/confirm-dialog.tsx).
+ * Mounted at the root, outside any page theme, so it reads the global brand
+ * tokens (styles/tokens.css) directly. Two skins: light on the admin, brand
+ * navy on the public site. Checked (WCAG 2.x):
+ *   light: title #1a2233 on white 15.9:1, message #5b6472 6.0:1, white on the
+ *          indigo confirm #26346e 11.7:1, white on the terracotta #a8431f 6.0:1,
+ *          field edge #767d93 4.1:1.
+ *   dark:  title #ede9df on #1b2742 12.6:1, message #c9c3b6 9.0:1, #06211c on
+ *          the teal confirm #2bb6a3 7.9:1, #0d1424 on terracotta #d9794f 6.3:1. */
+
+.dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg, 14px);
+  overflow: auto;
+  font-family: var(--body);
+}
+
+.dialog::backdrop {
+  background: rgba(13, 20, 36, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.dialog[open] {
+  animation: rise var(--dur, 220ms) var(--ease, ease-out);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open] {
+    animation: none;
+  }
+}
+
+.panel {
+  display: grid;
+  gap: var(--sp-4, 1rem);
+  padding: var(--sp-6, 1.5rem);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: var(--track-title, 0);
+}
+
+.message {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1.5px solid;
+  border-radius: var(--r-sm, 9px);
+  font: inherit;
+  font-size: 1rem; /* 16px: no iOS zoom */
+  font-weight: 400;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: flex-end;
+  gap: var(--sp-2, 0.5rem) var(--sp-3, 0.75rem);
+  margin-top: var(--sp-2, 0.5rem);
+}
+
+.cancel,
+.confirm,
+.danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 var(--sp-5, 1.25rem);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-sm, 9px);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur, 220ms) var(--ease, ease), border-color var(--dur, 220ms) var(--ease, ease), color var(--dur, 220ms) var(--ease, ease);
+}
+
+:is(.cancel, .confirm, .danger):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 30rem) {
+  .actions > button {
+    flex: 1 1 100%;
+  }
+}
+
+/* ---- Light (admin) ---- */
+.light {
+  background: #ffffff;
+  color: #1a2233;
+  box-shadow: 0 24px 60px -20px rgba(16, 24, 40, 0.35);
+}
+
+.light .message {
+  color: #5b6472;
+}
+
+.light .field {
+  color: #3d4757;
+}
+
+.light .input {
+  border-color: #767d93;
+  background: #ffffff;
+  color: #1a2233;
+}
+
+.light .cancel {
+  background: #ffffff;
+  border-color: #c3cad5;
+  color: #1a2233;
+}
+
+.light .cancel:hover {
+  background: #eaedf2;
+}
+
+.light .confirm {
+  background: #26346e;
+  color: #ffffff;
+}
+
+.light .confirm:hover:not(:disabled) {
+  background: #1b2654;
+}
+
+.light .danger {
+  background: #a8431f;
+  color: #ffffff;
+}
+
+.light .danger:hover:not(:disabled) {
+  background: #8c3517;
+}
+
+.light :is(.input, .cancel, .confirm, .danger):focus-visible {
+  outline: 2px solid #0b7566;
+  outline-offset: 2px;
+}
+
+/* ---- Dark (public site, brand navy) ---- */
+.dark {
+  background: var(--surface-grad, #1b2742);
+  color: var(--sand, #ede9df);
+  box-shadow: var(--highlight, none), var(--shadow-lift, 0 28px 56px -26px rgba(0, 0, 0, 0.7));
+  outline: 1px solid var(--line2, rgba(237, 234, 223, 0.18));
+}
+
+.dark .message {
+  color: var(--dim, #c9c3b6);
+}
+
+.dark .field {
+  color: var(--sand, #ede9df);
+}
+
+.dark .input {
+  border-color: var(--faint, #aeaab5);
+  background: var(--bg, #141d33);
+  color: var(--sand, #ede9df);
+}
+
+.dark .cancel {
+  background: transparent;
+  border-color: var(--line2, rgba(237, 234, 223, 0.18));
+  color: var(--sand, #ede9df);
+}
+
+.dark .cancel:hover {
+  background: rgba(237, 234, 223, 0.06);
+}
+
+.dark .confirm {
+  background: var(--teal, #2bb6a3);
+  color: var(--on-teal, #06211c);
+}
+
+.dark .confirm:hover:not(:disabled) {
+  background: var(--tealb, #48d6c2);
+}
+
+.dark .danger {
+  background: var(--terra, #d9794f);
+  color: var(--ink, #0d1424);
+}
+
+.dark .danger:hover:not(:disabled) {
+  background: var(--terrab, #e89068);
+}
+
+.dark :is(.input, .cancel, .confirm, .danger):focus-visible {
+  outline: 2px solid var(--tealb, #48d6c2);
+  outline-offset: 2px;
+}

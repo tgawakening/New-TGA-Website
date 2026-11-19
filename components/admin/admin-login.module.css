@@ -16,10 +16,18 @@
   box-shadow: 0 24px 60px var(--ai-sh-18_48_88_0_12, rgba(18, 48, 88, 0.12));
 }
 
+/* The brand row is a navy band across the top of the card (the admin's
+ * two-tone chrome), so the knockout lockup, with its white calligraphy and
+ * tagline, stays legible. Label #9ea7bc on #141d33 is 7.0:1. */
 .brand {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+  margin: -2rem -1.75rem 0;
+  padding: 1.1rem 1.75rem;
+  border-radius: 1.4rem 1.4rem 0 0;
+  background: var(--adm-nav, #141d33);
 }
 
 /* The official lockup, at its own proportions (640 × 246). */
@@ -32,8 +40,8 @@
 
 .brandName {
   padding-left: 0.75rem;
-  border-left: 1px solid var(--adm-rule-strong, #cfd5df);
-  color: var(--ai-fg-3d668f, #3d668f);
+  border-left: 1px solid var(--adm-nav-line, rgba(237, 234, 223, 0.12));
+  color: var(--adm-nav-muted, #9ea7bc);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.14em;
