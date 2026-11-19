@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { confirmDialog } from "@/components/confirm-dialog";
 import { countries } from "countries-list";
 import AdminNotificationBell from "@/components/admin/admin-notification-bell";
 import type { AdminNotificationItem } from "@/services/admin.service";
@@ -440,7 +441,16 @@ export function SirahAdminStudents({
       action === "REFUND" && ["STRIPE", "PAYPAL"].includes(student.method ?? "")
         ? `Issue a refund of ${field("currency")} ${field("verifiedAmount")} for ${student.user.fullName}?`
         : `${actionLabels[action]} for ${student.user.fullName}?`;
-    if (["CANCEL", "REFUND"].includes(action) && !window.confirm(confirmation))
+    if (
+      ["CANCEL", "REFUND"].includes(action) &&
+      !(await confirmDialog({
+        title: action === "REFUND" ? "Issue this refund?" : "Cancel this enrolment?",
+        message: confirmation,
+        confirmLabel: action === "REFUND" ? "Issue refund" : "Cancel enrolment",
+        cancelLabel: "Go back",
+        tone: "danger",
+      }))
+    )
       return;
     setBusy(true);
     setError("");
@@ -505,9 +515,11 @@ export function SirahAdminStudents({
     const added = !student.groupAddedAt;
     if (
       !added &&
-      !window.confirm(
-        `Mark ${student.user.fullName} as NOT added to the course group?`,
-      )
+      !(await confirmDialog({
+        title: "Mark as not added?",
+        message: `Mark ${student.user.fullName} as NOT added to the course group?`,
+        confirmLabel: "Mark not added",
+      }))
     )
       return;
     setGroupBusy(student.id);

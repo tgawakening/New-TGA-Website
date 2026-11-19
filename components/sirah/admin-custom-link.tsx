@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState, type FormEvent } from "react";
+import { confirmDialog } from "@/components/confirm-dialog";
 
 type CountryOption = {
   code: string;
@@ -56,15 +57,19 @@ export function SirahAdminCustomLink({
     const form = new FormData(event.currentTarget);
     const text = (key: string) => String(form.get(key) || "").trim();
     const chargeCurrency = currency || selected?.currency || "";
+    // Read the form before awaiting the confirm: React clears currentTarget
+    // once the handler yields.
+    const formEl = event.currentTarget;
     if (
-      !window.confirm(
-        monthly
+      !(await confirmDialog({
+        title: monthly ? "Create a monthly card link?" : "Create a one-time card link?",
+        message: monthly
           ? `Create a monthly ${chargeCurrency} ${text("amount")} card subscription link for ${text("fullName")} (${text("email")})? The card is charged ${chargeCurrency} ${text("amount")} every month for up to 12 months, and the first payment enrols the student.`
           : `Create a one-time ${chargeCurrency} ${text("amount")} card link for ${text("fullName")} (${text("email")})? Paying it enrols the student for the full programme.`,
-      )
+        confirmLabel: "Create link",
+      }))
     )
       return;
-    const formEl = event.currentTarget;
     setBusy(true);
     setError("");
     setCreated(null);

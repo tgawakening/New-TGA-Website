@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNotificationBell from "@/components/admin/admin-notification-bell";
 import { BrandLogo } from "@/components/brand-logo";
+import { confirmDialog } from "@/components/confirm-dialog";
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
 import type { AdminDashboardSnapshot, AdminNotificationItem } from "@/services/admin.service";
 import { missionPurposeLabel, missionPurposes } from "@/lib/mission-support";
@@ -281,7 +282,15 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications,
   }
 
   async function refundMissionPayment(paymentId: string, amount: number) {
-    if (!window.confirm(`Request a refund of ${currencyFormatter.format(amount / 100)} to the original payment method?`)) return;
+    if (
+      !(await confirmDialog({
+        title: "Request this refund?",
+        message: `Request a refund of ${currencyFormatter.format(amount / 100)} to the original payment method?`,
+        confirmLabel: "Request refund",
+        tone: "danger",
+      }))
+    )
+      return;
     setSubmittingRow(paymentId); setMessage(null); setError(null);
     try {
       const response = await fetch("/api/admin/mission-support/refund", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paymentId, requestId: crypto.randomUUID(), amountPence: amount }) });

@@ -9,8 +9,12 @@
  * radius/spacing/motion scales (styles/tokens.css), and teal / terracotta /
  * gold accents in deeper shades that meet WCAG AA on white.
  *
- * Contrast (WCAG 2.x, checked): ink #1a2233 on white 15.9:1; muted #5b6472
- * 6.0:1 (5.6:1 on the page ground, 5.3:1 on the rail); deep teal #0b7566
+ * Two-tone (section 14): a brand-navy rail and dashboard top bar with light
+ * ink, on a warm light-grey canvas; every panel, card and table is white and
+ * raised. Data only ever sits on the light surfaces.
+ *
+ * Contrast (WCAG 2.x, checked): ink #1a2233 on white 15.9:1 (13.8:1 on the
+ * canvas); muted #5b6472 6.0:1 (5.2:1 on the canvas); deep teal #0b7566
  * links and button fills 5.6:1; terracotta #a8431f 6.0:1; pills 6.4–8.0:1;
  * form-control edges #767d93 4.1:1 (non-text, 1.4.11, the new site's field
  * line); chart colours 3.9–9.7:1 on white.
@@ -31,10 +35,26 @@
   color-scheme: light;
 
   /* ---- Palette ---- */
-  --adm-page: #f6f7f9;
-  --adm-rail: #eef1f6;          /* sidebar: a cool tint off the page ground */
+  --adm-page: #f1efea;          /* the canvas: warm light grey, so white cards lift off it */
+  --adm-rail: #eef1f6;          /* legacy hook; the rail is now --adm-nav */
   --adm-card: #ffffff;
-  --adm-panel: #f8f9fb;         /* filter bar, table head */
+  --adm-panel: #f8f7f4;         /* filter bar, table head: a warm tint inside white cards */
+
+  /* Two-tone chrome: the brand navy rail (and dashboard top bar) with light
+   * ink. Data never sits on it. Checked on #141d33: text #dfe4ee 13.1:1,
+   * labels and icons #9ea7bc 7.0:1, white on the active pill 11.8:1, the
+   * active teal edge and focus ring #48d6c2 9.3:1. */
+  --adm-nav: #141d33;            /* the brand navy (tokens.css --bg; re-pointed below) */
+  --adm-nav-ink: #dfe4ee;
+  --adm-nav-muted: #9ea7bc;
+  --adm-nav-line: rgba(237, 234, 223, 0.12);
+  --adm-nav-hover: rgba(255, 255, 255, 0.07);
+  --adm-nav-active: rgba(72, 214, 194, 0.16);
+  --adm-nav-accent: #48d6c2;     /* tokens.css --tealb */
+
+  /* Primary actions: brand indigo (white text 11.7:1; hover 14.5:1). */
+  --adm-primary: #26346e;
+  --adm-primary-hover: #1b2654;
   --adm-row-hover: #f6f8fa;
   --adm-ink: #1a2233;
   --adm-muted: #5b6472;
@@ -66,7 +86,7 @@
   --adm-gold: #6e4a00;
   --adm-gold-soft: #f8edd0;
   --adm-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --adm-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px -14px rgba(16, 24, 40, 0.12);
+  --adm-shadow-card: 0 1px 2px rgba(31, 27, 20, 0.05), 0 2px 6px -2px rgba(31, 27, 20, 0.05), 0 14px 32px -18px rgba(31, 27, 20, 0.18);
   --adm-shadow-pop: 0 20px 48px -12px rgba(16, 24, 40, 0.25);
   --adm-focus: 0 0 0 4px rgba(11, 117, 102, 0.16);
 
@@ -117,8 +137,8 @@
   --ai-bg-fdf1dc: var(--adm-gold-soft);         /* Super admin badge */
   --ai-bg-fff3cf: var(--adm-warn-soft);         /* offline notice */
   --ai-bg-fff4e0: var(--adm-warn-soft);         /* archived pill */
-  --ai-bg-1d4f7d: var(--adm-teal);
-  --ai-bg-255f91: var(--adm-teal);              /* login submit (sidebar active: see shell) */
+  --ai-bg-1d4f7d: var(--adm-primary-hover);
+  --ai-bg-255f91: var(--adm-primary);           /* login submit: brand-indigo primary */
   --ai-bg-1f5f93: var(--adm-teal);              /* login mark */
   --ai-bg-2c7bbb: var(--adm-teal-hover);
   --ai-bg-2f8a5b: var(--adm-teal);              /* meter fill, dot */
@@ -183,7 +203,7 @@
   --ai-sh-18_48_88_0_06: rgba(16, 24, 40, 0.05);
   --ai-sh-18_48_88_0_08: rgba(16, 24, 40, 0.08);
   --ai-sh-18_48_88_0_12: rgba(16, 24, 40, 0.1);
-  --ai-sh-26_76_119_0_18: rgba(11, 117, 102, 0.2);
+  --ai-sh-26_76_119_0_18: rgba(38, 52, 110, 0.22);
   --ai-sh-36_96_148_0_25: rgba(11, 117, 102, 0.25);
   --ai-sh-44_123_187_0_18: rgba(11, 117, 102, 0.22);
 
@@ -516,14 +536,14 @@
 }
 
 [data-theme="indigo-admin"] .ga-admin-primary-btn {
-  background: var(--adm-teal);
-  border-color: var(--adm-teal);
+  background: var(--adm-primary);
+  border-color: var(--adm-primary);
   color: #ffffff;
 }
 
 [data-theme="indigo-admin"] .ga-admin-primary-btn:hover:not(:disabled) {
-  background: var(--adm-teal-hover);
-  border-color: var(--adm-teal-hover);
+  background: var(--adm-primary-hover);
+  border-color: var(--adm-primary-hover);
   color: #ffffff;
   box-shadow: none;
   transform: none;
@@ -1130,4 +1150,147 @@
   border-color: var(--adm-teal);
   background: var(--adm-teal-soft);
   color: var(--adm-teal-ink);
+}
+
+/* ==== 14. Two-tone chrome, dropdowns and date fields ====
+ * The navy chrome (rail: components/sirah/admin-shell.module.css; the main
+ * dashboard's top bar below) frames light, raised data surfaces. */
+
+/* Every dropdown and date field in the admin follows the field recipe:
+ * one height, 1.5px edge at 4.1:1, a drawn chevron or calendar icon, and the
+ * teal focus ring from section 6. Covers the selects that carry no class
+ * (record actions, dashboard tabs, cohort, manual payment fields). */
+[data-theme="indigo-admin"] select:not([multiple], [size]),
+[data-theme="indigo-admin"] input:is([type="date"], [type="datetime-local"], [type="month"]) {
+  min-height: var(--adm-control-h);
+  padding: 0 0.75rem;
+  border: 1.5px solid var(--adm-field-line);
+  border-radius: var(--r-sm);
+  background-color: var(--adm-card);
+  color: var(--adm-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+[data-theme="indigo-admin"] select:not([multiple], [size]) {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: var(--adm-chevron);
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 14px 14px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+[data-theme="indigo-admin"] input:is([type="date"], [type="datetime-local"], [type="month"]) {
+  color-scheme: light;
+  cursor: text;
+}
+
+/* The native picker button, drawn as a clear calendar icon. */
+[data-theme="indigo-admin"] input:is([type="date"], [type="datetime-local"], [type="month"])::-webkit-calendar-picker-indicator {
+  width: 16px;
+  height: 16px;
+  margin-left: 0.5rem;
+  padding: 4px;
+  border-radius: var(--r-xs);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a2233' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+[data-theme="indigo-admin"] input:is([type="date"], [type="datetime-local"], [type="month"])::-webkit-calendar-picker-indicator:hover {
+  background-color: var(--adm-teal-soft);
+  opacity: 1;
+}
+
+/* An empty date reads as a quiet placeholder until a value is picked. */
+[data-theme="indigo-admin"] input[type="date"]:not(:focus):invalid::-webkit-datetime-edit,
+[data-theme="indigo-admin"] input[type="date"][value=""]:not(:focus)::-webkit-datetime-edit {
+  color: var(--adm-faint);
+}
+
+[data-theme="indigo-admin"] :is(select:not([multiple], [size]), input:is([type="date"], [type="datetime-local"], [type="month"])):hover:not(:disabled, :focus) {
+  border-color: var(--adm-muted);
+}
+
+[data-theme="indigo-admin"] :is(select:not([multiple], [size]), input:is([type="date"], [type="datetime-local"], [type="month"])):focus {
+  outline: 2px solid var(--adm-teal);
+  outline-offset: 1px;
+  border-color: var(--adm-teal);
+  box-shadow: var(--adm-focus);
+}
+
+[data-theme="indigo-admin"] :is(select:not([multiple], [size]), input:is([type="date"], [type="datetime-local"], [type="month"])):disabled {
+  background-color: var(--adm-neutral-soft);
+  color: var(--adm-muted);
+  cursor: not-allowed;
+}
+
+[data-theme="indigo-admin"] .ga-admin-filter-row input:is([type="date"]) {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Phones: 16px text so iOS does not zoom into a field on focus. */
+@media (max-width: 639px) {
+  [data-theme="indigo-admin"] :is(select:not([multiple], [size]), input:is([type="date"], [type="datetime-local"], [type="month"])) {
+    font-size: 16px;
+  }
+}
+
+/* Main dashboard: its top bar is the navy chrome (it has no rail). The
+ * controls on it stay white chips, so they read exactly as elsewhere. */
+[data-theme="indigo-admin"] .ga-admin-topbar {
+  background: var(--adm-nav);
+  border-color: var(--adm-nav);
+  color: var(--adm-nav-ink);
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-brand:focus-visible,
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill:focus-visible {
+  outline-color: var(--adm-nav-accent);
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-brand-subtitle {
+  border-left-color: var(--adm-nav-line);
+  color: var(--adm-nav-muted);
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill {
+  color: var(--adm-nav-ink);
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill:hover {
+  background: var(--adm-nav-hover);
+  color: #ffffff;
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill.is-active,
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill.is-active:hover {
+  background: var(--adm-nav-active);
+  border-color: rgba(72, 214, 194, 0.45);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar :is(.ga-admin-ghost-btn, .ga-admin-outline-btn, .ga-admin-bell-btn) {
+  border-color: transparent;
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar :is(.ga-admin-ghost-btn, .ga-admin-outline-btn, .ga-admin-bell-btn):focus-visible {
+  outline-color: var(--adm-nav-accent);
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-user-chip {
+  border-color: transparent;
+}
+
+/* Raised white surfaces on the canvas: one soft shadow everywhere. */
+[data-theme="indigo-admin"] :is(.ga-admin-metric-card, .ga-admin-mini-card, .ga-admin-fee-card) {
+  box-shadow: var(--adm-shadow-card);
 }

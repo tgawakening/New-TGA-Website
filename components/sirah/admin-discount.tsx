@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { confirmDialog } from "@/components/confirm-dialog";
 import { catalogue, decimalToMinor, formatSirahMoney, priceFor, type SirahPlan } from "@/lib/sirah/catalog";
 
 type Scope = "MANUAL" | "CARD";
@@ -134,7 +135,15 @@ export function SirahAdminDiscount() {
 
   async function deactivate(row: DiscountRow) {
     const label = row.code || "this code";
-    if (!window.confirm(`Deactivate ${label}? Students will no longer be able to redeem it.`)) return;
+    if (
+      !(await confirmDialog({
+        title: `Deactivate ${label}?`,
+        message: "Students will no longer be able to redeem it.",
+        confirmLabel: "Deactivate",
+        tone: "danger",
+      }))
+    )
+      return;
     setPendingId(row.id);
     setListError("");
     try {

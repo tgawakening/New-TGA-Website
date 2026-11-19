@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { ConfirmDialogHost } from "@/components/confirm-dialog";
+import { indigoFontVariables } from "@/lib/fonts";
 import "@/styles/tokens.css";
 import "./globals.css";
 
@@ -86,6 +88,9 @@ export default function RootLayout({
           />
         </noscript>
         {children}
+        {/* Branded confirm / prompt dialog for the whole site (replaces the
+         * browser's native confirm and prompt). Renders nothing until asked. */}
+        <ConfirmDialogHost className={indigoFontVariables} />
       </body>
     </html>
   );
