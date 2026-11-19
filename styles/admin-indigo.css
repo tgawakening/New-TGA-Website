@@ -705,6 +705,21 @@
   color: var(--adm-neutral);
 }
 
+/* Partially refunded (paid, some money returned): neutral, never green, with
+ * a half-filled amber dot so it reads apart from both "Completed" and the
+ * amber pending states. Text #3d4757 on #eaedf2 is 8.6:1. */
+[data-theme="indigo-admin"] .ga-admin-status.is-partially-refunded {
+  background: var(--adm-neutral-soft);
+  border-color: var(--adm-warn-line);
+  color: var(--adm-neutral);
+}
+
+[data-theme="indigo-admin"] .ga-admin-status.is-partially-refunded::before {
+  box-sizing: border-box;
+  border: 1.5px solid var(--adm-warn);
+  background: linear-gradient(90deg, var(--adm-warn) 50%, transparent 50%);
+}
+
 /* Cancelled, rejected, failed: red. */
 [data-theme="indigo-admin"] .ga-admin-status:is(.is-cancelled, .is-rejected, .is-failed) {
   background: var(--adm-bad-soft);

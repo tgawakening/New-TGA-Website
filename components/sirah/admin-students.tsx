@@ -7,6 +7,10 @@ import type { AdminNotificationItem } from "@/services/admin.service";
 import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
+import {
+  sirahDisplayPaymentState,
+  sirahNetReceivedMinor,
+} from "@/lib/sirah/refund-display";
 import { SirahAdminCohort } from "./admin-cohort";
 import { SirahPaymentTotalsPanel } from "./admin-payment-totals";
 import styles from "./admin-students.module.css";
@@ -162,8 +166,16 @@ function Status({ value }: { value: string }) {
     ? "completed"
     : ["CANCELLED", "FAILED", "REJECTED"].includes(value)
       ? "cancelled"
-      : "pending";
+      : value === "PARTIALLY_REFUNDED"
+        ? "partially-refunded"
+        : "pending";
   return <span className={`ga-admin-status is-${tone}`}>{label(value)}</span>;
+}
+
+/** Payment status pill. A PAID order with a verified partial refund reads
+ * "Partially refunded" (not the green "Completed"); display only. */
+function PaymentStatus({ order }: { order: Student }) {
+  return <Status value={sirahDisplayPaymentState(order)} />;
 }
 
 async function readSnapshot(
@@ -953,7 +965,7 @@ export function SirahAdminStudents({
                         : "No method selected"}
                     </strong>
                     <p>{label(student.plan)}</p>
-                    <Status value={student.paymentState} />
+                    <PaymentStatus order={student} />
                   </div>
                   <div>
                     <Status value={student.enrolmentState} />
@@ -1219,7 +1231,7 @@ export function SirahAdminStudents({
               <div className="ga-admin-modal-grid">
                 <p>
                   <strong>Payment:</strong>{" "}
-                  <Status value={selected.paymentState} />
+                  <PaymentStatus order={selected} />
                 </p>
                 <p>
                   <strong>Enrolment:</strong>{" "}
@@ -1243,6 +1255,10 @@ export function SirahAdminStudents({
                 <p>
                   <strong>Refunded:</strong>{" "}
                   {formatSirahMoney(selected.refundedMinor, selected.currency)}
+                </p>
+                <p>
+                  <strong>Net received:</strong>{" "}
+                  {formatSirahMoney(sirahNetReceivedMinor(selected), selected.currency)}
                 </p>
                 <p>
                   <strong>Next billing:</strong> {date(selected.nextBillingAt)}
