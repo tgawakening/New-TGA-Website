@@ -1,19 +1,27 @@
-.filters { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1.5rem 0; }
-.filters label { display: grid; gap: .4rem; flex: 1 1 230px; }
-.filters select { padding: .8rem; border: 1px solid var(--ai-ln-d5e2ec, #d5e2ec); border-radius: 12px; background: var(--ai-bg-fff, white); }
-.cards { display: grid; gap: 1rem; }
-.card { border: 1px solid var(--ai-ln-d5e2ec, #d5e2ec); border-radius: 16px; padding: 1.25rem; min-width: 0; overflow-wrap: anywhere; }
-.card summary { cursor: pointer; padding-top: 1rem; font-weight: 600; }
+/* Filter bar: the same quiet panel and field recipe as the other admin
+ * filters (styles/admin-indigo.css, sections 6 and 9). */
+.filters { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin: 1.25rem 0; padding: 1rem; border: 1px solid var(--adm-rule, #e3e7ee); border-radius: var(--r-md, 12px); background: var(--adm-panel, #f8f9fb); }
+.filters label { display: grid; gap: 6px; flex: 1 1 230px; color: var(--adm-neutral, #3d4757); font-size: .78125rem; font-weight: 600; }
+.filters select { width: 100%; min-height: var(--adm-control-h, 2.5rem); padding: 0 2.25rem 0 .75rem; border: 1.5px solid var(--adm-field-line, #767d93); border-radius: var(--r-sm, 9px); background: var(--ai-bg-fff, white) var(--adm-chevron, none) no-repeat right .75rem center / 14px 14px; color: var(--adm-ink, #1a2233); font: inherit; font-size: .875rem; appearance: none; cursor: pointer; }
+.filters select:focus { outline: 2px solid var(--adm-teal, #0b7566); outline-offset: 1px; border-color: var(--adm-teal, #0b7566); }
+@media (max-width: 639px) { .filters select { font-size: 16px; } }
+.cards { display: grid; gap: .75rem; }
+.card { border: 1px solid var(--ai-ln-d5e2ec, #d5e2ec); border-radius: var(--r-md, 12px); padding: 1.25rem; min-width: 0; overflow-wrap: anywhere; background: var(--adm-card, #fff); transition: background-color var(--dur, .2s) var(--ease, ease); }
+.card:hover { background: var(--adm-row-hover, #f6f8fa); }
+.card summary { cursor: pointer; padding-top: 1rem; font-size: .875rem; font-weight: 600; color: var(--adm-teal-ink, #0a5f54); }
 .summary { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; }
-.summary h2 { margin: 0; font-size: 1.25rem; }
+.summary > div:last-child { display: grid; justify-items: end; gap: 4px; font-size: .8125rem; color: var(--adm-muted, #5b6472); font-variant-numeric: tabular-nums; }
+.summary h2 { margin: 0; font-family: var(--display, Georgia, serif); font-size: 1.125rem; font-weight: 600; }
+.summary > div:first-child p { margin: 2px 0 0; font-size: .8125rem; color: var(--adm-muted, #5b6472); }
 .answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; margin-top: 1.25rem; }
 .answers dt { font-weight: 600; margin-bottom: .35rem; }
 .answers dd { margin: 0; white-space: pre-wrap; }
-@media (max-width: 650px) { .answers { grid-template-columns: 1fr; } .card { padding: 1rem; } }
+@media (max-width: 650px) { .answers { grid-template-columns: 1fr; } .card { padding: 1rem; } .summary > div:last-child { justify-items: start; } }
 .title { font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.25; margin: .4rem 0; }
-.dialog { margin: auto; width: min(560px, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; border: 1px solid var(--ai-ln-d5e2ec, #d5e2ec); border-radius: 18px; padding: 1.5rem; color: var(--ai-fg-153654, #153654); }
+.dialog { margin: auto; width: min(560px, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; border: 1px solid var(--ai-ln-d5e2ec, #d5e2ec); border-radius: var(--r-xl, 18px); padding: 1.5rem; color: var(--ai-fg-153654, #153654); box-shadow: var(--adm-shadow-pop, none); }
 .dialog::backdrop { background: var(--ai-bg-102c4b88, #102c4b88); }
-.dialog h2 { font-size: 1.5rem; }
+.dialog h2 { font-family: var(--display, Georgia, serif); font-size: 1.5rem; font-weight: 600; }
 .dialog p { margin: 1rem 0; overflow-wrap: anywhere; }
-.dialog label { display: grid; gap: .4rem; margin-bottom: 1rem; }
-.dialog textarea { width: 100%; min-height: 90px; border: 1px solid var(--ai-ln-d5e2ec, #d5e2ec); border-radius: 10px; padding: .75rem; }
+.dialog label { display: grid; gap: .4rem; margin-bottom: 1rem; font-weight: 600; }
+.dialog textarea { width: 100%; min-height: 90px; border: 1.5px solid var(--adm-field-line, #d5e2ec); border-radius: var(--r-sm, 10px); padding: .75rem; font: inherit; }
+.dialog textarea:focus { outline: 2px solid var(--adm-teal, #0b7566); outline-offset: 1px; border-color: var(--adm-teal, #0b7566); }

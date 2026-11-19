@@ -262,10 +262,10 @@ export function SirahAdminDiscount() {
           </p>
         )}
 
-        {rows === null && !listError && <p style={{ color: "var(--ai-fg-6a7f95, #6a7f95)" }}>Loading codes…</p>}
+        {rows === null && !listError && <p className="ga-admin-loading" role="status">Loading codes…</p>}
 
         {rows !== null && rows.length === 0 && (
-          <p style={{ color: "var(--ai-fg-6a7f95, #6a7f95)" }}>No discount codes have been created yet.</p>
+          <p className="ga-admin-empty-state" style={{ marginTop: "1rem" }}>No discount codes have been created yet.</p>
         )}
 
         {rows !== null && rows.length > 0 && (

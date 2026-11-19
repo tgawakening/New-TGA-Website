@@ -1,57 +1,82 @@
+/* Sīrah workspace frame: brand rail, top bar and the content column.
+ *
+ * Always rendered inside data-theme="indigo-admin" (app/admin/layout.tsx), so
+ * it is written straight against the admin palette (--adm-*, styles/
+ * admin-indigo.css) and the brand scales (--r-*, --sp-*, --ease, styles/
+ * tokens.css). Light and high-contrast throughout. Checked (WCAG 2.x):
+ * rail links #3d4757 on the rail 8.3:1, section labels #5b6472 5.3:1,
+ * active link #0a5f54 on white 7.6:1, top-bar meta 6.0:1, badges 6.4-6.8:1. */
+
 .frame {
   display: grid;
-  gap: 1.25rem;
-  color: var(--ai-fg-173659, #173659);
+  grid-template-columns: minmax(0, 1fr); /* never wider than the screen */
+  min-height: 100vh;
+  color: var(--adm-ink);
 }
 
+/* ---- Rail ---- */
 .sidebar {
   display: grid;
-  gap: 1rem;
+  gap: var(--sp-3);
   align-content: start;
-  padding: 1rem;
-  border: 1px solid var(--ai-ln-dbe4ef, #dbe4ef);
-  border-radius: 1.2rem;
-  background: var(--ai-bg-255_255_255_0_94, rgba(255, 255, 255, 0.94));
-  box-shadow: 0 18px 40px var(--ai-sh-18_48_88_0_08, rgba(18, 48, 88, 0.08));
+  padding: var(--sp-3) var(--gutter);
+  background: var(--adm-rail);
+  border-bottom: 1px solid var(--adm-rule);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--sp-3);
+  min-width: 0;
   color: inherit;
   text-decoration: none;
+  border-radius: var(--r-sm);
 }
 
-.brandMark {
-  width: 2.6rem;
-  height: 2.6rem;
+.brand:focus-visible {
+  outline: 2px solid var(--adm-teal);
+  outline-offset: 3px;
+}
+
+/* The official lockup, at its own proportions (640 × 246). */
+.brandLogo {
+  display: block;
+  width: 128px;
+  height: auto;
   flex: none;
+}
+
+.brandText {
   display: grid;
-  place-items: center;
-  border-radius: 0.85rem;
-  background: linear-gradient(135deg, var(--ai-bg-1f5f93, #1f5f93), var(--ai-bg-2c7bbb, #2c7bbb));
-  color: var(--ai-fg-fff, #fff);
-  font-weight: 700;
-  font-size: 0.85rem;
+  gap: 1px;
+  min-width: 0;
+  padding-left: var(--sp-3);
+  border-left: 1px solid var(--adm-rule-strong);
 }
 
 .brandText strong {
-  display: block;
-  color: var(--ai-fg-113252, #113252);
-  font-size: 0.98rem;
+  color: var(--adm-ink);
+  font-family: var(--display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .brandText span {
-  color: var(--ai-fg-536779, #536779); /* 5.6:1 on the white sidebar */
-  font-size: 0.8rem;
+  color: var(--adm-muted);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .nav {
   display: flex;
-  gap: 0.4rem;
+  gap: var(--sp-1);
   overflow-x: auto;
-  padding-bottom: 0.15rem;
+  margin-inline: calc(var(--gutter) * -1);
+  padding: 2px var(--gutter) 4px;
   scrollbar-width: thin;
 }
 
@@ -64,334 +89,292 @@
 }
 
 .link {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.625rem;
   flex: none;
-  min-height: 2.6rem;
-  padding: 0.55rem 0.8rem;
-  border-radius: 0.75rem;
-  color: var(--ai-fg-36526f, #36526f);
-  font-weight: 600;
-  font-size: 0.93rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: var(--r-sm);
+  color: var(--adm-neutral);
+  font-size: 0.84375rem;
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
 .link svg {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 18px;
+  height: 18px;
   flex: none;
+  color: var(--adm-muted);
+  transition: color var(--dur) var(--ease);
 }
 
 .link:hover {
-  background: var(--ai-bg-eef4fb, #eef4fb);
-  color: var(--ai-fg-17406a, #17406a);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--adm-ink);
+}
+
+.link:hover svg {
+  color: var(--adm-ink);
 }
 
 .link:focus-visible {
-  outline: 2px solid var(--ai-ln-2c7bbb, #2c7bbb);
-  outline-offset: 2px;
+  outline: 2px solid var(--adm-teal);
+  outline-offset: 1px;
 }
 
+/* Active: a white chip lifted off the rail, teal ink and a teal edge. */
 .active,
 .active:hover {
-  background: linear-gradient(180deg, var(--ai-bg-255f91, #255f91), var(--ai-bg-1d4f7d, #1d4f7d));
-  color: var(--ai-fg-fff, #fff);
+  background: var(--adm-card);
+  color: var(--adm-teal-ink);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--adm-rule), 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+.active svg,
+.active:hover svg {
+  color: var(--adm-teal);
+}
+
+.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--adm-teal);
 }
 
 .sub {
-  font-size: 0.86rem;
+  font-size: 0.8125rem;
 }
 
+/* ---- Content column ---- */
 .main {
   display: grid;
-  gap: 1.25rem;
-  min-width: 0;
   align-content: start;
+  min-width: 0;
+  background: var(--adm-page);
 }
 
+.main > :not(.header) {
+  margin: var(--sp-5) var(--gutter) 0;
+}
+
+.main > :last-child {
+  margin-bottom: var(--sp-16);
+}
+
+/* ---- Top bar ---- */
 .header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem 1rem;
-  padding: 0.8rem 1rem;
-  border: 1px solid var(--ai-ln-dbe4ef, #dbe4ef);
-  border-radius: 1.2rem;
-  background: var(--ai-bg-255_255_255_0_94, rgba(255, 255, 255, 0.94));
-  box-shadow: 0 18px 40px var(--ai-sh-18_48_88_0_06, rgba(18, 48, 88, 0.06));
+  gap: var(--sp-3) var(--sp-4);
+  min-height: 64px;
+  padding: var(--sp-3) var(--gutter);
+  background: var(--adm-card);
+  border-bottom: 1px solid var(--adm-rule);
 }
 
 .headerTitle {
   margin: 0;
-  color: var(--ai-fg-102844, #102844);
-  font-size: 1.15rem;
-  font-weight: 700;
+  color: var(--adm-ink);
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: var(--track-title);
+  line-height: 1.2;
 }
 
 .headerMeta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.6rem;
+  gap: var(--sp-2) var(--sp-3);
 }
 
 .who {
-  display: grid;
-  text-align: right;
-  line-height: 1.25;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
   min-width: 0;
 }
 
-.who strong {
-  color: var(--ai-fg-12314f, #12314f);
-  font-size: 0.9rem;
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: var(--r-pill);
+  background: var(--adm-teal-soft);
+  color: var(--adm-teal-ink);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.whoText {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.whoText strong {
+  color: var(--adm-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.who span {
-  color: var(--ai-fg-536779, #536779); /* 5.6:1 on the white header */
-  font-size: 0.78rem;
+.whoText span {
+  color: var(--adm-muted);
+  font-size: 0.71875rem;
 }
 
+.divider {
+  display: none;
+  width: 1px;
+  height: 24px;
+  background: var(--adm-rule);
+}
+
+/* Role badge: a proper badge, small caps with a status dot. */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
   border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .badge::before {
   content: "";
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
 }
 
 .SUPER_ADMIN {
-  background: var(--ai-bg-fdf1dc, #fdf1dc);
-  border-color: var(--ai-ln-f0d29b, #f0d29b);
-  color: var(--ai-fg-8a5a00, #8a5a00);
+  background: var(--adm-gold-soft);
+  border-color: #e6d3a3;
+  color: var(--adm-gold);
 }
 
 .MANAGER {
-  background: var(--ai-bg-e3f0fc, #e3f0fc);
-  border-color: var(--ai-ln-b6d4f1, #b6d4f1);
-  color: var(--ai-fg-1d4f7d, #1d4f7d);
+  background: var(--adm-teal-soft);
+  border-color: #b5ddd6;
+  color: var(--adm-teal-ink);
 }
 
 .COMMUNITY_LEAD {
-  background: var(--ai-bg-e4f5ec, #e4f5ec);
-  border-color: var(--ai-ln-b5dfc6, #b5dfc6);
-  color: var(--ai-fg-1f6b43, #1f6b43);
+  background: var(--adm-ok-soft);
+  border-color: var(--adm-ok-line);
+  color: var(--adm-ok);
+}
+
+/* Install app and Logout: compact, the same height as each other. */
+.headerMeta :global(.ga-admin-outline-btn) {
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  font-size: 0.8125rem;
+}
+
+.headerMeta :global(.ga-admin-outline-btn) svg {
+  width: 16px;
+  height: 16px;
 }
 
 @media (min-width: 1024px) {
   .frame {
-    grid-template-columns: 250px minmax(0, 1fr);
-    align-items: start;
+    grid-template-columns: 248px minmax(0, 1fr);
   }
 
   .sidebar {
     position: sticky;
-    top: 1.25rem;
+    top: 0;
+    height: 100vh;
+    overflow: auto;
+    gap: var(--sp-2);
+    padding: var(--sp-5) var(--sp-4) var(--sp-6);
+    border-bottom: 0;
+    border-right: 1px solid var(--adm-rule);
+  }
+
+  .brand {
+    display: grid;
+    gap: var(--sp-3);
+    padding: 0 var(--sp-2) var(--sp-4);
+    border-bottom: 1px solid var(--adm-rule);
+    border-radius: 0;
+  }
+
+  .brandLogo {
+    width: 168px;
+  }
+
+  .brandText {
+    padding-left: 0;
+    border-left: 0;
   }
 
   .nav {
     flex-direction: column;
+    gap: var(--sp-1);
     overflow: visible;
+    margin: 0;
+    padding: 0;
   }
 
   .navGroup {
     display: grid;
-    gap: 0.25rem;
+    gap: 2px;
   }
 
+  /* WORKSPACE / TOOLS / ADMINISTRATION */
   .navLabel {
     display: block;
-    margin: 0.6rem 0 0.2rem 0.8rem;
-    color: var(--ai-fg-536779, #536779); /* 5.6:1 on the white sidebar */
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+    margin: var(--sp-5) 0 var(--sp-2) 0.75rem;
+    color: var(--adm-muted);
+    font-size: 0.65625rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
   }
 
   .sub {
-    padding-left: 2.5rem;
-  }
-}
-
-/* Sīrah admin theme (styles/admin-indigo.css). Every rule below is scoped to
- * [data-theme="indigo-admin"], set by app/admin/sirah/layout.tsx. The data
- * area and the sidebar are both light; the sidebar re-declares the colour
- * hooks its children use so they read on white. */
-.brandSeal {
-  display: none;
-}
-
-:global([data-theme="indigo-admin"]) .brandSeal {
-  display: block;
-  width: 34px;
-  height: 34px;
-  flex: none;
-  color: var(--teal);
-}
-
-:global([data-theme="indigo-admin"]) .brandMark {
-  display: none;
-}
-
-:global([data-theme="indigo-admin"]) .frame {
-  gap: 0;
-  min-height: 100vh;
-  color: var(--sand);
-}
-
-:global([data-theme="indigo-admin"]) .sidebar {
-  /* The rail's own palette: light, like the data area (white rail, hairline
-   * edge). Checked: names 15.9:1, links 9.6:1, labels 6.0:1, active
-   * 6.6:1 on its teal tint. */
-  --sand: var(--adm-ink);
-  --dim: var(--adm-neutral);
-  --faint: var(--adm-muted);
-  --line: var(--adm-rule);
-  --teal: var(--adm-teal);
-  --tealb: var(--adm-teal-ink);
-  --ai-bg-255_255_255_0_94: var(--adm-card);
-  --ai-ln-dbe4ef: var(--adm-rule);
-  --ai-fg-113252: var(--adm-ink);
-  --ai-fg-536779: var(--adm-muted);
-  --ai-fg-36526f: var(--adm-neutral);
-  --ai-fg-17406a: var(--adm-ink);
-  --ai-bg-eef4fb: var(--adm-row-hover);
-  --ai-bg-255f91: var(--adm-teal-soft);
-  --ai-fg-fff: var(--adm-teal-ink);
-  --ai-ln-2c7bbb: var(--adm-teal);
-  color-scheme: light;
-  background: var(--adm-card);
-  gap: 0.75rem;
-  padding: 0.875rem var(--gutter);
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  box-shadow: none;
-}
-
-:global([data-theme="indigo-admin"]) .brandText strong {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 0.9375rem;
-}
-
-:global([data-theme="indigo-admin"]) .brandText span {
-  font-size: 0.625rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-
-:global([data-theme="indigo-admin"]) .link {
-  min-height: 2.5rem;
-  border-radius: 9px;
-  font-weight: 500;
-  font-size: 0.84375rem;
-  color: var(--dim);
-}
-
-:global([data-theme="indigo-admin"]) .active,
-:global([data-theme="indigo-admin"]) .active:hover {
-  color: var(--tealb);
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--tealb);
-}
-
-:global([data-theme="indigo-admin"]) .main {
-  gap: 0;
-  background: var(--bg);
-}
-
-/* The page content: the prototype's 30px content column. */
-:global([data-theme="indigo-admin"]) .main > :not(.header) {
-  margin: 1.25rem var(--gutter) 0;
-}
-
-:global([data-theme="indigo-admin"]) .main > :last-child {
-  margin-bottom: 5rem;
-}
-
-:global([data-theme="indigo-admin"]) .header {
-  min-height: 66px;
-  padding: 0.625rem var(--gutter);
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.02);
-  background: var(--ai-bg-15_23_41_0_6, rgba(15, 23, 41, 0.6));
-}
-
-:global([data-theme="indigo-admin"]) .headerTitle {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 1.25rem;
-  color: var(--sand);
-}
-
-:global([data-theme="indigo-admin"]) .who strong {
-  font-weight: 600;
-  color: var(--sand);
-  font-size: 0.75rem;
-}
-
-:global([data-theme="indigo-admin"]) .who span {
-  color: var(--dim);
-  font-size: 0.75rem;
-}
-
-:global([data-theme="indigo-admin"]) .badge {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  padding: 5px 11px;
-}
-
-@media (min-width: 1024px) {
-  :global([data-theme="indigo-admin"]) .frame {
-    grid-template-columns: 258px minmax(0, 1fr);
-    align-items: stretch;
+    padding-left: 2.25rem;
   }
 
-  :global([data-theme="indigo-admin"]) .sidebar {
+  .header {
+    position: sticky;
     top: 0;
-    height: 100vh;
-    overflow: auto;
-    padding: 22px 16px;
-    border-bottom: 0;
-    border-right: 1px solid var(--line);
+    z-index: 20;
+    padding: var(--sp-3) var(--sp-8);
   }
 
-  :global([data-theme="indigo-admin"]) .navLabel {
-    margin: 1.1rem 0 0.4rem 0.625rem;
-    font-size: 0.625rem;
-    font-weight: 500;
-    letter-spacing: 0.2em;
-    color: var(--faint);
+  .divider {
+    display: block;
   }
 
-  :global([data-theme="indigo-admin"]) .header {
-    padding: 0 30px;
-  }
-
-  :global([data-theme="indigo-admin"]) .main > :not(.header) {
-    margin: 1.875rem 30px 0;
+  .main > :not(.header) {
+    margin: var(--sp-8) var(--sp-8) 0;
     max-width: 1320px; /* room for the records table: amounts never wrap */
   }
 }

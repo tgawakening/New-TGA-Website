@@ -1,17 +1,19 @@
-/* Sīrah admin theme: light, high-contrast, built for reading data all day.
+/* Admin theme: light, high-contrast, built for reading data all day.
  *
- * Applies under data-theme="indigo-admin", which app/admin/sirah/layout.tsx
- * sets on every Sīrah admin page. The admin deliberately differs from the
- * dark marketing site: a light data surface with dark ink, hairline-ruled
- * records, unambiguous status pills, and a dark navy brand rail on the left
- * (components/sirah/admin-shell.module.css re-declares the dark values for
- * the sidebar only). Brand: Fraunces headings, Sora body, teal and
- * terracotta accents in deeper shades that meet WCAG AA on white.
+ * Applies under data-theme="indigo-admin", which app/admin/layout.tsx sets on
+ * every admin page (the Sīrah workspace, the main dashboard and both sign-in
+ * screens). The admin deliberately differs from the dark marketing site: a
+ * light data surface with dark ink, hairline-ruled records, unambiguous
+ * status pills, and a softly tinted brand rail. Brand: the official TGA
+ * lockup, Fraunces headings, Sora body and small-caps labels, the brand
+ * radius/spacing/motion scales (styles/tokens.css), and teal / terracotta /
+ * gold accents in deeper shades that meet WCAG AA on white.
  *
  * Contrast (WCAG 2.x, checked): ink #1a2233 on white 15.9:1; muted #5b6472
- * 6.0:1 (5.5:1 on the page ground); deep teal #0b7566 links and button fills
- * 5.6:1; terracotta #a8431f 6.0:1; pills 6.4–8.0:1; form-control borders
- * #8a93a3 3.1:1 (non-text, 1.4.11).
+ * 6.0:1 (5.6:1 on the page ground, 5.3:1 on the rail); deep teal #0b7566
+ * links and button fills 5.6:1; terracotta #a8431f 6.0:1; pills 6.4–8.0:1;
+ * form-control edges #767d93 4.1:1 (non-text, 1.4.11, the new site's field
+ * line); chart colours 3.9–9.7:1 on white.
  *
  * Layers:
  *   0. The Indigo design tokens, re-pointed to the light palette, so every
@@ -20,22 +22,30 @@
  *      (scripts/themeable-admin-colors.mjs; each keeps its original colour
  *      as a fallback outside this theme).
  *   2. The Sīrah classroom tokens, for the admin Classroom page.
- *   3. The shared global .ga-admin-* classes the workspace uses.
+ *   3–13. The shared global .ga-admin-* classes: frame, type, cards, fields
+ *      and filter bar, buttons, tables, pills, empty/loading states, bell,
+ *      dialogs, and the main dashboard.
  * Restyle only: no selector here hides, adds or reorders anything. */
 
 [data-theme="indigo-admin"] {
   color-scheme: light;
 
   /* ---- Palette ---- */
-  --adm-page: #f5f6f8;
+  --adm-page: #f6f7f9;
+  --adm-rail: #eef1f6;          /* sidebar: a cool tint off the page ground */
   --adm-card: #ffffff;
-  --adm-row-hover: #f8f9fb;
+  --adm-panel: #f8f9fb;         /* filter bar, table head */
+  --adm-row-hover: #f6f8fa;
   --adm-ink: #1a2233;
   --adm-muted: #5b6472;
   --adm-faint: #6b7380;
   --adm-rule: #e3e7ee;          /* hairlines between records */
   --adm-rule-strong: #cfd5df;   /* card and button outlines */
-  --adm-control: #8a93a3;       /* form-control borders, 3.1:1 */
+  --adm-control: #8a93a3;       /* legacy hook value, 3.1:1 */
+  --adm-field-line: #767d93;    /* field edges, 4.1:1 (the new site's field line) */
+  --adm-btn-line: #c3cad5;      /* secondary button outline */
+  --adm-control-h: 2.5rem;      /* fields and buttons: one height */
+  --adm-control-h-sm: 2rem;     /* row actions */
   --adm-teal: #0b7566;          /* buttons, links, active */
   --adm-teal-hover: #095e52;
   --adm-teal-soft: #dcf1ed;
@@ -56,8 +66,20 @@
   --adm-gold: #6e4a00;
   --adm-gold-soft: #f8edd0;
   --adm-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --adm-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px -14px rgba(16, 24, 40, 0.12);
   --adm-shadow-pop: 0 20px 48px -12px rgba(16, 24, 40, 0.25);
-  --adm-focus: 0 0 0 3px rgba(11, 117, 102, 0.22);
+  --adm-focus: 0 0 0 4px rgba(11, 117, 102, 0.16);
+
+  /* Chart palette: teal, gold, terracotta, indigo, violet (3.9–9.7:1 on white). */
+  --adm-chart-1: #0b7566;
+  --adm-chart-2: #a77a14;
+  --adm-chart-3: #c25a33;
+  --adm-chart-4: #2f3f86;
+  --adm-chart-5: #6450b0;
+
+  /* Inline icons (stroke #5b6472). */
+  --adm-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%235b6472' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  --adm-empty-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6472' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-6l-2 3h-4l-2-3H2'/%3E%3Cpath d='M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E");
 
   /* ---- 0. Indigo tokens, re-pointed (module overrides use these) ---- */
   --bg: var(--adm-page);
@@ -196,62 +218,90 @@
   --color-ok-soft: var(--adm-ok-soft);
   --font-display: var(--display);
   --font-body: var(--body);
-  --radius-control: 8px;
+  --radius-control: var(--r-sm);
+  --control-height: var(--adm-control-h);
   color-scheme: light;
 }
 
-/* ---- 3. Shared global admin classes, as used by the workspace ---- */
+/* ==== 3. Page and frame ==== */
 [data-theme="indigo-admin"] .ga-admin-page {
   background: var(--adm-page);
   color: var(--adm-ink);
 }
 
-/* Full-bleed app frame: no outer gutter or card around the shell. */
-[data-theme="indigo-admin"] .ga-admin-page-section {
+/* The Sīrah workspace is a full-bleed app frame (rail + top bar). The main
+ * dashboard and the sign-in screens keep the centred container. */
+[data-theme="indigo-admin"] .ga-admin-page[data-frame="app"] .ga-admin-page-section {
   padding: 0;
 }
 
-[data-theme="indigo-admin"] .ga-admin-container {
+[data-theme="indigo-admin"] .ga-admin-page[data-frame="app"] .ga-admin-container {
   width: 100%;
 }
 
-[data-theme="indigo-admin"] .ga-admin-workspace-card,
-[data-theme="indigo-admin"] .ga-admin-card,
-[data-theme="indigo-admin"] .ga-admin-login-card,
-[data-theme="indigo-admin"] .ga-admin-hero-card {
-  background: var(--adm-card);
-  border-color: var(--adm-rule);
-  border-radius: 12px;
-  box-shadow: var(--adm-shadow);
-  color: var(--adm-ink);
+[data-theme="indigo-admin"] .ga-admin-shell {
+  gap: var(--sp-5);
 }
 
-[data-theme="indigo-admin"] .ga-admin-kicker {
-  color: var(--adm-teal-ink);
-  font-weight: 600;
-  letter-spacing: 0.16em;
-}
-
-[data-theme="indigo-admin"] .ga-admin-workspace-head h2,
-[data-theme="indigo-admin"] .ga-admin-modal-head h3,
-[data-theme="indigo-admin"] .ga-admin-modal-section h4 {
+/* ==== 4. Type: Fraunces headings, Sora small-caps labels ==== */
+[data-theme="indigo-admin"] :is(
+  .ga-admin-workspace-head h1,
+  .ga-admin-workspace-head h2,
+  .ga-admin-card h2,
+  .ga-admin-title,
+  .ga-admin-modal-head h3,
+  .ga-admin-modal-section h4,
+  .ga-admin-donut-hole strong
+) {
   color: var(--adm-ink);
   font-family: var(--display);
   font-weight: 600;
+  letter-spacing: var(--track-title);
 }
 
-[data-theme="indigo-admin"] .ga-admin-workspace-head p,
-[data-theme="indigo-admin"] .ga-admin-copy-stack p,
-[data-theme="indigo-admin"] .ga-admin-empty-state,
-[data-theme="indigo-admin"] .ga-admin-table-row p,
-[data-theme="indigo-admin"] .ga-admin-mini-card p {
+[data-theme="indigo-admin"] :is(.ga-admin-workspace-head h1, .ga-admin-workspace-head h2) {
+  margin: var(--sp-1) 0 0;
+  font-size: clamp(1.375rem, 1.15rem + 0.8vw, 1.75rem);
+  line-height: 1.2;
+}
+
+[data-theme="indigo-admin"] .ga-admin-card h2 {
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+[data-theme="indigo-admin"] .ga-admin-kicker {
+  margin: 0;
+  color: var(--adm-teal-ink);
+  font-family: var(--body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+[data-theme="indigo-admin"] :is(
+  .ga-admin-workspace-head p,
+  .ga-admin-copy-stack p,
+  .ga-admin-table-row p,
+  .ga-admin-mini-card p,
+  .ga-admin-card p,
+  .ga-admin-subtitle
+) {
   color: var(--adm-muted);
 }
 
-[data-theme="indigo-admin"] .ga-admin-workspace-head a:not([class]),
-[data-theme="indigo-admin"] .ga-admin-modal a:not([class]),
-[data-theme="indigo-admin"] .ga-admin-copy-stack a:not([class]) {
+[data-theme="indigo-admin"] :is(.ga-admin-workspace-head p, p.ga-admin-workspace-head) {
+  margin-top: var(--sp-2);
+  max-width: 72ch;
+  color: var(--adm-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-workspace-head, .ga-admin-modal, .ga-admin-copy-stack) a:not([class]) {
   color: var(--adm-teal);
+  font-weight: 600;
   text-underline-offset: 2px;
 }
 
@@ -266,40 +316,117 @@
   font-weight: 600;
 }
 
-[data-theme="indigo-admin"] .ga-admin-label {
-  color: var(--adm-muted);
-  font-weight: 600;
+/* Numbers line up: tabular figures wherever records and amounts appear. */
+[data-theme="indigo-admin"] :is(.ga-admin-data-table, .ga-admin-table-row, .ga-admin-mini-card, .ga-admin-fee-card, .ga-admin-row, .ga-admin-modal, .ga-admin-metric-card, .ga-admin-legend, .ga-admin-highlight-metrics) {
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
-/* Column heads: small, uppercase, muted, but still 6:1. */
-[data-theme="indigo-admin"] .ga-admin-table-head {
-  color: var(--adm-muted);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-}
-
-[data-theme="indigo-admin"] .ga-admin-filter-row label {
-  color: var(--adm-ink);
-  font-weight: 600;
-}
-
-[data-theme="indigo-admin"] .ga-admin-search,
-[data-theme="indigo-admin"] .ga-admin-filter-row select,
-[data-theme="indigo-admin"] .ga-admin-note,
-[data-theme="indigo-admin"] .ga-admin-login-form input {
+/* ==== 5. Cards ==== */
+[data-theme="indigo-admin"] :is(.ga-admin-workspace-card, .ga-admin-card, .ga-admin-login-card, .ga-admin-hero-card) {
   background: var(--adm-card);
-  border-color: var(--adm-control);
-  border-radius: 8px;
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-lg);
+  box-shadow: var(--adm-shadow-card);
   color: var(--adm-ink);
 }
 
-[data-theme="indigo-admin"] .ga-admin-search:focus,
-[data-theme="indigo-admin"] .ga-admin-filter-row select:focus,
-[data-theme="indigo-admin"] .ga-admin-note:focus,
-[data-theme="indigo-admin"] .ga-admin-login-form input:focus {
-  outline: none;
+[data-theme="indigo-admin"] .ga-admin-workspace-card {
+  padding: var(--sp-4);
+}
+
+[data-theme="indigo-admin"] .ga-admin-workspace-head {
+  gap: var(--sp-4);
+}
+
+@media (min-width: 640px) {
+  [data-theme="indigo-admin"] .ga-admin-workspace-card {
+    padding: var(--sp-6);
+  }
+}
+
+/* Title left, its actions right, aligned to the title's baseline row. */
+@media (min-width: 900px) {
+  [data-theme="indigo-admin"] .ga-admin-workspace-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  [data-theme="indigo-admin"] .ga-admin-workspace-head > .ga-admin-actions {
+    justify-content: flex-end;
+    max-width: 34rem;
+  }
+
+  /* A search box placed in the head (main dashboard tabs) keeps a usable width. */
+  [data-theme="indigo-admin"] .ga-admin-workspace-head > .ga-admin-search {
+    width: 22rem;
+  }
+}
+
+/* Inline records (discount result, access notices) and the fee cards. */
+[data-theme="indigo-admin"] :is(.ga-admin-row, .ga-admin-mini-card, .ga-admin-fee-card) {
+  background: var(--adm-card);
+  border-color: var(--adm-rule);
+  border-radius: var(--r-md);
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-table-row, .ga-admin-mini-card, .ga-admin-row, .ga-admin-fee-card) strong {
+  color: var(--adm-ink);
+}
+
+/* ==== 6. Fields and the filter bar (the new site's field recipe:
+ * light surface, 1.5px edge at 4:1, clear focus ring) ==== */
+[data-theme="indigo-admin"] :is(
+  .ga-admin-search,
+  .ga-admin-filter-row select,
+  .ga-admin-note,
+  .ga-admin-login-form input
+) {
+  width: 100%;
+  min-height: var(--adm-control-h);
+  padding: 0 0.75rem;
+  border: 1.5px solid var(--adm-field-line);
+  border-radius: var(--r-sm);
+  background-color: var(--adm-card);
+  color: var(--adm-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+[data-theme="indigo-admin"] .ga-admin-note {
+  min-height: 6.4rem;
+  padding: 0.625rem 0.75rem;
+}
+
+/* Selects: one chevron, never clipped text. */
+[data-theme="indigo-admin"] :is(select.ga-admin-search, .ga-admin-filter-row select) {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: var(--adm-chevron);
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 14px 14px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-search, .ga-admin-filter-row select, .ga-admin-note, .ga-admin-login-form input):hover:not(:disabled, :focus) {
+  border-color: var(--adm-muted);
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-search, .ga-admin-filter-row select, .ga-admin-note, .ga-admin-login-form input):focus,
+[data-theme="indigo-admin"] :where(input:not([type="checkbox"], [type="radio"]), select, textarea):focus-visible {
+  outline: 2px solid var(--adm-teal);
+  outline-offset: 1px;
   border-color: var(--adm-teal);
   box-shadow: var(--adm-focus);
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-search, .ga-admin-filter-row select):disabled {
+  background-color: var(--adm-neutral-soft);
+  color: var(--adm-muted);
+  cursor: not-allowed;
 }
 
 [data-theme="indigo-admin"] ::placeholder {
@@ -307,31 +434,108 @@
   opacity: 1;
 }
 
+/* Native form controls inside the workspace that carry no class of their own */
+[data-theme="indigo-admin"] :where(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
+  background-color: var(--adm-card);
+  color: var(--adm-ink);
+  border-color: var(--adm-field-line);
+}
+
+[data-theme="indigo-admin"] :where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--adm-teal);
+}
+
+[data-theme="indigo-admin"] :where(summary) {
+  color: var(--adm-ink);
+}
+
+/* Phones: 16px text so iOS does not zoom into a field on focus. */
+@media (max-width: 639px) {
+  [data-theme="indigo-admin"] :is(.ga-admin-search, .ga-admin-filter-row select, .ga-admin-note, .ga-admin-login-form input) {
+    font-size: 16px;
+  }
+}
+
+/* Field labels: small, strong, Sora. */
+[data-theme="indigo-admin"] :is(.ga-admin-filter-row label, .ga-admin-field-grid label) {
+  gap: 6px;
+  color: var(--adm-neutral);
+  font-size: 0.78125rem;
+  font-weight: 600;
+}
+
+[data-theme="indigo-admin"] .ga-admin-label {
+  color: var(--adm-neutral);
+  font-size: 0.78125rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Filter-bar selects: slightly smaller text and a tighter chevron gutter so
+ * every default option label shows in full. */
+@media (min-width: 640px) {
+  [data-theme="indigo-admin"] .ga-admin-filter-row select {
+    padding-right: 2rem;
+    background-position: right 0.625rem center;
+    font-size: 0.84375rem;
+  }
+}
+
+/* The filter bar: every filter grouped on one quiet panel. */
+[data-theme="indigo-admin"] .ga-admin-filter-row {
+  gap: var(--sp-3) var(--sp-4);
+  margin-top: var(--sp-5);
+  padding: var(--sp-4);
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-md);
+  background: var(--adm-panel);
+  align-items: end;
+}
+
+/* ==== 7. Buttons: primary brand-filled, secondary outline, one height ==== */
+[data-theme="indigo-admin"] :is(.ga-admin-primary-btn, .ga-admin-outline-btn, .ga-admin-ghost-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--adm-control-h);
+  padding: 0 var(--sp-4);
+  border: 1.5px solid transparent;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
 [data-theme="indigo-admin"] .ga-admin-primary-btn {
   background: var(--adm-teal);
   border-color: var(--adm-teal);
-  border-radius: 8px;
   color: #ffffff;
-  box-shadow: none;
 }
 
-[data-theme="indigo-admin"] .ga-admin-primary-btn:hover {
+[data-theme="indigo-admin"] .ga-admin-primary-btn:hover:not(:disabled) {
   background: var(--adm-teal-hover);
   border-color: var(--adm-teal-hover);
   color: #ffffff;
   box-shadow: none;
+  transform: none;
 }
 
-[data-theme="indigo-admin"] .ga-admin-ghost-btn,
-[data-theme="indigo-admin"] .ga-admin-outline-btn {
+[data-theme="indigo-admin"] :is(.ga-admin-outline-btn, .ga-admin-ghost-btn) {
   background: var(--adm-card);
-  border-color: var(--adm-rule-strong);
-  border-radius: 8px;
+  border-color: var(--adm-btn-line);
   color: var(--adm-ink);
 }
 
-[data-theme="indigo-admin"] .ga-admin-ghost-btn:hover,
-[data-theme="indigo-admin"] .ga-admin-outline-btn:hover {
+[data-theme="indigo-admin"] :is(.ga-admin-outline-btn, .ga-admin-ghost-btn):hover:not(:disabled) {
   background: var(--adm-teal-soft);
   border-color: var(--adm-teal);
   color: var(--adm-teal-ink);
@@ -343,85 +547,201 @@
   color: var(--adm-terra);
 }
 
-[data-theme="indigo-admin"] .ga-admin-outline-btn.is-danger:hover {
+[data-theme="indigo-admin"] .ga-admin-outline-btn.is-danger:hover:not(:disabled) {
   background: var(--adm-terra-soft);
   border-color: var(--adm-terra);
   color: var(--adm-terra);
 }
 
-[data-theme="indigo-admin"] :is(.ga-admin-primary-btn, .ga-admin-ghost-btn, .ga-admin-outline-btn):focus-visible {
+[data-theme="indigo-admin"] :is(.ga-admin-primary-btn, .ga-admin-outline-btn, .ga-admin-ghost-btn):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-primary-btn, .ga-admin-ghost-btn, .ga-admin-outline-btn, .ga-admin-nav-pill, .ga-admin-bell-btn):focus-visible {
   outline: 2px solid var(--adm-teal);
   outline-offset: 2px;
 }
 
-/* Records: white rows on the light ground, separated by clear hairlines. */
-[data-theme="indigo-admin"] .ga-admin-table-row,
-[data-theme="indigo-admin"] .ga-admin-mini-card,
-[data-theme="indigo-admin"] .ga-admin-fee-card,
-[data-theme="indigo-admin"] .ga-admin-row {
+/* ==== 8. Tables: one ruled table on wide screens, cards on phones ==== */
+[data-theme="indigo-admin"] .ga-admin-data-table {
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-table-head, .ga-admin-table-row) {
+  column-gap: var(--sp-3);
+}
+
+[data-theme="indigo-admin"] .ga-admin-table-row {
+  padding: var(--sp-4);
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-md);
   background: var(--adm-card);
-  border-color: var(--adm-rule);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  transition: background-color var(--dur) var(--ease);
 }
 
 [data-theme="indigo-admin"] .ga-admin-table-row:hover {
   background: var(--adm-row-hover);
 }
 
-[data-theme="indigo-admin"] .ga-admin-table-row strong,
-[data-theme="indigo-admin"] .ga-admin-mini-card strong,
-[data-theme="indigo-admin"] .ga-admin-row strong,
-[data-theme="indigo-admin"] .ga-admin-fee-card strong {
-  color: var(--adm-ink);
-}
-
-/* Numbers line up: tabular figures wherever records and amounts appear. */
-[data-theme="indigo-admin"] :is(.ga-admin-data-table, .ga-admin-table-row, .ga-admin-mini-card, .ga-admin-fee-card, .ga-admin-row, .ga-admin-modal) {
-  font-variant-numeric: tabular-nums lining-nums;
-}
-
-/* Tags and status pills: tinted ground, dark text, a hairline edge so the
- * pill reads as a pill on white. */
-[data-theme="indigo-admin"] .ga-admin-tag,
-[data-theme="indigo-admin"] .ga-admin-pill {
-  background: var(--adm-teal-soft);
-  border: 1px solid #b5ddd6;
-  color: var(--adm-teal-ink);
+[data-theme="indigo-admin"] .ga-admin-table-row strong {
+  font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1.4;
 }
 
+[data-theme="indigo-admin"] .ga-admin-table-row p {
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+/* Column heads: small caps, muted, still 6:1. */
+[data-theme="indigo-admin"] .ga-admin-table-head {
+  color: var(--adm-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Row actions: compact, one line each, wrapping as a group. */
+[data-theme="indigo-admin"] .ga-admin-table-row .ga-admin-actions {
+  gap: 6px;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+[data-theme="indigo-admin"] .ga-admin-table-row :is(.ga-admin-primary-btn, .ga-admin-outline-btn, .ga-admin-ghost-btn) {
+  min-height: var(--adm-control-h-sm);
+  max-width: 100%;
+  padding: 0.3125rem 0.625rem;
+  border-width: 1px;
+  font-size: 0.78125rem;
+  text-align: left;
+}
+
+@media (min-width: 900px) {
+  [data-theme="indigo-admin"] .ga-admin-data-table {
+    gap: 0;
+    border: 1px solid var(--adm-rule);
+    border-radius: var(--r-md);
+    background: var(--adm-card);
+    overflow: hidden;
+  }
+
+  [data-theme="indigo-admin"] .ga-admin-table-head {
+    padding: 0.625rem var(--sp-4);
+    background: var(--adm-panel);
+    border-bottom: 1px solid var(--adm-rule);
+    align-items: end;
+  }
+
+  [data-theme="indigo-admin"] .ga-admin-table-row {
+    padding: 0.875rem var(--sp-4);
+    border: 0;
+    border-top: 1px solid var(--adm-rule);
+    border-radius: 0;
+  }
+
+  [data-theme="indigo-admin"] :is(.ga-admin-table-head + .ga-admin-table-row, .ga-admin-data-table > .ga-admin-table-row:first-child) {
+    border-top: 0;
+  }
+
+  [data-theme="indigo-admin"] .ga-admin-data-table > .ga-admin-empty-state {
+    border: 0;
+    border-radius: 0;
+  }
+}
+
+/* ==== 9. Status pills and tags ==== */
 [data-theme="indigo-admin"] .ga-admin-status {
-  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 2px 9px;
+  border: 1px solid var(--adm-rule-strong);
+  border-radius: var(--r-pill);
+  background: var(--adm-neutral-soft);
+  color: var(--adm-neutral);
+  font-size: 0.71875rem;
   font-weight: 600;
   letter-spacing: 0.01em;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-[data-theme="indigo-admin"] .ga-admin-status.is-completed,
-[data-theme="indigo-admin"] .ga-admin-status.is-approved,
-[data-theme="indigo-admin"] .ga-admin-status.is-succeeded,
-[data-theme="indigo-admin"] .ga-admin-status.is-confirmed {
+[data-theme="indigo-admin"] .ga-admin-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Paid, active, approved: green. */
+[data-theme="indigo-admin"] .ga-admin-status:is(.is-completed, .is-approved, .is-succeeded, .is-confirmed, .is-active) {
   background: var(--adm-ok-soft);
   border-color: var(--adm-ok-line);
   color: var(--adm-ok);
 }
 
+/* Pending, awaiting: amber. */
 [data-theme="indigo-admin"] .ga-admin-status.is-pending {
   background: var(--adm-warn-soft);
   border-color: var(--adm-warn-line);
   color: var(--adm-warn);
 }
 
-[data-theme="indigo-admin"] .ga-admin-status.is-under_review {
+/* Under review, used up, not added: neutral. */
+[data-theme="indigo-admin"] .ga-admin-status:is(.is-under_review, .is-neutral) {
   background: var(--adm-neutral-soft);
   border-color: var(--adm-rule-strong);
   color: var(--adm-neutral);
 }
 
-[data-theme="indigo-admin"] .ga-admin-status.is-cancelled,
-[data-theme="indigo-admin"] .ga-admin-status.is-rejected,
-[data-theme="indigo-admin"] .ga-admin-status.is-failed {
+/* Cancelled, rejected, failed: red. */
+[data-theme="indigo-admin"] .ga-admin-status:is(.is-cancelled, .is-rejected, .is-failed) {
   background: var(--adm-bad-soft);
   border-color: var(--adm-bad-line);
   color: var(--adm-bad);
+}
+
+/* Tags (course, custom link): a small square-cornered label, not a status. */
+[data-theme="indigo-admin"] :is(.ga-admin-tag, .ga-admin-pill) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 1px 7px;
+  border: 1px solid #b5ddd6;
+  border-radius: var(--r-xs);
+  background: var(--adm-teal-soft);
+  color: var(--adm-teal-ink);
+  font-size: 0.65625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+[data-theme="indigo-admin"] .ga-admin-subpill {
+  background: var(--adm-neutral-soft);
+  color: var(--adm-neutral);
+}
+
+/* ==== 10. Banners, empty and loading states ==== */
+[data-theme="indigo-admin"] :is(.ga-admin-success-banner, .ga-admin-error-banner) {
+  padding: 0.75rem var(--sp-4);
+  border: 1px solid;
+  border-radius: var(--r-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 [data-theme="indigo-admin"] .ga-admin-success-banner {
@@ -436,9 +756,122 @@
   color: var(--adm-bad);
 }
 
-[data-theme="indigo-admin"] .ga-admin-modal {
+[data-theme="indigo-admin"] .ga-admin-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: var(--sp-10) var(--sp-4);
+  border: 1.5px dashed var(--adm-rule-strong);
+  border-radius: var(--r-md);
   background: var(--adm-card);
-  border-color: var(--adm-rule);
+  color: var(--adm-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+[data-theme="indigo-admin"] .ga-admin-empty-state::before {
+  content: "";
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--adm-neutral-soft) var(--adm-empty-icon) center / 18px 18px no-repeat;
+}
+
+[data-theme="indigo-admin"] .ga-admin-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  margin: var(--sp-4) 0 0;
+  padding: var(--sp-10) var(--sp-4);
+  color: var(--adm-muted);
+  font-size: 0.875rem;
+}
+
+[data-theme="indigo-admin"] .ga-admin-loading::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: 2px solid var(--adm-rule-strong);
+  border-top-color: var(--adm-teal);
+  border-radius: 50%;
+  animation: adm-spin 0.8s linear infinite;
+}
+
+@keyframes adm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="indigo-admin"] .ga-admin-loading::before {
+    animation: none;
+  }
+}
+
+/* ==== 11. Notification bell ==== */
+[data-theme="indigo-admin"] .ga-admin-bell-btn {
+  width: var(--adm-control-h);
+  height: var(--adm-control-h);
+  border: 1.5px solid var(--adm-btn-line);
+  border-radius: var(--r-sm);
+  background: var(--adm-card);
+  color: var(--adm-ink);
+}
+
+[data-theme="indigo-admin"] .ga-admin-bell-btn:hover {
+  border-color: var(--adm-teal);
+  background: var(--adm-teal-soft);
+  color: var(--adm-teal-ink);
+}
+
+[data-theme="indigo-admin"] .ga-admin-bell-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Count: white on a deeper red (6.6:1), ringed so it reads on any ground. */
+[data-theme="indigo-admin"] .ga-admin-bell-badge {
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border: 2px solid var(--adm-card);
+  background: #b42318;
+  color: #ffffff;
+  font-size: 0.65625rem;
+  font-variant-numeric: tabular-nums;
+  box-shadow: none;
+}
+
+[data-theme="indigo-admin"] .ga-admin-notification-panel {
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-md);
+  background: var(--adm-card);
+  box-shadow: var(--adm-shadow-pop);
+}
+
+[data-theme="indigo-admin"] .ga-admin-notification-head {
+  border-bottom-color: var(--adm-rule);
+}
+
+[data-theme="indigo-admin"] .ga-admin-notification-item.is-unread {
+  background: #f0f8f6;
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-notification-close, .ga-admin-notification-empty) {
+  color: var(--adm-muted);
+}
+
+/* ==== 12. Dialogs ==== */
+[data-theme="indigo-admin"] .ga-admin-modal {
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-xl);
+  background: var(--adm-card);
   box-shadow: var(--adm-shadow-pop);
   color: var(--adm-ink);
 }
@@ -447,31 +880,239 @@
   border-color: var(--adm-rule);
 }
 
-[data-theme="indigo-admin"] .ga-admin-donation-dialog::backdrop {
+[data-theme="indigo-admin"] :is(.ga-admin-donation-dialog, .ga-admin-modal-backdrop)::backdrop,
+[data-theme="indigo-admin"] .ga-admin-modal-backdrop {
   background: rgba(16, 24, 40, 0.45);
 }
 
-[data-theme="indigo-admin"] .ga-admin-notification-close {
+/* ==== 13. Main dashboard (/admin) ==== */
+[data-theme="indigo-admin"] .ga-admin-topbar {
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-lg);
+  background: var(--adm-card);
+  box-shadow: var(--adm-shadow-card);
+}
+
+[data-theme="indigo-admin"] .ga-admin-brand {
+  gap: var(--sp-3);
+  border-radius: var(--r-sm);
+}
+
+[data-theme="indigo-admin"] .ga-admin-brand:focus-visible {
+  outline: 2px solid var(--adm-teal);
+  outline-offset: 3px;
+}
+
+/* The official lockup, at its own proportions (640 × 246). */
+[data-theme="indigo-admin"] .ga-admin-brand-logo {
+  display: block;
+  width: 150px;
+  height: auto;
+}
+
+[data-theme="indigo-admin"] .ga-admin-brand-subtitle {
+  margin: 0;
+  padding-left: var(--sp-3);
+  border-left: 1px solid var(--adm-rule-strong);
+  color: var(--adm-muted);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+[data-theme="indigo-admin"] .ga-admin-nav {
+  gap: var(--sp-1);
+}
+
+[data-theme="indigo-admin"] .ga-admin-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--adm-neutral);
+  font: inherit;
+  font-size: 0.84375rem;
+  font-weight: 500;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+[data-theme="indigo-admin"] .ga-admin-nav-pill:hover {
+  background: var(--adm-neutral-soft);
+  border-color: transparent;
+  color: var(--adm-ink);
+  box-shadow: none;
+}
+
+[data-theme="indigo-admin"] .ga-admin-nav-pill.is-active,
+[data-theme="indigo-admin"] .ga-admin-nav-pill.is-active:hover {
+  background: var(--adm-teal-soft);
+  border-color: #b5ddd6;
+  color: var(--adm-teal-ink);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar-actions {
+  gap: var(--sp-2);
+}
+
+[data-theme="indigo-admin"] .ga-admin-user-chip {
+  padding: 4px 12px 4px 4px;
+  border-color: var(--adm-rule);
+  background: var(--adm-card);
+}
+
+[data-theme="indigo-admin"] .ga-admin-user-avatar {
+  width: 32px;
+  height: 32px;
+  background: var(--adm-teal-soft);
+  color: var(--adm-teal-ink);
+  font-size: 0.8125rem;
+}
+
+[data-theme="indigo-admin"] .ga-admin-user-chip strong {
+  color: var(--adm-ink);
+  font-size: 0.8125rem;
+}
+
+[data-theme="indigo-admin"] .ga-admin-user-chip span {
+  color: var(--adm-muted);
+  font-size: 0.71875rem;
+}
+
+[data-theme="indigo-admin"] .ga-admin-hero-card {
+  padding: var(--sp-6);
+}
+
+[data-theme="indigo-admin"] .ga-admin-title {
+  margin-top: var(--sp-1);
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.125rem);
+  line-height: 1.15;
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-date-chip, .ga-admin-login-badge) {
+  border: 1px solid var(--adm-rule);
+  background: var(--adm-panel);
+  color: var(--adm-neutral);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+/* Metric cards: white, with a thin brand-colour edge instead of a tint. */
+[data-theme="indigo-admin"] .ga-admin-metric-card,
+[data-theme="indigo-admin"] .ga-admin-metric-card:is(.is-mint, .is-blue, .is-lilac, .is-gold) {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-lg);
+  background: var(--adm-card);
+  box-shadow: var(--adm-shadow-card);
+}
+
+[data-theme="indigo-admin"] .ga-admin-metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--metric-edge, var(--adm-chart-1));
+}
+
+[data-theme="indigo-admin"] .ga-admin-metric-card.is-mint { --metric-edge: var(--adm-chart-1); }
+[data-theme="indigo-admin"] .ga-admin-metric-card.is-blue { --metric-edge: var(--adm-chart-4); }
+[data-theme="indigo-admin"] .ga-admin-metric-card.is-lilac { --metric-edge: var(--adm-chart-5); }
+[data-theme="indigo-admin"] .ga-admin-metric-card.is-gold { --metric-edge: var(--adm-chart-2); }
+
+[data-theme="indigo-admin"] .ga-admin-metric-card span {
+  color: var(--adm-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+[data-theme="indigo-admin"] .ga-admin-metric-card strong {
+  color: var(--adm-ink);
+  font-family: var(--body);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="indigo-admin"] .ga-admin-metric-card small {
+  color: var(--adm-muted);
+  font-size: 0.78125rem;
+}
+
+/* Charts: the brand data palette (each colour 3:1 or better on white). */
+[data-theme="indigo-admin"] :is(.dot.is-blue, .ga-admin-bar-fill.is-blue, .ga-admin-progress-fill.is-blue) { background: var(--adm-chart-1); }
+[data-theme="indigo-admin"] :is(.dot.is-gold, .ga-admin-bar-fill.is-gold, .ga-admin-progress-fill.is-gold) { background: var(--adm-chart-2); }
+[data-theme="indigo-admin"] :is(.dot.is-rose, .ga-admin-bar-fill.is-rose, .ga-admin-progress-fill.is-rose) { background: var(--adm-chart-3); }
+[data-theme="indigo-admin"] :is(.ga-admin-bar-fill.is-mint, .ga-admin-progress-fill.is-mint) { background: var(--adm-chart-4); }
+[data-theme="indigo-admin"] .ga-admin-bar-fill.is-lilac { background: var(--adm-chart-5); }
+
+[data-theme="indigo-admin"] :is(.ga-admin-bar-track, .ga-admin-progress-track) {
+  height: 0.5rem;
+  background: var(--adm-rule);
+}
+
+[data-theme="indigo-admin"] :is(.ga-admin-legend div, .ga-admin-bar-meta, .ga-admin-progress-meta) {
+  color: var(--adm-neutral);
+  font-size: 0.875rem;
+}
+
+[data-theme="indigo-admin"] .ga-admin-legend strong {
+  color: var(--adm-ink);
+}
+
+[data-theme="indigo-admin"] .ga-admin-donut-hole {
+  background: var(--adm-card);
+  box-shadow: inset 0 0 0 1px var(--adm-rule);
+}
+
+[data-theme="indigo-admin"] .ga-admin-donut-hole span {
   color: var(--adm-muted);
 }
 
-/* Native form controls inside the workspace that carry no class of their own */
-[data-theme="indigo-admin"] :where(input:not([type="checkbox"], [type="radio"], [type="file"]), select, textarea) {
-  background-color: var(--adm-card);
+/* "This month": the one dark panel, in the brand indigo (sand on indigo
+ * 13.4:1, parchment 9.6:1). */
+[data-theme="indigo-admin"] .ga-admin-highlight-card {
+  border-color: #141d33;
+  background: #141d33;
+  color: #ede9df;
+}
+
+[data-theme="indigo-admin"] .ga-admin-highlight-card :is(h2, strong) {
+  color: #ede9df;
+}
+
+[data-theme="indigo-admin"] .ga-admin-highlight-card h2 {
+  font-family: var(--display);
+}
+
+[data-theme="indigo-admin"] .ga-admin-highlight-card :is(span, p) {
+  color: #c9c3b6;
+}
+
+[data-theme="indigo-admin"] .ga-admin-quick-actions button {
+  min-height: var(--adm-control-h);
+  border: 1.5px solid var(--adm-btn-line);
+  border-radius: var(--r-sm);
+  background: var(--adm-card);
   color: var(--adm-ink);
-  border-color: var(--adm-control);
+  font: inherit;
+  font-size: 0.84375rem;
+  font-weight: 600;
 }
 
-[data-theme="indigo-admin"] :where(input[type="checkbox"], input[type="radio"]) {
-  accent-color: var(--adm-teal);
-}
-
-[data-theme="indigo-admin"] :where(summary) {
-  color: var(--adm-ink);
-}
-
-/* Notification count: white on a deeper red (6.6:1). */
-[data-theme="indigo-admin"] .ga-admin-bell-badge {
-  background: #b42318;
-  color: #ffffff;
+[data-theme="indigo-admin"] .ga-admin-quick-actions button:hover {
+  border-color: var(--adm-teal);
+  background: var(--adm-teal-soft);
+  color: var(--adm-teal-ink);
 }

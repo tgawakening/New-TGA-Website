@@ -22,21 +22,17 @@
   gap: 0.75rem;
 }
 
-.mark {
-  width: 2.75rem;
-  height: 2.75rem;
+/* The official lockup, at its own proportions (640 × 246). */
+.logo {
+  display: block;
+  width: 140px;
+  height: auto;
   flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 0.9rem;
-  background: linear-gradient(135deg, var(--ai-bg-1f5f93, #1f5f93), var(--ai-bg-2c7bbb, #2c7bbb));
-  color: var(--ai-fg-fff, #fff);
-  font-weight: 700;
-  font-size: 0.85rem;
-  box-shadow: 0 12px 24px var(--ai-sh-36_96_148_0_25, rgba(36, 96, 148, 0.25));
 }
 
 .brandName {
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--adm-rule-strong, #cfd5df);
   color: var(--ai-fg-3d668f, #3d668f);
   font-size: 0.78rem;
   font-weight: 700;
@@ -47,9 +43,11 @@
 .title {
   margin: 0;
   color: var(--ai-fg-102844, #102844);
+  font-family: var(--display, inherit);
   font-size: 1.6rem;
   line-height: 1.2;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: var(--track-title, 0);
 }
 
 .lead {

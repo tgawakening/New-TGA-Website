@@ -21,7 +21,7 @@ export default async function SirahAdminLayout({ children }: { children: ReactNo
       ? (await getCurrentAdmin())?.email || "Super Admin"
       : (await getSessionIdentity())?.email || "Team member";
   return (
-    <main className="ga-admin-page">
+    <main className="ga-admin-page" data-frame="app">
       <section className="ga-admin-page-section">
         <div className="ga-admin-container">
           <SirahNotice />

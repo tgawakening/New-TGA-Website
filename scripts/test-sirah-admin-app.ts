@@ -27,7 +27,7 @@ test("manifest launches a standalone admin workspace with valid opaque app icons
     const image = await sharp("public" + icon.src).metadata();
     assert.equal(`${image.width}x${image.height}`, icon.sizes); assert.equal(image.hasAlpha, false);
   }
-  const apple = await sharp("public/admin-app/apple-touch-icon.png").metadata(); assert.equal(apple.width, 180); assert.equal(apple.height, 180);
+  const apple = await sharp("public/brand/apple-touch-icon.png").metadata(); assert.equal(apple.width, 180); assert.equal(apple.height, 180);
 });
 test("worker is served as uncached JavaScript with only the admin scope", async () => {
   const response = await getWorker(); assert.match(response.headers.get("content-type") || "", /application\/javascript/); assert.equal(response.headers.get("cache-control"), "no-store"); assert.equal(response.headers.get("service-worker-allowed"), "/admin/"); assert.equal(await response.text(), source);
