@@ -24,6 +24,7 @@ import {
 } from "@/lib/sirah/catalog";
 import { getGroupInvitation, type SirahTerms } from "@/lib/sirah/config";
 import { sirahAdminActionSchema } from "@/lib/sirah/validation";
+import { sirahNetReceivedMinor } from "@/lib/sirah/refund-display";
 import {
   ADMIN_CUSTOM_PRICING_VERSION,
   adminCustomSnapshot,
@@ -881,6 +882,7 @@ type SirahCsvRow = Pick<
   | "method"
   | "amountMinor"
   | "paidMinor"
+  | "refundedMinor"
   | "currency"
   | "paymentState"
   | "enrolmentState"
@@ -906,6 +908,7 @@ export async function listSirahAdminForCsv(search: URLSearchParams) {
       method: true,
       amountMinor: true,
       paidMinor: true,
+      refundedMinor: true,
       currency: true,
       paymentState: true,
       enrolmentState: true,
@@ -948,6 +951,8 @@ export function sirahCsv(data: { rows: SirahCsvRow[] }) {
       "Method",
       "Expected",
       "Paid",
+      "Refunded",
+      "Net received",
       "Currency",
       "Payment status",
       "Enrolment status",
@@ -972,6 +977,8 @@ export function sirahCsv(data: { rows: SirahCsvRow[] }) {
         row.method,
         formatSirahMoney(row.amountMinor, row.currency),
         formatSirahMoney(row.paidMinor, row.currency),
+        formatSirahMoney(row.refundedMinor, row.currency),
+        formatSirahMoney(sirahNetReceivedMinor(row), row.currency),
         row.currency,
         row.paymentState,
         row.enrolmentState,
