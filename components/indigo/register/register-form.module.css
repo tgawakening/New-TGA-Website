@@ -1,157 +1,70 @@
-/* Indigo Geometry skin for the Sīrah registration form.
+/* Indigo Geometry skin for the Sīrah registration form, in its split checkout
+ * layout.
  *
  * The form is the live one (components/sirah/registration-form.tsx and its
- * helpers), rendered unchanged; this file replaces only its class map
- * (components/sirah/registration-styles.tsx). Every class the live
- * stylesheet (components/sirah/registration.module.css) gives the form is
- * defined here with the same layout rules, including the phone layout, the
- * sticky progress strip and the sticky action bar; only the look changes.
- * Mobile first where it is new; the live breakpoints are kept as they are so
- * the form behaves identically. Only transform and opacity animate. */
+ * helpers); this file is its class map on /redesign/register only
+ * (components/sirah/registration-styles.tsx). The live page keeps
+ * components/sirah/registration.module.css. Mobile first: one column with a
+ * sticky summary above and a sticky action below; two columns from 1024px.
+ * Only transform and opacity animate.
+ *
+ * Two-tone: the summary stays on the dark brand ground, and this column is a
+ * light surface. The shared tokens take light values inside .experience (as
+ * styles/admin-indigo.css does), so every rule below reads them unchanged. */
 
-/* ---------- The card ---------- */
-.experience {
-  --field: #0d1424;
-  --field-line: #7d84a0;   /* input borders: 4.9:1 on the field, 3.6:1 on the card */
-  --field-text: var(--sand);
-  --accent: var(--tealb);
-  --error: #ffb4a0;
-  position: relative;
-  max-width: 680px;
+/* ---------- The checkout grid ---------- */
+.checkoutShell {
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 28px;
-  border: 1px solid var(--line2);
-  border-radius: var(--r-2xl);
-  background: var(--surface-grad);
-  box-shadow: var(--highlight), var(--shadow-lift);
-  color: var(--sand);
-  font-family: var(--body);
-  font-size: 14px;
-  line-height: 1.6;
-  color-scheme: dark;
 }
 
-/* The card's top edge is the horizon: brightest where the sun meets it. */
+/* ---------- The form column ---------- */
+.experience {
+  --paper: #fbf9f4;           /* the column's warm near-white */
+  --sand: var(--bg);          /* headings and labels: 16:1 on paper */
+  --dim: #454d63;             /* body and helper text: 8:1 */
+  --faint: #5f667b;           /* upcoming steps, placeholders: 5.5:1 */
+  --line: rgba(20, 29, 51, 0.12);
+  --line2: rgba(20, 29, 51, 0.24);
+  --surf: #ffffff;
+  --surf2: #ffffff;
+  --teal: #0b7566;            /* brand fill: white text at 5.6:1 */
+  --tealb: #2f3f86;           /* links, icons and focus: indigo, 9:1 */
+  --gold: #96741f;
+  --on-teal: #ffffff;
+  --field: #ffffff;
+  --field-ink: var(--bg);
+  --field-muted: var(--faint);
+  --field-line: #767d93;      /* field edge: 4:1 on white and on paper */
+  --field-focus: var(--tealb);
+  --field-readonly: #ece9e0;
+  --danger: #c62828;          /* error edge and text: 5:1 on paper */
+  --error: var(--danger);
+  --accent: var(--tealb);
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  padding-top: 24px;
+  padding-bottom: 32px;
+  color: var(--sand);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.6;
+  color-scheme: light;
+}
+
+/* Below 1024px the light surface runs edge to edge and on to the page end. */
 .experience::before {
   content: "";
   position: absolute;
-  top: -1px;
-  left: 18px;
-  right: 18px;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    rgba(242, 198, 107, 0.2),
-    rgba(242, 198, 107, 0.65) 28%,
-    #fff0cb 50%,
-    rgba(242, 198, 107, 0.65) 72%,
-    rgba(242, 198, 107, 0.2)
-  );
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  background: var(--paper);
+  box-shadow: 0 100vh 0 var(--paper);
 }
 
-/* ---------- Signature moment: the sun rises as the form is completed ----------
- * A short strip above the card. The sun sits behind the horizon and climbs with
- * the form's own state: a sliver at step 1, higher at 2 and 3, clear of the line
- * once the booking is saved. Only transform and opacity change. */
-.dawnScope {
-  --sun-y: 74%;
-  --dawn-light: 0.5;
-}
-
-.dawnScope:has(.formProgress li:nth-child(2)[aria-current="step"]) {
-  --sun-y: 54%;
-  --dawn-light: 0.72;
-}
-
-.dawnScope:has(.formProgress li:nth-child(3)[aria-current="step"]) {
-  --sun-y: 34%;
-  --dawn-light: 0.88;
-}
-
-.dawnScope:has(.summary) {
-  --sun-y: 14%;
-  --dawn-light: 1;
-}
-
-.dawn {
-  position: relative;
-  z-index: 1;
-  max-width: 680px;
-  height: 3.75rem;
-  margin: 0 auto;
-  pointer-events: none;
-}
-
-.dawnClip {
-  position: absolute;
-  inset: -2rem 0 0;
-  overflow: hidden;
-}
-
-.dawnLight {
-  position: absolute;
-  inset: auto 0 0;
-  height: 100%;
-  background: radial-gradient(44% 100% at 50% 100%, rgba(246, 190, 96, 0.34), rgba(232, 150, 70, 0.1) 58%, transparent 100%);
-  opacity: var(--dawn-light);
-  transition: opacity 0.9s var(--ease);
-}
-
-.sunEnter {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 4rem;
-  height: 4rem;
-  margin-left: -2rem;
-  animation: dawnRise 1.6s var(--ease) 0.1s both;
-}
-
-@keyframes dawnRise {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 45%, 0);
-  }
-}
-
-.sun {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 62%, #fffaf0 0, #ffedc2 36%, #f8d488 68%, #eeb45c 92%, #e2a04c 100%);
-  box-shadow: 0 0 2.25rem 0.5rem rgba(246, 190, 96, 0.26);
-  transform: translate3d(0, var(--sun-y), 0);
-  transition: transform 0.9s var(--ease);
-}
-
-.dawnArc {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 7.5rem;
-  height: 3.75rem;
-  margin-left: -3.75rem;
-  overflow: visible;
-}
-
-.dawnArc path {
-  vector-effect: non-scaling-stroke;
-}
-
-@media (min-width: 768px) {
-  .dawn {
-    height: 4.75rem;
-  }
-  .sunEnter {
-    width: 5rem;
-    height: 5rem;
-    margin-left: -2.5rem;
-  }
-  .dawnArc {
-    width: 9.5rem;
-    height: 4.75rem;
-    margin-left: -4.75rem;
-  }
+.experience:has(.stickyAction) {
+  padding-bottom: 0;
 }
 
 /* Monthly renewal rules: always visible inside the order summary. */
@@ -175,11 +88,10 @@
 }
 
 .experience h2 {
-  margin: 0 0 8px;
-  padding-right: 24px;
+  margin: 0 0 6px;
   font-family: var(--display);
   font-weight: 500;
-  font-size: clamp(26px, 4vw, 32px);
+  font-size: clamp(24px, 4vw, 30px);
   line-height: 1.15;
   letter-spacing: var(--track-title);
   color: var(--sand);
@@ -190,8 +102,8 @@
   margin: 0;
   font-family: var(--display);
   font-weight: 500;
-  font-size: 19px;
-  line-height: 1.35;
+  font-size: 21px;
+  line-height: 1.3;
   color: var(--sand);
 }
 
@@ -207,9 +119,10 @@
 
 .experience small {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.5;
   font-weight: 400;
-  color: var(--faint);
+  color: var(--dim);
 }
 
 .experience code {
@@ -225,7 +138,7 @@
   text-transform: uppercase;
   letter-spacing: var(--tracking-label);
   color: var(--tealb);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -236,66 +149,111 @@
 .experience .introduction {
   margin: 0;
   color: var(--dim);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .experience .signIn {
-  margin: 10px 0 22px;
-  font-size: 13px;
+  margin: 8px 0 20px;
+  font-size: 14px;
   color: var(--dim);
 }
 
 /* ---------- Fields ---------- */
 .form {
   display: grid;
-  gap: 18px;
+  gap: 20px;
   margin: 24px 0;
 }
 
 .experience label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin: 12px 0;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--sand);
 }
 
-.experience input,
+/* Text-like controls: a light surface, so it is obvious where to type. */
+.experience input:not([type="checkbox"], [type="radio"]),
 .experience select,
 .experience textarea {
   display: block;
   width: 100%;
-  min-height: 46px;
-  padding: 10px 11px;
-  border: 1px solid var(--field-line);
+  min-height: 48px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--field-line);
   border-radius: var(--r-sm);
   background: var(--field);
-  color: var(--field-text);
+  color: var(--field-ink);
   font: inherit;
   font-size: 16px; /* iOS zooms into any text field under 16px */
   font-weight: 400;
+  color-scheme: light; /* native arrows, date and file controls on the light field */
 }
 
 .experience input::placeholder,
 .experience textarea::placeholder {
-  color: var(--faint);
+  color: var(--field-muted);
+  opacity: 1;
 }
 
-.experience input:focus,
+.experience input:-webkit-autofill {
+  -webkit-text-fill-color: var(--field-ink);
+  box-shadow: inset 0 0 0 100px #e9f4f1;
+}
+
+.experience input:not([type="checkbox"], [type="radio"]):focus,
 .experience select:focus,
 .experience textarea:focus {
-  border-color: var(--teal);
+  border-color: var(--field-focus);
+  outline: 3px solid var(--tealb);
+  outline-offset: 1px;
 }
 
-.experience input[aria-invalid="true"] {
-  border-color: var(--error);
+/* Errors: on the control itself, or on any field whose label holds a message.
+ * They outrank focus, because a failed step focuses the field in error. */
+.experience input[aria-invalid="true"]:not([type="checkbox"], [type="radio"]),
+.experience label:has(> .fieldError) > input:not([type="checkbox"], [type="radio"]),
+.experience label:has(> .fieldError) > select,
+.experience .passwordField:has(> [role="alert"]) input:not([type="checkbox"], [type="radio"]),
+.experience .phoneControl[data-invalid="true"] {
+  border-color: var(--danger);
 }
 
-.experience input:read-only {
-  background: rgba(237, 234, 223, 0.06);
-  color: var(--dim);
+.experience input[aria-invalid="true"]:not([type="checkbox"], [type="radio"]):focus,
+.experience label:has(> .fieldError) > input:not([type="checkbox"], [type="radio"]):focus,
+.experience label:has(> .fieldError) > select:focus,
+.experience .passwordField:has(> [role="alert"]) input:not([type="checkbox"], [type="radio"]):focus,
+.experience .phoneControl[data-invalid="true"]:focus-within {
+  outline-color: var(--danger);
+}
+
+/* Success stays quiet: a green edge once the password checks pass. */
+.passwordField:has(> .validHint):not(:has(> [role="alert"])) input {
+  border-color: #1f8a63;
+}
+
+.experience input:read-only:not([type="checkbox"], [type="radio"], [type="file"]) {
+  background: var(--field-readonly);
+  color: #39415a;
+}
+
+.experience input[type="file"] {
+  padding: 8px 10px;
+  font-size: 15px;
+}
+
+.experience input[type="file"]::file-selector-button {
+  min-height: 34px;
+  margin-right: 10px;
+  padding: 4px 12px;
+  border: 1px solid var(--field-line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--field-ink);
+  font: 600 14px/1.2 var(--body);
 }
 
 .experience input[type="checkbox"],
@@ -303,32 +261,35 @@
   accent-color: var(--teal);
 }
 
+.experience input[type="checkbox"] {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 1px 0 0;
+}
+
 .experience .fieldError {
   margin: 2px 0 0;
   color: var(--error);
-  font-size: 12px;
-  line-height: 1.5;
-  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
 .experience .check {
   display: flex;
   flex-direction: row;
-  align-items: start;
+  align-items: flex-start;
   gap: 12px;
-}
-
-.experience .check input {
-  width: 20px;
-  min-height: 20px;
-  margin-top: 3px;
-  flex-shrink: 0;
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
 }
 
 /* ---------- Buttons ---------- */
@@ -336,17 +297,17 @@
 .experience a.primary {
   min-height: 44px;
   padding: 11px 17px;
-  border: 1px solid var(--line2);
+  border: 1px solid var(--field-line);
   border-radius: var(--r-sm);
-  background: rgba(237, 234, 223, 0.03);
+  background: var(--surf);
   color: var(--sand);
-  font: 600 13px/1.4 var(--body);
+  font: 600 14px/1.4 var(--body);
   cursor: pointer;
   transition: transform var(--dur) var(--ease);
 }
 
 .experience button:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -360,7 +321,7 @@
   text-decoration: none;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 10px 24px -14px rgba(43, 182, 163, 0.8);
+    0 10px 24px -14px rgba(11, 117, 102, 0.8);
 }
 
 @media (hover: hover) {
@@ -375,12 +336,12 @@
 
 /* Waiting on the form, but still plainly the next action. */
 .experience .primary:disabled {
-  opacity: 0.68;
+  opacity: 0.92;
 }
 
 /* The discount code's Apply button and hint, clear of the field above. */
 .experience .notice > label + button {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .experience .notice > label + button + small {
@@ -391,11 +352,11 @@
 .notice,
 .summary,
 .terms {
-  margin: 20px 0;
-  padding: 18px;
+  margin: 16px 0;
+  padding: 16px;
   border-left: 3px solid var(--gold);
   border-radius: 0 var(--r-md) var(--r-md) 0;
-  background: rgba(237, 234, 223, 0.045);
+  background: rgba(20, 29, 51, 0.04);
   color: var(--dim);
   overflow-wrap: anywhere;
 }
@@ -408,10 +369,10 @@
 
 .error {
   padding: 14px;
-  border: 1px solid rgba(255, 140, 110, 0.55);
+  border: 1px solid var(--danger);
   border-radius: var(--r-sm);
-  background: rgba(217, 121, 79, 0.13);
-  color: #ffc4b2;
+  background: #fdeeee;
+  color: #8f1d1d;
 }
 
 .status {
@@ -420,12 +381,13 @@
   gap: 30px;
 }
 
-/* ---------- The compact registration form ---------- */
+/* ---------- The stepped form ---------- */
 .compactForm {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
   margin: 0;
+  scroll-margin-top: 68px; /* clear of the sticky summary bar */
 }
 
 .compactForm,
@@ -435,18 +397,112 @@
 
 .experience .compactForm label {
   margin: 0;
-  font-size: 13px;
-  gap: 6px;
   min-width: 0;
 }
 
-.planChoice {
-  grid-column: 1 / -1;
+/* Every step stays in the DOM; only the current one shows. It arrives with a
+ * short slide and fade, in the direction of travel. */
+.checkoutStep {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  min-width: 0;
+}
+
+.checkoutStep[hidden] {
+  display: none;
+}
+
+.checkoutStep[data-direction="forward"] {
+  --step-from: 24px;
+  animation: stepIn 280ms var(--ease) backwards;
+}
+
+.checkoutStep[data-direction="back"] {
+  --step-from: -24px;
+  animation: stepIn 280ms var(--ease) backwards;
+}
+
+@keyframes stepIn {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--step-from), 0, 0);
+  }
+}
+
+.stepHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.experience .stepBack {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px 8px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--tealb);
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.reviewList {
+  display: grid;
+  margin: 0;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-md);
+  background: var(--surf);
+}
+
+.reviewList > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 6px 6px 6px 14px;
+}
+
+.reviewList > div + div {
+  border-top: 1px solid var(--line);
+}
+
+.reviewList dt {
+  grid-column: 1;
+  color: var(--dim);
+  font-size: 13px;
+}
+
+.reviewList dd {
+  grid-column: 1;
+  margin: 0;
+  color: var(--sand);
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.experience .reviewEdit {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  min-width: 44px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--tealb);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.planChoice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
-  padding-top: 4px;
-  align-items: end;
 }
 
 .pricePreview {
@@ -454,8 +510,9 @@
   flex-direction: column;
   justify-content: center;
   min-width: 0;
+  gap: 2px;
   min-height: 66px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border: 1px solid rgba(201, 162, 76, 0.4);
   border-radius: var(--r-md);
   background: linear-gradient(135deg, rgba(201, 162, 76, 0.1), rgba(43, 182, 163, 0.06));
@@ -469,15 +526,14 @@
 }
 
 .pricePreview span {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--dim);
 }
 
 .experience .submitRegistration {
-  grid-column: 1 / -1;
-  min-height: 50px;
-  margin-top: 4px;
-  font-size: 15px;
+  width: 100%;
+  min-height: 52px;
+  font-size: 17px;
 }
 
 .cardIntroduction {
@@ -495,8 +551,7 @@
 }
 
 .planNotes {
-  grid-column: 1 / -1;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--dim);
 }
@@ -519,34 +574,34 @@
   min-width: 0;
 }
 
-.phoneField > label {
-  margin-bottom: 6px !important;
+.experience .phoneField > label {
+  margin: 0 0 8px;
 }
 
 .phoneControl {
   display: flex;
   align-items: stretch;
   min-width: 0;
-  border: 1px solid var(--field-line);
+  min-height: 48px;
+  border: 1.5px solid var(--field-line);
   border-radius: var(--r-sm);
   background: var(--field);
+  color-scheme: light;
 }
 
 .phoneControl:focus-within {
-  border-color: var(--teal);
-  outline: 2px solid var(--tealb);
-  outline-offset: 2px;
+  border-color: var(--field-focus);
+  outline: 3px solid var(--tealb);
+  outline-offset: 1px;
 }
 
-.phoneControl[data-invalid="true"] {
-  border-color: var(--error);
-}
-
-.experience .phoneControl input {
+.experience .phoneControl input,
+.experience .phoneControl input:not([type="checkbox"], [type="radio"]):focus,
+.experience .phoneControl input[aria-invalid="true"]:not([type="checkbox"], [type="radio"]) {
   flex: 1;
   min-width: 0;
-  min-height: 44px;
-  padding-left: 8px;
+  min-height: 45px;
+  padding-left: 10px;
   border: 0;
   background: transparent;
   outline: none;
@@ -557,26 +612,24 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  gap: 5px;
-  padding: 8px;
+  gap: 6px;
+  min-height: 45px;
+  padding: 8px 10px;
   border: 0;
-  border-right: 1px solid var(--line2);
-  border-radius: var(--r-sm) 0 0 var(--r-sm);
+  border-right: 1.5px solid rgba(20, 29, 51, 0.22);
+  border-radius: 7px 0 0 7px;
   background: transparent;
-  font-size: 12px;
+  color: var(--field-ink);
+  font-size: 15px;
   white-space: nowrap;
-}
-
-.callingSelector > span:first-child {
-  font-size: 18px;
 }
 
 .phonePicker {
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 30;
-  width: min(340px, calc(100vw - 64px));
+  z-index: 35;
+  width: min(360px, 100%);
   margin-top: 6px;
   padding: 10px;
   border: 1px solid var(--line2);
@@ -585,14 +638,14 @@
   box-shadow: var(--shadow-lift);
 }
 
-.phonePicker > input {
+.experience .phonePicker > input {
   position: sticky;
   top: 0;
   margin-bottom: 8px;
 }
 
 .phoneOptions {
-  max-height: 210px;
+  max-height: 220px;
   overflow: auto;
   overscroll-behavior: contain;
 }
@@ -607,7 +660,7 @@
   border: 0;
   background: transparent;
   text-align: left;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -617,67 +670,53 @@
 
 .phoneOptions button[data-highlighted="true"],
 .phoneOptions button[aria-selected="true"] {
-  background: rgba(43, 182, 163, 0.16);
+  background: rgba(11, 117, 102, 0.12);
 }
 
 .phoneControl img,
-.phoneOptions img,
-.residenceControl img {
+.phoneOptions img {
   flex-shrink: 0;
   object-fit: cover;
   border-radius: 2px;
 }
 
 .phoneAndResidence {
-  grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
 }
 
 .residenceCompact {
-  min-width: 0;
-  padding-top: 25px;
-}
-
-.residenceControl {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.residenceControl select {
-  flex: 1;
+  display: grid;
+  gap: 12px;
   min-width: 0;
 }
 
 .experience .residenceConfirmation {
-  grid-column: 1 / -1;
   margin: 0;
   font-weight: 400;
-  color: var(--dim);
+  color: var(--sand);
+  cursor: pointer;
 }
 
-.experience .residenceConfirmation input {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  min-height: 20px;
-  margin: 0 8px 0 0;
-  padding: 0;
-  vertical-align: middle;
+.residenceConfirmation > span {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 0;
 }
 
 .experience .residenceChange,
 .experience .paymentLater,
 .experience .suggestPassword {
-  min-height: 32px;
-  padding: 4px 0;
+  justify-self: start;
+  min-height: 44px;
+  padding: 8px 0;
   border: 0;
   background: transparent;
   color: var(--tealb);
-  font-size: 12px;
+  font-size: 14px;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -688,7 +727,7 @@
 }
 
 .experience .passwordField > label {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
 }
 
 .passwordControl {
@@ -696,20 +735,26 @@
 }
 
 .experience .passwordControl input {
-  padding-right: 48px;
+  padding-right: 52px;
 }
 
 .experience .passwordControl button {
   position: absolute;
-  top: 1px;
-  right: 1px;
-  bottom: 1px;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
   display: grid;
   place-items: center;
   width: 44px;
+  min-height: 44px;
   padding: 8px;
   border: 0;
   background: transparent;
+  color: var(--field-ink);
+}
+
+.experience .passwordField > small {
+  margin-top: 6px;
 }
 
 .experience .passwordHint {
@@ -717,27 +762,32 @@
 }
 
 .experience .validHint {
-  color: #7fe0b4;
+  color: #0f6b4f;
 }
 
 .strengthMeter {
   display: block;
   width: 100%;
   height: 6px;
-  margin-top: 5px;
+  margin-top: 6px;
   accent-color: var(--teal);
 }
 
 /* ---------- Payment ---------- */
 .paymentOptions {
-  grid-column: 1 / -1;
-  padding-top: 16px;
-  border-top: 1px solid var(--line2);
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.experience .paymentOptions > .notice,
+.experience .paymentOptions > p {
+  margin: 0;
 }
 
 .paymentOptions p {
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.55;
   color: var(--dim);
 }
 
@@ -750,15 +800,15 @@
 
 .methodChoices legend {
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--sand);
 }
 
 .methodTabs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
 }
 
 .experience .methodTab,
@@ -771,17 +821,17 @@
   row-gap: 3px;
   min-height: 78px;
   margin: 0;
-  padding: 12px 10px;
-  border: 1px solid var(--field-line);
+  padding: 12px 28px 12px 12px;
+  border: 1.5px solid var(--field-line);
   border-radius: var(--r-md);
-  background: var(--field);
+  background: var(--surf2);
   color: var(--sand);
   cursor: pointer;
 }
 
 .methodTab[data-selected="true"] {
   border-color: var(--teal);
-  background: rgba(43, 182, 163, 0.14);
+  background: rgba(11, 117, 102, 0.08);
   box-shadow: inset 0 0 0 1px var(--teal);
 }
 
@@ -807,14 +857,14 @@
 }
 
 .methodTitle {
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.4;
   font-weight: 600;
   color: var(--sand);
 }
 
 .methodProcessor {
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.4;
   font-weight: 400;
   color: var(--dim);
@@ -855,26 +905,29 @@
 
 /* ---------- Terms ---------- */
 .experience .terms {
-  margin: 12px 0;
-  padding: 12px 14px;
+  margin: 0;
+  padding: 14px 16px;
   border-left-width: 2px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .paymentTermsDetails summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--sand);
 }
 
 .paymentTermsDetails p {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .experience .terms .check {
-  margin: 10px 0 0;
-  font-size: 12px;
+  margin: 4px 0 0;
+  font-size: 15px;
   line-height: 1.5;
   font-weight: 400;
   color: var(--sand);
@@ -882,7 +935,6 @@
 
 .experience .terms > small {
   margin-top: 8px;
-  font-size: 11px;
 }
 
 /* ---------- Manual payment ---------- */
@@ -951,8 +1003,8 @@
 }
 
 .feedback {
-  margin: 12px 0;
-  scroll-margin: 16px;
+  margin: 0;
+  scroll-margin: 76px 0 96px;
 }
 
 .moreOptions {
@@ -990,13 +1042,10 @@
   margin-top: 4px;
 }
 
-/* ---------- Steps: progress strip and section headings ---------- */
-/* Signature moment one: the three steps as a short path. Each step number
- * sits in an eight-point seal; the current one turns into place and fills,
- * finished ones keep a gold seal. Driven by the form's own aria-current and
- * done class, so nothing about the form changes. */
+/* ---------- Steps: the stepper and step headings ---------- */
+/* The three steps as a short path. Each number sits in an eight-point seal: the
+ * current one fills teal, finished ones fill indigo, upcoming ones stay grey. */
 .formProgress {
-  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
@@ -1010,24 +1059,30 @@
   min-width: 0;
 }
 
-.formProgress button {
+.experience .formProgress button {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 4px;
   width: 100%;
-  min-height: 48px;
-  padding: 6px 4px;
+  min-height: 60px;
+  padding: 6px 2px;
   border: 0;
   border-bottom: 2px solid var(--line2);
   border-radius: 0;
   background: transparent;
-  color: var(--dim);
+  color: var(--faint);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  line-height: 1.3;
-  text-align: left;
-  cursor: pointer;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.experience .formProgress button:disabled {
+  opacity: 1;
+  cursor: default;
 }
 
 .formProgress button span {
@@ -1038,9 +1093,9 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--sand);
+  color: var(--faint);
 }
 
 .formProgress button span::before,
@@ -1060,20 +1115,25 @@
   transform: rotate(45deg);
 }
 
-.formProgressDone button {
-  border-bottom-color: rgba(201, 162, 76, 0.7);
+.experience .formProgressDone button {
+  border-bottom-color: var(--tealb);
   color: var(--sand);
+}
+
+.formProgressDone button span {
+  color: var(--on-teal);
 }
 
 .formProgressDone button span::before,
 .formProgressDone button span::after {
-  border-color: var(--gold);
-  background: rgba(201, 162, 76, 0.22);
+  border-color: var(--tealb);
+  background: var(--tealb);
 }
 
-.formProgress [aria-current="step"] button {
+.experience .formProgress [aria-current="step"] button {
   border-bottom-color: var(--teal);
   color: var(--sand);
+  font-weight: 700;
 }
 
 .formProgress [aria-current="step"] button span {
@@ -1096,181 +1156,133 @@
 }
 
 .experience .formStep {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 12px 0 0;
-  font: 500 19px/1.3 var(--display);
+  min-width: 0;
+  margin: 0;
+  font: 500 21px/1.3 var(--display);
   color: var(--sand);
-  scroll-margin-top: 72px;
 }
 
-.experience .paymentOptions .formStep {
-  margin-top: 22px;
+.experience .formStep:focus {
+  outline: none;
 }
 
+.experience .formStep:focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 4px;
+}
+
+/* The stepper directly above already carries the number. */
 .formStep span {
-  position: relative;
-  isolation: isolate;
-  flex: none;
-  display: inline-grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  font: 700 13px/1 var(--body);
-  color: var(--sand);
-}
-
-.formStep span::before,
-.formStep span::after {
-  content: "";
-  position: absolute;
-  inset: 5px;
-  z-index: -1;
-  border: 1px solid var(--gold);
-  background: rgba(201, 162, 76, 0.16);
-}
-
-.formStep span::after {
-  transform: rotate(45deg);
+  display: none;
 }
 
 .experience .stepHint {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--dim);
+  font-size: 14px;
 }
 
+/* The next action: a full-width bar held at the bottom of the screen on phones
+ * and tablets, while the form scrolls between it and the summary bar. */
 .stickyAction {
-  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  margin: 4px calc(-1 * var(--gutter)) 0;
+  padding: 10px var(--gutter) max(10px, env(safe-area-inset-bottom));
 }
 
-.experience .stickyAction .submitRegistration {
-  width: 100%;
-  margin-top: 0;
+.stickyAction::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(50% - 50vw);
+  z-index: -1;
+  border-top: 1px solid var(--line2);
+  background: var(--paper);
+  box-shadow: 0 -8px 24px rgba(20, 29, 51, 0.1);
 }
 
-/* ---------- The annual price summary (its own stylesheet, light-themed) ---------- */
-/* Colours only, scoped to this preview: its muted text and badge are drawn
- * for a light card. */
-.experience [class*="annual-price-summary-module__"] s,
-.experience [class*="annual-price-summary-module__"][class$="__label"] {
-  color: var(--dim) !important;
+/* Keep focused fields clear of the two sticky bars. */
+.compactForm input,
+.compactForm select,
+.compactForm textarea,
+.compactForm button {
+  scroll-margin-top: 76px;
+  scroll-margin-bottom: 96px;
 }
 
-.experience [class*="annual-price-summary-module__"][class$="__badge"] {
-  border-color: rgba(201, 162, 76, 0.6) !important;
-  background: rgba(201, 162, 76, 0.18) !important;
-  color: #f1d58f !important;
-}
-
-.experience [class*="annual-price-summary-module__"][class$="__totals"] {
-  border-top-color: var(--line2) !important;
-}
-
-/* ---------- The live breakpoints, unchanged ---------- */
-@media (max-width: 600px) {
+/* ---------- Tablet: the single column stays a readable width ---------- */
+@media (min-width: 640px) and (max-width: 1023px) {
   .experience {
-    padding: 24px 20px;
-    font-size: 13px;
-  }
-  .experience h2 {
-    font-size: 26px;
+    max-width: 640px;
+    margin: 0 auto;
   }
   .grid {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  .status {
-    gap: 8px 22px;
-  }
-  .notice,
-  .terms {
-    padding: 14px;
-  }
-  .summary h3 {
-    font-size: 22px;
-  }
-  .compactForm {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .planChoice {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  .pricePreview {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-    min-height: 54px;
-  }
-  .phonePicker {
-    width: 100%;
-  }
-  .phoneAndResidence {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-  .residenceCompact {
-    padding-top: 0;
-  }
-  .methodTabs {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 135px), 1fr));
-  }
-  .secondaryActions button {
-    flex: 1 1 100%;
-  }
-  .moreOptionsBody .grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
   }
 }
 
-@media (max-width: 767px) {
-  .formProgress {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    margin: 0 -20px;
-    padding: max(4px, env(safe-area-inset-top)) 20px 0;
-    background: #1d2945;
-    box-shadow: 0 1px 0 var(--line2);
+/* ---------- Desktop: summary left, form right ---------- */
+@media (min-width: 1024px) {
+  .checkoutShell {
+    display: grid;
+    grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
   }
-  .formProgress button {
-    flex-direction: column;
-    justify-content: center;
-    gap: 3px;
-    font-size: 11px;
-    text-align: center;
+  .experience,
+  .experience:has(.stickyAction) {
+    padding: 36px;
+    border: 1px solid var(--line2);
+    border-radius: var(--r-2xl);
+    background: var(--paper);
+    box-shadow: var(--shadow-lift);
+  }
+  .experience::before,
+  .stickyAction::before {
+    display: none;
+  }
+  .grid,
+  .planChoice {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .planChoice {
+    align-items: end;
+  }
+  .experience .formProgress button {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 48px;
+    text-align: left;
   }
   .stickyAction {
-    position: sticky;
-    bottom: 0;
-    z-index: 30;
-    margin: 0 -20px;
-    padding: 12px 20px max(12px, env(safe-area-inset-bottom));
-    background: #1d2945;
-    border-top: 1px solid var(--line2);
-    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.35);
+    position: static;
+    margin: 4px 0 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
   }
-  /* Keep focused fields clear of the sticky strip and bar. */
+  .compactForm,
   .compactForm input,
   .compactForm select,
   .compactForm textarea,
-  .compactForm button {
-    scroll-margin-top: 80px;
-    scroll-margin-bottom: 110px;
+  .compactForm button,
+  .feedback {
+    scroll-margin: 24px;
   }
 }
 
 /* ---------- Reduced motion: final states ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .dawnLight,
-  .sunEnter,
-  .sun {
-    animation: none !important;
-    transition: none !important;
-  }
   .experience * {
     scroll-behavior: auto !important;
     animation: none !important;

@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from "react";
 import { RESIDENCE_KEY, resolveResidence, validResidence } from "./residence";
 let memoryChoice: string | null = null;
-function saved() {
+export function savedResidence() {
   try {
     const value = localStorage.getItem(RESIDENCE_KEY);
     return validResidence(value) ? value : null;
@@ -27,7 +27,7 @@ export function saveResidence(value: string) {
   window.dispatchEvent(new Event("sirah-residence"));
 }
 export function useResidenceSelection(detected?: string) {
-  const choice = useSyncExternalStore(subscribe, saved, () => null);
+  const choice = useSyncExternalStore(subscribe, savedResidence, () => null);
   return {
     country: resolveResidence(null, choice, detected),
     hasResidence: Boolean(choice || validResidence(detected)),
