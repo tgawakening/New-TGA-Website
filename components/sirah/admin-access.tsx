@@ -225,7 +225,7 @@ export function SirahAdminAccess() {
             <h2 style={{ fontSize: "1.2rem" }}>Managers and Community Leads</h2>
           </div>
         </div>
-        {rows === null && !error && <p role="status">Loading team accounts…</p>}
+        {rows === null && !error && <p className="ga-admin-loading" role="status">Loading team accounts…</p>}
         {rows?.length === 0 && <p className="ga-admin-empty-state">No team accounts yet.</p>}
         {rows && rows.length > 0 && (
           <div className="ga-admin-data-table">

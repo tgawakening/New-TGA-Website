@@ -518,7 +518,7 @@ export function SirahAdminStudents({
   const groupCell = (student: Student) => (
     <>
       <span
-        className={`ga-admin-status is-${student.groupAddedAt ? "completed" : "pending"}`}
+        className={`ga-admin-status is-${student.groupAddedAt ? "completed" : "neutral"}`}
       >
         {student.groupAddedAt ? "Added" : "Not added"}
       </span>
@@ -745,7 +745,7 @@ export function SirahAdminStudents({
             {loadError}
           </p>
         )}
-        {!data && !loadError && <p role="status">Loading students…</p>}
+        {!data && !loadError && <p className="ga-admin-loading" role="status">Loading students…</p>}
         {data && (
           <>
             <p className={styles.resultCount}>

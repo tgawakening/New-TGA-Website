@@ -5,6 +5,7 @@ import { SIRAH_SCHOLARSHIP_BATCH, SIRAH_SCHOLARSHIP_LIMIT, scholarshipQuestions,
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNotificationBell from "@/components/admin/admin-notification-bell";
+import { BrandLogo } from "@/components/brand-logo";
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
 import type { AdminDashboardSnapshot, AdminNotificationItem } from "@/services/admin.service";
 import { missionPurposeLabel, missionPurposes } from "@/lib/mission-support";
@@ -201,7 +202,8 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications,
   const completionPct = percent(data.summary.completedOrders, data.summary.totalOrders);
   const pendingPct = percent(data.summary.pendingOrders, data.summary.totalOrders);
   const cancelledPct = percent(data.summary.cancelledOrders, data.summary.totalOrders);
-  const donutSegments = `conic-gradient(#225b88 0 ${completionPct}%, #f1b955 ${completionPct}% ${completionPct + pendingPct}%, #e88d84 ${completionPct + pendingPct}% 100%)`;
+  // Colours come from the admin theme's chart palette (styles/admin-indigo.css).
+  const donutSegments = `conic-gradient(var(--adm-chart-1, #225b88) 0 ${completionPct}%, var(--adm-chart-2, #f1b955) ${completionPct}% ${completionPct + pendingPct}%, var(--adm-chart-3, #e88d84) ${completionPct + pendingPct}% 100%)`;
 
   async function updateRegistrationStatus(registrationId: string, action: "COMPLETE" | "PENDING" | "CANCEL") {
     setSubmittingRow(registrationId);
@@ -323,11 +325,8 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications,
     <div className="ga-admin-shell">
       <header className="ga-admin-topbar">
         <button type="button" className="ga-admin-brand" onClick={() => setActiveTab("home")}>
-          <div className="ga-admin-brand-mark">TGA</div>
-          <div>
-            <p className="ga-admin-brand-title">The Global Awakening</p>
-            <p className="ga-admin-brand-subtitle">Admin workspace</p>
-          </div>
+          <BrandLogo alt="The Global Awakening" sizes="150px" className="ga-admin-brand-logo" priority />
+          <p className="ga-admin-brand-subtitle">Admin workspace</p>
         </button>
 
         <nav className="ga-admin-nav">

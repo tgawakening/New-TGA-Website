@@ -5,20 +5,39 @@
 }
 
 .tile {
+  position: relative;
   display: grid;
   gap: 0.35rem;
   padding: 1.1rem 1.15rem;
   border: 1px solid var(--ai-ln-dbe4ef, #dbe4ef);
-  border-radius: 1.1rem;
+  border-radius: var(--r-lg, 1.1rem);
   background: var(--ai-bg-fff, #fff);
+  box-shadow: var(--adm-shadow-card, none);
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color var(--dur, 0.15s) var(--ease, ease), box-shadow var(--dur, 0.15s) var(--ease, ease);
 }
 
 a.tile:hover {
   border-color: var(--ai-ln-9fc0df, #9fc0df);
   box-shadow: 0 12px 26px var(--ai-sh-18_48_88_0_08, rgba(18, 48, 88, 0.08));
+}
+
+/* Linked tiles carry a quiet arrow so they read as links. */
+a.tile::after {
+  content: "→";
+  content: "→" / ""; /* decorative: not read as part of the link name */
+  position: absolute;
+  top: 1rem;
+  right: 1.1rem;
+  color: var(--adm-muted, #5d7189);
+  font-size: 0.9rem;
+  transition: transform var(--dur, 0.15s) var(--ease, ease), color var(--dur, 0.15s) var(--ease, ease);
+}
+
+a.tile:hover::after {
+  color: var(--adm-teal, #2c7bbb);
+  transform: translateX(2px);
 }
 
 a.tile:focus-visible {
@@ -28,23 +47,24 @@ a.tile:focus-visible {
 
 .label {
   color: var(--ai-fg-5d7189, #5d7189);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .value {
   color: var(--ai-fg-102844, #102844);
-  font-size: 2.1rem;
+  font-size: 2rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: 1.1;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .hint {
   color: var(--ai-fg-667c92, #667c92);
-  font-size: 0.86rem;
+  font-size: 0.8125rem;
 }
 
 .groupCard {
@@ -53,22 +73,25 @@ a.tile:focus-visible {
   margin-top: 1.2rem;
   padding: 1.1rem 1.15rem;
   border: 1px solid var(--ai-ln-dbe4ef, #dbe4ef);
-  border-radius: 1.1rem;
+  border-radius: var(--r-lg, 1.1rem);
   background: var(--ai-bg-fff, #fff);
+  box-shadow: var(--adm-shadow-card, none);
 }
 
 .groupHead {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
 }
 
 .groupHead h3 {
   margin: 0;
   color: var(--ai-fg-102844, #102844);
-  font-size: 1.05rem;
+  font-family: var(--display, inherit);
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
 .meter {

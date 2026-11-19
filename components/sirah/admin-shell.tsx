@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
-import { SealMark } from "@/components/indigo/ornaments";
+import { BrandLogo } from "@/components/brand-logo";
 import { SirahAppInstallButton } from "./admin-app";
 import styles from "./admin-shell.module.css";
 
@@ -84,9 +84,12 @@ export function SirahAdminShell({
     <div className={styles.frame}>
       <aside className={styles.sidebar}>
         <a href="/admin/sirah/overview" className={styles.brand}>
-          <span className={styles.brandMark}>TGA</span>
-          <SealMark className={styles.brandSeal} />
-
+          <BrandLogo
+            alt="The Global Awakening"
+            sizes="(min-width: 1024px) 168px, 128px"
+            className={styles.brandLogo}
+            priority
+          />
           <span className={styles.brandText}>
             <strong>Sīrah workspace</strong>
             <span>Beyond Chronology</span>
@@ -123,12 +126,16 @@ export function SirahAdminShell({
           <p className={styles.headerTitle}>{current?.label || "Sīrah workspace"}</p>
           <div className={styles.headerMeta}>
             <span className={styles.who}>
-              <strong>{signedInAs}</strong>
-              <span>Signed in</span>
+              <span className={styles.avatar} aria-hidden="true">{signedInAs.slice(0, 1).toUpperCase()}</span>
+              <span className={styles.whoText}>
+                <strong>{signedInAs}</strong>
+                <span>Signed in</span>
+              </span>
             </span>
             <span className={`${styles.badge} ${styles[access.role]}`} title="Your workspace role">
               {access.roleLabel}
             </span>
+            <span className={styles.divider} aria-hidden="true" />
             {/* From the installable-app work (was in the old top nav). */}
             <SirahAppInstallButton />
             <AdminLogoutButton redirectTo="/admin/sirah/login" />

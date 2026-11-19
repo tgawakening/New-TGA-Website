@@ -62,8 +62,9 @@ export function SirahAdminScholarships({ readOnly, canApproveScholarships = fals
       </div>
       {error && <p role="alert" className="ga-admin-error-banner">{error}</p>}
       {message && <p role="status">{message}</p>}
+      {!data && !error && <p className="ga-admin-loading" role="status">Loading applications…</p>}
       {data && <div className={styles.cards}>{data.rows.map(row => <article key={row.id} className={styles.card}>
-        <div className={styles.summary}><div><h2>{row.fullName}</h2><p>{row.email}</p><p>{row.whatsapp} · {row.cityCountry}</p></div><div><span className="ga-admin-pill">{row.status}</span><p>{new Date(row.createdAt).toLocaleDateString("en-GB")}</p><p>{row.contribution.contributionLabel} · {row.contribution.amountLabel}</p></div></div>
+        <div className={styles.summary}><div><h2>{row.fullName}</h2><p>{row.email}</p><p>{row.whatsapp} · {row.cityCountry}</p></div><div><span className={`ga-admin-status is-${row.status.toLowerCase()}`}>{row.status}</span><p>{new Date(row.createdAt).toLocaleDateString("en-GB")}</p><p>{row.contribution.contributionLabel} · {row.contribution.amountLabel}</p></div></div>
         <details><summary>View application and answers</summary><dl className={styles.answers}>
           {Object.entries(labels).filter(([key]) => key in row && key !== "reviewNote").map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{answer(row[key as keyof typeof row])}</dd></div>)}
           <div><dt>Reason for scholarship</dt><dd>{row.contribution.applicationReason}</dd></div>
