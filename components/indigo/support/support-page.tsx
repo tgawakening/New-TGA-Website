@@ -19,8 +19,8 @@ import s from "./support.module.css";
 const i = (n: number) => ({ "--i": n }) as CSSProperties;
 const areaGlyph = [Star8, Rosette, SealMark];
 
-/** `site`: live routes by default; the hidden preview passes its sibling
- * previews. Every giving link, policy link and API call is the live one. */
+/** `site`: live routes by default. Every giving link, policy link and API
+ * call is the live one. */
 export function SupportPage({
   config,
   params,

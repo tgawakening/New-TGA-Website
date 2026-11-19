@@ -4,7 +4,7 @@ import { liveLinks, type SiteLinks } from "./site-links";
 import styles from "./footer.module.css";
 
 /* Same destinations as the live footer (components/home/sections/footer.tsx).
- * `site` maps the page links to the /redesign preview; policies stay live. */
+ * `site` maps the page links; policies are never remapped. */
 function groups({ home, about, seerah, projects, support }: SiteLinks) {
   return [
     {

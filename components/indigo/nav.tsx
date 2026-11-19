@@ -30,7 +30,7 @@ export function Nav({
   enrol,
   support = { href: site.support, label: "Support our mission" },
 }: {
-  /** Live routes by default; the /redesign preview passes its own. */
+  /** Live routes by default. */
   site?: SiteLinks;
   links?: NavLink[];
   /** Replaces the default "Enrol now" link (signed-in visitors still get "Your dashboard"). */

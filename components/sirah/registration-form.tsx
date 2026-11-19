@@ -316,10 +316,9 @@ export function SirahRegistrationForm({
   initialPlan?: SirahPlan;
   requireBillingCountry?: boolean;
   controlRef?: Ref<RegistrationControls>;
-  /** The page this form lives on; only the /redesign preview passes its own. */
+  /** The page this form lives on. */
   registerPath?: string;
-  /** Turns on the stepped checkout layout and renders its order summary.
-   * Only the /redesign preview passes it; without it nothing here changes. */
+  /** Turns on the stepped checkout layout and renders its order summary. */
   checkoutSummary?: (summary: CheckoutSummaryData) => ReactNode;
 } = {}) {
   const styles = useRegistrationStyles();

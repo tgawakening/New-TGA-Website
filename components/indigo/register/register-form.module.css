@@ -2,9 +2,8 @@
  * layout.
  *
  * The form is the live one (components/sirah/registration-form.tsx and its
- * helpers); this file is its class map on /redesign/register only
- * (components/sirah/registration-styles.tsx). The live page keeps
- * components/sirah/registration.module.css. Mobile first: one column with a
+ * helpers); this file is its class map on /seerah/register
+ * (components/sirah/registration-styles.tsx). Mobile first: one column with a
  * sticky summary above and a sticky action below; two columns from 1024px.
  * Only transform and opacity animate.
  *

@@ -25,5 +25,5 @@ export const sora = Sora({
   fallback: ["ui-sans-serif", "system-ui", "Segoe UI", "sans-serif"],
 });
 
-/** Apply to the element that should carry the new type (route layout today, <html> at switch-over). */
+/** Apply to the element that should carry the new type (components/indigo/indigo-root.tsx and the Indigo layouts). */
 export const indigoFontVariables = `${fraunces.variable} ${sora.variable}`;
