@@ -1,0 +1,129 @@
+/* Row "…" menu in the records table. Admin palette (styles/admin-indigo.css).
+ * Contrast on white: items #1a2233 15:1, primary #0a5f54 7.4:1, danger
+ * #9c2318 7.9:1; the trigger's dots #5b6472 6.2:1 (3:1 needed). */
+
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  display: inline-grid;
+  place-items: center;
+  width: var(--adm-control-h-sm, 2rem);
+  height: var(--adm-control-h-sm, 2rem);
+  padding: 0;
+  border: 1px solid var(--adm-btn-line);
+  border-radius: var(--r-sm);
+  background: var(--adm-card);
+  color: var(--adm-muted);
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.trigger svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.trigger:hover,
+.trigger[aria-expanded="true"] {
+  border-color: var(--adm-teal);
+  background: var(--adm-teal-soft);
+  color: var(--adm-teal-ink);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--adm-teal);
+  outline-offset: 2px;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  min-width: 15rem;
+  max-width: min(20rem, calc(100vw - 2rem));
+  padding: 6px;
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-md);
+  background: var(--adm-card);
+  box-shadow: var(--adm-shadow-pop);
+}
+
+.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.item {
+  display: block;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--adm-ink);
+  font: inherit;
+  font-size: 0.84375rem;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--adm-neutral-soft);
+  outline: none;
+}
+
+.item:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--adm-teal);
+}
+
+.primary {
+  color: var(--adm-teal-ink);
+  font-weight: 600;
+}
+
+.primary:hover,
+.primary:focus-visible {
+  background: var(--adm-teal-soft);
+}
+
+.danger {
+  color: var(--adm-bad);
+}
+
+.danger:hover,
+.danger:focus-visible {
+  background: var(--adm-bad-soft);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .menu {
+    animation: rise 140ms var(--ease);
+  }
+  .up {
+    animation-name: drop;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}

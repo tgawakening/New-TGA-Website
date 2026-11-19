@@ -3,12 +3,13 @@
  * Always rendered inside data-theme="indigo-admin" (app/admin/layout.tsx), so
  * it is written straight against the admin palette (--adm-*, styles/
  * admin-indigo.css) and the brand scales (--r-*, --sp-*, --ease, styles/
- * tokens.css). Two-tone: a brand-navy rail with light ink beside the light
- * content column. Checked (WCAG 2.x) on the navy #141d33: links #dfe4ee
- * 13.1:1, section labels and icons #9ea7bc 7.0:1, white on the active pill
- * 11.8:1, the active teal edge and focus ring #48d6c2 9.3:1. The official
- * lockup is a knockout design (white calligraphy and tagline), so it sits on
- * the navy as-is. Top bar (white): meta 6.0:1, badges 6.4-6.8:1. */
+ * tokens.css). The rail is light: white with a hairline right edge, beside
+ * the soft neutral canvas. The official lockup is a white knockout, so it
+ * sits on a small brand-navy plate at the top of the rail.
+ * Contrast (WCAG 2.x) on white: links #3d4757 9.6:1, section labels #6b7380
+ * 4.9:1, icons #5b6472 6.2:1; active #0a5f54 on #dcf1ed 6.6:1 (plus a teal
+ * edge and a heavier weight, so state never rests on colour alone).
+ * Top bar (white): meta 6.0:1, badges 6.4-6.8:1. */
 
 .frame {
   display: grid;
@@ -23,9 +24,9 @@
   gap: var(--sp-3);
   align-content: start;
   padding: var(--sp-3) var(--gutter);
-  background: var(--adm-nav);
-  color: var(--adm-nav-ink);
-  border-bottom: 1px solid var(--adm-nav);
+  background: var(--adm-card);
+  color: var(--adm-neutral);
+  border-bottom: 1px solid var(--adm-rule);
 }
 
 .brand {
@@ -39,16 +40,25 @@
 }
 
 .brand:focus-visible {
-  outline: 2px solid var(--adm-nav-accent);
+  outline: 2px solid var(--adm-teal);
   outline-offset: 3px;
+}
+
+/* The brand plate: the white knockout lockup needs a dark ground. */
+.brandPlate {
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: var(--adm-nav);
 }
 
 /* The official lockup, at its own proportions (640 × 246). */
 .brandLogo {
   display: block;
-  width: 128px;
+  width: 112px;
   height: auto;
-  flex: none;
 }
 
 .brandText {
@@ -56,11 +66,11 @@
   gap: 1px;
   min-width: 0;
   padding-left: var(--sp-3);
-  border-left: 1px solid var(--adm-nav-line);
+  border-left: 1px solid var(--adm-rule);
 }
 
 .brandText strong {
-  color: #ffffff;
+  color: var(--adm-ink);
   font-family: var(--display);
   font-size: 0.9375rem;
   font-weight: 600;
@@ -68,7 +78,7 @@
 }
 
 .brandText span {
-  color: var(--adm-nav-muted);
+  color: var(--adm-faint);
   font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -101,7 +111,7 @@
   min-height: 2.5rem;
   padding: 0 0.75rem;
   border-radius: var(--r-sm);
-  color: var(--adm-nav-ink);
+  color: var(--adm-neutral);
   font-size: 0.84375rem;
   font-weight: 500;
   text-decoration: none;
@@ -113,37 +123,36 @@
   width: 18px;
   height: 18px;
   flex: none;
-  color: var(--adm-nav-muted);
+  color: var(--adm-muted);
   transition: color var(--dur) var(--ease);
 }
 
 .link:hover {
-  background: var(--adm-nav-hover);
-  color: #ffffff;
+  background: var(--adm-neutral-soft);
+  color: var(--adm-ink);
 }
 
 .link:hover svg {
-  color: #ffffff;
+  color: var(--adm-ink);
 }
 
 .link:focus-visible {
-  outline: 2px solid var(--adm-nav-accent);
+  outline: 2px solid var(--adm-teal);
   outline-offset: 1px;
 }
 
-/* Active: a teal-tinted pill with white ink, a teal icon and a teal edge
+/* Active: a subtle brand-tinted pill, teal ink and icon, and a teal edge
  * (the edge and the weight carry the state, not the tint alone). */
 .active,
 .active:hover {
-  background: var(--adm-nav-active);
-  color: #ffffff;
+  background: var(--adm-teal-soft);
+  color: var(--adm-teal-ink);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(72, 214, 194, 0.22);
 }
 
 .active svg,
 .active:hover svg {
-  color: var(--adm-nav-accent);
+  color: var(--adm-teal-ink);
 }
 
 .active::before {
@@ -154,7 +163,7 @@
   bottom: 8px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--adm-nav-accent);
+  background: var(--adm-teal);
 }
 
 .sub {
@@ -163,6 +172,7 @@
 
 /* ---- Content column ---- */
 .main {
+  --sirah-sticky-top: 0px; /* where sticky table heads stop: under the top bar */
   display: grid;
   align-content: start;
   min-width: 0;
@@ -317,21 +327,30 @@
     height: 100vh;
     overflow: auto;
     gap: var(--sp-2);
-    padding: var(--sp-5) var(--sp-4) var(--sp-6);
+    padding: var(--sp-4) var(--sp-3) var(--sp-6);
     border-bottom: 0;
-    border-right: 0;
+    border-right: 1px solid var(--adm-rule);
   }
 
   .brand {
     display: grid;
     gap: var(--sp-3);
-    padding: 0 var(--sp-2) var(--sp-4);
-    border-bottom: 1px solid var(--adm-nav-line);
+    padding: 0 0 var(--sp-4);
+    border-bottom: 1px solid var(--adm-rule);
     border-radius: 0;
+  }
+
+  .brandPlate {
+    padding: 12px 14px;
+    border-radius: var(--r-md);
   }
 
   .brandLogo {
     width: 168px;
+  }
+
+  .brandText {
+    padding-inline: var(--sp-2);
   }
 
   .brandText {
@@ -356,7 +375,7 @@
   .navLabel {
     display: block;
     margin: var(--sp-5) 0 var(--sp-2) 0.75rem;
-    color: var(--adm-nav-muted);
+    color: var(--adm-faint);
     font-size: 0.65625rem;
     font-weight: 600;
     letter-spacing: 0.18em;
@@ -367,11 +386,47 @@
     padding-left: 2.25rem;
   }
 
+  .main {
+    --sirah-sticky-top: 64px; /* the sticky top bar's height, below */
+  }
+
   .header {
     position: sticky;
     top: 0;
     z-index: 20;
+    height: 64px;
+    flex-wrap: nowrap;
     padding: var(--sp-3) var(--sp-8);
+  }
+
+  .headerTitle {
+    flex: 0 1 auto;
+    min-width: 6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .headerMeta {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .who {
+    flex: 0 1 auto;
+  }
+
+  /* One line at desktop so the bar keeps its 64px; the full address is in
+   * the title tooltip. */
+  .whoText strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+
+  .headerMeta > :not(.who) {
+    flex: none;
   }
 
   .divider {

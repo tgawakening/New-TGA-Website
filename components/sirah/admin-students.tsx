@@ -13,7 +13,7 @@ import {
   sirahNetReceivedMinor,
 } from "@/lib/sirah/refund-display";
 import { SirahAdminCohort } from "./admin-cohort";
-import { SirahPaymentTotalsPanel } from "./admin-payment-totals";
+import { RowMenu, type RowMenuItem } from "./admin-row-menu";
 import styles from "./admin-students.module.css";
 
 type Snapshot = Awaited<ReturnType<typeof listSirahAdmin>>;
@@ -205,7 +205,6 @@ export function SirahAdminStudents({
   canExcludeRecords = false,
   initialExcluded = false,
   initialArchived = false,
-  canViewTotals = false,
 }: {
   view?: "students" | "payments";
   initialOrder?: string;
@@ -223,9 +222,6 @@ export function SirahAdminStudents({
   canExcludeRecords?: boolean;
   initialExcluded?: boolean;
   initialArchived?: boolean;
-  /** Super admin or manager: the read-only payment totals panel and the
-   * per-payment CSV. */
-  canViewTotals?: boolean;
 }) {
   const [data, setData] = useState<Snapshot | null>(null);
   const [q, setQ] = useState(initialOrder);
@@ -280,8 +276,9 @@ export function SirahAdminStudents({
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState("");
-  // The list filters without the page number: shared by the totals panel and
-  // both CSV exports, which cover the whole filtered set.
+  // The list filters without the page number: shared by the list and the
+  // students CSV export, which covers the whole filtered set. (Payments
+  // received and its CSV live on the Overview page.)
   const filterQuery = new URLSearchParams({
     q,
     payment,
@@ -511,6 +508,57 @@ export function SirahAdminStudents({
 
   /** Mark / unmark "added to course group". Its own endpoint, open to every
    * workspace role; it never touches payment or enrolment state. */
+  /** The row's "…" menu: exactly the actions the row used to show inline,
+   * with the same conditions and handlers, in the same order. */
+  function rowMenuItems(student: Student): RowMenuItem[] {
+    const items: RowMenuItem[] = [];
+    // Managers and the super admin may approve / complete; refunds are not
+    // in this row list and stay super-admin only at the endpoint.
+    (!canManageEnrolments || student.archivedAt ? [] : availableActions(student))
+      .filter((option) =>
+        ["APPROVE", "REJECT", "PENDING", "CANCEL", "COMPLETE"].includes(option),
+      )
+      .forEach((option) => {
+        const tone = actionClass(option);
+        items.push({
+          key: option,
+          label: actionLabels[option],
+          tone: tone.includes("is-danger")
+            ? "danger"
+            : tone === "ga-admin-primary-btn"
+              ? "primary"
+              : "default",
+          onSelect: () => open(student, option),
+        });
+      });
+    if (student.archivedAt) {
+      if (canManageRecords)
+        items.push({
+          key: "RESTORE",
+          label: "Restore",
+          tone: "primary",
+          onSelect: () => openRecordAction("RESTORE", student),
+        });
+    } else if (canExcludeRecords) {
+      items.push({
+        key: student.excludedAt ? "INCLUDE" : "EXCLUDE",
+        label: student.excludedAt ? "Un-exclude" : "Exclude (test)",
+        onSelect: () =>
+          openRecordAction(student.excludedAt ? "INCLUDE" : "EXCLUDE", student),
+      });
+      // Delete: per row, super admin only, behind the confirm dialog. Never
+      // part of the selection.
+      if (canManageRecords && !student.deleteRefusal)
+        items.push({
+          key: "ARCHIVE",
+          label: "Delete",
+          tone: "danger",
+          onSelect: () => openRecordAction("ARCHIVE", student),
+        });
+    }
+    return items;
+  }
+
   async function toggleGroup(student: Student) {
     const added = !student.groupAddedAt;
     if (
@@ -631,186 +679,194 @@ export function SirahAdminStudents({
         </div>
 
         {!readOnly && <SirahAdminCohort />}
-        <div className={`ga-admin-filter-row ${styles.filters}`}>
-          <label>
-            Search students
-            <input
-              className="ga-admin-search"
-              type="search"
-              placeholder="Name, email, phone or reference"
-              value={q}
-              onChange={(event) => {
-                setQ(event.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
-          <label>
-            Country
-            <select
-              aria-label="Country"
-              value={country}
-              onChange={(event) => {
-                setCountry(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All countries</option>
-              {Object.entries(countries)
-                .sort((a, b) => a[1].name.localeCompare(b[1].name))
-                .map(([code, c]) => (
-                  <option key={code} value={code}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label>
-            Payment method
-            <select
-              aria-label="Payment method"
-              value={method}
-              onChange={(event) => {
-                setMethod(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All payment methods</option>
-              <option value="MANUAL">Manual payments (bank / JazzCash)</option>
-              <option value="STRIPE">Stripe</option>
-              <option value="PAYPAL">PayPal</option>
-              <option value="BANK_TRANSFER">Meezan Bank transfer</option>
-              <option value="JAZZCASH">JazzCash</option>
-              <option value="UNSELECTED">No method selected</option>
-              <option value="CUSTOM_LINK">Admin custom payment links</option>
-            </select>
-          </label>
-          <label>
-            Payment status
-            <select
-              aria-label="Payment status"
-              value={payment}
-              onChange={(event) => {
-                setPayment(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All payments</option>
-              <option value="NEEDS_ATTENTION">
-                Needs attention (review, processing, failed)
-              </option>
-              {paymentStates.map((value) => (
-                <option key={value} value={value}>
-                  {label(value)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Enrolment status
-            <select
-              aria-label="Enrolment status"
-              value={enrolment}
-              onChange={(event) => {
-                setEnrolment(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">All enrolments</option>
-              {enrolmentStates.map((value) => (
-                <option key={value} value={value}>
-                  {label(value)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Course group
-            <select
-              aria-label="Course group"
-              value={group}
-              onChange={(event) => {
-                setGroup(event.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">Added or not</option>
-              <option value="NOT_ADDED">Not yet added</option>
-              <option value="ADDED">Added to group</option>
-            </select>
-          </label>
-          {canExcludeRecords && (
-            <label>
-              Records
-              <select
-                aria-label="Records"
-                value={recordsView}
+      </section>
+
+      <section
+        className={`ga-admin-workspace-card ${styles.recordsCard}`}
+        aria-label="Records"
+      >
+        {/* Filter bar: search and the paid date range first, then the
+            narrowing selects. Same controls, same handlers as before. */}
+        <div className={`ga-admin-filter-row ${styles.toolbar}`}>
+          <div className={styles.filterLead}>
+            <label className={styles.searchField}>
+              Search students
+              <input
+                className="ga-admin-search"
+                type="search"
+                placeholder="Name, email, phone or reference"
+                value={q}
                 onChange={(event) => {
-                  setRecordsView(event.target.value as "" | "EXCLUDED" | "ARCHIVED");
+                  setQ(event.target.value);
                   setPage(1);
-                  setRecordMessage("");
+                }}
+              />
+            </label>
+            <div className={styles.dateRange} role="group" aria-label="Paid between (UTC)">
+              <label>
+                Paid from
+                <input
+                  type="date"
+                  aria-label="Paid from (UTC)"
+                  value={from}
+                  max={to || undefined}
+                  onChange={(event) => {
+                    setFrom(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </label>
+              <span className={styles.dateDash} aria-hidden="true">–</span>
+              <label>
+                Paid to
+                <input
+                  type="date"
+                  aria-label="Paid to (UTC)"
+                  value={to}
+                  min={from || undefined}
+                  onChange={(event) => {
+                    setTo(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </label>
+            </div>
+            <button
+              type="button"
+              className={`ga-admin-ghost-btn ${styles.clearBtn}`}
+              onClick={() => {
+                setQ("");
+                setFrom("");
+                setTo("");
+                setCountry("");
+                setMethod("");
+                setPayment("");
+                setEnrolment("");
+                setGroup("");
+                setRecordsView("");
+                setPage(1);
+              }}
+            >
+              Clear filters
+            </button>
+          </div>
+          <div className={styles.filterGrid}>
+            <label>
+              Country
+              <select
+                aria-label="Country"
+                value={country}
+                onChange={(event) => {
+                  setCountry(event.target.value);
+                  setPage(1);
                 }}
               >
-                <option value="">Counted in analytics</option>
-                <option value="EXCLUDED">Excluded (test / junk)</option>
-                {canManageRecords && (
-                  <option value="ARCHIVED">Archive (deleted, restorable for 7 days)</option>
-                )}
+                <option value="">All countries</option>
+                {Object.entries(countries)
+                  .sort((a, b) => a[1].name.localeCompare(b[1].name))
+                  .map(([code, c]) => (
+                    <option key={code} value={code}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
             </label>
-          )}
-          <label>
-            Paid from
-            <input
-              type="date"
-              aria-label="Paid from (UTC)"
-              value={from}
-              max={to || undefined}
-              onChange={(event) => {
-                setFrom(event.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
-          <label>
-            Paid to
-            <input
-              type="date"
-              aria-label="Paid to (UTC)"
-              value={to}
-              min={from || undefined}
-              onChange={(event) => {
-                setTo(event.target.value);
-                setPage(1);
-              }}
-            />
-          </label>
-          <button
-            type="button"
-            className="ga-admin-outline-btn"
-            onClick={() => {
-              setQ("");
-              setFrom("");
-              setTo("");
-              setCountry("");
-              setMethod("");
-              setPayment("");
-              setEnrolment("");
-              setGroup("");
-              setRecordsView("");
-              setPage(1);
-            }}
-          >
-            Clear filters
-          </button>
+            <label>
+              Payment method
+              <select
+                aria-label="Payment method"
+                value={method}
+                onChange={(event) => {
+                  setMethod(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All payment methods</option>
+                <option value="MANUAL">Manual payments (bank / JazzCash)</option>
+                <option value="STRIPE">Stripe</option>
+                <option value="PAYPAL">PayPal</option>
+                <option value="BANK_TRANSFER">Meezan Bank transfer</option>
+                <option value="JAZZCASH">JazzCash</option>
+                <option value="UNSELECTED">No method selected</option>
+                <option value="CUSTOM_LINK">Admin custom payment links</option>
+              </select>
+            </label>
+            <label>
+              Payment status
+              <select
+                aria-label="Payment status"
+                value={payment}
+                onChange={(event) => {
+                  setPayment(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All payments</option>
+                <option value="NEEDS_ATTENTION">
+                  Needs attention (review, processing, failed)
+                </option>
+                {paymentStates.map((value) => (
+                  <option key={value} value={value}>
+                    {label(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Enrolment status
+              <select
+                aria-label="Enrolment status"
+                value={enrolment}
+                onChange={(event) => {
+                  setEnrolment(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">All enrolments</option>
+                {enrolmentStates.map((value) => (
+                  <option key={value} value={value}>
+                    {label(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Course group
+              <select
+                aria-label="Course group"
+                value={group}
+                onChange={(event) => {
+                  setGroup(event.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">Added or not</option>
+                <option value="NOT_ADDED">Not yet added</option>
+                <option value="ADDED">Added to group</option>
+              </select>
+            </label>
+            {canExcludeRecords && (
+              <label>
+                Records
+                <select
+                  aria-label="Records"
+                  value={recordsView}
+                  onChange={(event) => {
+                    setRecordsView(event.target.value as "" | "EXCLUDED" | "ARCHIVED");
+                    setPage(1);
+                    setRecordMessage("");
+                  }}
+                >
+                  <option value="">Counted in analytics</option>
+                  <option value="EXCLUDED">Excluded (test / junk)</option>
+                  {canManageRecords && (
+                    <option value="ARCHIVED">Archive (deleted, restorable for 7 days)</option>
+                  )}
+                </select>
+              </label>
+            )}
+          </div>
         </div>
-        {canViewTotals && (
-          <SirahPaymentTotalsPanel
-            query={filterQuery}
-            reloadKey={reload}
-            countedView={recordsView === ""}
-          />
-        )}
         {loadError && (
           <p className="ga-admin-error-banner" role="alert">
             {loadError}
@@ -820,7 +876,7 @@ export function SirahAdminStudents({
         {data && (
           <>
             <p className={styles.resultCount}>
-              {data.total}{" "}
+              <strong>{data.total}</strong>{" "}
               {archivedView
                 ? "archived records"
                 : recordsView === "EXCLUDED"
@@ -893,26 +949,26 @@ export function SirahAdminStudents({
                 </div>
               );
             })()}
-            <div className="ga-admin-data-table">
+            <div className={`ga-admin-data-table ${styles.dataTable}`}>
               <div
-                className={`ga-admin-table-head ${styles.table}`}
+                className={`ga-admin-table-head ${styles.table} ${styles.head}`}
                 aria-hidden="true"
               >
                 <span>Order</span>
                 <span>Customer</span>
-                <span>Amount</span>
+                <span className={styles.num}>Amount</span>
                 <span>Payment</span>
                 <span>Course access</span>
                 <span>Group</span>
                 <span>Date</span>
-                <span>Actions</span>
+                <span className={styles.actionsHead}>Actions</span>
               </div>
               {data.rows.map((student) => (
                 <article
                   key={student.id}
                   className={`ga-admin-table-row ${styles.row} ${styles.table}`}
                 >
-                  <div>
+                  <div className={styles.orderCell}>
                     {canExcludeRecords && !student.archivedAt && (
                       <label className={styles.rowSelect}>
                         <input
@@ -934,7 +990,11 @@ export function SirahAdminStudents({
                         <span className={`ga-admin-pill ${styles.excludedPill}`}>Excluded (test)</span>
                       )
                     )}
-                    <strong>{student.reference}</strong>
+                    {/* Long references: one monospaced line, truncated; the
+                        full value is in the tooltip and in View details. */}
+                    <strong className={styles.ref} title={student.reference}>
+                      {student.reference}
+                    </strong>
                     <p>
                       {student.archivedAt
                         ? `Archived ${date(student.archivedAt)}`
@@ -946,12 +1006,12 @@ export function SirahAdminStudents({
                       <p className={styles.purgeNote}>{purgeLabel(student.purgeAt)}</p>
                     )}
                   </div>
-                  <div>
+                  <div className={styles.customerCell}>
                     <strong>{student.user.fullName}</strong>
                     <p>{student.user.email}</p>
                     <p>{student.phoneE164}</p>
                   </div>
-                  <div>
+                  <div className={styles.amountCell}>
                     <strong>
                       {formatSirahMoney(student.amountMinor, student.currency)}
                     </strong>
@@ -987,10 +1047,10 @@ export function SirahAdminStudents({
                       )}
                   </div>
                   <div>{groupCell(student)}</div>
-                  <div>
+                  <div className={styles.dateCell}>
                     <strong>{date(student.createdAt)}</strong>
                   </div>
-                  <div className="ga-admin-actions">
+                  <div className={`ga-admin-actions ${styles.actionsCell}`}>
                     <button
                       type="button"
                       className="ga-admin-outline-btn"
@@ -998,65 +1058,10 @@ export function SirahAdminStudents({
                     >
                       View Details
                     </button>
-                    {/* Managers and the super admin may approve / complete;
-                        refunds are not in this row list and stay
-                        super-admin only at the endpoint. */}
-                    {(!canManageEnrolments || student.archivedAt ? [] : availableActions(student))
-                      .filter((option) =>
-                        [
-                          "APPROVE",
-                          "REJECT",
-                          "PENDING",
-                          "CANCEL",
-                          "COMPLETE",
-                        ].includes(option),
-                      )
-                      .map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          className={actionClass(option)}
-                          onClick={() => open(student, option)}
-                        >
-                          {actionLabels[option]}
-                        </button>
-                      ))}
-                    {student.archivedAt ? (
-                      canManageRecords && (
-                        <button
-                          type="button"
-                          className="ga-admin-primary-btn"
-                          onClick={() => openRecordAction("RESTORE", student)}
-                        >
-                          Restore
-                        </button>
-                      )
-                    ) : (
-                      canExcludeRecords && (
-                        <>
-                          <button
-                            type="button"
-                            className="ga-admin-outline-btn"
-                            onClick={() =>
-                              openRecordAction(student.excludedAt ? "INCLUDE" : "EXCLUDE", student)
-                            }
-                          >
-                            {student.excludedAt ? "Un-exclude" : "Exclude (test)"}
-                          </button>
-                          {/* Delete: per row, super admin only, behind the
-                              confirm dialog. Never part of the selection. */}
-                          {canManageRecords && !student.deleteRefusal && (
-                            <button
-                              type="button"
-                              className="ga-admin-outline-btn is-danger"
-                              onClick={() => openRecordAction("ARCHIVE", student)}
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </>
-                      )
-                    )}
+                    <RowMenu
+                      label={`More actions for ${student.reference}`}
+                      items={rowMenuItems(student)}
+                    />
                   </div>
                 </article>
               ))}

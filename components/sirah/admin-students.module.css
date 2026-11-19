@@ -6,7 +6,7 @@
   grid-template-columns: auto 1fr auto;
 }
 
-.filters label,
+.toolbar label,
 .form label {
   display: grid;
   gap: 0.35rem;
@@ -159,29 +159,6 @@
   }
 }
 
-/* Filter bar: search takes two columns, every select gets room for its
- * longest default label, Clear filters sits at the end of the last row. */
-.filters {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.75rem 1rem;
-  align-items: end;
-}
-.filters :is(input, select) {
-  width: 100%;
-  min-width: 0;
-}
-@media (min-width: 640px) {
-  .filters {
-    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
-  }
-  .filters > label:first-child {
-    grid-column: span 2;
-  }
-  .filters > button:last-child {
-    justify-self: start;
-  }
-}
 
 /* Keep small student-card labels readable against their status backgrounds. */
 .row p { color: var(--ai-fg-526477, #526477); }
@@ -217,11 +194,14 @@
 }
 
 /* Eight columns wherever the head shows (900px up), so heads and cells line
- * up; Customer and Actions get the room their content needs. */
+ * up. The head and each row are separate grids, so every track is fixed or
+ * fractional (never auto). Actions holds View details and the "…" menu. */
 @media (min-width: 900px) {
   :global(.ga-admin-table-head).table,
   :global(.ga-admin-table-row).table {
-    grid-template-columns: 1.1fr 1.35fr 0.95fr 0.95fr 0.8fr 0.95fr 0.75fr 1.65fr;
+    grid-template-columns:
+      minmax(0, 1.15fr) minmax(0, 1.45fr) minmax(0, 0.9fr) minmax(0, 1fr)
+      minmax(0, 0.85fr) minmax(0, 0.95fr) minmax(0, 0.8fr) 9.25rem;
   }
 }
 
@@ -310,5 +290,273 @@
 @media (max-width: 899px) {
   :global([data-theme="indigo-admin"]) .row > div:nth-child(2) {
     grid-column: 1 / -1;
+  }
+}
+
+/* ==== Records card: filter bar, result meta and the data table ==========
+ * Styling only. Written against the admin palette (styles/admin-indigo.css)
+ * and scoped under the theme so it outranks the shared admin rules.
+ * Contrast on white: labels and heads #5b6472 6.2:1, field edges #8a93a3
+ * 3.1:1 (non-text), clear-filters link #0a5f54 7.4:1, mono reference
+ * #1a2233 15:1. */
+:global([data-theme="indigo-admin"]) .recordsCard {
+  padding: 0;
+}
+
+/* -- Filter bar ---------------------------------------------------------- */
+:global([data-theme="indigo-admin"]) .recordsCard .toolbar {
+  display: grid;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: var(--sp-4);
+  border: 0;
+  border-bottom: 1px solid var(--adm-rule);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--adm-card);
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .toolbar label {
+  gap: 4px;
+  color: var(--adm-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .toolbar :is(input, select) {
+  width: 100%;
+  min-width: 0;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.filterLead {
+  display: grid;
+  gap: var(--sp-3);
+  align-items: end;
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  gap: var(--sp-3);
+  align-items: end;
+}
+
+.dateRange {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: var(--sp-2);
+  align-items: end;
+}
+
+.dateDash {
+  padding-bottom: 0.55rem;
+  color: var(--adm-muted);
+}
+
+/* Search: a leading magnifier inside the field. */
+:global([data-theme="indigo-admin"]) .recordsCard .searchField input {
+  padding-left: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6472' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 0.75rem center;
+  background-size: 16px 16px;
+}
+
+/* Clear filters: a quiet text button, not another boxed control. */
+:global([data-theme="indigo-admin"]) .recordsCard .clearBtn {
+  justify-self: start;
+  min-height: 2.25rem;
+  padding: 0 var(--sp-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--adm-teal-ink);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .clearBtn:hover:not(:disabled) {
+  border-color: transparent;
+  background: transparent;
+  text-decoration-color: currentColor;
+}
+
+@media (min-width: 640px) {
+  /* Compact controls; phones keep the 16px / 40px fields (no iOS zoom). */
+  :global([data-theme="indigo-admin"]) .recordsCard .toolbar :is(input, select) {
+    min-height: 2.25rem;
+    border-width: 1px;
+    border-color: var(--adm-control);
+    font-size: 0.8125rem;
+  }
+
+  .filterLead {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .filterLead > .searchField {
+    grid-column: 1 / -1;
+  }
+
+  .toolbar {
+    padding: var(--sp-4) var(--sp-5);
+  }
+}
+
+@media (min-width: 1100px) {
+  .filterLead {
+    grid-template-columns: minmax(16rem, 1fr) minmax(0, 21rem) auto;
+  }
+
+  .filterLead > .searchField {
+    grid-column: auto;
+  }
+}
+
+/* -- Result meta and the selection bar ----------------------------------- */
+:global([data-theme="indigo-admin"]) .recordsCard .resultCount {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4) 0;
+  color: var(--adm-muted);
+  font-weight: 500;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .resultCount strong {
+  color: var(--adm-ink);
+  font-weight: 700;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .recordMessage {
+  margin: var(--sp-2) var(--sp-4) 0;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .bulkBar {
+  margin: var(--sp-3) var(--sp-4) 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-color: var(--adm-rule);
+  border-radius: var(--r-sm);
+  background: var(--adm-panel);
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .bulkSelectAll,
+:global([data-theme="indigo-admin"]) .recordsCard .bulkCount {
+  color: var(--adm-neutral);
+  font-size: 0.8125rem;
+}
+
+/* -- Data table ---------------------------------------------------------- */
+:global([data-theme="indigo-admin"]) .recordsCard .dataTable {
+  margin: var(--sp-3) 0 0;
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+
+/* Reference: one monospaced line, truncated (full value on hover and in
+ * View details). */
+.ref {
+  display: block;
+  max-width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .row .ref {
+  font-size: 0.78125rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.orderCell :global(.ga-admin-pill) {
+  vertical-align: middle;
+}
+
+.customerCell > strong {
+  display: block;
+}
+
+.dateCell > strong {
+  font-weight: 500;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .row .dateCell > strong {
+  font-weight: 500;
+  color: var(--adm-neutral);
+}
+
+.actionsCell {
+  flex-wrap: nowrap;
+}
+
+@media (min-width: 900px) {
+  :global([data-theme="indigo-admin"]) .recordsCard .dataTable {
+    margin-top: var(--sp-3);
+    padding: 0;
+    border: 0;
+    border-top: 1px solid var(--adm-rule);
+    border-radius: 0;
+    background: transparent;
+    overflow: visible; /* the sticky head and the row menus need it */
+  }
+
+  /* Sticky column heads, stopping under the workspace's sticky top bar. */
+  :global([data-theme="indigo-admin"]) .recordsCard .head {
+    position: sticky;
+    top: var(--sirah-sticky-top, 0px);
+    z-index: 5;
+    padding: 0.625rem var(--sp-5);
+    border-bottom: 1px solid var(--adm-rule);
+    background: var(--adm-panel);
+    align-items: center;
+  }
+
+  :global([data-theme="indigo-admin"]) .recordsCard .row {
+    align-items: start;
+    padding: var(--sp-4) var(--sp-5);
+  }
+
+  /* No pager below: the last row meets the card's rounded corners. */
+  :global([data-theme="indigo-admin"]) .recordsCard > .dataTable:last-child > :last-child {
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+  }
+
+  /* Figures right-aligned in tabular numerals. */
+  .num,
+  .amountCell {
+    text-align: right;
+  }
+
+  :global([data-theme="indigo-admin"]) .recordsCard .row .amountCell > strong {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  .actionsHead {
+    text-align: right;
+  }
+
+  :global([data-theme="indigo-admin"]) .recordsCard .row .actionsCell {
+    justify-content: flex-end;
+    align-items: center;
+  }
+}
+
+/* -- Pager --------------------------------------------------------------- */
+:global([data-theme="indigo-admin"]) .recordsCard .pager {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--adm-rule);
+}
+
+@media (min-width: 640px) {
+  :global([data-theme="indigo-admin"]) .recordsCard :is(.resultCount, .pager) {
+    padding-inline: var(--sp-5);
+  }
+
+  :global([data-theme="indigo-admin"]) .recordsCard :is(.recordMessage, .bulkBar) {
+    margin-inline: var(--sp-5);
   }
 }

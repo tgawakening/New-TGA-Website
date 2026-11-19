@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { formatSirahMoney } from "@/lib/sirah/catalog";
 import {
   sirahMethodLabel,
@@ -25,18 +25,24 @@ function period(from: string | null, to: string | null) {
 
 /**
  * Read-only reconciliation panel: money received for the records matching the
- * list filters, by currency and then payment method. Never sums currencies.
- * `query` is the list's filter query without the page number.
+ * query, by currency and then payment method. Never sums currencies.
+ * `query` is a filter query (no page number) for /api/admin/sirah/totals.
  */
 export function SirahPaymentTotalsPanel({
   query,
   reloadKey,
   countedView,
+  caption,
+  filters,
 }: {
   query: string;
   reloadKey: number;
   /** False on the Excluded / Archive views, which are never counted. */
   countedView: boolean;
+  /** Replaces the default caption; receives the period being shown. */
+  caption?: (period: string) => ReactNode;
+  /** Controls shown under the heading (e.g. a date range). */
+  filters?: ReactNode;
 }) {
   const [totals, setTotals] = useState<SirahPaymentTotals | null>(null);
   const [error, setError] = useState("");
@@ -77,7 +83,9 @@ export function SirahPaymentTotalsPanel({
         <div>
           <h3 id="sirah-payment-totals-title">Payments received</h3>
           <p className={styles.caption}>
-            {countedView ? (
+            {countedView && caption ? (
+              caption(totals ? period(totals.from, totals.to) : "…")
+            ) : countedView ? (
               <>
                 Verified payments for the records matching these filters,{" "}
                 {totals ? period(totals.from, totals.to) : "…"} (UTC). Pending,
@@ -95,6 +103,8 @@ export function SirahPaymentTotalsPanel({
           </a>
         )}
       </div>
+
+      {filters}
 
       {countedView && error && (
         <p className="ga-admin-error-banner" role="alert">
@@ -206,5 +216,69 @@ export function SirahPaymentTotalsPanel({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Payments received for the Overview page: every counted record, narrowed
+ * only by the date the payment was recorded (From / To, UTC). Same endpoint,
+ * same totals and the same per-payment CSV as before.
+ */
+export function SirahPaymentsReceived() {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const query = new URLSearchParams({ from, to }).toString();
+  return (
+    <SirahPaymentTotalsPanel
+      query={query}
+      reloadKey={0}
+      countedView
+      caption={(shown) => (
+        <>
+          Verified payments received, {shown} (UTC), totalled by currency and
+          then by payment method. Pending, awaiting review, rejected and unpaid
+          registrations and excluded test records are not counted.
+        </>
+      )}
+      filters={
+        <div className={styles.range} role="group" aria-label="Date range (UTC)">
+          <label>
+            From
+            <input
+              type="date"
+              aria-label="Payments from (UTC)"
+              value={from}
+              max={to || undefined}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          </label>
+          <span className={styles.rangeDash} aria-hidden="true">
+            –
+          </span>
+          <label>
+            To
+            <input
+              type="date"
+              aria-label="Payments to (UTC)"
+              value={to}
+              min={from || undefined}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          </label>
+          {(from || to) && (
+            <button
+              type="button"
+              className={styles.rangeClear}
+              onClick={() => {
+                setFrom("");
+                setTo("");
+              }}
+            >
+              All dates
+            </button>
+          )}
+        </div>
+      }
+    />
   );
 }
