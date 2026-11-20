@@ -105,6 +105,11 @@
   background: var(--adm-bad-soft);
 }
 
+.item:disabled {
+  color: var(--adm-muted);
+  cursor: progress;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .menu {
     animation: rise 140ms var(--ease);

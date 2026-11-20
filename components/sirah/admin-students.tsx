@@ -179,6 +179,33 @@ function PaymentStatus({ order }: { order: Student }) {
   return <Status value={sirahDisplayPaymentState(order)} />;
 }
 
+/** Two initials for the row avatar (first and last name), from the email
+ * when the name is blank. Display only. */
+function initials(name: string, email: string) {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  const letters =
+    parts.length > 1
+      ? parts[0][0] + parts[parts.length - 1][0]
+      : (parts[0] || email || "?").slice(0, 2);
+  return letters.toUpperCase();
+}
+
+/** A stable brand tint per record, so neighbouring avatars differ. */
+const avatarTones = ["toneTeal", "toneIndigo", "toneGold", "toneTerra"] as const;
+function avatarTone(id: string) {
+  let hash = 0;
+  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  return avatarTones[hash % avatarTones.length];
+}
+
+/** Short inline labels for the row's one primary action (the menu keeps the
+ * full wording; the full label is the button's tooltip). */
+const inlineLabels: Record<string, string> = {
+  APPROVE: "Approve",
+  COMPLETE: "Complete course",
+  RESTORE: "Restore",
+};
+
 async function readSnapshot(
   query: string,
   signal?: AbortSignal,
@@ -599,6 +626,50 @@ export function SirahAdminStudents({
     }
   }
 
+  /** Splits the row's actions for the inbox list: the one primary action for
+   * the row's state shows inline, every other action stays in the "…" menu in
+   * its existing order. The primary is the row's first approve / complete /
+   * restore action; failing that, "Mark added" to the course group. The group
+   * toggle keeps its own condition and handler wherever it lands. */
+  function rowActions(student: Student): {
+    primary:
+      | (RowMenuItem & { title?: string; disabled?: boolean; pressed?: boolean })
+      | null;
+    rest: RowMenuItem[];
+  } {
+    const menu = rowMenuItems(student);
+    const groupItem: (RowMenuItem & { disabled?: boolean; pressed?: boolean }) | null =
+      canMarkGroupAdded
+        ? {
+            key: "GROUP",
+            label:
+              groupBusy === student.id
+                ? "Saving…"
+                : student.groupAddedAt
+                  ? "Undo: mark not added to group"
+                  : "Mark added",
+            disabled: groupBusy === student.id,
+            pressed: !!student.groupAddedAt,
+            onSelect: () => void toggleGroup(student),
+          }
+        : null;
+    const lead = menu.find((item) => item.tone === "primary");
+    if (lead) {
+      return {
+        primary: {
+          ...lead,
+          label: inlineLabels[lead.key] ?? lead.label,
+          title: lead.label,
+        },
+        rest: [...menu.filter((item) => item !== lead), ...(groupItem ? [groupItem] : [])],
+      };
+    }
+    if (groupItem && !student.groupAddedAt) {
+      return { primary: { ...groupItem, tone: "default" }, rest: menu };
+    }
+    return { primary: null, rest: [...menu, ...(groupItem ? [groupItem] : [])] };
+  }
+
   const groupCell = (student: Student) => (
     <>
       <span
@@ -685,10 +756,11 @@ export function SirahAdminStudents({
         className={`ga-admin-workspace-card ${styles.recordsCard}`}
         aria-label="Records"
       >
-        {/* Filter bar: search and the paid date range first, then the
-            narrowing selects. Same controls, same handlers as before. */}
+        {/* Filter bar: search, then the narrowing selects in an even grid,
+            then the paid date range with Clear filters. Same controls, same
+            handlers as before. */}
         <div className={`ga-admin-filter-row ${styles.toolbar}`}>
-          <div className={styles.filterLead}>
+          <div className={styles.filterTop}>
             <label className={styles.searchField}>
               Search students
               <input
@@ -716,7 +788,6 @@ export function SirahAdminStudents({
                   }}
                 />
               </label>
-              <span className={styles.dateDash} aria-hidden="true">–</span>
               <label>
                 Paid to
                 <input
@@ -730,25 +801,25 @@ export function SirahAdminStudents({
                   }}
                 />
               </label>
+              <button
+                type="button"
+                className={`ga-admin-ghost-btn ${styles.clearBtn}`}
+                onClick={() => {
+                  setQ("");
+                  setFrom("");
+                  setTo("");
+                  setCountry("");
+                  setMethod("");
+                  setPayment("");
+                  setEnrolment("");
+                  setGroup("");
+                  setRecordsView("");
+                  setPage(1);
+                }}
+              >
+                Clear filters
+              </button>
             </div>
-            <button
-              type="button"
-              className={`ga-admin-ghost-btn ${styles.clearBtn}`}
-              onClick={() => {
-                setQ("");
-                setFrom("");
-                setTo("");
-                setCountry("");
-                setMethod("");
-                setPayment("");
-                setEnrolment("");
-                setGroup("");
-                setRecordsView("");
-                setPage(1);
-              }}
-            >
-              Clear filters
-            </button>
           </div>
           <div className={styles.filterGrid}>
             <label>
@@ -867,6 +938,7 @@ export function SirahAdminStudents({
             )}
           </div>
         </div>
+        <div className={styles.listArea}>
         {loadError && (
           <p className="ga-admin-error-banner" role="alert">
             {loadError}
@@ -949,132 +1021,183 @@ export function SirahAdminStudents({
                 </div>
               );
             })()}
-            <div className={`ga-admin-data-table ${styles.dataTable}`}>
-              <div
-                className={`ga-admin-table-head ${styles.table} ${styles.head}`}
-                aria-hidden="true"
-              >
-                <span>Order</span>
-                <span>Customer</span>
-                <span className={styles.num}>Amount</span>
-                <span>Payment</span>
-                <span>Course access</span>
-                <span>Group</span>
-                <span>Date</span>
-                <span className={styles.actionsHead}>Actions</span>
-              </div>
-              {data.rows.map((student) => (
-                <article
-                  key={student.id}
-                  className={`ga-admin-table-row ${styles.row} ${styles.table}`}
-                >
-                  <div className={styles.orderCell}>
-                    {canExcludeRecords && !student.archivedAt && (
-                      <label className={styles.rowSelect}>
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${student.reference} for analytics exclusion`}
-                          checked={checkedIds.has(student.id)}
-                          disabled={bulkBusy}
-                          onChange={(event) =>
-                            toggleChecked(student.id, event.target.checked)
-                          }
-                        />
-                      </label>
-                    )}
-                    <span className="ga-admin-pill">Sīrah</span>
-                    {student.archivedAt ? (
-                      <span className={`ga-admin-pill ${styles.archivedPill}`}>Archived</span>
-                    ) : (
-                      student.excludedAt && (
-                        <span className={`ga-admin-pill ${styles.excludedPill}`}>Excluded (test)</span>
-                      )
-                    )}
-                    {/* Long references: one monospaced line, truncated; the
-                        full value is in the tooltip and in View details. */}
-                    <strong className={styles.ref} title={student.reference}>
-                      {student.reference}
-                    </strong>
-                    <p>
-                      {student.archivedAt
-                        ? `Archived ${date(student.archivedAt)}`
-                        : student.excludedAt
-                          ? `Excluded ${date(student.excludedAt)}${student.excludedBy ? ` by ${student.excludedBy}` : ""}`
-                          : "Beyond Chronology"}
-                    </p>
-                    {student.purgeAt && (
-                      <p className={styles.purgeNote}>{purgeLabel(student.purgeAt)}</p>
-                    )}
-                  </div>
-                  <div className={styles.customerCell}>
-                    <strong>{student.user.fullName}</strong>
-                    <p>{student.user.email}</p>
-                    <p>{student.phoneE164}</p>
-                  </div>
-                  <div className={styles.amountCell}>
-                    <strong>
-                      {formatSirahMoney(student.amountMinor, student.currency)}
-                    </strong>
-                    {student.customLink && (
-                      <p>
-                        <span className="ga-admin-pill">Custom link</span>{" "}
-                        Catalog{" "}
-                        {formatSirahMoney(
-                          student.customLink.catalogAmountMinor,
-                          student.customLink.catalogCurrency,
-                        )}
-                        {student.customLink.sponsorLabel
-                          ? ` · ${student.customLink.sponsorLabel}`
-                          : ""}
-                      </p>
-                    )}
-                    <p>{student.countryName}</p>
-                  </div>
-                  <div>
-                    <strong>
-                      {student.method
-                        ? label(student.method)
-                        : "No method selected"}
-                    </strong>
-                    <p>{label(student.plan)}</p>
-                    <PaymentStatus order={student} />
-                  </div>
-                  <div>
-                    <Status value={student.enrolmentState} />
-                    {student.cancelledAt &&
-                      student.enrolmentState === "ACTIVE" && (
-                        <p>Cancellation scheduled</p>
+            {/* Inbox list: one card per registration. Left: who; middle: the
+                status chips; right: the amount, method, date and actions. */}
+            <ul className={styles.inbox} aria-label="Registrations">
+              {data.rows.map((student) => {
+                const { primary, rest } = rowActions(student);
+                const checked = checkedIds.has(student.id);
+                return (
+                  <li
+                    key={student.id}
+                    className={`${styles.item}${checked ? ` ${styles.itemChecked}` : ""}`}
+                  >
+                    <div className={styles.itemLead}>
+                      {canExcludeRecords && !student.archivedAt && (
+                        <label className={styles.rowSelect}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${student.reference} for analytics exclusion`}
+                            checked={checked}
+                            disabled={bulkBusy}
+                            onChange={(event) =>
+                              toggleChecked(student.id, event.target.checked)
+                            }
+                          />
+                        </label>
                       )}
-                  </div>
-                  <div>{groupCell(student)}</div>
-                  <div className={styles.dateCell}>
-                    <strong>{date(student.createdAt)}</strong>
-                  </div>
-                  <div className={`ga-admin-actions ${styles.actionsCell}`}>
-                    <button
-                      type="button"
-                      className="ga-admin-outline-btn"
-                      onClick={() => open(student)}
-                    >
-                      View Details
-                    </button>
-                    <RowMenu
-                      label={`More actions for ${student.reference}`}
-                      items={rowMenuItems(student)}
-                    />
-                  </div>
-                </article>
-              ))}
-              {data.rows.length === 0 && (
-                <p className="ga-admin-empty-state">
-                  {archivedView
-                    ? "The archive is empty."
-                    : recordsView === "EXCLUDED"
-                      ? "No records are excluded."
-                      : "No registrations match these filters."}
-                </p>
-              )}
-            </div>
+                      <span
+                        className={`${styles.avatar} ${styles[avatarTone(student.id)]}`}
+                        aria-hidden="true"
+                      >
+                        {initials(student.user.fullName, student.user.email)}
+                      </span>
+                      <div className={styles.who}>
+                        <p className={styles.nameLine}>
+                          <strong>{student.user.fullName}</strong>
+                          <span className="ga-admin-pill">Sīrah</span>
+                          {student.archivedAt ? (
+                            <span className={`ga-admin-pill ${styles.archivedPill}`}>Archived</span>
+                          ) : (
+                            student.excludedAt && (
+                              <span className={`ga-admin-pill ${styles.excludedPill}`}>Excluded (test)</span>
+                            )
+                          )}
+                        </p>
+                        <p className={styles.contact}>
+                          <span>{student.user.email}</span>
+                          <span>{student.phoneE164}</span>
+                          <span>{student.countryName}</span>
+                        </p>
+                        <p className={styles.metaLine}>
+                          {/* Long references: one monospaced line, truncated;
+                              the full value is in the tooltip and in View details. */}
+                          <span className={styles.ref} title={student.reference}>
+                            {student.reference}
+                          </span>
+                          <span>
+                            {student.archivedAt
+                              ? `Archived ${date(student.archivedAt)}`
+                              : student.excludedAt
+                                ? `Excluded ${date(student.excludedAt)}${student.excludedBy ? ` by ${student.excludedBy}` : ""}`
+                                : "Beyond Chronology"}
+                          </span>
+                        </p>
+                        {student.purgeAt && (
+                          <p className={styles.purgeNote}>{purgeLabel(student.purgeAt)}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <dl className={styles.itemStatus}>
+                      <div className={styles.chip}>
+                        <dt>Course access</dt>
+                        <dd>
+                          <Status value={student.enrolmentState} />
+                          {student.cancelledAt &&
+                            student.enrolmentState === "ACTIVE" && (
+                              <span className={styles.chipNote}>Cancellation scheduled</span>
+                            )}
+                        </dd>
+                      </div>
+                      <div className={styles.chip}>
+                        <dt>Payment</dt>
+                        <dd>
+                          <PaymentStatus order={student} />
+                        </dd>
+                      </div>
+                      <div className={styles.chip}>
+                        <dt>Group</dt>
+                        <dd>
+                          <span
+                            className={`ga-admin-status is-${student.groupAddedAt ? "completed" : "neutral"}`}
+                          >
+                            {student.groupAddedAt ? "Added" : "Not added"}
+                          </span>
+                          {student.groupAddedAt && (
+                            <span className={styles.chipNote}>
+                              {date(student.groupAddedAt)}
+                              {student.groupAddedBy ? ` · ${student.groupAddedBy}` : ""}
+                            </span>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <div className={styles.itemEnd}>
+                      <div className={styles.money}>
+                        <strong className={styles.amount}>
+                          {formatSirahMoney(student.amountMinor, student.currency)}
+                        </strong>
+                        <span>
+                          {student.method
+                            ? label(student.method)
+                            : "No method selected"}{" "}
+                          · {label(student.plan)}
+                        </span>
+                        {student.customLink && (
+                          <span>
+                            <span className="ga-admin-pill">Custom link</span>{" "}
+                            Catalog{" "}
+                            {formatSirahMoney(
+                              student.customLink.catalogAmountMinor,
+                              student.customLink.catalogCurrency,
+                            )}
+                            {student.customLink.sponsorLabel
+                              ? ` · ${student.customLink.sponsorLabel}`
+                              : ""}
+                          </span>
+                        )}
+                        <time
+                          className={styles.when}
+                          dateTime={new Date(student.createdAt).toISOString()}
+                        >
+                          {date(student.createdAt)}
+                        </time>
+                      </div>
+                      <div className={`ga-admin-actions ${styles.itemActions}`}>
+                        {primary && (
+                          <button
+                            type="button"
+                            className={
+                              primary.tone === "primary"
+                                ? "ga-admin-primary-btn"
+                                : "ga-admin-outline-btn"
+                            }
+                            title={primary.title}
+                            disabled={primary.disabled}
+                            aria-pressed={primary.pressed}
+                            onClick={primary.onSelect}
+                          >
+                            {primary.label}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="ga-admin-outline-btn"
+                          onClick={() => open(student)}
+                        >
+                          View Details
+                        </button>
+                        <RowMenu
+                          label={`More actions for ${student.reference}`}
+                          items={rest}
+                        />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {data.rows.length === 0 && (
+              <p className="ga-admin-empty-state">
+                {archivedView
+                  ? "The archive is empty."
+                  : recordsView === "EXCLUDED"
+                    ? "No records are excluded."
+                    : "No registrations match these filters."}
+              </p>
+            )}
             {data.total > data.pageSize && (
               <div className={styles.pager}>
                 <button
@@ -1100,6 +1223,7 @@ export function SirahAdminStudents({
             )}
           </>
         )}
+        </div>
       </section>
 
       {canExcludeRecords && (
