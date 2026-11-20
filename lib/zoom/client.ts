@@ -21,6 +21,7 @@ export const ZOOM_SCOPES = {
   deleteMeeting: { granular: "meeting:delete:meeting:admin", classic: "meeting:write:admin" },
   listRecordings: { granular: "cloud_recording:read:list_recording_files:admin", classic: "recording:read:admin" },
   getPastMeetingParticipants: { granular: "meeting:read:list_past_participants:admin", classic: "meeting:read:admin" },
+  getUser: { granular: "user:read:user:admin", classic: "user:read:admin" },
 } satisfies Record<string, ScopeSpec>;
 
 export type ZoomOperation = keyof typeof ZOOM_SCOPES;
@@ -144,6 +145,18 @@ export type ZoomPastParticipant = {
   duration: number;
   status?: string;
 };
+
+/** Zoom user plan type: 1 Basic, 2 Licensed, 4 Unassigned without Meetings Basic, 99 None. */
+export type ZoomUser = {
+  id: string;
+  email: string;
+  type: number;
+  status?: "active" | "inactive" | "pending";
+  first_name?: string;
+  last_name?: string;
+};
+
+export const ZOOM_LICENSED_USER_TYPE = 2;
 
 // ── Internals ──────────────────────────────────────────────────────────────
 
@@ -305,4 +318,9 @@ export async function getPastMeetingParticipants(meetingUuid: string): Promise<Z
     nextPageToken = page.next_page_token || undefined;
   } while (nextPageToken);
   return participants;
+}
+
+/** A user on the account, by Zoom user ID or email ("me" is the app's own user). */
+export function getUser(userIdOrEmail: string): Promise<ZoomUser> {
+  return call("getUser", `/users/${encodeURIComponent(userIdOrEmail)}`);
 }

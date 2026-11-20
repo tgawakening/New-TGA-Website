@@ -35,6 +35,8 @@
     "test:password-reset": "node --conditions=react-server --import tsx --test scripts/test-password-reset.ts",
     "email:sender:check": "node --import tsx scripts/check-email-sender.ts",
     "test:lms-zoom": "node --conditions=react-server --import tsx --test scripts/test-lms-zoom.ts",
+    "test:lms-sessions": "node --conditions=react-server --import tsx --test scripts/test-lms-sessions.ts",
+    "lms:zoom-host:register": "node --conditions=react-server --import tsx scripts/lms-register-zoom-host.ts",
     "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts scripts/test-sirah-classroom-progress.ts scripts/test-sirah-classroom-files.ts scripts/test-sirah-classroom-email.ts"
   },
   "engines": {

@@ -22,6 +22,7 @@ const relationTable: Record<string, string> = {
   user: "user",
   order: "sirahOrder",
   registration: "registration",
+  zoomHost: "zoomHost",
 };
 const OPS = ["in", "not", "lt", "lte", "gt", "gte", "contains", "equals"];
 function matchValue(actual: unknown, expected: unknown): boolean {
