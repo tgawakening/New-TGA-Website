@@ -22,6 +22,13 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   images: {
+    // AVIF first (smaller at the same quality), WebP fallback, chosen per
+    // browser by the Accept header. Applies only to next/image.
+    formats: ["image/avif", "image/webp"],
+    // Keep optimised images (and the browser's copy) for 30 days instead of
+    // Next's 4-hour default, matching the public/ image policy below, so the
+    // slower AVIF encode is not repeated every few hours.
+    minimumCacheTTL: 2592000,
     remotePatterns: [
       {
         protocol: "https",
@@ -47,7 +54,24 @@ const nextConfig: NextConfig = {
     ].map(([source, destination]) => ({ source, destination, permanent: false }));
   },
   async headers() {
+    // Files in public/ are not content-hashed, and Next serves them with
+    // "max-age=0" (so Cloudflare bypasses them too). Hashed /_next/static
+    // assets already get "max-age=31536000, immutable" from Next itself.
+    // Fonts never change in place: one year. Images/video: 30 days, then
+    // revalidated in the background, so a file replaced under the same name
+    // is picked up within a month (rename it, or purge Cloudflare, to be
+    // instant).
+    const longCache = "public, max-age=31536000, immutable";
+    const mediaCache = "public, max-age=2592000, stale-while-revalidate=86400";
+    const cache = (source: string, value: string) => ({ source, headers: [{ key: "Cache-Control", value }] });
     return [
+      cache("/fonts/:path*", longCache),
+      cache("/brand/:path*", mediaCache),
+      cache("/redesign/:path*", mediaCache),
+      cache("/images/:path*", mediaCache),
+      cache("/videos/:path*", mediaCache),
+      // Image files at the top level of public/ (one path segment only).
+      cache("/:file([^/]+\\.(?:webp|png|jpe?g|svg|avif|gif))", mediaCache),
       {
         source: "/(.*)",
         headers: [
