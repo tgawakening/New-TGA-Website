@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* Local agent worktrees are untracked but not gitignored: keep Tailwind from
+ * scanning them, so a local build emits the same CSS as a clean checkout. */
+@source not "../.claude";
+@source not "../.hallmark";
 
 /* Amiri (OFL, public/fonts/amiri/OFL.txt), subset to three glyphs the Latin
  * faces lack: ʾ ʿ (U+02BE-02BF, transliteration) and ﷺ (U+FDFA). It leads
