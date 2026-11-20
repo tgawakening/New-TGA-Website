@@ -162,15 +162,21 @@ function date(value: Date | string | null) {
     : "Not scheduled";
 }
 
+/** One colour language for every status pill (list and details):
+ * Active green; Completed (paid, or course completed) teal; refunded,
+ * cancelled, failed or rejected muted red; partially refunded its own
+ * neutral; everything still in progress (pending, awaiting review,
+ * processing, pending payment, refund pending) amber. Display only. */
+function statusTone(value: string) {
+  if (value === "ACTIVE") return "active";
+  if (value === "PAID" || value === "COMPLETED") return "done";
+  if (["CANCELLED", "FAILED", "REJECTED", "REFUNDED"].includes(value)) return "cancelled";
+  if (value === "PARTIALLY_REFUNDED") return "partially-refunded";
+  return "pending";
+}
+
 function Status({ value }: { value: string }) {
-  const tone = ["PAID", "ACTIVE", "COMPLETED"].includes(value)
-    ? "completed"
-    : ["CANCELLED", "FAILED", "REJECTED"].includes(value)
-      ? "cancelled"
-      : value === "PARTIALLY_REFUNDED"
-        ? "partially-refunded"
-        : "pending";
-  return <span className={`ga-admin-status is-${tone}`}>{label(value)}</span>;
+  return <span className={`ga-admin-status is-${statusTone(value)}`}>{label(value)}</span>;
 }
 
 /** Payment status pill. A PAID order with a verified partial refund reads
@@ -703,8 +709,8 @@ export function SirahAdminStudents({
 
   return (
     <div className={`ga-admin-shell ${styles.shell}`}>
-      <section className="ga-admin-workspace-card">
-        <div className="ga-admin-workspace-head">
+      <section className={`ga-admin-workspace-card ${styles.headCard}`}>
+        <div className={`ga-admin-workspace-head ${styles.head}`}>
           <div>
             <p className="ga-admin-kicker">Current batch</p>
             <h2>
@@ -756,9 +762,9 @@ export function SirahAdminStudents({
         className={`ga-admin-workspace-card ${styles.recordsCard}`}
         aria-label="Records"
       >
-        {/* Filter bar: search, then the narrowing selects in an even grid,
-            then the paid date range with Clear filters. Same controls, same
-            handlers as before. */}
+        {/* Filter bar: one even grid (labels above fields): search and the
+            paid date range, then the narrowing selects, then Clear filters in
+            the last cell. Same controls, same handlers as before. */}
         <div className={`ga-admin-filter-row ${styles.toolbar}`}>
           <div className={styles.filterTop}>
             <label className={styles.searchField}>
@@ -801,24 +807,6 @@ export function SirahAdminStudents({
                   }}
                 />
               </label>
-              <button
-                type="button"
-                className={`ga-admin-ghost-btn ${styles.clearBtn}`}
-                onClick={() => {
-                  setQ("");
-                  setFrom("");
-                  setTo("");
-                  setCountry("");
-                  setMethod("");
-                  setPayment("");
-                  setEnrolment("");
-                  setGroup("");
-                  setRecordsView("");
-                  setPage(1);
-                }}
-              >
-                Clear filters
-              </button>
             </div>
           </div>
           <div className={styles.filterGrid}>
@@ -937,6 +925,24 @@ export function SirahAdminStudents({
               </label>
             )}
           </div>
+          <button
+            type="button"
+            className={`ga-admin-ghost-btn ${styles.clearBtn}`}
+            onClick={() => {
+              setQ("");
+              setFrom("");
+              setTo("");
+              setCountry("");
+              setMethod("");
+              setPayment("");
+              setEnrolment("");
+              setGroup("");
+              setRecordsView("");
+              setPage(1);
+            }}
+          >
+            Clear filters
+          </button>
         </div>
         <div className={styles.listArea}>
         {loadError && (
@@ -1055,7 +1061,6 @@ export function SirahAdminStudents({
                       <div className={styles.who}>
                         <p className={styles.nameLine}>
                           <strong>{student.user.fullName}</strong>
-                          <span className="ga-admin-pill">Sīrah</span>
                           {student.archivedAt ? (
                             <span className={`ga-admin-pill ${styles.archivedPill}`}>Archived</span>
                           ) : (
@@ -1075,7 +1080,8 @@ export function SirahAdminStudents({
                           <span className={styles.ref} title={student.reference}>
                             {student.reference}
                           </span>
-                          <span>
+                          <span className={styles.course}>
+                            <span className="ga-admin-pill">Sīrah</span>
                             {student.archivedAt
                               ? `Archived ${date(student.archivedAt)}`
                               : student.excludedAt

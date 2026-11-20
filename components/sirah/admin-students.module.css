@@ -145,13 +145,6 @@
 }
 
 
-/* Keep small status labels readable against their status backgrounds. */
-.item :global(.ga-admin-pill),
-.item :global(.ga-admin-status.is-completed),
-.item :global(.ga-admin-status.is-approved),
-.item :global(.ga-admin-status.is-succeeded),
-.item :global(.ga-admin-status.is-confirmed) { color: var(--ai-fg-17664b, #17664b); }
-.item :global(.ga-admin-status.is-pending) { color: var(--ai-fg-805900, #805900); }
 
 /* Course group status (detail dialog) */
 .groupMeta {
@@ -260,21 +253,48 @@
   overflow: visible; /* the row menus open past the card edge */
 }
 
+/* -- Page head ----------------------------------------------------------- */
+/* Title and its actions share a row only when the card is wide enough for
+ * the title to stay on one line; otherwise the actions sit under it. */
+:global([data-theme="indigo-admin"]) .headCard {
+  container: head / inline-size;
+}
+
+@container head (max-width: 1000px) {
+  :global([data-theme="indigo-admin"]) .shell .head {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  :global([data-theme="indigo-admin"]) .shell .head > :global(.ga-admin-actions) {
+    justify-content: flex-start;
+    max-width: none;
+  }
+}
+
 /* -- Filter bar ---------------------------------------------------------- */
-/* One column of blocks: search + date range, then the selects grid. The
- * shared .ga-admin-filter-row is a 4-column grid on wide screens, which
- * squeezed these blocks into its first columns; it is reset here. */
+/* One even grid: every field is one cell, its label directly above it.
+ * Phones: one column. 440px+: two. 700px+: three. 940px+: four, with search
+ * and the paid date range on the first row. The wrappers (.filterTop,
+ * .filterGrid) step aside so all fields share the one grid; the date range
+ * keeps its group role and spans two cells on a subgrid. Clear filters takes
+ * the last cell of the last row. Same controls, same handlers. */
 :global([data-theme="indigo-admin"]) .recordsCard .toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--sp-4);
+  gap: var(--sp-3) var(--sp-4);
   margin: 0;
   padding: var(--sp-4);
   border: 0;
   border-bottom: 1px solid var(--adm-rule);
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   background: var(--adm-card);
-  align-items: start;
+  align-items: end;
+}
+
+.filterTop,
+.filterGrid {
+  display: contents;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .toolbar label {
@@ -300,25 +320,12 @@
   text-transform: none;
 }
 
-.filterTop {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--sp-3) var(--sp-4);
-  align-items: end;
-}
-
-.filterGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--sp-3) var(--sp-4);
-  align-items: end;
-}
-
 .dateRange {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--sp-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3) var(--sp-4);
   align-items: end;
+  min-width: 0;
 }
 
 /* Search: a leading magnifier inside the field. */
@@ -330,15 +337,16 @@
   background-size: 16px 16px;
 }
 
-/* Clear filters: a quiet text button on the fields' baseline. */
+/* Clear filters: a quiet text button on the fields' baseline, last cell. */
 :global([data-theme="indigo-admin"]) .recordsCard .clearBtn {
-  grid-column: 1 / -1;
   justify-self: start;
+  align-self: end;
   min-height: 2.25rem;
   padding: 0 var(--sp-2);
   border-color: transparent;
   background: transparent;
   color: var(--adm-teal-ink);
+  font-size: 0.8125rem;
   white-space: nowrap;
   text-decoration: underline;
   text-decoration-color: transparent;
@@ -352,48 +360,60 @@
 }
 
 @media (min-width: 640px) {
-  /* Compact controls; phones keep the 16px / 40px fields (no iOS zoom). */
+  /* Compact controls, one size for every field; phones keep the 16px /
+   * 40px fields (no iOS zoom). The chevron gutter is reserved so a default
+   * label ("All payment methods") always shows in full. */
   :global([data-theme="indigo-admin"]) .recordsCard .toolbar :is(input, select) {
     min-height: 2.25rem;
     border-width: 1px;
     border-color: var(--adm-control);
     font-size: 0.8125rem;
   }
+
+  :global([data-theme="indigo-admin"]) .recordsCard .toolbar select {
+    padding-left: 0.75rem;
+    padding-right: 2rem;
+  }
 }
 
-@container records (min-width: 520px) {
+@container records (min-width: 440px) {
   :global([data-theme="indigo-admin"]) .recordsCard .toolbar {
-    padding: var(--sp-4) var(--sp-5);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: var(--sp-4) var(--sp-5) var(--sp-5);
   }
 
-  .filterGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .searchField,
+  .dateRange {
+    grid-column: 1 / -1;
   }
 
   .dateRange {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: subgrid;
   }
 
   :global([data-theme="indigo-admin"]) .recordsCard .clearBtn {
-    grid-column: auto;
+    grid-column: -2 / -1;
+    justify-self: end;
   }
 }
 
-/* About three selects per row from tablet width up. */
-@container records (min-width: 660px) {
-  .filterGrid {
+@container records (min-width: 700px) {
+  :global([data-theme="indigo-admin"]) .recordsCard .toolbar {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-/* Wide: search and the date range share the top line. */
-@container records (min-width: 880px) {
-  .filterTop {
-    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .dateRange {
-    grid-template-columns: 10.5rem 10.5rem auto;
+    grid-column: span 2;
+  }
+}
+
+@container records (min-width: 940px) {
+  :global([data-theme="indigo-admin"]) .recordsCard .toolbar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .searchField {
+    grid-column: span 2;
   }
 }
 
@@ -402,7 +422,7 @@
   container: list / inline-size;
   display: grid;
   gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-3) var(--sp-4);
+  padding: var(--sp-4) var(--sp-3);
   border-radius: 0 0 var(--r-lg) var(--r-lg);
   background: var(--adm-page);
 }
@@ -413,6 +433,7 @@
 
 :global([data-theme="indigo-admin"]) .recordsCard .resultCount {
   margin: 0;
+  padding-inline: var(--sp-1);
   color: var(--adm-muted);
   font-weight: 500;
 }
@@ -428,7 +449,7 @@
 
 :global([data-theme="indigo-admin"]) .recordsCard .bulkBar {
   margin: 0;
-  padding: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
   border-color: var(--adm-rule);
   border-radius: var(--r-md);
   background: var(--adm-card);
@@ -453,15 +474,22 @@
   display: none;
 }
 
-/* One card per registration. Phones: who, then status, then money and
- * actions, stacked. */
+/* One card per registration, on one grid shared by every card, so the
+ * columns line up down the list:
+ *   phones    who / statuses / amount, date and actions, stacked
+ *   620px+    who + a fixed amount column; the statuses beneath, under the name
+ *   1040px+   who | statuses | amount column, one row
+ * Every column is a fixed width or 1fr (never auto), and the status chips
+ * sit in fixed sub-columns, so Course access, Payment and Group start at the
+ * same x on every card. */
 :global([data-theme="indigo-admin"]) .recordsCard .item {
   --lead-indent: 0px;
+  --chip-cols: repeat(2, minmax(0, 1fr));
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "lead" "status" "end";
-  gap: var(--sp-3) var(--sp-5);
-  padding: 0.875rem var(--sp-4);
+  gap: var(--sp-3) var(--sp-6);
+  padding: var(--sp-4);
   border: 1px solid var(--adm-rule);
   border-radius: var(--r-md);
   background: var(--adm-card);
@@ -469,12 +497,12 @@
   color: var(--adm-ink);
   font-size: 0.875rem;
   line-height: 1.4;
-  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background-color var(--dur) var(--ease);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 
+/* Hover: a quiet lift (a firmer edge and a soft shadow), no colour shift. */
 :global([data-theme="indigo-admin"]) .recordsCard .item:hover {
   border-color: var(--adm-rule-strong);
-  background: var(--adm-row-hover);
   box-shadow: var(--adm-shadow-card);
 }
 
@@ -538,10 +566,12 @@
   color: var(--adm-terra, #a8431f);
 }
 
+/* Who: name, contact, then the reference line, on a 4px rhythm. */
 .who {
   display: grid;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
+  padding-top: 1px;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .nameLine {
@@ -549,6 +579,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
+  min-height: 20px;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .nameLine strong {
@@ -569,6 +600,7 @@
 
 :global([data-theme="indigo-admin"]) .recordsCard .contact {
   font-size: 0.8125rem;
+  line-height: 1.4;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .contact > span {
@@ -576,36 +608,56 @@
   overflow-wrap: anywhere;
 }
 
+/* Reference line: the reference, then the course tag and name. The
+ * reference is always ONE monospaced line, truncated past 16rem (full value
+ * on hover and in View details). Where the column is narrow, the course tag
+ * and name move under it as a unit instead of clipping either. */
 :global([data-theme="indigo-admin"]) .recordsCard .metaLine {
-  gap: 2px 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
   margin-top: 2px;
   font-size: 0.75rem;
+  line-height: 20px;
 }
 
-/* Reference: one small monospaced line, truncated (full value on hover and
- * in View details). */
 .ref {
-  display: inline-block;
-  max-width: 15rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(16rem, 100%);
   overflow: hidden;
+  color: var(--adm-neutral);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.71875rem;
   letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
-  vertical-align: bottom;
+}
+
+.course {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.course :global(.ga-admin-pill) {
+  flex: none;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .purgeNote {
   font-size: 0.75rem;
 }
 
-/* Middle: the status chips, each with a small label. */
+/* Statuses: three labelled chips in fixed sub-columns. */
 .itemStatus {
   grid-area: status;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: var(--sp-2) var(--sp-4);
+  display: grid;
+  grid-template-columns: var(--chip-cols);
+  gap: var(--sp-3) var(--sp-4);
+  align-items: start;
   min-width: 0;
   margin: 0;
   padding-left: var(--lead-indent);
@@ -613,7 +665,7 @@
 
 .chip {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -624,6 +676,7 @@
   letter-spacing: 0.08em;
   line-height: 1.2;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .chip dd {
@@ -631,19 +684,23 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
+  min-width: 0;
   margin: 0;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .chipNote {
+  flex-basis: 100%;
   color: var(--adm-muted);
-  font-size: 0.75rem;
+  font-size: 0.71875rem;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Right: amount, method and plan, date; then the actions. */
+/* Amount column: amount, method and plan, date; then the actions. */
 .itemEnd {
   grid-area: end;
   display: grid;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   justify-items: start;
   align-content: start;
   min-width: 0;
@@ -657,15 +714,16 @@
   max-width: 20rem;
   color: var(--adm-muted);
   font-size: 0.8125rem;
+  line-height: 1.35;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .amount {
   color: var(--adm-ink);
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.3;
   font-variant-numeric: tabular-nums lining-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
   white-space: nowrap;
 }
 
@@ -675,6 +733,7 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Actions: one height (32px) for every button and the overflow menu. */
 :global([data-theme="indigo-admin"]) .recordsCard .itemActions {
   display: flex;
   flex-wrap: wrap;
@@ -686,17 +745,22 @@
 
 :global([data-theme="indigo-admin"]) .recordsCard .itemActions :is(:global(.ga-admin-primary-btn), :global(.ga-admin-outline-btn), :global(.ga-admin-ghost-btn)) {
   min-height: var(--adm-control-h-sm);
-  padding: 0.3125rem 0.75rem;
+  height: var(--adm-control-h-sm);
+  padding: 0 0.75rem;
   border-width: 1px;
   font-size: 0.78125rem;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
 }
 
-/* Tablet and the 1024px desktop: who on the left, money and actions on the
- * right; the status chips run along one line beneath, under the name. */
+/* Tablet and 1024px screens: who on the left, the amount column (amount,
+ * then the actions) on the right; the status chips beneath on a hairline,
+ * aligned under the name. */
 @container list (min-width: 620px) {
   :global([data-theme="indigo-admin"]) .recordsCard .item {
     --lead-indent: 52px; /* avatar 40px + gap 12px */
+    --chip-cols: 7.5rem 9.75rem minmax(7rem, 1fr);
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "lead end"
@@ -714,22 +778,56 @@
     text-align: right;
   }
 
+  :global([data-theme="indigo-admin"]) .recordsCard .money {
+    justify-items: end;
+  }
+
   :global([data-theme="indigo-admin"]) .recordsCard .itemActions {
     flex-wrap: nowrap;
     justify-content: flex-end;
   }
+
+  /* The status row sits on a hairline under the who block. */
+  .itemStatus {
+    margin-left: var(--lead-indent);
+    padding-top: var(--sp-3);
+    padding-left: 0;
+    border-top: 1px solid var(--adm-rule);
+  }
 }
 
-/* Wide: three blocks on one line, like an issue list. */
-@container list (min-width: 1040px) {
+/* 1280px screens and up: two even rows. Who | amount, then statuses |
+ * actions, so the actions sit on the status line instead of stacking under
+ * the amount. The amount block and actions are placed straight on the card
+ * grid (their wrapper steps aside); the status chips keep their fixed
+ * sub-columns under the name, so they still align down the list. */
+@container list (min-width: 900px) {
   :global([data-theme="indigo-admin"]) .recordsCard .item {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) auto;
-    grid-template-areas: "lead status end";
-    align-items: center;
+    --chip-cols: 7.5rem 9.75rem minmax(7rem, 14rem);
+    grid-template-areas:
+      "lead money"
+      "status actions";
+    row-gap: var(--sp-3);
+  }
+
+  .itemEnd {
+    display: contents;
+  }
+
+  :global([data-theme="indigo-admin"]) .recordsCard .money {
+    grid-area: money;
+    align-self: start;
+    text-align: right;
+  }
+
+  :global([data-theme="indigo-admin"]) .recordsCard .itemActions {
+    grid-area: actions;
+    align-self: end;
   }
 
   .itemStatus {
-    padding-left: 0;
+    padding-top: 0;
+    border-top: 0;
   }
 }
 
