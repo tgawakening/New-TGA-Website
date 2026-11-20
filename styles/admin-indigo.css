@@ -682,8 +682,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 22px;
-  padding: 2px 9px;
+  box-sizing: border-box;
+  height: 22px; /* one size for every status pill */
+  padding: 0 9px;
   border: 1px solid var(--adm-rule-strong);
   border-radius: var(--r-pill);
   background: var(--adm-neutral-soft);
@@ -709,6 +710,14 @@
   background: var(--adm-ok-soft);
   border-color: var(--adm-ok-line);
   color: var(--adm-ok);
+}
+
+/* Completed (paid in full, course completed): teal, so it reads apart from
+ * the green "Active". Text #0a5f54 on #dcf1ed 6.4:1. */
+[data-theme="indigo-admin"] .ga-admin-status.is-done {
+  background: var(--adm-teal-soft);
+  border-color: #b5ddd6;
+  color: var(--adm-teal-ink);
 }
 
 /* Pending, awaiting: amber. */
@@ -740,11 +749,12 @@
   background: linear-gradient(90deg, var(--adm-warn) 50%, transparent 50%);
 }
 
-/* Cancelled, rejected, failed: red. */
-[data-theme="indigo-admin"] .ga-admin-status:is(.is-cancelled, .is-rejected, .is-failed) {
-  background: var(--adm-bad-soft);
-  border-color: var(--adm-bad-line);
-  color: var(--adm-bad);
+/* Cancelled, rejected, failed, refunded: a muted red, quieter than an error
+ * banner. Text #8a2c22 on #fbeeec 7.5:1. */
+[data-theme="indigo-admin"] .ga-admin-status:is(.is-cancelled, .is-rejected, .is-failed, .is-refunded) {
+  background: #fbeeec;
+  border-color: #eccdc8;
+  color: #8a2c22;
 }
 
 /* Tags (course, custom link): a small square-cornered label, not a status. */
