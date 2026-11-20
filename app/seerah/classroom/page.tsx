@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ClassroomOverview } from "@/components/indigo/classroom/classroom-overview";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
+import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
 import {
   getClassroomData,
   getCompletedLessonIds,
@@ -24,6 +25,9 @@ export default async function SirahClassroomPage() {
   const [data, completedIds] = ready
     ? await Promise.all([getClassroomData(), getCompletedLessonIds(user.id)])
     : [{ lessons: [], courseMaterials: [], announcements: [] }, new Set<string>()];
+  const now = new Date();
+  // Live Zoom classes for the student's cohort, by the same paid + active rule.
+  const live = (await lmsSessionsAvailable()) ? await studentSchedule(user.id, now) : null;
 
   return (
     <ClassroomOverview
@@ -31,7 +35,8 @@ export default async function SirahClassroomPage() {
       data={data}
       completedIds={completedIds}
       timezone={user.studentProfile?.timezone}
-      now={new Date()}
+      now={now}
+      live={live?.allowed ? live : null}
     />
   );
 }

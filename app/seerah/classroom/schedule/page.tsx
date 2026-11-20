@@ -1,0 +1,93 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { SIRAH_TITLE } from "@/lib/sirah/catalog";
+import { JOIN_OPENS_MINUTES_BEFORE } from "@/lib/lms/access";
+import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
+import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
+import { classroomClock } from "@/components/indigo/classroom/clock";
+import { ClassroomHeader, SectionHead } from "@/components/indigo/classroom/parts";
+import { LiveSessionRows, NextLiveClass } from "@/components/indigo/classroom/live-sessions";
+import s from "@/components/indigo/classroom/classroom.module.css";
+
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: `Live classes | ${SIRAH_TITLE}`,
+  robots: { index: false, follow: false },
+};
+
+/** The student's full live-class schedule: next class with countdown and
+ * Join, then upcoming and past classes. Access is the existing paid + active
+ * rule; without it the page shows the gated state and reads no sessions. */
+export default async function LiveSchedulePage() {
+  const { user } = await getSirahStudentAccess();
+  if (!user) redirect("/login");
+
+  const now = new Date();
+  const clock = classroomClock(user.studentProfile?.timezone);
+  const schedule = (await lmsSessionsAvailable()) ? await studentSchedule(user.id, now) : null;
+
+  return (
+    <div className={s.page}>
+      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={{ href: "/seerah/classroom", label: "Classroom" }} />
+      <main className={s.wrap}>
+        {!schedule?.allowed ? (
+          <section className={s.hero} aria-labelledby="gated-title">
+            <div className={s.empty}>
+              <h1 id="gated-title">{schedule ? "Live classes are for enrolled students" : "Live classes are not open yet"}</h1>
+              <p>
+                {schedule
+                  ? "Your account does not have an active, paid enrolment for the current cohort, so the live class schedule is hidden. Your dashboard shows your enrolment and any payment that is due."
+                  : "The live class schedule appears here once it is published."}
+              </p>
+              <p>
+                <Link href="/dashboard" className={s.btnTeal}>
+                  Go to your dashboard
+                </Link>
+              </p>
+            </div>
+          </section>
+        ) : (
+          <>
+            <section className={s.hero} aria-labelledby="next-live">
+              <p className={s.eyebrow}>{schedule.next?.phase === "live" ? "Happening now" : "Your next live class"}</p>
+              {schedule.next ? (
+                <NextLiveClass session={schedule.next} now={now} clock={clock} headingLevel={1} />
+              ) : (
+                <div className={s.empty}>
+                  <h1 id="next-live">No live class is scheduled right now</h1>
+                  <p>New classes appear here as soon as they are booked.</p>
+                </div>
+              )}
+            </section>
+
+            <section className={s.section} aria-labelledby="upcoming">
+              <SectionHead id="upcoming">Upcoming classes</SectionHead>
+              <p className={s.sectionLede}>
+                Times in {clock.zoneName}. Join opens {JOIN_OPENS_MINUTES_BEFORE} minutes before each class.
+              </p>
+              {schedule.upcoming.length ? (
+                <LiveSessionRows sessions={schedule.upcoming} clock={clock} nextId={schedule.next?.id} />
+              ) : (
+                <p className={s.emptyLine}>Nothing scheduled yet.</p>
+              )}
+            </section>
+
+            <section className={s.section} aria-labelledby="past">
+              <SectionHead id="past">Past classes</SectionHead>
+              <p className={s.sectionLede}>Recordings will be added here in a later update.</p>
+              {schedule.past.length ? (
+                <LiveSessionRows sessions={schedule.past} clock={clock} />
+              ) : (
+                <p className={s.emptyLine}>No classes have taken place yet.</p>
+              )}
+            </section>
+          </>
+        )}
+      </main>
+      <footer className={s.foot}>
+        <b>Sīrah · Beyond Chronology</b> · The Global Awakening
+      </footer>
+    </div>
+  );
+}

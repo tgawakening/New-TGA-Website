@@ -24,6 +24,8 @@ type DashboardProps = {
     currentSirahOnly?: boolean;
     /** Signed-in user may open the admin workspace (super admin or Sīrah team). */
     showAdminLink?: boolean;
+    /** Signed-in user hosts live sessions (email matches an active Zoom host). */
+    showTeachingLink?: boolean;
     sirahOrders?: SirahDashboardOrder[];
     fullName: string;
     email: string;
@@ -119,6 +121,7 @@ export default function StudentDashboard({ user }: DashboardProps) {
       label: "Your Sīrah registration",
       href: pendingSirahOrder ? sirahOrderHref(pendingSirahOrder) : "/seerah/register",
     },
+    ...(user.showTeachingLink ? [{ label: "My sessions", href: "/seerah/classroom/teaching" }] : []),
     ...(user.showAdminLink ? [{ label: "Admin Panel", href: "/admin" }] : []),
   ];
 
