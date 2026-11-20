@@ -1243,51 +1243,20 @@
   }
 }
 
-/* Main dashboard: its top bar is the navy chrome (it has no rail). The
- * controls on it stay white chips, so they read exactly as elsewhere. */
+/* Main dashboard top bar: the same light chrome as the Sirah rail (white
+ * card, hairline edge, teal-tinted active pill; rules above). The official
+ * lockup is a white knockout, so it sits on a small brand-navy plate. */
 [data-theme="indigo-admin"] .ga-admin-topbar {
+  background: var(--adm-card);
+  border-color: var(--adm-rule);
+  color: var(--adm-ink);
+}
+
+[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-brand-logo {
+  box-sizing: content-box;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
   background: var(--adm-nav);
-  border-color: var(--adm-nav);
-  color: var(--adm-nav-ink);
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-brand:focus-visible,
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill:focus-visible {
-  outline-color: var(--adm-nav-accent);
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-brand-subtitle {
-  border-left-color: var(--adm-nav-line);
-  color: var(--adm-nav-muted);
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill {
-  color: var(--adm-nav-ink);
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill:hover {
-  background: var(--adm-nav-hover);
-  color: #ffffff;
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill.is-active,
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-nav-pill.is-active:hover {
-  background: var(--adm-nav-active);
-  border-color: rgba(72, 214, 194, 0.45);
-  color: #ffffff;
-  font-weight: 600;
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar :is(.ga-admin-ghost-btn, .ga-admin-outline-btn, .ga-admin-bell-btn) {
-  border-color: transparent;
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar :is(.ga-admin-ghost-btn, .ga-admin-outline-btn, .ga-admin-bell-btn):focus-visible {
-  outline-color: var(--adm-nav-accent);
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-user-chip {
-  border-color: transparent;
 }
 
 /* Raised white surfaces on the canvas: one soft shadow everywhere. */

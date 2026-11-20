@@ -8,6 +8,8 @@ export type RowMenuItem = {
   label: string;
   onSelect: () => void;
   tone?: "default" | "primary" | "danger";
+  /** Shown but not choosable (e.g. while its own request is in flight). */
+  disabled?: boolean;
 };
 
 /**
@@ -29,11 +31,11 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
   const id = useId();
 
   const entries = () =>
-    Array.from(menu.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    Array.from(menu.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
 
   useEffect(() => {
     if (!open) return;
-    const list = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    const list = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
     (startAt.current === "last" ? list[list.length - 1] : list[0])?.focus();
     const away = (event: PointerEvent) => {
       if (!wrap.current?.contains(event.target as Node)) setOpen(false);
@@ -115,6 +117,7 @@ export function RowMenu({ label, items }: { label: string; items: RowMenuItem[] 
               type="button"
               role="menuitem"
               tabIndex={-1}
+              disabled={item.disabled}
               className={`${styles.item}${item.tone === "danger" ? ` ${styles.danger}` : item.tone === "primary" ? ` ${styles.primary}` : ""}`}
               onClick={() => {
                 close(true);
