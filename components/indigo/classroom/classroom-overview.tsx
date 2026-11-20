@@ -3,6 +3,8 @@ import { courseProgress, groupByWeek, lessonStatus, toLessonView } from "@/lib/s
 import type { getClassroomData } from "@/services/sirah-classroom.service";
 import { classroomClock, STATUS_TEXT } from "./clock";
 import { ClassroomHeader, Dispatch, MaterialRows, ProgressBar, SectionHead } from "./parts";
+import { LiveClassesSection } from "./live-sessions";
+import type { StudentSessionView } from "@/lib/lms/schedule";
 import s from "./classroom.module.css";
 
 type Data = Awaited<ReturnType<typeof getClassroomData>>;
@@ -15,12 +17,15 @@ export function ClassroomOverview({
   completedIds,
   timezone,
   now,
+  live = null,
 }: {
   base: string;
   data: Data;
   completedIds: Set<string>;
   timezone: string | null | undefined;
   now: Date;
+  /** Live Zoom classes for the student's cohort (null: none, or not deployed yet). */
+  live?: { upcoming: StudentSessionView[]; past: StudentSessionView[]; next: StudentSessionView | null } | null;
 }) {
   const { lessons, courseMaterials, announcements } = data;
   const clock = classroomClock(timezone);
@@ -69,6 +74,10 @@ export function ClassroomOverview({
             </div>
           )}
         </section>
+
+        {live && (live.upcoming.length > 0 || live.past.length > 0) ? (
+          <LiveClassesSection schedule={live} now={now} clock={clock} scheduleHref={`${base}/schedule`} />
+        ) : null}
 
         {pinned.length > 0 ? (
           <section className={s.notes} aria-label="Pinned announcements">

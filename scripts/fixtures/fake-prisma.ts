@@ -6,7 +6,8 @@
  * Supports the subset of the Prisma API the Sīrah services use: equality,
  * in/not/lt/lte/gt/gte/contains filters, relation filters (course/user/order),
  * compound unique keys, include/select of relations, increment, DbNull,
- * upsert and interactive $transaction. `select` returns whole rows.
+ * upsert, interactive $transaction, findMany `distinct` and groupBy with
+ * _count._all. `select` returns whole rows.
  */
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -96,7 +97,25 @@ function delegate(name: string) {
     findFirst: async (args: Row = {}) => { const r = first(args); return r ? attach(r, (args.include || args.select) as Row) : null; },
     findUniqueOrThrow: async (args: Row) => { const r = first(args); if (!r) throw new Error(`${name} not found`); return attach(r, (args.include || args.select) as Row); },
     findFirstOrThrow: async (args: Row) => api.findUniqueOrThrow(args),
-    findMany: async (args: Row = {}) => rows().filter((r) => matches(r, args.where as Row)).map((r) => attach(r, (args.include || args.select) as Row)),
+    findMany: async (args: Row = {}) => {
+      let hit = rows().filter((r) => matches(r, args.where as Row));
+      if (Array.isArray(args.distinct)) {
+        const seen = new Set<string>();
+        hit = hit.filter((r) => { const key = JSON.stringify((args.distinct as string[]).map((k) => r[k])); if (seen.has(key)) return false; seen.add(key); return true; });
+      }
+      return hit.map((r) => attach(r, (args.include || args.select) as Row));
+    },
+    groupBy: async (args: Row) => {
+      const groups = new Map<string, Row>();
+      for (const r of rows().filter((x) => matches(x, args.where as Row))) {
+        const by = args.by as string[];
+        const key = JSON.stringify(by.map((k) => r[k]));
+        const group = groups.get(key) ?? { ...Object.fromEntries(by.map((k) => [k, r[k]])), _count: { _all: 0 } };
+        (group._count as { _all: number })._all += 1;
+        groups.set(key, group);
+      }
+      return [...groups.values()];
+    },
     count: async (args: Row = {}) => rows().filter((r) => matches(r, args.where as Row)).length,
     create: async (args: Row) => {
       const row: Row = { id: randomUUID(), createdAt: new Date(), updatedAt: new Date(), ...(defaults[name] || {}) };

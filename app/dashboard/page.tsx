@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { canSeeDashboardAdminLink } from "@/lib/auth/dashboard-admin-link";
 import { getPaymentPlanTypeFromSnapshot } from "@/lib/course-payment";
+import { hostsForIdentity, lmsSessionsAvailable } from "@/lib/lms/schedule";
 import {
   processDueManualSubscriptions,
   reconcileMissingStripeSubscriptions,
@@ -69,6 +70,11 @@ export default async function DashboardPage() {
     refreshedUser,
     (await getCurrentAdmin())?.email,
   );
+  // Teacher portal link: same host-email rule as the portal and the start route.
+  const showTeachingLink =
+    refreshedUser.status === "ACTIVE" &&
+    (await lmsSessionsAvailable()) &&
+    (await hostsForIdentity({ email: refreshedUser.email })).length > 0;
   return (
     <StudentDashboard
       user={{
@@ -79,6 +85,7 @@ export default async function DashboardPage() {
             (item) => item.course.slug === "seerah-course",
           ),
         showAdminLink,
+        showTeachingLink,
         sirahOrders: sirahOrders.map(
           ({ cycleBillingDay, cycleGraceDay, cycleFirstDueAt, cancelledAt, nextBillingAt, accessEndsAt, ...order }) => ({
             ...order,

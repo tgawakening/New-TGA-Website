@@ -36,6 +36,7 @@
     "email:sender:check": "node --import tsx scripts/check-email-sender.ts",
     "test:lms-zoom": "node --conditions=react-server --import tsx --test scripts/test-lms-zoom.ts",
     "test:lms-sessions": "node --conditions=react-server --import tsx --test scripts/test-lms-sessions.ts",
+    "test:lms-ui": "node --experimental-test-module-mocks --import tsx --test scripts/test-lms-ui.ts",
     "lms:zoom-host:register": "node --conditions=react-server --import tsx scripts/lms-register-zoom-host.ts",
     "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts scripts/test-sirah-classroom-progress.ts scripts/test-sirah-classroom-files.ts scripts/test-sirah-classroom-email.ts"
   },

@@ -15,6 +15,7 @@ import { ScheduleFields, SelectField } from "@/components/sirah/classroom-picker
 import "@/app/seerah/classroom/tokens.css";
 import { MaterialSource } from "@/components/sirah/classroom-material-source";
 import { spacesConfigured } from "@/lib/sirah/spaces";
+import { SCHEDULE_TIME_ZONES } from "@/lib/sirah/schedule-zones";
 import styles from "@/components/sirah/admin-classroom.module.css";
 import {
   addMaterial,
@@ -29,19 +30,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Zones the team schedules from. The stored time is always UTC; students see
- * it in their own profile zone. */
-const TIME_ZONES = [
-  { value: "Europe/London", label: "London", hint: "Europe/London" },
-  { value: "Asia/Karachi", label: "Pakistan", hint: "Asia/Karachi" },
-  { value: "Asia/Dubai", label: "Gulf", hint: "Asia/Dubai" },
-  { value: "Europe/Berlin", label: "Central Europe", hint: "Europe/Berlin" },
-  { value: "America/New_York", label: "US Eastern", hint: "America/New_York" },
-  { value: "America/Chicago", label: "US Central", hint: "America/Chicago" },
-  { value: "America/Los_Angeles", label: "US Pacific", hint: "America/Los_Angeles" },
-  { value: "Australia/Sydney", label: "Sydney", hint: "Australia/Sydney" },
-  { value: "UTC", label: "UTC", hint: "Coordinated Universal Time" },
-];
+const TIME_ZONES = SCHEDULE_TIME_ZONES;
 const KIND_OPTIONS = SIRAH_MATERIAL_KINDS.map((kind) => ({ value: kind, label: SIRAH_MATERIAL_LABELS[kind] }));
 
 const STATUS_TEXT = { upcoming: "Upcoming", live: "Live now", past: "Took place" } as const;
@@ -358,6 +347,9 @@ export default async function SirahClassroomAdminPage({
         <div className={styles.introActions}>
           <a href="#new-session" className={styles.primary}>
             New session
+          </a>
+          <a href="/admin/sirah/classroom/live" className={styles.secondary}>
+            Live sessions
           </a>
           <a href="/seerah/classroom" target="_blank" rel="noopener noreferrer" className={styles.secondary}>
             Student view
