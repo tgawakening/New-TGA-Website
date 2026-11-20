@@ -24,6 +24,8 @@ export function JoinControl({ session }: { session: StudentSessionView }) {
     );
   if (session.window === "open")
     return <p className={s.joinHint}>The class is being set up. Refresh in a minute, or check the course group.</p>;
+  // Zoom still reports it live (an overrun), but joining closes at the scheduled end.
+  if (session.window === "ended") return <span className={s.bjDormant}>The join window has closed</span>;
   return (
     <span className={s.bjDormant} role="link" aria-disabled="true">
       Join opens {JOIN_OPENS_MINUTES_BEFORE} min before

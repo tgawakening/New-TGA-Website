@@ -8,6 +8,7 @@ import {
   ZOOM_TIMESTAMP_HEADER,
 } from "@/lib/zoom/webhook";
 import { recordZoomWebhookEvent } from "@/lib/zoom/webhook-store";
+import { processStoredZoomEvent, zoomEventRuntime } from "@/lib/zoom/processor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,9 @@ const reply = (body: unknown, status = 200) => NextResponse.json(body, { status,
 /**
  * Zoom webhook receiver. Verifies the v0 signature over the raw body, answers
  * endpoint.url_validation, stores the event (de-duplicated) and returns 200.
- * No event processing happens here: see lib/zoom/processor.ts.
+ * Processing (lib/zoom/processor.ts) runs after the 200 is sent, via Next's
+ * after(), so Zoom never waits on it; anything left unprocessed is picked up
+ * by the catch-up endpoint (/api/internal/lms/zoom/process-events).
  *
  * The signature is checked before url_validation is answered: Zoom signs
  * validation requests too, and answering unsigned ones would let anyone ask
@@ -61,6 +64,18 @@ export async function POST(request: Request) {
 
   try {
     const result = await recordZoomWebhookEvent(body);
+    if (result.stored) {
+      const id = result.id;
+      try {
+        zoomEventRuntime.schedule(() =>
+          processStoredZoomEvent(id).catch((error) =>
+            console.error("[zoom-webhook] processing failed", id, error instanceof Error ? error.message : error),
+          ),
+        );
+      } catch {
+        // Could not schedule (no request scope): the catch-up run handles it.
+      }
+    }
     return reply({ received: true, duplicate: !result.stored });
   } catch (error) {
     // Non-2xx makes Zoom retry later; the dedupe key keeps that safe.
