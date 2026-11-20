@@ -627,6 +627,8 @@ model SirahCohort {
   /// same month; after it, access pauses until payment. Must be after billingDay.
   graceDay       Int      @default(15)
   updatedAt      DateTime @updatedAt
+  /// Prisma-side back-relation only: no column on SirahCohort.
+  lmsSessions    LmsSession[]
 }
 
 /// Append-only record of Sīrah workspace access changes (add, promote, demote,
@@ -784,4 +786,73 @@ model PasswordResetToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// ── LMS: Zoom-backed live sessions ─────────────────────────────────────────
+
+/// A Zoom user that can host LMS sessions. Licensed hosts are required for
+/// meetings longer than 40 minutes with three or more participants.
+model ZoomHost {
+  id         String       @id @default(cuid())
+  zoomUserId String       @unique @db.VarChar(64)
+  email      String       @db.VarChar(320)
+  licensed   Boolean      @default(false)
+  active     Boolean      @default(true)
+  createdAt  DateTime     @default(now()) @db.DateTime(3)
+  updatedAt  DateTime     @updatedAt @db.DateTime(3)
+  sessions   LmsSession[]
+
+  @@index([active])
+}
+
+enum LmsSessionStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+/// One scheduled live class for a cohort, backed by a Zoom meeting (or one
+/// occurrence of a recurring meeting). Named LmsSession because `Session`
+/// already holds student login sessions. startsAt is stored in UTC.
+/// joinUrl and passcode are stored encrypted, never in plain text.
+model LmsSession {
+  id                String           @id @default(cuid())
+  cohortId          String
+  title             String           @db.VarChar(191)
+  startsAt          DateTime         @db.DateTime(3)
+  durationMin       Int
+  status            LmsSessionStatus @default(SCHEDULED)
+  zoomHostId        String
+  zoomMeetingId     String?          @db.VarChar(64)
+  zoomMeetingUuid   String?          @db.VarChar(128)
+  zoomOccurrenceId  String?          @db.VarChar(64)
+  joinUrlEncrypted  String?          @db.Text
+  passcodeEncrypted String?          @db.Text
+  createdAt         DateTime         @default(now()) @db.DateTime(3)
+  updatedAt         DateTime         @updatedAt @db.DateTime(3)
+
+  cohort   SirahCohort @relation(fields: [cohortId], references: [batchCode], onDelete: Restrict)
+  zoomHost ZoomHost    @relation(fields: [zoomHostId], references: [id], onDelete: Restrict)
+
+  @@index([cohortId, startsAt])
+  @@index([zoomHostId, startsAt])
+  @@index([zoomMeetingId])
+  @@index([status, startsAt])
+}
+
+/// Raw Zoom webhook deliveries, stored before any processing. dedupeKey is a
+/// SHA-256 of (event, event_ts, payload.object.uuid) so Zoom retries are
+/// recorded once.
+model ZoomWebhookEvent {
+  id          String    @id @default(cuid())
+  dedupeKey   String    @unique @db.VarChar(64)
+  event       String    @db.VarChar(128)
+  payload     Json
+  receivedAt  DateTime  @default(now()) @db.DateTime(3)
+  processedAt DateTime? @db.DateTime(3)
+  error       String?   @db.Text
+
+  @@index([processedAt, receivedAt])
+  @@index([event, receivedAt])
 }

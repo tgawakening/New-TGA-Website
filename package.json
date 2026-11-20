@@ -34,6 +34,7 @@
     "test:dashboard-admin-link": "node --import tsx --test scripts/test-dashboard-admin-link.ts",
     "test:password-reset": "node --conditions=react-server --import tsx --test scripts/test-password-reset.ts",
     "email:sender:check": "node --import tsx scripts/check-email-sender.ts",
+    "test:lms-zoom": "node --conditions=react-server --import tsx --test scripts/test-lms-zoom.ts",
     "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts scripts/test-sirah-classroom-progress.ts scripts/test-sirah-classroom-files.ts scripts/test-sirah-classroom-email.ts"
   },
   "engines": {
