@@ -38,6 +38,7 @@
     "test:lms-sessions": "node --conditions=react-server --import tsx --test scripts/test-lms-sessions.ts",
     "test:lms-ui": "node --experimental-test-module-mocks --import tsx --test scripts/test-lms-ui.ts",
     "test:lms-attendance": "node --conditions=react-server --import tsx --test scripts/test-lms-attendance.ts",
+    "test:lms-recordings": "node --conditions=react-server --import tsx --test scripts/test-lms-recordings.ts",
     "lms:zoom-host:register": "node --conditions=react-server --import tsx scripts/lms-register-zoom-host.ts",
     "lms:test-student": "node --conditions=react-server --import tsx scripts/lms-seed-test-student.ts",
     "test:sirah-classroom": "node --conditions=react-server --import tsx --test scripts/test-sirah-classroom.ts scripts/test-sirah-classroom-progress.ts scripts/test-sirah-classroom-files.ts scripts/test-sirah-classroom-email.ts"
@@ -47,6 +48,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1169.0",
+    "@aws-sdk/lib-storage": "^3.1169.0",
     "@aws-sdk/s3-request-presigner": "^3.1169.0",
     "@prisma/client": "^6.6.0",
     "bcryptjs": "^3.0.2",

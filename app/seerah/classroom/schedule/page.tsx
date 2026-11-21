@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { JOIN_OPENS_MINUTES_BEFORE } from "@/lib/lms/access";
 import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
+import { recordingsAvailable, studentRecordings, watchPath, type StudentRecording } from "@/lib/lms/recordings";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { classroomClock } from "@/components/indigo/classroom/clock";
 import { ClassroomHeader, SectionHead } from "@/components/indigo/classroom/parts";
@@ -26,6 +27,9 @@ export default async function LiveSchedulePage() {
   const now = new Date();
   const clock = classroomClock(user.studentProfile?.timezone);
   const schedule = (await lmsSessionsAvailable()) ? await studentSchedule(user.id, now) : null;
+  // Published recordings, under the same paid + active rule (none when not allowed).
+  const recordings: StudentRecording[] = schedule?.allowed && (await recordingsAvailable()) ? await studentRecordings(user.id, now) : [];
+  const watchBySession = new Map(recordings.map((r) => [r.sessionId, watchPath(r.recordingId)] as const));
 
   return (
     <div className={s.page}>
@@ -73,11 +77,38 @@ export default async function LiveSchedulePage() {
               )}
             </section>
 
+            {recordings.length ? (
+              <section className={s.section} aria-labelledby="recordings">
+                <SectionHead id="recordings">Recordings</SectionHead>
+                <p className={s.sectionLede}>Watch past classes here. For enrolled students only; they stream and cannot be downloaded.</p>
+                <ol className={s.chapters}>
+                  {recordings.map((r) => (
+                    <li key={r.recordingId}>
+                      <div className={s.chap}>
+                        <span className={s.wkn}>{r.kind === "AUDIO" ? "Audio" : "Video"}</span>
+                        <span className={s.ti}>
+                          {r.title}
+                          <small>
+                            <time dateTime={r.startsAt.toISOString()}>{clock.shortDate.format(r.startsAt)}</time>
+                          </small>
+                        </span>
+                        <Link className={`${s.st} ${s.stNext}`} href={watchPath(r.recordingId)}>
+                          Watch →
+                        </Link>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            ) : null}
+
             <section className={s.section} aria-labelledby="past">
               <SectionHead id="past">Past classes</SectionHead>
-              <p className={s.sectionLede}>Recordings will be added here in a later update.</p>
+              <p className={s.sectionLede}>
+                {recordings.length ? "Classes with a published recording have a Watch link." : "Recordings appear here once they are published."}
+              </p>
               {schedule.past.length ? (
-                <LiveSessionRows sessions={schedule.past} clock={clock} />
+                <LiveSessionRows sessions={schedule.past} clock={clock} recordings={watchBySession} />
               ) : (
                 <p className={s.emptyLine}>No classes have taken place yet.</p>
               )}

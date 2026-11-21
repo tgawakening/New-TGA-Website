@@ -100,12 +100,24 @@ const PILL: Record<SessionView["phase"], { text: string; cls: string }> = {
   cancelled: { text: "Cancelled", cls: s.stLock },
 };
 
-/** A list of live classes. `join` adds the Join control to rows inside their window. */
-export function LiveSessionRows({ sessions, clock, nextId }: { sessions: StudentSessionView[]; clock: ClassroomClock; nextId?: string }) {
+/** A list of live classes. `join` adds the Join control to rows inside their window.
+ * `recordings` (session id -> watch page) adds Watch to past classes with a published recording. */
+export function LiveSessionRows({
+  sessions,
+  clock,
+  nextId,
+  recordings,
+}: {
+  sessions: StudentSessionView[];
+  clock: ClassroomClock;
+  nextId?: string;
+  recordings?: Map<string, string>;
+}) {
   return (
     <ol className={s.chapters}>
       {sessions.map((session) => {
         const pill = session.id === nextId && session.phase === "upcoming" ? { text: "● Up next", cls: s.stNext } : PILL[session.phase];
+        const watch = session.phase === "past" ? recordings?.get(session.id) : undefined;
         return (
           <li key={session.id}>
             <div className={`${s.chap} ${session.id === nextId ? s.isNext : ""}`}>
@@ -114,10 +126,14 @@ export function LiveSessionRows({ sessions, clock, nextId }: { sessions: Student
                 {session.title}
                 <small>
                   <time dateTime={session.startsAt.toISOString()}>{clock.shortDate.format(session.startsAt)}</time>
-                  {session.phase === "past" ? " · recording coming later" : ""}
+                  {session.phase === "past" ? (watch ? " · recording available" : " · recording coming later") : ""}
                 </small>
               </span>
-              {session.joinable ? (
+              {watch ? (
+                <Link className={`${s.st} ${s.stNext}`} href={watch}>
+                  Watch →
+                </Link>
+              ) : session.joinable ? (
                 <a className={`${s.st} ${s.stNext}`} href={session.joinPath} target="_blank" rel="noopener noreferrer">
                   Join →
                 </a>

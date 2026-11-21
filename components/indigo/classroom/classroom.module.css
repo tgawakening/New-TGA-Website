@@ -1196,3 +1196,25 @@ a.mat:hover .go {
     transform: none;
   }
 }
+
+/* ---- Class recordings (LMS Phase 4) ---- */
+
+.recordingVideo {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  border: 1px solid var(--line2);
+  background: #000;
+}
+
+.recordingAudio {
+  display: block;
+  width: 100%;
+}
+
+.recordingMeta {
+  margin-top: var(--sp-3);
+  color: var(--dim);
+  font-size: var(--fs-sm);
+}
