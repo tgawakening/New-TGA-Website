@@ -16,18 +16,12 @@
   box-shadow: 0 24px 60px var(--ai-sh-18_48_88_0_12, rgba(18, 48, 88, 0.12));
 }
 
-/* The brand row is a navy band across the top of the card (the admin's
- * two-tone chrome), so the knockout lockup, with its white calligraphy and
- * tagline, stays legible. Label #9ea7bc on #141d33 is 7.0:1. */
+/* The brand row: the color lockup on the white card, no band behind it. */
 .brand {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-  margin: -2rem -1.75rem 0;
-  padding: 1.1rem 1.75rem;
-  border-radius: 1.4rem 1.4rem 0 0;
-  background: var(--adm-nav, #141d33);
 }
 
 /* The official lockup, at its own proportions (640 × 246). */
@@ -40,12 +34,20 @@
 
 .brandName {
   padding-left: 0.75rem;
-  border-left: 1px solid var(--adm-nav-line, rgba(237, 234, 223, 0.12));
-  color: var(--adm-nav-muted, #9ea7bc);
+  border-left: 1px solid var(--adm-rule, #e3e7ee);
+  color: var(--adm-faint, #6b7380);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+/* Narrow cards: the label wraps under the logo, so no divider. */
+@media (max-width: 420px) {
+  .brandName {
+    padding-left: 0;
+    border-left: 0;
+  }
 }
 
 .title {
@@ -80,12 +82,12 @@
 
 .input {
   width: 100%;
-  min-height: 3rem;
+  min-height: var(--adm-control-h, 2.5rem);
   border: 1px solid var(--ai-ln-cfdbe8, #cfdbe8);
-  border-radius: 0.8rem;
+  border-radius: var(--r-sm, 9px);
   background: var(--ai-bg-fff, #fff);
   color: var(--ai-fg-163450, #163450);
-  padding: 0.75rem 0.9rem;
+  padding: 0.5rem 0.9rem;
   font-size: 1rem;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -145,27 +147,9 @@
   font-size: 0.92rem;
 }
 
+/* The shared admin primary button (.ga-admin-primary-btn), full width. */
 .submit {
   width: 100%;
-  min-height: 3rem;
-  border: 0;
-  border-radius: 0.8rem;
-  background: linear-gradient(180deg, var(--ai-bg-255f91, #255f91), var(--ai-bg-1d4f7d, #1d4f7d));
-  color: var(--ai-fg-fff, #fff);
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 14px 24px var(--ai-sh-26_76_119_0_18, rgba(26, 76, 119, 0.18));
-}
-
-.submit:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.submit:focus-visible {
-  outline: 2px solid var(--ai-ln-2c7bbb, #2c7bbb);
-  outline-offset: 2px;
 }
 
 .roles {
