@@ -31,20 +31,34 @@ const accountEmailText: Record<Created["accountEmail"], string> = {
 /** Admin tab: issue a Stripe card link at a custom amount (sponsorship,
  * in-person or group booking): one-time for the full programme, or a monthly
  * subscription. Paying it enrols the student automatically. */
+export type CustomLinkPrefill = {
+  fullName: string;
+  email: string;
+  country: string;
+  currency: string;
+  amount: string;
+  plan: "ANNUAL" | "MONTHLY";
+  sponsorLabel: string;
+  note: string;
+};
+
 export function SirahAdminCustomLink({
   countries,
   currencies,
+  prefill,
 }: {
   countries: CountryOption[];
   currencies: string[];
+  /** Starting values only (from the scholarship queue). */
+  prefill?: CustomLinkPrefill;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState<Created | null>(null);
   const [copied, setCopied] = useState(false);
-  const [country, setCountry] = useState("GB");
-  const [currency, setCurrency] = useState("");
-  const [plan, setPlan] = useState<"ANNUAL" | "MONTHLY">("ANNUAL");
+  const [country, setCountry] = useState(prefill?.country || "GB");
+  const [currency, setCurrency] = useState(prefill?.currency || "");
+  const [plan, setPlan] = useState<"ANNUAL" | "MONTHLY">(prefill?.plan || "ANNUAL");
   const monthly = plan === "MONTHLY";
   const selected = useMemo(
     () => countries.find((option) => option.code === country),
@@ -138,11 +152,11 @@ export function SirahAdminCustomLink({
         <form className="ga-admin-filter-row ga-admin-field-grid" onSubmit={submit} aria-busy={busy}>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Student full name</span>
-            <input className="ga-admin-search" name="fullName" required minLength={2} maxLength={120} autoComplete="off" />
+            <input className="ga-admin-search" name="fullName" defaultValue={prefill?.fullName} required minLength={2} maxLength={120} autoComplete="off" />
           </label>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Student email</span>
-            <input className="ga-admin-search" name="email" type="email" required maxLength={254} autoComplete="off" />
+            <input className="ga-admin-search" name="email" type="email" defaultValue={prefill?.email} required maxLength={254} autoComplete="off" />
           </label>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Plan</span>
@@ -180,15 +194,15 @@ export function SirahAdminCustomLink({
                 ? ` (catalog: ${monthly ? `${selected.catalogMonthly}/month` : selected.catalogAnnual})`
                 : ""}
             </span>
-            <input className="ga-admin-search" name="amount" required inputMode="decimal" pattern="\d+(\.\d{1,3})?" placeholder="150.00" />
+            <input className="ga-admin-search" name="amount" defaultValue={prefill?.amount} required inputMode="decimal" pattern="\d+(\.\d{1,3})?" placeholder="150.00" />
           </label>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Sponsor / label (optional)</span>
-            <input className="ga-admin-search" name="sponsorLabel" maxLength={120} placeholder="e.g. Masjid group booking" />
+            <input className="ga-admin-search" name="sponsorLabel" defaultValue={prefill?.sponsorLabel} maxLength={120} placeholder="e.g. Masjid group booking" />
           </label>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Internal note (optional)</span>
-            <input className="ga-admin-search" name="note" maxLength={1000} />
+            <input className="ga-admin-search" name="note" defaultValue={prefill?.note} maxLength={1000} />
           </label>
           <label>
             <span className="ga-admin-label" style={labelStyle}>Phone (optional)</span>

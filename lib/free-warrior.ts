@@ -1,4 +1,72 @@
+import { formatSirahMoney, minorToDecimal } from "./sirah/catalog";
+
 const APPROX_PKR_PER_GBP = 375;
+
+/** A partial contribution paid by card (Stripe) instead of a manual transfer.
+ * Nothing is charged at submission. After approval the team issues a one-time
+ * Sīrah card link (the existing admin custom link, full-programme plan) for
+ * `totalMinor`; paying it enrols the student through the existing webhook. */
+export type ScholarshipCardContribution = {
+  countryCode: string;
+  currency: string;
+  /** The monthly share, in the currency's minor unit. */
+  monthlyMinor: number;
+  /** The one-time charge: the monthly share for every programme month. */
+  totalMinor: number;
+  months: number;
+  /** The PKR tier the share is scaled from. */
+  tier: "500" | "1000";
+};
+
+const CARD_LINE = /^Card contribution:\s*(.+)$/im;
+
+/** The stored line that the parser below reads back. Machine-readable on purpose. */
+export function formatCardContributionLine(card: ScholarshipCardContribution) {
+  return `Card contribution: country=${card.countryCode}; currency=${card.currency}; monthlyMinor=${card.monthlyMinor}; totalMinor=${card.totalMinor}; months=${card.months}; tier=${card.tier}`;
+}
+
+/** The admin custom-link page, filled in for this applicant's one-time card
+ * payment. Staff still check and confirm it there; nothing is charged here. */
+export function scholarshipCardLinkPath(application: { id: string; fullName: string; email: string }, card: ScholarshipCardContribution) {
+  const query = new URLSearchParams({
+    fullName: application.fullName,
+    email: application.email,
+    country: card.countryCode,
+    currency: card.currency,
+    amount: minorToDecimal(card.totalMinor, card.currency),
+    plan: "ANNUAL",
+    sponsorLabel: "Batch 4 scholarship contribution",
+    note: `Scholarship application ${application.id}`,
+  });
+  return `/admin/sirah/custom-link?${query.toString()}`;
+}
+
+export function parseCardContributionLine(reasonForWaiver: string): ScholarshipCardContribution | null {
+  const line = reasonForWaiver.match(CARD_LINE)?.[1];
+  if (!line) return null;
+  const fields: Record<string, string> = {};
+  for (const part of line.split(";")) {
+    const [key, value] = part.split("=").map((v) => v.trim());
+    if (key && value) fields[key] = value;
+  }
+  const int = (value: string | undefined) => (value && /^\d{1,12}$/.test(value) ? Number(value) : NaN);
+  const card = {
+    countryCode: fields.country || "",
+    currency: fields.currency || "",
+    monthlyMinor: int(fields.monthlyMinor),
+    totalMinor: int(fields.totalMinor),
+    months: int(fields.months),
+    tier: fields.tier,
+  };
+  return /^[A-Z]{2}$/.test(card.countryCode) &&
+    /^[A-Z]{3}$/.test(card.currency) &&
+    card.monthlyMinor > 0 &&
+    card.totalMinor > 0 &&
+    card.months > 0 &&
+    (card.tier === "500" || card.tier === "1000")
+    ? (card as ScholarshipCardContribution)
+    : null;
+}
 
 export type FreeWarriorContributionDetails = {
   contributionPreference: "FULL_SCHOLARSHIP" | "PARTIAL_CONTRIBUTION";
@@ -12,6 +80,8 @@ export type FreeWarriorContributionDetails = {
   referenceKey: string | null;
   manualNotes: string | null;
   applicationReason: string;
+  /** Set only for a card (Stripe) contribution. */
+  card: ScholarshipCardContribution | null;
 };
 
 function matchFirst(pattern: RegExp, value: string) {
@@ -53,6 +123,32 @@ export function parseFreeWarriorContribution(reasonForWaiver: string): FreeWarri
     )
     .join("\n\n");
 
+  // A card contribution has no PKR amount: without this branch, checked
+  // first, the fallback below would read it as a full scholarship. Only the
+  // first block is read (the one the server writes), never the applicant's
+  // own reason text further down.
+  const firstBlock = normalizedReason.split(/\n\s*\n/)[0] || "";
+  if (/^Contribution preference:.*\bby card\b/im.test(firstBlock)) {
+    const card = parseCardContributionLine(firstBlock);
+    const amountLabel = card
+      ? `${formatSirahMoney(card.monthlyMinor, card.currency)}/month · one-time card payment ${formatSirahMoney(card.totalMinor, card.currency)}`
+      : "Card contribution (amount unreadable: check the application)";
+    return {
+      contributionPreference: "PARTIAL_CONTRIBUTION",
+      monthlyContributionPkr: null,
+      monthlyContributionGbp: card?.currency === "GBP" ? card.monthlyMinor / 100 : null,
+      contributionLabel: `Can pay by card: ${amountLabel}`,
+      paymentLabel: "Card (Stripe)",
+      amountLabel,
+      senderName: null,
+      senderNumber: null,
+      referenceKey: null,
+      manualNotes,
+      applicationReason,
+      card,
+    };
+  }
+
   if (contributionLine?.toLowerCase().includes("complete scholarship")) {
     return {
       contributionPreference: "FULL_SCHOLARSHIP",
@@ -66,6 +162,7 @@ export function parseFreeWarriorContribution(reasonForWaiver: string): FreeWarri
       referenceKey,
       manualNotes,
       applicationReason,
+      card: null,
     };
   }
 
@@ -82,6 +179,7 @@ export function parseFreeWarriorContribution(reasonForWaiver: string): FreeWarri
       referenceKey,
       manualNotes,
       applicationReason,
+      card: null,
     };
   }
 
@@ -97,5 +195,6 @@ export function parseFreeWarriorContribution(reasonForWaiver: string): FreeWarri
     referenceKey,
     manualNotes,
     applicationReason,
+    card: null,
   };
 }
