@@ -4,8 +4,7 @@
  * it is written straight against the admin palette (--adm-*, styles/
  * admin-indigo.css) and the brand scales (--r-*, --sp-*, --ease, styles/
  * tokens.css). The rail is light: white with a hairline right edge, beside
- * the soft neutral canvas. The official lockup is a white knockout, so it
- * sits on a small brand-navy plate at the top of the rail.
+ * the soft neutral canvas. The color lockup sits straight on the rail.
  * Contrast (WCAG 2.x) on white: links #3d4757 9.6:1, section labels #6b7380
  * 4.9:1, icons #5b6472 6.2:1; active #0a5f54 on #dcf1ed 6.6:1 (plus a teal
  * edge and a heavier weight, so state never rests on colour alone).
@@ -44,19 +43,11 @@
   outline-offset: 3px;
 }
 
-/* The brand plate: the white knockout lockup needs a dark ground. */
-.brandPlate {
-  display: grid;
-  place-items: center;
-  flex: none;
-  padding: 6px 10px;
-  border-radius: var(--r-sm);
-  background: var(--adm-nav);
-}
-
-/* The official lockup, at its own proportions (640 × 246). */
+/* The official color lockup, at its own proportions (640 × 246), on the
+ * light rail with no plate. */
 .brandLogo {
   display: block;
+  flex: none;
   width: 112px;
   height: auto;
 }
@@ -305,11 +296,10 @@
   color: var(--adm-ok);
 }
 
-/* Install app and Logout: compact, the same height as each other. */
+/* Install app and Logout: the standard button height, slightly tighter. */
 .headerMeta :global(.ga-admin-outline-btn) {
-  min-height: 36px;
+  min-height: var(--adm-control-h);
   padding: 0 var(--sp-3);
-  font-size: 0.8125rem;
 }
 
 .headerMeta :global(.ga-admin-outline-btn) svg {
@@ -339,11 +329,6 @@
     padding: 0 0 var(--sp-4);
     border-bottom: 1px solid var(--adm-rule);
     border-radius: 0;
-  }
-
-  .brandPlate {
-    padding: 12px 14px;
-    border-radius: var(--r-md);
   }
 
   .brandLogo {

@@ -112,7 +112,7 @@ export default function AdminLogin({ workspace = "all" }: { workspace?: "all" | 
 
           {error ? <p className={styles.error} role="alert">{error}</p> : null}
 
-          <button type="submit" className={styles.submit} disabled={loading}>
+          <button type="submit" className={`ga-admin-primary-btn ${styles.submit}`} disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>

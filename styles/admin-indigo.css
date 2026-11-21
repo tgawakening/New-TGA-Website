@@ -64,6 +64,8 @@
   --adm-control: #8a93a3;       /* legacy hook value, 3.1:1 */
   --adm-field-line: #767d93;    /* field edges, 4.1:1 (the new site's field line) */
   --adm-btn-line: #c3cad5;      /* secondary button outline */
+  --adm-btn-line-hover: #9aa5bf; /* secondary outline on hover */
+  --adm-btn-hover: #f2f4fa;     /* secondary fill on hover: a faint indigo tint */
   --adm-control-h: 2.5rem;      /* fields and buttons: one height */
   --adm-control-h-sm: 2rem;     /* row actions */
   --adm-teal: #0b7566;          /* buttons, links, active */
@@ -521,7 +523,7 @@
   gap: 0.5rem;
   min-height: var(--adm-control-h);
   padding: 0 var(--sp-4);
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   border-radius: var(--r-sm);
   font: inherit;
   font-size: 0.84375rem;
@@ -556,9 +558,9 @@
 }
 
 [data-theme="indigo-admin"] :is(.ga-admin-outline-btn, .ga-admin-ghost-btn):hover:not(:disabled) {
-  background: var(--adm-teal-soft);
-  border-color: var(--adm-teal);
-  color: var(--adm-teal-ink);
+  background: var(--adm-btn-hover);
+  border-color: var(--adm-btn-line-hover);
+  color: var(--adm-primary);
 }
 
 [data-theme="indigo-admin"] .ga-admin-outline-btn.is-danger {
@@ -1254,19 +1256,12 @@
 }
 
 /* Main dashboard top bar: the same light chrome as the Sirah rail (white
- * card, hairline edge, teal-tinted active pill; rules above). The official
- * lockup is a white knockout, so it sits on a small brand-navy plate. */
+ * card, hairline edge, teal-tinted active pill; rules above). The color
+ * lockup sits straight on the light bar, no plate. */
 [data-theme="indigo-admin"] .ga-admin-topbar {
   background: var(--adm-card);
   border-color: var(--adm-rule);
   color: var(--adm-ink);
-}
-
-[data-theme="indigo-admin"] .ga-admin-topbar .ga-admin-brand-logo {
-  box-sizing: content-box;
-  padding: 6px 10px;
-  border-radius: var(--r-sm);
-  background: var(--adm-nav);
 }
 
 /* Raised white surfaces on the canvas: one soft shadow everywhere. */

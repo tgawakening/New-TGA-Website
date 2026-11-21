@@ -85,15 +85,13 @@ export function SirahAdminShell({
     <div className={styles.frame}>
       <aside className={styles.sidebar}>
         <a href="/admin/sirah/overview" className={styles.brand}>
-          {/* The official lockup is a white knockout: it sits on a navy plate. */}
-          <span className={styles.brandPlate}>
-            <BrandLogo
-              alt="The Global Awakening"
-              sizes="(min-width: 1024px) 168px, 112px"
-              className={styles.brandLogo}
-              priority
-            />
-          </span>
+          {/* The color lockup, straight on the light rail. */}
+          <BrandLogo
+            alt="The Global Awakening"
+            sizes="(min-width: 1024px) 168px, 112px"
+            className={styles.brandLogo}
+            priority
+          />
           <span className={styles.brandText}>
             <strong>Sīrah workspace</strong>
             <span>Beyond Chronology</span>
