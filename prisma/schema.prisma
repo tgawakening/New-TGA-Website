@@ -831,11 +831,17 @@ model LmsSession {
   passcodeEncrypted String?          @db.Text
   createdAt         DateTime         @default(now()) @db.DateTime(3)
   updatedAt         DateTime         @updatedAt @db.DateTime(3)
+  /// When Zoom reported the meeting started / ended (meeting.started,
+  /// meeting.ended webhooks). Null until the event arrives.
+  zoomStartedAt     DateTime?        @db.DateTime(3)
+  zoomEndedAt       DateTime?        @db.DateTime(3)
 
   cohort      SirahCohort         @relation(fields: [cohortId], references: [batchCode], onDelete: Restrict)
   zoomHost    ZoomHost            @relation(fields: [zoomHostId], references: [id], onDelete: Restrict)
-  /// Prisma-side back-relation only: no column on LmsSession.
+  /// Prisma-side back-relations only: no column on LmsSession.
   joinIntents SessionJoinIntent[]
+  attendanceIntervals AttendanceInterval[]
+  attendance  Attendance[]
 
   @@index([cohortId, startsAt])
   @@index([zoomHostId, startsAt])
@@ -873,4 +879,65 @@ model SessionJoinIntent {
 
   @@index([sessionId, at])
   @@index([userId, at])
+}
+
+/// How a Zoom participant was tied to a student account: the participant's
+/// email equals an enrolled student's account email, else an exact display
+/// name match, else none (kept unmatched, userId null).
+enum AttendanceMatchMethod {
+  EMAIL
+  NAME
+  NONE
+}
+
+/// One stretch of one Zoom participant in a session's meeting, from the
+/// participant_joined / participant_left webhooks and the post-meeting
+/// participants report. Natural key: (session, Zoom participant id, joinedAt),
+/// so webhook and report rows for the same stretch are one row. userId has no
+/// foreign key (like SessionJoinIntent): the log never blocks a user deletion.
+model AttendanceInterval {
+  id                String                @id @default(cuid())
+  sessionId         String
+  userId            String?               @db.VarChar(191)
+  zoomParticipantId String                @db.VarChar(191)
+  email             String?               @db.VarChar(320)
+  name              String?               @db.VarChar(191)
+  joinedAt          DateTime              @db.DateTime(3)
+  leftAt            DateTime?             @db.DateTime(3)
+  matchMethod       AttendanceMatchMethod @default(NONE)
+  createdAt         DateTime              @default(now()) @db.DateTime(3)
+  updatedAt         DateTime              @updatedAt @db.DateTime(3)
+
+  session LmsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, zoomParticipantId, joinedAt])
+  @@index([sessionId, userId])
+  @@index([sessionId, leftAt])
+}
+
+/// JOINED while the meeting runs; PRESENT or PARTIAL once it has ended.
+enum AttendanceStatus {
+  JOINED
+  PRESENT
+  PARTIAL
+}
+
+/// One matched student's attendance for one session, recomputed from their
+/// AttendanceIntervals (overlapping stretches counted once). userId has no
+/// foreign key, as above.
+model Attendance {
+  id            String           @id @default(cuid())
+  sessionId     String
+  userId        String           @db.VarChar(191)
+  status        AttendanceStatus @default(JOINED)
+  joinedMinutes Int              @default(0)
+  firstJoinedAt DateTime         @db.DateTime(3)
+  lastLeftAt    DateTime?        @db.DateTime(3)
+  createdAt     DateTime         @default(now()) @db.DateTime(3)
+  updatedAt     DateTime         @updatedAt @db.DateTime(3)
+
+  session LmsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
 }

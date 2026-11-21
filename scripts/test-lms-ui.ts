@@ -192,7 +192,7 @@ function seedSession(startsAt: Date, overrides: Record<string, unknown> = {}) {
   const id = `sess_${table("lmsSession").length + 1}`;
   const row = {
     id, cohortId: SIRAH_BATCH, title: `Class ${id}`, startsAt, durationMin: 90, status: "SCHEDULED", zoomHostId: "host_1",
-    zoomMeetingId: "9000001", zoomMeetingUuid: "u",
+    zoomMeetingId: "9000001", zoomMeetingUuid: "u", zoomStartedAt: null, zoomEndedAt: null,
     joinUrlEncrypted: crypto.encryptField(SECRET_JOIN, crypto.sessionFieldContext(id, "joinUrl")),
     passcodeEncrypted: crypto.encryptField("4815162342", crypto.sessionFieldContext(id, "passcode")),
     createdAt: new Date(), updatedAt: new Date(), ...overrides,
@@ -233,7 +233,7 @@ describe("admin live sessions", () => {
     assert.match(html, /No joins yet/);
     assert.match(html, /teacher@example\.test/);
     assert.match(html, /Scheduled/);
-    assert.match(html, /Took place/);
+    assert.match(html, /No Zoom start recorded/, "a past slot Zoom never started is flagged, not assumed to have happened");
     assert.match(html, /Meeting 9000001/);
     assert.match(html, /waiting room on/);
     assert.ok(html.includes(`/api/sirah/lms/sessions/${up.id}/start`), "super admin gets Start as host");
@@ -312,6 +312,39 @@ describe("admin live sessions", () => {
     assert.equal(result.redirect, "/admin/sirah");
     assert.equal(table("lmsSession").length, 0);
     assert.equal(apiCalls().length, 0);
+  });
+
+  test("session detail shows webhook-driven live state and attendance, matched and unmatched", async () => {
+    access = { role: "SUPER_ADMIN" };
+    const startedAt = new Date(Date.now() - 50 * MIN);
+    const live = seedSession(new Date(Date.now() - 55 * MIN), { title: "Live class", status: "LIVE", zoomStartedAt: startedAt });
+    const done = seedSession(new Date(Date.now() - 3 * 86_400_000), {
+      title: "Finished class",
+      status: "ENDED",
+      zoomStartedAt: new Date(Date.now() - 3 * 86_400_000),
+      zoomEndedAt: new Date(Date.now() - 3 * 86_400_000 + 60 * MIN),
+    });
+    seedSession(new Date(Date.now() - 20 * MIN), { title: "Never started" });
+    const amina = seedUser("amina@example.test");
+    table("attendance").push({ id: "att1", sessionId: done.id, userId: amina.id, status: "PRESENT", joinedMinutes: 58, firstJoinedAt: done.startsAt, lastLeftAt: done.startsAt });
+    table("attendanceInterval").push(
+      { id: "i1", sessionId: done.id, userId: amina.id, zoomParticipantId: "a", email: "amina@example.test", name: "Amina", joinedAt: new Date(Number(done.startsAt) + 60_000), leftAt: new Date(Number(done.startsAt) + 59 * 60_000), matchMethod: "EMAIL" },
+      { id: "i2", sessionId: done.id, userId: null, zoomParticipantId: "g", email: null, name: "Visitor Phone", joinedAt: new Date(Number(done.startsAt) + 5 * 60_000), leftAt: new Date(Number(done.startsAt) + 15 * 60_000), matchMethod: "NONE" },
+      { id: "i3", sessionId: done.id, userId: null, zoomParticipantId: "h", email: "teacher@example.test", name: "Ustadh", joinedAt: done.startsAt as Date, leftAt: new Date(Number(done.startsAt) + 60 * 60_000), matchMethod: "NONE" },
+    );
+    const html = await render(AdminPage({ searchParams: Promise.resolve({}) }));
+    assert.match(html, /Live now/);
+    assert.match(html, /Not started on Zoom/, "the clock alone no longer says live");
+    assert.match(html, /Ended/);
+    assert.match(html, /\(from Zoom\)/);
+    assert.match(html, /Present/);
+    assert.match(html, /58 min/);
+    assert.match(html, /matched by email/);
+    assert.match(html, /Not matched to a student/);
+    assert.match(html, /Visitor Phone · 10 min/);
+    assert.match(html, />Host</);
+    assert.ok(html.includes(live.title));
+    assertNoZoomSecrets(html);
   });
 
   test("an invalid date is refused before Zoom is called", async () => {

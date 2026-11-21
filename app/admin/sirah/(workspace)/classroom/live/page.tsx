@@ -8,10 +8,13 @@ import { JOIN_OPENS_MINUTES_BEFORE } from "@/lib/lms/access";
 import { LMS_JOIN_BEFORE_HOST, LMS_MAX_SESSION_MINUTES, LMS_MEETING_SETTINGS, LMS_WAITING_ROOM } from "@/lib/lms/sessions";
 import {
   adminSessionsForCohort,
+  attendanceForSessions,
+  liveBadge,
   listActiveHosts,
   listCohorts,
   lmsSessionsAvailable,
   type JoinCounts,
+  type SessionAttendance,
   type SessionView,
 } from "@/lib/lms/schedule";
 import { ScheduleFields, SelectField } from "@/components/sirah/classroom-pickers";
@@ -41,13 +44,6 @@ const MEETING_SETTINGS_TEXT = [
 ]
   .filter(Boolean)
   .join(", ");
-
-const PHASE_TEXT: Record<SessionView["phase"], string> = {
-  upcoming: "Scheduled",
-  live: "Live now",
-  past: "Took place",
-  cancelled: "Cancelled",
-};
 
 const listDate = new Intl.DateTimeFormat("en-GB", {
   timeZone: SIRAH_DEFAULT_TIMEZONE,
@@ -141,14 +137,89 @@ function SessionFields({
   );
 }
 
+const ATTENDANCE_TEXT = { PRESENT: "Present", PARTIAL: "Partial", JOINED: "In the meeting" } as const;
+const MATCH_TEXT = { EMAIL: "matched by email", NAME: "matched by name", NONE: "" } as const;
+
+function stretchesText(stretches: { joinedAt: Date; leftAt: Date | null }[]) {
+  return stretches.map((s) => `${endTime.format(s.joinedAt)} to ${s.leftAt ? endTime.format(s.leftAt) : "now"}`).join(", ");
+}
+
+function zoomStateText(session: SessionView) {
+  if (session.zoomStartedAt && session.zoomEndedAt)
+    return `Started ${endTime.format(session.zoomStartedAt)}, ended ${endTime.format(session.zoomEndedAt)} (from Zoom)`;
+  if (session.zoomStartedAt) return `Started ${endTime.format(session.zoomStartedAt)} (from Zoom); still running`;
+  return "Zoom has not reported a start for this meeting yet.";
+}
+
+/** Who attended, from Zoom's participant events and its post-meeting report. */
+function AttendanceList({ attendance }: { attendance: SessionAttendance | undefined }) {
+  if (!attendance || (!attendance.matched.length && !attendance.unmatched.length))
+    return <p className={styles.emptyLine}>No attendance recorded yet. It fills in as students join on Zoom.</p>;
+  const present = attendance.matched.filter((a) => a.status === "PRESENT").length;
+  return (
+    <>
+      <p className={styles.help}>
+        {attendance.matched.length} matched {attendance.matched.length === 1 ? "student" : "students"}
+        {attendance.matched.some((a) => a.status !== "JOINED") ? `, ${present} present for at least 75% of the meeting` : ""}.
+        Times are London time.
+      </p>
+      {attendance.matched.length ? (
+        <ul className={styles.rows}>
+          {attendance.matched.map((a) => (
+            <li key={a.userId} className={styles.row}>
+              <span className={a.status === "PARTIAL" ? styles.warn : `${styles.status} ${a.status === "PRESENT" ? styles.statusLive : ""}`}>
+                {ATTENDANCE_TEXT[a.status]}
+              </span>
+              <span className={styles.rowMain}>
+                <span>
+                  {a.name} · {a.joinedMinutes} min
+                </span>
+                <span className={styles.rowMeta}>
+                  {a.email}
+                  {MATCH_TEXT[a.matchMethod] ? ` · ${MATCH_TEXT[a.matchMethod]}` : ""} · {stretchesText(a.stretches)}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {attendance.unmatched.length ? (
+        <>
+          <p className={styles.inlineTitle}>Not matched to a student</p>
+          <ul className={styles.rows}>
+            {attendance.unmatched.map((u, index) => (
+              <li key={`${u.email ?? u.label}-${index}`} className={styles.row}>
+                <span className={styles.tag}>{u.isHost ? "Host" : "Guest"}</span>
+                <span className={styles.rowMain}>
+                  <span>
+                    {u.label} · {u.minutes} min
+                  </span>
+                  <span className={styles.rowMeta}>
+                    {u.email ? `${u.email} · ` : "No email shared by Zoom · "}
+                    {stretchesText(u.stretches)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </>
+  );
+}
+
 function SessionLedger({
   sessions,
   counts,
+  attendance,
+  now,
   canStart,
   editable,
 }: {
   sessions: SessionView[];
   counts: Map<string, JoinCounts>;
+  attendance: Map<string, SessionAttendance>;
+  now: Date;
   canStart: boolean;
   editable: boolean;
 }) {
@@ -157,6 +228,8 @@ function SessionLedger({
       {sessions.map((session) => {
         const anchor = `live-${session.id}`;
         const open = session.phase === "upcoming" || session.phase === "live";
+        // The badge follows Zoom (meeting.started / meeting.ended), not the clock.
+        const badge = liveBadge(session, now);
         return (
           <li key={session.id} id={anchor} className={styles.ledgerItem}>
             <details className={styles.session}>
@@ -173,8 +246,10 @@ function SessionLedger({
                   </span>
                 </span>
                 <span className={styles.sessionState}>
-                  <span className={`${styles.status} ${session.phase === "live" ? styles.statusLive : ""}`}>
-                    {PHASE_TEXT[session.phase]}
+                  <span
+                    className={badge.tone === "warn" ? styles.warn : `${styles.status} ${badge.tone === "live" ? styles.statusLive : ""}`}
+                  >
+                    {badge.text}
                   </span>
                   {open && !session.zoomMeetingId ? <span className={styles.warn}>No Zoom meeting</span> : null}
                   {open && !session.host.active ? <span className={styles.warn}>Host inactive</span> : null}
@@ -217,6 +292,13 @@ function SessionLedger({
                       ) : null}
                     </li>
                     <li className={styles.row}>
+                      <span className={styles.tag}>Live state</span>
+                      <span className={styles.rowMain}>
+                        <span>{badge.text}</span>
+                        <span className={styles.rowMeta}>{zoomStateText(session)}</span>
+                      </span>
+                    </li>
+                    <li className={styles.row}>
                       <span className={styles.tag}>Joins</span>
                       <span className={styles.rowMain}>
                         <span>{joinsText(counts.get(session.id))}</span>
@@ -225,6 +307,13 @@ function SessionLedger({
                     </li>
                   </ul>
                 </div>
+
+                {session.phase !== "upcoming" || attendance.has(session.id) ? (
+                  <div className={styles.subsection}>
+                    <h4 className={styles.subTitle}>Attendance</h4>
+                    <AttendanceList attendance={attendance.get(session.id)} />
+                  </div>
+                ) : null}
 
                 {editable && open ? (
                   <>
@@ -291,6 +380,7 @@ export default async function LiveSessionsAdminPage({
     null;
   const now = new Date();
   const data = cohortId ? await adminSessionsForCohort(cohortId, now) : null;
+  const attendance = data ? await attendanceForSessions([...data.upcoming, ...data.past], now) : new Map<string, SessionAttendance>();
   // The start route admits the env super admin or the host's own account.
   const canStart = access.role === "SUPER_ADMIN";
   const nextUp = data?.upcoming.find((s) => s.phase !== "cancelled");
@@ -374,7 +464,7 @@ export default async function LiveSessionsAdminPage({
                 <p>Sessions you schedule appear here and in every enrolled student&rsquo;s classroom.</p>
               </div>
             ) : (
-              <SessionLedger sessions={data.upcoming} counts={data.counts} canStart={canStart} editable />
+              <SessionLedger sessions={data.upcoming} counts={data.counts} attendance={attendance} now={now} canStart={canStart} editable />
             )}
           </section>
 
@@ -388,7 +478,7 @@ export default async function LiveSessionsAdminPage({
             {data.past.length === 0 ? (
               <p className={styles.emptyLine}>No past sessions yet.</p>
             ) : (
-              <SessionLedger sessions={data.past} counts={data.counts} canStart={false} editable={false} />
+              <SessionLedger sessions={data.past} counts={data.counts} attendance={attendance} now={now} canStart={false} editable={false} />
             )}
           </section>
         </>
