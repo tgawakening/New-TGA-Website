@@ -1,4 +1,5 @@
 import { getSessionIdentity } from "@/lib/auth/session";
+import { externalUrl } from "@/lib/external-origin";
 import { getResource, hostMaySessionResources } from "@/lib/lms/content";
 import { DOCUMENT_URL_SECONDS, RECORDING_URL_SECONDS, presignDownload, spacesConfigured } from "@/lib/sirah/spaces";
 
@@ -11,7 +12,7 @@ const NO_STORE = { "Cache-Control": "private, no-store", "Referrer-Policy": "no-
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const identity = await getSessionIdentity(request);
-  if (!identity) return new Response(null, { status: 302, headers: { ...NO_STORE, Location: new URL("/login", request.url).toString() } });
+  if (!identity) return new Response(null, { status: 302, headers: { ...NO_STORE, Location: externalUrl("/login", request).toString() } });
   const { id } = await params;
   const resource = await getResource(id);
   if (!resource?.sessionId || resource.kind !== "FILE" || !resource.storageKey || !(await hostMaySessionResources(identity, resource.sessionId)))

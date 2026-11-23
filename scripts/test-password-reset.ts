@@ -126,3 +126,19 @@ test("the emailed link moves the token into a scoped httpOnly cookie and lands o
   assert.equal(junk.status, 303);
   assert.equal(junk.headers.get("set-cookie"), null, "malformed tokens are not stored");
 });
+
+test("behind the proxy, the redirect goes to the public origin, never the container's address", () => {
+  const token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ0123456";
+  const proxied = startRoute.GET(
+    new Request(`http://localhost:8080/reset-password/start?token=${token}`, {
+      headers: { "x-forwarded-proto": "https", "x-forwarded-host": "tga-awakening.example" },
+    }),
+  );
+  assert.equal(proxied.status, 303);
+  assert.equal(proxied.headers.get("location"), "https://tga-awakening.example/reset-password");
+  assert.match(proxied.headers.get("set-cookie")!, new RegExp(`^ga_reset=${token};`));
+
+  // No forwarded headers: NEXT_PUBLIC_APP_URL (https://tga.example here), not localhost:8080.
+  const bare = startRoute.GET(new Request(`http://localhost:8080/reset-password/start?token=${token}`));
+  assert.equal(bare.headers.get("location"), "https://tga.example/reset-password");
+});

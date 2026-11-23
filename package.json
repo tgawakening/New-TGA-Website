@@ -34,6 +34,7 @@
     "test:sirah-records": "node --conditions=react-server --import tsx --test scripts/test-sirah-records.ts",
     "test:dashboard-admin-link": "node --import tsx --test scripts/test-dashboard-admin-link.ts",
     "test:password-reset": "node --conditions=react-server --import tsx --test scripts/test-password-reset.ts",
+    "test:external-origin": "node --import tsx --test scripts/test-external-origin.ts",
     "email:sender:check": "node --import tsx scripts/check-email-sender.ts",
     "test:lms-zoom": "node --conditions=react-server --import tsx --test scripts/test-lms-zoom.ts",
     "test:lms-sessions": "node --conditions=react-server --import tsx --test scripts/test-lms-sessions.ts",
