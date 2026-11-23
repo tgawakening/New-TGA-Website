@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type ReactNode } from "react";
 import { SIRAH_SCHOLARSHIP_BATCH, SIRAH_SCHOLARSHIP_LIMIT, scholarshipQuestions, arabicLevels } from "@/lib/sirah/scholarship";
 import { prepareSirahReceipt, SIRAH_RECEIPT_ACCEPT, sirahReceiptSelectionError } from "@/lib/sirah/receipt-upload";
 import { SIRAH_TITLE, formatSirahMoney } from "@/lib/sirah/catalog";
@@ -99,14 +99,25 @@ const jazzcash = [
   { label: "Mobile account", value: "03244517741" },
 ];
 
-const sections = [
-  { id: "personal", title: "Personal information" },
-  { id: "background", title: "Islamic background" },
-  { id: "course", title: "Why this course" },
-  { id: "service", title: "Service and mission" },
-  { id: "commitment", title: "Commitment and need" },
-  { id: "agreements", title: "Agreements" },
+/* The form's steps, one section at a time, as on /seerah/register. `short`
+ * is the stepper label; the last step reviews the answers and submits. */
+const steps = [
+  { id: "personal", title: "Personal information", short: "You" },
+  { id: "background", title: "Islamic background", short: "Background" },
+  { id: "course", title: "Why this course", short: "Course" },
+  { id: "service", title: "Service, mission & contribution", short: "Service" },
+  { id: "commitment", title: "Commitment & need", short: "Need" },
+  { id: "agreements", title: "Review and submit", short: "Review" },
 ] as const;
+const LAST_STEP = steps.length - 1;
+
+/** The form controls of one step that take part in validation. */
+const controlsOf = (root: HTMLElement | null) =>
+  root
+    ? Array.from(root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea")).filter(
+        (el) => el.willValidate,
+      )
+    : [];
 
 export function ScholarshipPage({
   countries,
@@ -131,6 +142,73 @@ export function ScholarshipPage({
   const isManual = isPartialContribution && !byCard;
   const cardOption = form.cardCountry ? cardOptions[form.cardCountry] : undefined;
   const cardCountryName = useMemo(() => countries.find((c) => c.code === form.cardCountry)?.name, [countries, form.cardCountry]);
+
+  // Step-wise flow (presentation only). Every step stays mounted, so values,
+  // the receipt input and its constraints persist while hidden.
+  const [step, setStep] = useState(0);
+  const [furthest, setFurthest] = useState(0);
+  const stepRefs = useRef<Array<HTMLElement | null>>([]);
+  const focusStep = useRef(false);
+
+  useEffect(() => {
+    if (!focusStep.current) return;
+    focusStep.current = false;
+    document.getElementById(`${steps[step].id}-title`)?.focus({ preventScroll: true });
+    document.getElementById("scholarship-form")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [step]);
+
+  // After a successful submission the form is reset: start again at step 1.
+  useEffect(() => {
+    if (!success) return;
+    setStep(0);
+    setFurthest(0);
+  }, [success]);
+
+  function goTo(index: number) {
+    focusStep.current = true;
+    setStep(index);
+    setFurthest((current) => Math.max(current, index));
+  }
+
+  /** The first control of a step that fails its own constraints, if any. */
+  const firstInvalid = (index: number) => controlsOf(stepRefs.current[index]).find((el) => !el.checkValidity()) ?? null;
+
+  function showInvalid(index: number) {
+    const invalid = firstInvalid(index);
+    if (!invalid) return false;
+    if (index !== step) {
+      focusStep.current = false;
+      setStep(index);
+      // Report once the step is visible.
+      requestAnimationFrame(() => requestAnimationFrame(() => invalid.reportValidity()));
+    } else invalid.reportValidity();
+    return true;
+  }
+
+  function next() {
+    if (showInvalid(step)) return;
+    setError(null);
+    goTo(Math.min(step + 1, LAST_STEP));
+  }
+
+  /** The same constraints the browser checked before, step by step, then the
+   * unchanged submit handler. */
+  function submitStepwise(event: FormEvent<HTMLFormElement>) {
+    // Enter in a field before the last step moves on, like the Next button.
+    if (step < LAST_STEP) {
+      event.preventDefault();
+      next();
+      return;
+    }
+    for (let index = 0; index <= LAST_STEP; index++) {
+      if (firstInvalid(index)) {
+        event.preventDefault();
+        showInvalid(index);
+        return;
+      }
+    }
+    void handleSubmit(event);
+  }
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((prev) => ({ ...prev, [key]: value }));
   const setDetail = <K extends keyof Details>(key: K, value: Details[K]) =>
@@ -249,38 +327,65 @@ export function ScholarshipPage({
           <h1 id="scholarship-title" className={s.title}>Apply for a Sīrah Scholarship</h1>
           <p className={s.lede}>For committed learners ready to learn, contribute and serve.</p>
           <ul className={s.facts} aria-label="Scholarship at a glance">
-            <li><strong>{SIRAH_SCHOLARSHIP_LIMIT}</strong><span>scholarships · Batch 4</span></li>
-            <li><strong>Manual</strong><span>selection by the team</span></li>
-            <li><strong>Private</strong><span>answers seen only by reviewers</span></li>
+            <li>
+              <strong>{SIRAH_SCHOLARSHIP_LIMIT} seats</strong>
+              <span>Scholarship seats available · Batch 4</span>
+            </li>
+            <li>
+              <strong>Manual review</strong>
+              <span>Every application is read by the TGA team</span>
+            </li>
+            <li>
+              <strong>Private</strong>
+              <span>Your answers are seen only by reviewers</span>
+            </li>
           </ul>
+          <details className={s.explainer}>
+            <summary>How selection works</summary>
+            <div>
+              <p>Selection considers Sīrah knowledge, basic Arabic, Islamic foundations and commitment to community service. Bring useful skills or commit to learning them to support TGA’s mission. Awards follow review and are not guaranteed.</p>
+              <dl className={s.ribbon}>
+                <div><dt>Course</dt><dd>{SIRAH_TITLE}</dd></div>
+                <div><dt>Cohort</dt><dd>Batch 4</dd></div>
+                <div><dt>Review mode</dt><dd>10 places · Manual selection</dd></div>
+              </dl>
+            </div>
+          </details>
         </div>
       </section>
 
       <div className={s.layout}>
-        <aside className={s.aside} aria-label="Scholarship selection summary">
-          <div className={s.asideCard}>
-            <h2 className={s.asideTitle}>{SIRAH_SCHOLARSHIP_LIMIT} scholarships · Batch 4</h2>
-            <p>Selection considers Sīrah knowledge, basic Arabic, Islamic foundations and commitment to community service. Bring useful skills or commit to learning them to support TGA’s mission. Awards follow review and are not guaranteed.</p>
-            <dl className={s.ribbon}>
-              <div><dt>Course</dt><dd>{SIRAH_TITLE}</dd></div>
-              <div><dt>Cohort</dt><dd>Batch 4</dd></div>
-              <div><dt>Review mode</dt><dd>10 places · Manual selection</dd></div>
-            </dl>
-            <nav aria-label="Form sections" className={s.toc}>
-              <ol>
-                {sections.map((section, index) => (
-                  <li key={section.id}>
-                    <a href={`#${section.id}`}><span aria-hidden="true">{index + 1}</span>{section.title}</a>
-                  </li>
-                ))}
-              </ol>
-            </nav>
-          </div>
-        </aside>
-
         <main className={s.main}>
-          <form id="scholarship-form" onSubmit={handleSubmit} className={s.form}>
-            <Section id="personal" index={1} title="Personal information">
+          {success ? (
+            <p role="status" className={`${s.success} ${s.successBanner}`}>
+              {success}
+            </p>
+          ) : null}
+          <form id="scholarship-form" onSubmit={submitStepwise} className={s.form} noValidate>
+            <ol className={s.stepper} aria-label="Application steps">
+              {steps.map((item, index) => (
+                <li
+                  key={item.id}
+                  aria-current={index === step ? "step" : undefined}
+                  className={index < step || (index <= furthest && index !== step) ? s.stepDone : undefined}
+                >
+                  <button
+                    type="button"
+                    onClick={() => goTo(index)}
+                    disabled={index > furthest || index === step}
+                    aria-label={`Step ${index + 1} of ${steps.length}: ${item.title}`}
+                  >
+                    <span aria-hidden="true">{index + 1}</span>
+                    <em>{item.short}</em>
+                  </button>
+                </li>
+              ))}
+            </ol>
+            <p className={s.stepCount} aria-live="polite">
+              Step {step + 1} of {steps.length}
+            </p>
+
+            <Section id="personal" index={1} title="Personal information" hidden={step !== 0} sectionRef={(el) => (stepRefs.current[0] = el)}>
               <div className={s.grid}>
                 <Field label="Name" required>
                   <input name="fullName" autoComplete="name" value={form.fullName} onChange={text("fullName")} required />
@@ -303,7 +408,7 @@ export function ScholarshipPage({
               </div>
             </Section>
 
-            <Section id="background" index={2} title="Islamic background">
+            <Section id="background" index={2} title="Islamic background" hidden={step !== 1} sectionRef={(el) => (stepRefs.current[1] = el)}>
               <div className={s.grid}>
                 <Field label="Knowledge level" required>
                   <select name="knowledgeLevel" value={form.knowledgeLevel} onChange={text("knowledgeLevel")} required>
@@ -332,7 +437,7 @@ export function ScholarshipPage({
               </Field>
             </Section>
 
-            <Section id="course" index={3} title="Why this course">
+            <Section id="course" index={3} title="Why this course" hidden={step !== 2} sectionRef={(el) => (stepRefs.current[2] = el)}>
               <Field label="What draws you to this course?" required>
                 <textarea name="whatDrawsYou" value={form.whatDrawsYou} onChange={text("whatDrawsYou")} rows={3} required />
               </Field>
@@ -349,7 +454,7 @@ export function ScholarshipPage({
               </div>
             </Section>
 
-            <Section id="service" index={4} title="Service, mission & contribution">
+            <Section id="service" index={4} title="Service, mission & contribution" hidden={step !== 3} sectionRef={(el) => (stepRefs.current[3] = el)}>
               {(["communityContribution", "missionSupport", "skillsResources", "actionPlan"] as const).map((key) => (
                 <Field key={key} label={scholarshipQuestions[key]} required>
                   <textarea name={key} value={form.scholarshipDetails[key]} onChange={(event) => setDetail(key, event.target.value)} rows={3} minLength={20} maxLength={2000} required />
@@ -373,7 +478,7 @@ export function ScholarshipPage({
               </div>
             </Section>
 
-            <Section id="commitment" index={5} title="Commitment & need">
+            <Section id="commitment" index={5} title="Commitment & need" hidden={step !== 4} sectionRef={(el) => (stepRefs.current[4] = el)}>
               <Field label="Hours you can realistically set aside each week for classes, study and contribution" required>
                 <input name="weeklyHours" type="number" inputMode="decimal" min="0.5" max="80" step="0.5" value={form.scholarshipDetails.weeklyHours} onChange={(event) => setDetail("weeklyHours", event.target.value)} required />
               </Field>
@@ -531,7 +636,15 @@ export function ScholarshipPage({
                             <input name="manualReferenceKey" value={form.manualReferenceKey} onChange={text("manualReferenceKey")} placeholder="Transaction / reference id" required />
                           </Field>
                           <Field label="Payment receipt evidence" required hint="Upload a clear JPG, PNG, WebP or PDF. Images up to 20 MB are resized automatically; PDFs must be under 4 MB. Required for both Meezan Bank and JazzCash; staff must verify receipt before confirming payment. No receipt is needed for a full scholarship.">
-                            <input key={receiptKey} name="receipt" type="file" accept={SIRAH_RECEIPT_ACCEPT} required onChange={(event) => setReceipt(event.target.files?.[0] || null)} />
+                            <ReceiptDrop
+                              inputKey={receiptKey}
+                              file={receipt}
+                              onFile={setReceipt}
+                              onClear={() => {
+                                setReceipt(null);
+                                setReceiptKey((n) => n + 1);
+                              }}
+                            />
                           </Field>
                           <Field label="Notes" optional>
                             <textarea name="manualNotes" value={form.manualNotes} onChange={text("manualNotes")} rows={2} />
@@ -551,7 +664,29 @@ export function ScholarshipPage({
               </Field>
             </Section>
 
-            <Section id="agreements" index={6} title="Agreements">
+            <Section id="agreements" index={6} title="Review and submit" hidden={step !== 5} sectionRef={(el) => (stepRefs.current[5] = el)}>
+              <dl className={s.review}>
+                <ReviewRow label="Name" value={form.fullName} onEdit={() => goTo(0)} />
+                <ReviewRow label="Email" value={form.email} onEdit={() => goTo(0)} />
+                <ReviewRow label="WhatsApp" value={form.whatsapp} onEdit={() => goTo(0)} />
+                <ReviewRow label="City & country" value={form.cityCountry} onEdit={() => goTo(0)} />
+                <ReviewRow label="Knowledge level" value={form.knowledgeLevel} onEdit={() => goTo(1)} />
+                <ReviewRow
+                  label="Contribution"
+                  value={
+                    form.contributionPreference === "FULL_SCHOLARSHIP"
+                      ? "Complete scholarship"
+                      : isPartialContribution
+                        ? byCard
+                          ? `Card, ${cardCountryName ?? "country not chosen"}${form.monthlyContributionPkr ? `, tier ${form.monthlyContributionPkr}` : ""}`
+                          : `${form.monthlyContributionPkr ? `${form.monthlyContributionPkr} PKR monthly` : "Amount not chosen"}${form.manualPaymentMethod ? ` · ${form.manualPaymentMethod === "JAZZCASH" ? "JazzCash" : "Meezan Bank"}` : ""}`
+                        : ""
+                  }
+                  onEdit={() => goTo(4)}
+                />
+                {isManual ? <ReviewRow label="Receipt" value={receipt?.name ?? ""} onEdit={() => goTo(4)} /> : null}
+              </dl>
+              <p className={s.reviewTitle}>Agreements</p>
               <div className={s.agreements}>
                 <Agreement name="skillsLearningCommitment" checked={form.scholarshipDetails.skillsLearningCommitment} onChange={(v) => setDetail("skillsLearningCommitment", v)}>
                   If I do not yet have relevant skills, I commit to identifying and starting to learn a skill needed for mission and community work.
@@ -573,13 +708,25 @@ export function ScholarshipPage({
 
             <div className={s.submit}>
               {error ? <p role="alert" className={s.error}>{error}</p> : null}
-              {success ? <p role="status" className={s.success}>{success}</p> : null}
-              <div className={s.submitRow}>
-                <p>Your submission remains confidential and goes straight to manual admin review.</p>
-                <Button type="submit" disabled={submitting} arrow={!submitting}>
-                  {submitting ? "Submitting..." : "Submit Scholarship Application"}
-                </Button>
+              <div className={s.stepNav}>
+                {step > 0 ? (
+                  <button type="button" className={s.backStep} onClick={() => goTo(step - 1)}>
+                    <span aria-hidden="true">←</span> Back
+                  </button>
+                ) : (
+                  <span />
+                )}
+                {step < LAST_STEP ? (
+                  <Button type="button" onClick={next} arrow>
+                    Next: {steps[step + 1].title}
+                  </Button>
+                ) : (
+                  <Button type="submit" disabled={submitting} arrow={!submitting}>
+                    {submitting ? "Submitting..." : "Submit Scholarship Application"}
+                  </Button>
+                )}
               </div>
+              {step === LAST_STEP ? <p className={s.submitNote}>Your submission remains confidential and goes straight to manual admin review.</p> : null}
             </div>
           </form>
         </main>
@@ -588,10 +735,24 @@ export function ScholarshipPage({
   );
 }
 
-function Section({ id, index, title, children }: { id: string; index: number; title: string; children: ReactNode }) {
+function Section({
+  id,
+  index,
+  title,
+  hidden,
+  sectionRef,
+  children,
+}: {
+  id: string;
+  index: number;
+  title: string;
+  hidden?: boolean;
+  sectionRef?: (element: HTMLElement | null) => void;
+  children: ReactNode;
+}) {
   return (
-    <section className={s.section} aria-labelledby={`${id}-title`} id={id}>
-      <h2 id={`${id}-title`} className={s.sectionTitle}>
+    <section className={s.section} aria-labelledby={`${id}-title`} id={id} hidden={hidden} ref={sectionRef}>
+      <h2 id={`${id}-title`} className={s.sectionTitle} tabIndex={-1}>
         <span className={s.sectionIndex} aria-hidden="true">{index}</span>
         {title}
       </h2>
@@ -651,5 +812,111 @@ function Account({ title, rows }: { title: string; rows: Array<{ label: string; 
         ))}
       </dl>
     </div>
+  );
+}
+
+function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
+  return (
+    <div className={s.reviewRow}>
+      <dt>{label}</dt>
+      <dd>{value || <span className={s.reviewEmpty}>Not given</span>}</dd>
+      <button type="button" className={s.reviewEdit} onClick={onEdit} aria-label={`Edit ${label.toLowerCase()}`}>
+        Edit
+      </button>
+    </div>
+  );
+}
+
+const sizeLabel = (bytes: number) =>
+  bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+/** The receipt upload: a drop zone around the same file input (name, accept
+ * and required unchanged). A dropped file is put on the input itself, so the
+ * input's own constraint and the submit handler see it exactly as a picked
+ * file. Selection problems show as they always have, on submit. */
+function ReceiptDrop({
+  inputKey,
+  file,
+  onFile,
+  onClear,
+}: {
+  inputKey: number;
+  file: File | null;
+  onFile: (file: File | null) => void;
+  onClear: () => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [over, setOver] = useState(false);
+  const problem = file ? sirahReceiptSelectionError(file) : null;
+
+  function drop(event: DragEvent<HTMLSpanElement>) {
+    event.preventDefault();
+    setOver(false);
+    const files = event.dataTransfer.files;
+    if (!files?.length || !input.current) return;
+    input.current.files = files;
+    onFile(files[0] ?? null);
+  }
+
+  return (
+    <span
+      className={s.drop}
+      data-over={over || undefined}
+      data-state={problem ? "invalid" : file ? "selected" : "empty"}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={drop}
+    >
+      <input
+        ref={input}
+        key={inputKey}
+        className={s.dropInput}
+        name="receipt"
+        type="file"
+        accept={SIRAH_RECEIPT_ACCEPT}
+        required
+        onChange={(event) => onFile(event.target.files?.[0] || null)}
+      />
+      <span className={s.dropIcon} aria-hidden="true">
+        {file && !problem ? (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M9 15l2 2 4-4" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 16V4M7 9l5-5 5 5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+          </svg>
+        )}
+      </span>
+      {file ? (
+        <span className={s.dropText}>
+          <strong>{file.name}</strong>
+          <small>{problem ?? `${sizeLabel(file.size)} · ready to upload`}</small>
+        </span>
+      ) : (
+        <span className={s.dropText}>
+          <strong>Drop your receipt here, or choose a file</strong>
+          <small>JPG, PNG, WebP or PDF</small>
+        </span>
+      )}
+      <span className={s.dropActions}>
+        <span className={s.dropChoose}>{file ? "Change file" : "Choose file"}</span>
+        {file ? (
+          <button
+            type="button"
+            className={s.dropRemove}
+            onClick={(event) => {
+              event.preventDefault();
+              onClear();
+            }}
+          >
+            Remove
+          </button>
+        ) : null}
+      </span>
+    </span>
   );
 }
