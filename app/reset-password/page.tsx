@@ -1,8 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { AuthShell } from "@/components/indigo/auth/auth-shell";
+import { PasswordField } from "@/components/indigo/auth/password-field";
+import s from "@/components/indigo/auth/login.module.css";
 import { RESET_COOKIE } from "@/lib/auth/password-reset-cookie";
-import { findUsableResetToken } from "@/services/password-reset.service";
+import { findUsableResetToken, RESET_TOKEN_MINUTES } from "@/services/password-reset.service";
 import { resetPasswordAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +14,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };
+export const viewport: Viewport = { themeColor: "#141d33" };
 
 const ERRORS: Record<string, string> = {
   short: "Use at least 8 characters.",
@@ -23,84 +27,79 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
   const usable = await findUsableResetToken(token);
   const error = ERRORS[(await searchParams).error || ""];
 
-  return (
-    <main className="ga-page">
-      <section className="ga-section">
-        <div className="ga-container ga-login-shell">
-          <article className="ga-login-copy">
-            <p className="ga-dashboard-kicker">Student access</p>
-            <h1 className="ga-heading">Choose a new password</h1>
-            <p className="ga-copy" style={{ marginTop: "0.8rem" }}>
-              After this you will be signed out everywhere, and you can sign in with the new password.
-            </p>
-          </article>
-
-          <article className="ga-dashboard-card">
-            {usable ? (
-              <>
-                <h2 className="ga-dashboard-card-title">New password</h2>
-                <form action={resetPasswordAction} style={{ marginTop: "1.2rem", display: "grid", gap: "0.9rem" }}>
-                  <div style={{ display: "grid", gap: "0.55rem" }}>
-                    <label htmlFor="reset-password">New password</label>
-                    <input
-                      className="ga-auth-input"
-                      id="reset-password"
-                      name="password"
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      minLength={8}
-                      maxLength={72}
-                      aria-describedby="reset-password-help"
-                    />
-                    <span id="reset-password-help" className="ga-dashboard-muted">
-                      8 to 72 characters.
-                    </span>
-                  </div>
-                  <div style={{ display: "grid", gap: "0.55rem" }}>
-                    <label htmlFor="reset-confirm">Confirm new password</label>
-                    <input
-                      className="ga-auth-input"
-                      id="reset-confirm"
-                      name="confirmPassword"
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      minLength={8}
-                      maxLength={72}
-                    />
-                  </div>
-                  {error ? (
-                    <p role="alert" style={{ color: "#fca5a5", margin: 0 }}>
-                      {error}
-                    </p>
-                  ) : null}
-                  <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap" }}>
-                    <button type="submit" className="ga-btn ga-btn-primary">
-                      Save new password
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <div role="status">
-                <h2 className="ga-dashboard-card-title">This link has expired</h2>
-                <p className="ga-dashboard-muted" style={{ marginTop: "0.9rem" }}>
-                  Reset links work once and expire after an hour. Ask for a new one and use the latest email.
-                </p>
-                <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap", marginTop: "1.1rem" }}>
-                  <Link href="/forgot-password" className="ga-btn ga-btn-primary">
-                    Send a new link
-                  </Link>
-                  <Link href="/login" className="ga-btn ga-btn-outline">
-                    Sign in
-                  </Link>
-                </div>
-              </div>
-            )}
-          </article>
+  if (!usable)
+    return (
+      <AuthShell labelledBy="reset-title">
+        <div role="status">
+          <span className={`${s.stateIcon} ${s.stateIconWarn}`} aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </span>
+          <h1 id="reset-title" className={s.cardTitle}>
+            {token ? "This link has expired" : "Open the link from your email"}
+          </h1>
+          <p className={s.cardLede}>
+            {token
+              ? `Reset links work once and expire after ${RESET_TOKEN_MINUTES} minutes, and only the newest one works. Ask for a new link and use the latest email.`
+              : "To choose a new password, open the reset link we emailed you. If you no longer have it, ask for a new one."}
+          </p>
+          <div className={s.buttons}>
+            <Link href="/forgot-password" className={s.primary}>
+              Send a new link
+            </Link>
+            <Link href="/login" className={s.ghost}>
+              Back to sign in
+            </Link>
+          </div>
         </div>
-      </section>
-    </main>
+      </AuthShell>
+    );
+
+  return (
+    <AuthShell labelledBy="reset-title">
+      <h1 id="reset-title" className={s.cardTitle}>
+        Choose a new password
+      </h1>
+      <p className={s.cardLede}>After this you will be signed out everywhere, and you can sign in with the new password.</p>
+      <form action={resetPasswordAction} className={s.form}>
+        <PasswordField
+          id="reset-password"
+          name="password"
+          label="New password"
+          autoComplete="new-password"
+          minLength={8}
+          maxLength={72}
+          help="8 to 72 characters."
+          describedBy={error ? "reset-error" : undefined}
+          invalid={Boolean(error)}
+        />
+        <PasswordField
+          id="reset-confirm"
+          name="confirmPassword"
+          label="Confirm new password"
+          autoComplete="new-password"
+          minLength={8}
+          maxLength={72}
+          describedBy={error ? "reset-error" : undefined}
+          invalid={Boolean(error)}
+        />
+        {error ? (
+          <p id="reset-error" className={s.error} role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button type="submit" className={s.primary}>
+          Save new password
+        </button>
+      </form>
+      <div className={s.altRow}>
+        <span className={s.help}>Remembered it?</span>
+        <Link href="/login" className={s.ghost}>
+          Sign in
+        </Link>
+      </div>
+    </AuthShell>
   );
 }
