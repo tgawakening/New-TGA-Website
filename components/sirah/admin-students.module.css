@@ -267,8 +267,22 @@
 /* -- Page head ----------------------------------------------------------- */
 /* Title and its actions share a row only when the card is wide enough for
  * the title to stay on one line; otherwise the actions sit under it. */
-:global([data-theme="indigo-admin"]) .headCard {
+/* section.headCard: no panel. The heading, its actions and the cohort
+ * banner sit straight on the workspace canvas (one element more than the
+ * shared .ga-admin-workspace-card rule, so this wins in any load order). */
+:global([data-theme="indigo-admin"]) section.headCard {
   container: head / inline-size;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* The commencement banner: a light, translucent strip on the canvas. */
+:global([data-theme="indigo-admin"]) .headCard .cohort {
+  border-color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.55);
 }
 
 @container head (max-width: 1000px) {
@@ -295,11 +309,12 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-3) var(--sp-4);
   margin: 0;
-  padding: var(--sp-4);
-  border: 1px solid var(--adm-rule);
-  border-radius: var(--r-lg);
-  background: var(--adm-card);
-  box-shadow: var(--adm-shadow-card);
+  /* No panel: the white fields sit straight on the canvas. */
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   align-items: end;
 }
 
@@ -390,7 +405,6 @@
 @container records (min-width: 440px) {
   :global([data-theme="indigo-admin"]) .recordsCard .toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: var(--sp-4) var(--sp-5) var(--sp-5);
   }
 
   .searchField,
