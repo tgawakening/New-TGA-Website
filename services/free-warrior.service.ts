@@ -6,8 +6,9 @@ import { SirahError } from "./sirah-registration.service";
 import { scholarshipSubmissionEmail } from "@/lib/sirah/scholarship-email";
 import { prisma } from "@/lib/prisma";
 import { notifyAdmins, sendTransactionalEmail } from "@/lib/email";
-import { parseFreeWarriorContribution } from "@/lib/free-warrior";
-import { SIRAH_TITLE, SIRAH_SLUG } from "@/lib/sirah/catalog";
+import { formatCardContributionLine, parseFreeWarriorContribution, scholarshipCardLinkPath } from "@/lib/free-warrior";
+import { resolveScholarshipCardContribution } from "@/lib/sirah/scholarship-card";
+import { SIRAH_TITLE, SIRAH_SLUG, formatSirahMoney } from "@/lib/sirah/catalog";
 import { SIRAH_SCHOLARSHIP_BATCH, SIRAH_SCHOLARSHIP_LIMIT } from "@/lib/sirah/scholarship";
 import type { FreeWarriorApplicationInput, FreeWarriorReviewInput } from "@/lib/validations/free-warrior";
 
@@ -63,8 +64,14 @@ function parsePhoneParts(whatsapp: string) {
 
 export async function submitFreeWarriorApplication(input: FreeWarriorApplicationInput, file: { data: Uint8Array; name: string } | null = null) {
   const partial = input.contributionPreference === "PARTIAL_CONTRIBUTION";
-  if (partial && (!file || !input.manualPaymentMethod)) throw new SirahError("Select Meezan Bank or JazzCash and upload your payment receipt.");
-  if (!partial && file) throw new SirahError("Receipt evidence is only needed for a manual contribution.");
+  const byCard = partial && input.contributionRoute === "CARD";
+  const manual = partial && !byCard;
+  if (manual && (!file || !input.manualPaymentMethod)) throw new SirahError("Select Meezan Bank or JazzCash and upload your payment receipt.");
+  if (!manual && file) throw new SirahError("Receipt evidence is only needed for a manual contribution.");
+  // A card contribution is re-priced here from country and tier, through the
+  // same Stripe route rules as registration. Nothing is charged now.
+  const card = byCard ? resolveScholarshipCardContribution(input.cardCountry || "", input.monthlyContributionPkr || "") : null;
+  if (byCard && !card) throw new SirahError("Card payment is not available for this country yet. Choose Meezan Bank or JazzCash, or apply for a full scholarship.", 409);
   const receipt = file ? await validateSirahReceipt(file.data, file.name) : null;
   const existingPending = await prisma.freeWarriorApplication.findFirst({
     where: {
@@ -83,10 +90,15 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   const contributionSummary =
     input.contributionPreference === "FULL_SCHOLARSHIP"
       ? "Contribution preference: No, I need complete scholarship."
-      : `Contribution preference: I can afford some fees monthly (${input.monthlyContributionPkr} PKR monthly).`;
+      : card
+        ? [
+            `Contribution preference: I can afford some fees monthly by card (${formatSirahMoney(card.monthlyMinor, card.currency)} monthly, paid once as ${formatSirahMoney(card.totalMinor, card.currency)} after approval).`,
+            formatCardContributionLine(card),
+          ].join("\n")
+        : `Contribution preference: I can afford some fees monthly (${input.monthlyContributionPkr} PKR monthly).`;
 
   const manualPaymentSummary =
-    input.contributionPreference === "PARTIAL_CONTRIBUTION"
+    manual
       ? [
           `Sender name: ${input.manualSenderName}`,
           `Sender number: ${input.manualSenderNumber}`,
@@ -112,6 +124,8 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
   Reflect.deleteProperty(applicationInput, "manualSenderNumber");
   Reflect.deleteProperty(applicationInput, "manualReferenceKey");
   Reflect.deleteProperty(applicationInput, "manualNotes");
+  Reflect.deleteProperty(applicationInput, "contributionRoute");
+  Reflect.deleteProperty(applicationInput, "cardCountry");
   const application = await prisma.freeWarriorApplication.create({
     data: {
       ...applicationInput,
@@ -128,13 +142,13 @@ export async function submitFreeWarriorApplication(input: FreeWarriorApplication
       to: input.email,
       emailType: admins.includes(input.email.toLowerCase()) ? "ADMIN_FREE_WARRIOR_APPLICATION" : "FREE_WARRIOR_RECEIVED",
       idempotencyKey: `scholarship-${application.id}-student`,
-      ...scholarshipSubmissionEmail(input, application, receipt, admins.includes(input.email.toLowerCase())),
+      ...scholarshipSubmissionEmail(input, application, receipt, admins.includes(input.email.toLowerCase()), card),
     }),
     ...admins.filter(email => email !== input.email.toLowerCase()).map(email => sendTransactionalEmail({
       to: email,
       emailType: "ADMIN_FREE_WARRIOR_APPLICATION",
       idempotencyKey: `scholarship-${application.id}-admin-${createHash("sha256").update(email).digest("hex").slice(0, 20)}`,
-      ...scholarshipSubmissionEmail(input, application, receipt, true),
+      ...scholarshipSubmissionEmail(input, application, receipt, true, card),
     })),
   ]);
 
@@ -223,6 +237,14 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
   }
 
   const contribution = parseFreeWarriorContribution(application.reasonForWaiver);
+  // Card (Stripe) contribution: approval creates the account and awards the
+  // place, nothing else. The team then issues the one-time Sīrah card link
+  // (admin custom link), and paying it enrols the student through the existing
+  // Stripe confirmation. No manual payment record is created for it.
+  const card = contribution.card;
+  if (contribution.paymentLabel === "Card (Stripe)" && !card) {
+    throw new Error("The card contribution on this application cannot be read. Check the application before approving.");
+  }
   const evidence = await prisma.freeWarriorReceipt.findUnique({ where: { applicationId: application.id }, select: { method: true } });
   const manualMethod = evidence?.method === "JAZZCASH" ? PaymentMethod.JAZZCASH : PaymentMethod.BANK_TRANSFER;
   const scholarshipReference = buildScholarshipReference();
@@ -304,9 +326,11 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
     if (existingRegistration && (existingRegistration.payment?.status === PaymentStatus.CONFIRMED || await tx.sirahOrder.findUnique({ where: { registrationId: existingRegistration.id }, select: { id: true } }))) {
       throw new Error("This student already has a paid registration or a current Sīrah payment record. Review that record before awarding a scholarship; no payment has been changed.");
     }
-    let registrationId = existingRegistration?.id ?? null;
+    let registrationId = card ? null : existingRegistration?.id ?? null;
 
-      if (!existingRegistration) {
+      if (card) {
+        // Nothing to record until the card link is paid.
+      } else if (!existingRegistration) {
         const registration = await tx.registration.create({
           data: {
             userId: user.id,
@@ -522,6 +546,13 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
     };
   });
 
+  const cardPayment = card
+    ? `Your contribution has been approved: ${formatSirahMoney(card.totalMinor, card.currency)}, paid once by card (${formatSirahMoney(card.monthlyMinor, card.currency)} a month for ${card.months} months). The team will email you a secure card payment link, and your access activates automatically once it is paid.`
+    : null;
+  const cardLinkUrl = card
+    ? `${(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "")}${scholarshipCardLinkPath(application, card)}`
+    : null;
+
   await Promise.allSettled([
     sendTransactionalEmail({
       userId: result.user.id,
@@ -534,7 +565,9 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
         <p>${
           isFullScholarship
             ? "Your scholarship has been fully waived and your student access is now active."
-            : `Your reduced monthly contribution has been approved at <strong>${contribution.amountLabel}</strong>. Your order is now awaiting admin payment confirmation.`
+            : cardPayment
+              ? cardPayment
+              : `Your reduced monthly contribution has been approved at <strong>${contribution.amountLabel}</strong>. Your order is now awaiting admin payment confirmation.`
         }</p>
         ${
           result.temporaryPassword
@@ -546,6 +579,8 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
         <p>${
           isFullScholarship
             ? "You can log in and access your dashboard now."
+            : card
+            ? "You can log in now, and the dashboard unlocks once your card payment is received."
             : "You can log in now, and the dashboard will unlock fully once admin marks the payment as complete."
         }</p>
       `,
@@ -554,7 +589,9 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
         `Your Fee Waiver application for ${application.courseTitle} has been approved.`,
         isFullScholarship
           ? "Your scholarship has been fully waived and your student access is now active."
-          : `Your reduced monthly contribution has been approved at ${contribution.amountLabel}. Your order is now awaiting admin payment confirmation.`,
+          : cardPayment
+            ? cardPayment
+            : `Your reduced monthly contribution has been approved at ${contribution.amountLabel}. Your order is now awaiting admin payment confirmation.`,
         result.temporaryPassword
           ? `Temporary password: ${result.temporaryPassword}`
           : isFullScholarship
@@ -562,7 +599,9 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
             : "Your existing account is ready. Access will be activated after payment confirmation.",
         isFullScholarship
           ? "You can log in and access your dashboard now."
-          : "You can log in now, and the dashboard will unlock fully once admin marks the payment as complete.",
+          : card
+            ? "You can log in now, and the dashboard unlocks once your card payment is received."
+            : "You can log in now, and the dashboard will unlock fully once admin marks the payment as complete.",
       ].join("\n"),
     }),
     notifyAdmins({
@@ -574,6 +613,7 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
         <p>Email: ${application.email}</p>
         <p>Contribution: ${contribution.contributionLabel}</p>
         <p>Scholarship reference: ${result.scholarshipReference}</p>
+        ${cardLinkUrl ? `<p>Card contribution: issue the one-time card link (prefilled, check before creating): <a href="${cardLinkUrl}">${cardLinkUrl}</a></p>` : ""}
       `,
       text: [
         "Fee Waiver application approved.",
@@ -581,7 +621,8 @@ export async function reviewFreeWarriorApplication(input: FreeWarriorReviewInput
         `Email: ${application.email}`,
         `Contribution: ${contribution.contributionLabel}`,
         `Scholarship reference: ${result.scholarshipReference}`,
-      ].join("\n"),
+        cardLinkUrl ? `Card contribution: issue the one-time card link (prefilled, check before creating): ${cardLinkUrl}` : "",
+      ].filter(Boolean).join("\n"),
     }),
   ]);
 

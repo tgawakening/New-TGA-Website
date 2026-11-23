@@ -49,6 +49,11 @@ export const freeWarriorApplicationSchema = z
     attendedOrientation: z.boolean(),
     contributionPreference: z.enum(["FULL_SCHOLARSHIP", "PARTIAL_CONTRIBUTION"]),
     monthlyContributionPkr: z.enum(["500", "1000"]).optional().or(z.literal("")),
+    // MANUAL (Meezan Bank / JazzCash, paid now with a receipt) is the default,
+    // so an older client that never sends this field keeps working unchanged.
+    // CARD: a one-time Stripe card payment taken after approval.
+    contributionRoute: z.enum(["MANUAL", "CARD"]).optional().default("MANUAL"),
+    cardCountry: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, "Choose the country your card is billed in.").optional().or(z.literal("")),
     manualPaymentMethod: z.enum(["BANK_TRANSFER", "JAZZCASH"]).optional(),
     manualSenderName: z.string().trim().optional().or(z.literal("")),
     manualSenderNumber: z.string().trim().optional().or(z.literal("")),
@@ -63,7 +68,17 @@ export const freeWarriorApplicationSchema = z
     listedPrice: z.string().trim().default("GBP 20/mo"),
   })
   .superRefine((value, ctx) => {
-    if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualPaymentMethod) {
+    const card = value.contributionPreference === "PARTIAL_CONTRIBUTION" && value.contributionRoute === "CARD";
+    if (card && !value.cardCountry) {
+      ctx.addIssue({ code: "custom", path: ["cardCountry"], message: "Choose the country your card is billed in." });
+    }
+    if (card && value.manualPaymentMethod) {
+      ctx.addIssue({ code: "custom", path: ["manualPaymentMethod"], message: "Choose card or a manual transfer, not both." });
+    }
+    if (value.contributionPreference !== "PARTIAL_CONTRIBUTION" && value.contributionRoute === "CARD") {
+      ctx.addIssue({ code: "custom", path: ["contributionRoute"], message: "A card payment is only for a partial contribution." });
+    }
+    if (!card && value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualPaymentMethod) {
       ctx.addIssue({ code: "custom", path: ["manualPaymentMethod"], message: "Choose Meezan Bank or JazzCash for your transfer." });
     }
     if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.monthlyContributionPkr) {
@@ -82,7 +97,7 @@ export const freeWarriorApplicationSchema = z
       });
     }
 
-    if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualSenderName) {
+    if (!card && value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualSenderName) {
       ctx.addIssue({
         code: "custom",
         path: ["manualSenderName"],
@@ -90,7 +105,7 @@ export const freeWarriorApplicationSchema = z
       });
     }
 
-    if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualSenderNumber) {
+    if (!card && value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualSenderNumber) {
       ctx.addIssue({
         code: "custom",
         path: ["manualSenderNumber"],
@@ -98,7 +113,7 @@ export const freeWarriorApplicationSchema = z
       });
     }
 
-    if (value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualReferenceKey) {
+    if (!card && value.contributionPreference === "PARTIAL_CONTRIBUTION" && !value.manualReferenceKey) {
       ctx.addIssue({
         code: "custom",
         path: ["manualReferenceKey"],

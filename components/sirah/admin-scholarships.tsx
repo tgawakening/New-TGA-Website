@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { scholarshipQuestions, SIRAH_SCHOLARSHIP_LIMIT } from "@/lib/sirah/scholarship";
+import { scholarshipCardLinkPath } from "@/lib/free-warrior";
 import type { listSirahScholarships } from "@/services/sirah-scholarship-admin.service";
 import styles from "./admin-scholarships.module.css";
 
@@ -34,7 +35,7 @@ export function SirahAdminScholarships({ readOnly, canApproveScholarships = fals
       const response = await fetch("/api/admin/sirah/scholarships", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: selected.id, approve: true, note }) });
       const result = await response.json();
       if (!response.ok) throw Error(result.error || "Scholarship could not be approved.");
-      setMessage(selected.contribution.contributionPreference === "FULL_SCHOLARSHIP" ? "Scholarship approved. The student's scholarship access is active." : "Application approved. Contribution payments still require the main administrator's verification before access is activated.");
+      setMessage(selected.contribution.contributionPreference === "FULL_SCHOLARSHIP" ? "Scholarship approved. The student's scholarship access is active." : selected.contribution.card ? "Application approved. Next, issue the one-time card payment link from the application (Issue card payment link); access activates when it is paid." : "Application approved. Contribution payments still require the main administrator's verification before access is activated.");
       closeReview(); setReload(n => n + 1);
     } catch (cause) { setReviewError(cause instanceof Error ? cause.message : "Approval failed. Please refresh and check the application status before trying again."); }
     finally { setBusy(false); }
@@ -74,6 +75,7 @@ export function SirahAdminScholarships({ readOnly, canApproveScholarships = fals
           <div><dt>Approved by</dt><dd>{answer(row.reviewedBy)}</dd></div>
           <div><dt>Manual payment evidence</dt><dd>{row.receipt ? <a href={`/api/admin/fee-waiver/${row.id}/receipt`} target="_blank" rel="noreferrer">View {row.receipt.method === "JAZZCASH" ? "JazzCash" : "Meezan Bank"} receipt: {row.receipt.filename}</a> : "No manual receipt attached"}</dd></div>
         </dl></details>
+        {row.status === "APPROVED" && row.contribution.card && !readOnly && <div className="ga-admin-actions" style={{ marginTop: "1rem" }}><a className="ga-admin-outline-btn" href={scholarshipCardLinkPath(row, row.contribution.card)}>Issue card payment link</a><p>Opens the custom payment link page, filled in for a one-time card payment of this contribution. Check the details there before creating the link.</p></div>}
         {canApproveScholarships && row.status === "PENDING" && <div className="ga-admin-actions" style={{ marginTop: "1rem" }}><button type="button" className="ga-admin-primary-btn" disabled={busy || data.approved >= SIRAH_SCHOLARSHIP_LIMIT} onClick={() => { setNote(""); setReviewError(""); setSelected(row); }}>Approve scholarship</button>{data.approved >= SIRAH_SCHOLARSHIP_LIMIT && <p>All ten scholarship places have been awarded.</p>}</div>}
       </article>)}{data.rows.length === 0 && <p className="ga-admin-empty-state">No scholarship applications match these filters.</p>}</div>}
       {data && data.total > data.pageSize && <div className="ga-admin-actions"><button className="ga-admin-outline-btn" disabled={page <= 1} onClick={() => setPage(n => n - 1)}>Previous</button><span>Page {page} of {Math.ceil(data.total / data.pageSize)}</span><button className="ga-admin-outline-btn" disabled={page * data.pageSize >= data.total} onClick={() => setPage(n => n + 1)}>Next</button></div>}
@@ -83,7 +85,7 @@ export function SirahAdminScholarships({ readOnly, canApproveScholarships = fals
         <h2 id="scholarship-approval-title">Approve this scholarship?</h2>
         <p><strong>{selected?.fullName}</strong><br />{selected?.email}</p>
         <p>{selected?.contribution.contributionLabel} · {selected?.contribution.amountLabel}</p>
-        <p>{selected?.contribution.contributionPreference === "FULL_SCHOLARSHIP" ? "Confirm only after reviewing the application. Approval grants scholarship access and uses one of the ten Batch 4 places." : "This approves the application only. Contribution payments remain pending until the main administrator verifies payment."}</p>
+        <p>{selected?.contribution.contributionPreference === "FULL_SCHOLARSHIP" ? "Confirm only after reviewing the application. Approval grants scholarship access and uses one of the ten Batch 4 places." : selected?.contribution.card ? "This approves the application, creates the student account and uses one of the ten places. Nothing is charged: you then issue the one-time card link, and access activates when it is paid." : "This approves the application only. Contribution payments remain pending until the main administrator verifies payment."}</p>
         <label>Review note (optional)<textarea value={note} maxLength={500} onChange={event => setNote(event.target.value)} disabled={busy} /></label>
         {reviewError && <p role="alert" className="ga-admin-error-banner">{reviewError}</p>}
         <div className="ga-admin-actions"><button type="button" className="ga-admin-outline-btn" disabled={busy} onClick={closeReview}>Cancel</button><button type="submit" className="ga-admin-primary-btn" disabled={busy}>{busy ? "Approving…" : "Confirm scholarship approval"}</button></div>
