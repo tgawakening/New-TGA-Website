@@ -417,14 +417,14 @@
   }
 }
 
-/* -- List area: the soft canvas the record cards sit on ------------------ */
+/* -- List area: the white panel the record cards sit on ------------------- */
 :global([data-theme="indigo-admin"]) .recordsCard .listArea {
   container: list / inline-size;
   display: grid;
-  gap: var(--sp-3);
-  padding: var(--sp-4) var(--sp-3);
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-5) var(--sp-6);
   border-radius: 0 0 var(--r-lg) var(--r-lg);
-  background: var(--adm-page);
+  background: var(--adm-card);
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .listArea > :is(:global(.ga-admin-error-banner), :global(.ga-admin-loading), :global(.ga-admin-empty-state)) {
@@ -461,20 +461,19 @@
   font-size: 0.8125rem;
 }
 
-/* -- Records table ------------------------------------------------------- */
-/* One bordered table on the soft canvas: a warm column head, then one row per
- * registration. Head and rows are separate grids on the SAME template, and
- * every track is fixed or fractional (never auto), so each column lines up
- * down the whole list.
- *   wide (the 1440px screen)  ORDER CUSTOMER AMOUNT PAYMENT COURSE ACCESS GROUP DATE ACTIONS
- *   1024 and 1280px screens   two tiers per row (and in the head):
- *                             ORDER    CUSTOMER        AMOUNT  ACTIONS
- *                             PAYMENT  COURSE ACCESS   GROUP   DATE
- *   phones                    each row stacks, every cell labelled
- * Contrast: head labels #5b6472 on #f8f7f4 5.9:1; muted cell text 6.0:1. */
+/* -- Records: one white card per registration ---------------------------- */
+/* A row of light column labels, then one roomy white card per registration
+ * with a soft border and shadow, stacked with clear space between them. The
+ * labels and every card share one column template, so the fields line up.
+ *   wide        ORDER CUSTOMER AMOUNT PAYMENT COURSE ACCESS GROUP DATE ACTIONS
+ *   mid widths  two tiers per card (and in the labels):
+ *                 ORDER    CUSTOMER        AMOUNT  ACTIONS
+ *                 PAYMENT  COURSE ACCESS   GROUP   DATE
+ *   phones      each card stacks, every field labelled
+ * Contrast on white: labels #5b6472 6.2:1, muted text 6.0:1. */
 :global([data-theme="indigo-admin"]) .recordsCard .dataTable {
   display: grid;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
   margin: 0;
 }
 
@@ -484,16 +483,16 @@
   color: var(--adm-muted);
   font-size: 0.65625rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   line-height: 1.2;
   text-transform: uppercase;
 }
 
-/* Phones: each row is a bordered card, its cells stacked and labelled. */
 :global([data-theme="indigo-admin"]) .recordsCard .head {
   display: none;
 }
 
+/* The card. */
 :global([data-theme="indigo-admin"]) .recordsCard .row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -504,13 +503,14 @@
     "payment access"
     "group group"
     "actions actions";
-  gap: var(--sp-3) var(--sp-4);
-  padding: var(--sp-4);
-  border: 1px solid var(--adm-rule);
-  border-radius: var(--r-md);
-  background: var(--adm-card);
-  box-shadow: var(--adm-shadow);
+  gap: var(--sp-4) var(--sp-5);
+  padding: var(--sp-5);
+  border: 1px solid #e4e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(20, 29, 51, 0.04), 0 10px 28px -16px rgba(20, 29, 51, 0.18);
   color: var(--adm-ink);
+  transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 
 .cOrder { grid-area: order; }
@@ -527,35 +527,44 @@
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .row p {
-  margin: 2px 0 0;
-  color: var(--adm-muted);
-  font-size: 0.75rem;
-  line-height: 1.4;
+  margin: 4px 0 0;
+  color: var(--adm-neutral);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
-/* Hover: a quiet tint; ticked rows: a teal edge (the checkbox is ticked too). */
 :global([data-theme="indigo-admin"]) .recordsCard .row:hover {
-  background: var(--adm-row-hover);
+  border-color: #d4dbe8;
+  box-shadow: 0 1px 2px rgba(20, 29, 51, 0.05), 0 14px 32px -16px rgba(20, 29, 51, 0.24);
 }
 
+/* Ticked for exclusion: a teal edge (the checkbox is ticked too). */
 :global([data-theme="indigo-admin"]) .recordsCard .rowChecked,
 :global([data-theme="indigo-admin"]) .recordsCard .rowChecked:hover {
-  box-shadow: inset 3px 0 0 var(--adm-teal);
+  border-color: #b5ddd6;
+  box-shadow: inset 4px 0 0 var(--adm-teal), 0 10px 28px -16px rgba(20, 29, 51, 0.18);
 }
 
-/* Order: checkbox and the reference on ONE monospaced line, truncated (full
- * value on hover and in View details); then the course tag and name. */
+/* Order: the course pill, then the FULL reference (wrapped, never
+ * truncated) with its checkbox, then the course name. */
+:global([data-theme="indigo-admin"]) .recordsCard .coursePill {
+  display: inline-flex;
+  margin-bottom: var(--sp-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .refLine {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sp-2);
   min-width: 0;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .rowSelect {
   flex: none;
-  margin: -4px 0;
-  padding: 4px 2px;
+  margin-top: 2px;
+  padding: 0 2px;
   cursor: pointer;
 }
 
@@ -563,15 +572,13 @@
   display: block;
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
   color: var(--adm-ink);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 20px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .row .course {
@@ -580,7 +587,7 @@
   align-items: center;
   gap: 2px 6px;
   min-width: 0;
-  margin-top: 4px;
+  margin-top: var(--sp-2);
 }
 
 .course > span:last-child {
@@ -588,25 +595,21 @@
   overflow-wrap: anywhere;
 }
 
-.course :global(.ga-admin-pill) {
-  flex: none;
-}
-
 :global([data-theme="indigo-admin"]) .recordsCard .row .flags {
-  margin-top: 6px;
+  margin-top: var(--sp-2);
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .purgeNote {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
-/* Customer: name, email, phone and country. */
+/* Customer: name, email, phone. */
 :global([data-theme="indigo-admin"]) .recordsCard .customerCell > strong {
   display: block;
   color: var(--adm-ink);
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 650;
-  line-height: 1.35;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
@@ -614,22 +617,36 @@
   overflow-wrap: anywhere;
 }
 
-/* Amount: tabular figures, right-aligned wherever the head shows. */
+/* Amount, with the country beneath. */
 :global([data-theme="indigo-admin"]) .recordsCard .amount {
   display: block;
   color: var(--adm-ink);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.4;
   font-variant-numeric: tabular-nums lining-nums;
   white-space: nowrap;
 }
 
-/* Status cells: the pill first, its note beneath. */
+/* Payment: method and plan, then the status chip. */
+:global([data-theme="indigo-admin"]) .recordsCard .method {
+  display: block;
+  color: var(--adm-ink);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .row .plan {
+  margin: 2px 0 var(--sp-2);
+}
+
+/* Status cells: chips (and the Mark added button) stacked, left-aligned. */
 .pillCell {
   display: grid;
   justify-items: start;
   align-content: start;
+  gap: var(--sp-2);
 }
 
 .pillCell > p {
@@ -637,52 +654,65 @@
   overflow-wrap: anywhere;
 }
 
-:global([data-theme="indigo-admin"]) .recordsCard .dateCell time {
-  color: var(--adm-neutral);
+:global([data-theme="indigo-admin"]) .recordsCard .row .pillCell > p {
+  margin: 0;
+}
+
+/* The Payment cell keeps its method / plan / chip rhythm, not the grid gap. */
+:global([data-theme="indigo-admin"]) .recordsCard .row .cPayment {
+  gap: 0;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .markAdded {
+  min-height: 2.5rem;
+  padding: 0 var(--sp-4);
+  border-radius: 10px;
   font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+:global([data-theme="indigo-admin"]) .recordsCard .dateCell time {
+  display: block;
+  color: var(--adm-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
 }
 
-/* Actions: the row's primary action, then View details and the "…" menu,
- * every button one height (32px). */
+/* Actions: the row's primary, then View details and the "..." menu.
+ * Large targets (40px). */
 :global([data-theme="indigo-admin"]) .recordsCard .row .actionsCell {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
   margin: 0;
 }
 
 .actionsPair {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-2);
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .row .actionsCell :is(:global(.ga-admin-primary-btn), :global(.ga-admin-outline-btn), :global(.ga-admin-ghost-btn)) {
-  min-height: var(--adm-control-h-sm);
-  height: var(--adm-control-h-sm);
-  padding: 0 0.625rem;
+  min-height: 2.5rem;
+  padding: 0 var(--sp-5);
   border-width: 1px;
-  font-size: 0.78125rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
   text-align: center;
   white-space: nowrap;
 }
 
-/* -- The table proper: from tablet width up ------------------------------ */
+/* -- Column labels and aligned cards: from tablet width up -------------- */
 @container list (min-width: 660px) {
-  :global([data-theme="indigo-admin"]) .recordsCard .dataTable {
-    gap: 0;
-    border: 1px solid var(--adm-rule-strong);
-    border-radius: var(--r-md);
-    background: var(--adm-card);
-    box-shadow: var(--adm-shadow);
-    overflow: visible; /* the row menus open past the table edge */
-  }
-
-  /* Cell labels step aside for the head (kept for screen readers). */
+  /* Cell labels step aside for the column labels (kept for screen readers). */
   .cellLabel {
     position: absolute;
     width: 1px;
@@ -694,76 +724,39 @@
   }
 
   :global([data-theme="indigo-admin"]) .recordsCard :is(.head, .row) {
-    --record-cols:
-      [a] minmax(8.75rem, 1.1fr) [b] minmax(7.25rem, 1.1fr) [c] minmax(6.25rem, 0.9fr) [d] 6.5rem [e] 9rem;
+    --record-cols: [a] minmax(9rem, 1.15fr) [b] minmax(8rem, 1.2fr) [c] minmax(7rem, 0.9fr) [d] 9.5rem;
     display: grid;
     grid-template-columns: var(--record-cols);
     grid-template-areas:
-      "order customer customer amount actions"
-      "payment access group date actions";
-    column-gap: 0.625rem;
-    row-gap: var(--sp-3);
+      "order customer amount actions"
+      "payment access group date";
+    column-gap: var(--sp-5);
+    row-gap: var(--sp-5);
   }
 
-  :global([data-theme="indigo-admin"]) .recordsCard .amount {
-    font-size: 0.875rem;
-  }
-
-  :global([data-theme="indigo-admin"]) .recordsCard .head > span {
-    white-space: nowrap;
-  }
-
-  /* Head: the warm band, small caps, its two tiers matching the rows. */
+  /* The labels: light, small caps, no band, aligned with the card insides
+   * (card padding plus its 1px border). */
   :global([data-theme="indigo-admin"]) .recordsCard .head {
-    position: sticky;
-    top: var(--sirah-sticky-top, 0px);
-    z-index: 5;
-    row-gap: 4px;
-    padding: 0.625rem var(--sp-3);
-    border-bottom: 1px solid var(--adm-rule-strong);
-    border-radius: var(--r-md) var(--r-md) 0 0;
-    background: var(--adm-panel);
+    row-gap: var(--sp-2);
+    padding: 0 calc(var(--sp-6) + 1px) var(--sp-1);
     color: var(--adm-muted);
-    font-size: 0.6875rem;
+    font-size: 0.71875rem;
     font-weight: 600;
-    letter-spacing: 0.08em;
-    line-height: 1.2;
+    letter-spacing: 0.12em;
+    line-height: 1.4;
     text-transform: uppercase;
     align-items: end;
   }
 
-  /* Rows: hairline-ruled, flat, inside the one bordered table. */
   :global([data-theme="indigo-admin"]) .recordsCard .row {
-    padding: var(--sp-3);
-    border: 0;
-    border-top: 1px solid var(--adm-rule);
-    border-radius: 0;
-    box-shadow: none;
+    padding: var(--sp-6);
     align-items: start;
-  }
-
-  :global([data-theme="indigo-admin"]) .recordsCard .head + .row {
-    border-top: 0;
-  }
-
-  :global([data-theme="indigo-admin"]) .recordsCard .row:last-child {
-    border-radius: 0 0 var(--r-md) var(--r-md);
-  }
-
-  .num,
-  :global([data-theme="indigo-admin"]) .recordsCard .amountCell {
-    text-align: right;
-  }
-
-  :global([data-theme="indigo-admin"]) .recordsCard .amountCell :global(.ga-admin-pill) {
-    margin-left: auto;
   }
 
   .actionsHead {
     text-align: right;
   }
 
-  /* Actions: the primary above View details and the menu, right-aligned. */
   :global([data-theme="indigo-admin"]) .recordsCard .row .actionsCell {
     flex-direction: column;
     flex-wrap: nowrap;
@@ -771,33 +764,13 @@
   }
 }
 
-/* Wide: all eight columns on one line per row. */
+/* Wide: all eight columns on one line per card. */
 @container list (min-width: 1080px) {
   :global([data-theme="indigo-admin"]) .recordsCard :is(.head, .row) {
     --record-cols:
-      minmax(8.5rem, 1fr) minmax(11rem, 1.55fr) 6.75rem 8.75rem 7.25rem 6.25rem 5.5rem 9rem;
+      minmax(9rem, 1.15fr) minmax(10rem, 1.3fr) minmax(7.5rem, 0.8fr) minmax(7.5rem, 0.85fr) 6.75rem 7rem 6.25rem 8.5rem;
     grid-template-areas: "order customer amount payment access group date actions";
-    column-gap: 0.5rem;
-  }
-
-  :global([data-theme="indigo-admin"]) .recordsCard .row {
-    padding-inline: var(--sp-3);
-  }
-
-  :global([data-theme="indigo-admin"]) .recordsCard .head {
-    padding-inline: var(--sp-3);
-  }
-
-  :global([data-theme="indigo-admin"]) .recordsCard .amount {
-    font-size: 0.875rem;
-  }
-
-  .ref {
-    font-size: 0.6875rem;
-  }
-
-  :global([data-theme="indigo-admin"]) .recordsCard .dateCell time {
-    font-size: 0.75rem;
+    column-gap: var(--sp-4);
   }
 }
 

@@ -1008,16 +1008,17 @@ export function SirahAdminStudents({
                 </div>
               );
             })()}
-            {/* Records table: one bordered row per registration, every row on
-                the same column grid as the head (Order, Customer, Amount,
-                Payment, Course access, Group, Date, Actions). Each cell also
-                carries its column name: visually hidden while the head shows,
-                visible on phones, where the row stacks. */}
-            <div className={`ga-admin-data-table ${styles.dataTable}`} aria-label="Registrations">
-              <div className={`ga-admin-table-head ${styles.tableGrid} ${styles.head}`} aria-hidden="true">
+            {/* Records: one white card per registration under a row of column
+                labels (Order, Customer, Amount, Payment, Course access, Group,
+                Date, Actions); every card uses the labels' column grid, so the
+                fields line up down the list. Each cell also carries its column
+                name: visually hidden while the labels show, visible on phones,
+                where the card stacks. */}
+            <div className={styles.dataTable} aria-label="Registrations">
+              <div className={`${styles.tableGrid} ${styles.head}`} aria-hidden="true">
                 <span className={styles.cOrder}>Order</span>
                 <span className={styles.cCustomer}>Customer</span>
-                <span className={`${styles.cAmount} ${styles.num}`}>Amount</span>
+                <span className={styles.cAmount}>Amount</span>
                 <span className={styles.cPayment}>Payment</span>
                 <span className={styles.cAccess}>Course access</span>
                 <span className={styles.cGroup}>Group</span>
@@ -1025,15 +1026,24 @@ export function SirahAdminStudents({
                 <span className={`${styles.cActions} ${styles.actionsHead}`}>Actions</span>
               </div>
               {data.rows.map((student) => {
-                const { primary, rest } = rowActions(student);
+                const actions = rowActions(student);
                 const checked = checkedIds.has(student.id);
+                // "Mark added" sits in the Group column (same item and handler
+                // as before); Undo stays in the "..." menu.
+                const markAdded: (RowMenuItem & { disabled?: boolean; pressed?: boolean }) | null =
+                  !student.groupAddedAt
+                    ? [actions.primary, ...actions.rest].find((item) => item?.key === "GROUP") ?? null
+                    : null;
+                const primary = actions.primary?.key === "GROUP" && markAdded ? null : actions.primary;
+                const rest = markAdded ? actions.rest.filter((item) => item.key !== "GROUP") : actions.rest;
                 return (
                   <article
                     key={student.id}
-                    className={`ga-admin-table-row ${styles.tableGrid} ${styles.row}${checked ? ` ${styles.rowChecked}` : ""}`}
+                    className={`${styles.tableGrid} ${styles.row}${checked ? ` ${styles.rowChecked}` : ""}`}
                   >
                     <div className={`${styles.cOrder} ${styles.orderCell}`}>
                       <span className={styles.cellLabel}>Order</span>
+                      <span className={`ga-admin-pill ${styles.coursePill}`}>Sīrah</span>
                       <div className={styles.refLine}>
                         {canExcludeRecords && !student.archivedAt && (
                           <label className={styles.rowSelect}>
@@ -1048,14 +1058,12 @@ export function SirahAdminStudents({
                             />
                           </label>
                         )}
-                        {/* Long references: one monospaced line, truncated;
-                            the full value is in the tooltip and in View details. */}
-                        <span className={styles.ref} title={student.reference}>
+                        {/* The full reference, wrapped across lines, never truncated. */}
+                        <span className={styles.ref}>
                           {student.reference}
                         </span>
                       </div>
                       <p className={styles.course}>
-                        <span className="ga-admin-pill">Sīrah</span>
                         <span>
                           {student.archivedAt
                             ? `Archived ${date(student.archivedAt)}`
@@ -1081,15 +1089,14 @@ export function SirahAdminStudents({
                       <span className={styles.cellLabel}>Customer</span>
                       <strong>{student.user.fullName}</strong>
                       <p>{student.user.email}</p>
-                      <p>
-                        {student.phoneE164} · {student.countryName}
-                      </p>
+                      <p>{student.phoneE164}</p>
                     </div>
-                    <div className={`${styles.cAmount} ${styles.amountCell}`}>
+                    <div className={styles.cAmount}>
                       <span className={styles.cellLabel}>Amount</span>
                       <strong className={styles.amount}>
                         {formatSirahMoney(student.amountMinor, student.currency)}
                       </strong>
+                      <p>{student.countryName}</p>
                       {student.customLink && (
                         <p>
                           <span className="ga-admin-pill">Custom link</span>{" "}
@@ -1106,13 +1113,11 @@ export function SirahAdminStudents({
                     </div>
                     <div className={`${styles.cPayment} ${styles.pillCell}`}>
                       <span className={styles.cellLabel}>Payment</span>
+                      <strong className={styles.method}>
+                        {student.method ? label(student.method) : "No method selected"}
+                      </strong>
+                      <p className={styles.plan}>{label(student.plan)}</p>
                       <PaymentStatus order={student} />
-                      <p>
-                        {student.method
-                          ? label(student.method)
-                          : "No method selected"}{" "}
-                        · {label(student.plan)}
-                      </p>
                     </div>
                     <div className={`${styles.cAccess} ${styles.pillCell}`}>
                       <span className={styles.cellLabel}>Course access</span>
@@ -1134,6 +1139,17 @@ export function SirahAdminStudents({
                           {date(student.groupAddedAt)}
                           {student.groupAddedBy ? ` · ${student.groupAddedBy}` : ""}
                         </p>
+                      )}
+                      {markAdded && (
+                        <button
+                          type="button"
+                          className={`ga-admin-outline-btn ${styles.markAdded}`}
+                          disabled={markAdded.disabled}
+                          aria-pressed={markAdded.pressed}
+                          onClick={markAdded.onSelect}
+                        >
+                          {markAdded.label}
+                        </button>
                       )}
                     </div>
                     <div className={`${styles.cDate} ${styles.dateCell}`}>
