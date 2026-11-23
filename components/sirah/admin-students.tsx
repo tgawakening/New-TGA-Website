@@ -728,7 +728,7 @@ export function SirahAdminStudents({
               className="ga-admin-outline-btn"
               href={`/api/admin/sirah?${filterQuery}&format=csv`}
             >
-              Export students (CSV)
+              Export filtered (CSV)
             </a>
             {!readOnly && <a className="ga-admin-outline-btn" href="/api/admin/sirah/legacy">
               Historical records
