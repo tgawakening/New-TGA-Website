@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatSirahMoney, SIRAH_TITLE } from "@/lib/sirah/catalog";
+import s from "@/components/dashboard/student-dashboard.module.css";
 
 /** Read-only summary of a Sīrah order, loaded by the dashboard server page. */
 export type SirahDashboardOrder = {
@@ -71,18 +72,12 @@ export function SirahDashboardRegistration({ orders }: { orders: SirahDashboardO
         const status = sirahOrderStatus(order);
         const pay = status.kind === "PAY";
         return (
-          <section
-            key={order.id}
-            className="ga-dashboard-card"
-            style={pay ? { borderColor: "#0f5e91", borderWidth: 2, borderStyle: "solid" } : undefined}
-          >
-            <p className="ga-dashboard-card-title">{SIRAH_TITLE}</p>
+          <section key={order.id} className={`${s.card} ${pay ? s.cardAttention : ""}`} aria-label={SIRAH_TITLE}>
+            <p className={s.cardTitle}>{SIRAH_TITLE}</p>
             {pay ? (
               <>
-                <h2 className="ga-heading" style={{ fontSize: "1.4rem", margin: "0.4rem 0" }}>
-                  You have a registration pending payment
-                </h2>
-                <p className="ga-dashboard-muted">
+                <h2 className={s.cardHeading}>You have a registration pending payment</h2>
+                <p className={s.muted}>
                   Your place is saved. Complete your payment to confirm your enrolment.
                   {order.paymentState === "FAILED"
                     ? " Your last payment attempt did not go through."
@@ -92,19 +87,24 @@ export function SirahDashboardRegistration({ orders }: { orders: SirahDashboardO
                 </p>
               </>
             ) : (
-              <p className="ga-dashboard-muted" style={{ marginTop: "0.4rem" }}>
+              <p className={s.muted}>
                 Status: <strong>{status.label}</strong>
               </p>
             )}
-            <div className="ga-dashboard-stack" style={{ marginTop: "0.8rem" }}>
-              <p>Plan: {sirahPlanLabel(order)} · {sirahAmountLabel(order)}</p>
-              <p style={{ overflowWrap: "anywhere" }}>Reference: {order.reference}</p>
-            </div>
-            <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
-              <Link
-                href={sirahOrderHref(order)}
-                className={pay ? "ga-btn ga-btn-primary" : "ga-btn ga-btn-outline"}
-              >
+            <dl className={s.facts}>
+              <div className={s.fact}>
+                <dt>Plan</dt>
+                <dd>
+                  {sirahPlanLabel(order)} · {sirahAmountLabel(order)}
+                </dd>
+              </div>
+              <div className={s.fact}>
+                <dt>Reference</dt>
+                <dd>{order.reference}</dd>
+              </div>
+            </dl>
+            <div className={`${s.actions} ${s.cardActions}`}>
+              <Link href={sirahOrderHref(order)} className={pay ? s.btn : s.btnGhost}>
                 {pay ? "Complete your payment" : "View your registration"}
               </Link>
             </div>

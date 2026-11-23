@@ -15,7 +15,9 @@ import { ScheduleFields, SelectField } from "@/components/sirah/classroom-picker
 import "@/app/seerah/classroom/tokens.css";
 import { MaterialSource } from "@/components/sirah/classroom-material-source";
 import { spacesConfigured } from "@/lib/sirah/spaces";
-import { SCHEDULE_TIME_ZONES } from "@/lib/sirah/schedule-zones";
+import { scheduleZoneOptions } from "@/lib/sirah/schedule-zones";
+import { timeZoneLongName } from "@/lib/time/viewer-zone";
+import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import styles from "@/components/sirah/admin-classroom.module.css";
 import {
   addMaterial,
@@ -30,7 +32,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const TIME_ZONES = SCHEDULE_TIME_ZONES;
 const KIND_OPTIONS = SIRAH_MATERIAL_KINDS.map((kind) => ({ value: kind, label: SIRAH_MATERIAL_LABELS[kind] }));
 
 const STATUS_TEXT = { upcoming: "Upcoming", live: "Live now", past: "Took place" } as const;
@@ -68,7 +69,10 @@ function LessonForm({
   idPrefix,
   action,
   submitLabel,
+  zone,
 }: {
+  /** The admin's own zone: the form's default, and the zone an edit is pre-filled in. */
+  zone: string;
   lesson?: LessonDefaults;
   idPrefix: string;
   action: (form: FormData) => Promise<void>;
@@ -123,16 +127,22 @@ function LessonForm({
           <ScheduleFields
             name="scheduledLocal"
             idPrefix={idPrefix}
-            defaultValue={lesson?.scheduledAt ? utcToZonedLocal(lesson.scheduledAt, SIRAH_DEFAULT_TIMEZONE) : ""}
+            defaultValue={lesson?.scheduledAt ? utcToZonedLocal(lesson.scheduledAt, zone) : ""}
           />
           <div className={`${styles.field} ${styles.span2}`}>
             <span id={`${idPrefix}-zone`} className={styles.label}>
               Time zone of that time
             </span>
-            <SelectField name="timeZone" labelId={`${idPrefix}-zone`} options={TIME_ZONES} defaultValue={SIRAH_DEFAULT_TIMEZONE} />
+            <SelectField name="timeZone" labelId={`${idPrefix}-zone`} options={scheduleZoneOptions(zone)} defaultValue={zone} />
           </div>
         </div>
-        <p className={styles.help}>Stored once, shown to each student in their own time zone.</p>
+        <p className={styles.help}>
+          The date and time are read in the time zone chosen above, pre-set to yours:{" "}
+          <strong>
+            {timeZoneLongName(zone)} ({zone})
+          </strong>
+          . Stored once, shown to each student in their own time zone.
+        </p>
       </fieldset>
 
       <fieldset className={styles.group}>
@@ -303,6 +313,7 @@ export default async function SirahClassroomAdminPage({
   if (!access) redirect("/admin/sirah/login");
   if (!(access.role === "SUPER_ADMIN" || access.role === "MANAGER")) redirect("/admin/sirah");
   const { notice, error } = await searchParams;
+  const zone = (await viewerTimeZone()) ?? SIRAH_DEFAULT_TIMEZONE;
   const themed = `${styles.screen} ${sirahFont.variable}`;
 
   if (!(await sirahClassroomAvailable())) {
@@ -412,7 +423,7 @@ export default async function SirahClassroomAdminPage({
                       </svg>
                     </summary>
                     <div className={styles.sessionBody}>
-                      <LessonForm lesson={lesson} idPrefix={anchor} action={updateLesson} submitLabel="Save changes" />
+                      <LessonForm lesson={lesson} idPrefix={anchor} action={updateLesson} submitLabel="Save changes" zone={zone} />
                       <div className={styles.subsection}>
                         <h4 className={styles.subTitle}>Materials and recording</h4>
                         <MaterialRows materials={lesson.materials} anchor={anchor} />
@@ -434,7 +445,7 @@ export default async function SirahClassroomAdminPage({
           </h3>
           <p className={styles.cardLede}>The Zoom link can be added now or later. Materials are added once the session exists.</p>
         </div>
-        <LessonForm idPrefix="new-session" action={createLesson} submitLabel="Create session" />
+        <LessonForm idPrefix="new-session" action={createLesson} submitLabel="Create session" zone={zone} />
       </section>
 
       <section className={styles.card} id="course-materials" aria-labelledby="course-materials-title">

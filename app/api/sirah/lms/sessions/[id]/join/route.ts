@@ -1,6 +1,6 @@
 import { getSessionIdentity } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { isZoomUrl, joinOpensAt, joinWindow, studentMayJoinCohort } from "@/lib/lms/access";
+import { isZoomUrl, joinOpensAt, studentJoinWindow, studentMayJoinCohort } from "@/lib/lms/access";
 import { decryptField, sessionFieldContext } from "@/lib/lms/field-crypto";
 import { lmsNotice, lmsRedirect, utcLabel } from "@/lib/lms/http";
 
@@ -9,8 +9,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/sirah/lms/sessions/[id]/join
- * Signed-in student, paid + active in the session's cohort, inside the join
- * window -> log a SessionJoinIntent and 302 to the decrypted Zoom join URL.
+ * Signed-in student, paid + active in the session's cohort, and the class is
+ * joinable (the host has started it, so it is LIVE, or it is inside the
+ * scheduled window) -> log a SessionJoinIntent and 302 to the decrypted Zoom join URL.
  * The join URL is decrypted only here and only ever sent as the Location
  * header; it is never rendered or returned in a body.
  */
@@ -32,9 +33,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   if (session.status === "CANCELLED") return lmsNotice(410, "Class cancelled", `"${session.title}" has been cancelled.`);
 
-  const window = session.status === "ENDED" ? "ended" : joinWindow(session, now);
+  const window = studentJoinWindow(session, now);
   if (window === "not_open")
-    return lmsNotice(409, "Not open yet", `"${session.title}" opens for joining at ${utcLabel(joinOpensAt(session))}, 15 minutes before it starts. Please come back then.`);
+    return lmsNotice(409, "Not open yet", `"${session.title}" opens for joining at ${utcLabel(joinOpensAt(session))}, 15 minutes before it starts, or as soon as the host starts the class. Please come back then.`);
   if (window === "ended") return lmsNotice(409, "Class has ended", `"${session.title}" has ended.`);
 
   if (!session.joinUrlEncrypted) return lmsNotice(503, "Not ready", "This class is still being set up. Please try again in a minute.");

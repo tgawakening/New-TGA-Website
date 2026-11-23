@@ -174,7 +174,7 @@ export function ClassroomOverview({
         <section className={s.section} aria-labelledby="chronicle">
           <SectionHead id="chronicle">The chronicle</SectionHead>
           <p className={s.sectionLede}>
-            Every session, week by week. Open one for its notes, materials and recording. Times in {clock.zoneName}.
+            Every session, week by week. Open one for its notes, materials and recording. Times are your time ({clock.zoneName}).
           </p>
           {weeks.length === 0 ? (
             <p className={s.emptyLine}>Sessions appear here once the team publishes them.</p>

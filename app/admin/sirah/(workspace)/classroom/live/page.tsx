@@ -3,7 +3,9 @@ import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { sirahFont } from "@/lib/sirah/font";
 import { SIRAH_BATCH } from "@/lib/sirah/catalog";
 import { SIRAH_DEFAULT_TIMEZONE, utcToZonedLocal } from "@/lib/sirah/classroom";
-import { SCHEDULE_TIME_ZONES } from "@/lib/sirah/schedule-zones";
+import { scheduleZoneOptions } from "@/lib/sirah/schedule-zones";
+import { timeZoneLongName } from "@/lib/time/viewer-zone";
+import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { JOIN_OPENS_MINUTES_BEFORE } from "@/lib/lms/access";
 import { LMS_JOIN_BEFORE_HOST, LMS_MAX_SESSION_MINUTES, LMS_MEETING_SETTINGS, LMS_WAITING_ROOM } from "@/lib/lms/sessions";
 import {
@@ -72,10 +74,13 @@ function SessionFields({
   idPrefix,
   session,
   hosts,
+  zone,
 }: {
   idPrefix: string;
   session?: SessionView;
   hosts?: { id: string; email: string; licensed: boolean }[];
+  /** The admin's own zone: the form's default, and the zone an edit is pre-filled in. */
+  zone: string;
 }) {
   return (
     <>
@@ -108,13 +113,13 @@ function SessionFields({
           <ScheduleFields
             name="startsLocal"
             idPrefix={idPrefix}
-            defaultValue={session ? utcToZonedLocal(session.startsAt, SIRAH_DEFAULT_TIMEZONE) : ""}
+            defaultValue={session ? utcToZonedLocal(session.startsAt, zone) : ""}
           />
           <div className={styles.field}>
             <span id={`${idPrefix}-zone`} className={styles.label}>
               Time zone
             </span>
-            <SelectField name="timeZone" labelId={`${idPrefix}-zone`} options={SCHEDULE_TIME_ZONES} defaultValue={SIRAH_DEFAULT_TIMEZONE} />
+            <SelectField name="timeZone" labelId={`${idPrefix}-zone`} options={scheduleZoneOptions(zone)} defaultValue={zone} />
           </div>
           <div className={styles.field}>
             <span id={`${idPrefix}-duration`} className={styles.label}>
@@ -129,8 +134,15 @@ function SessionFields({
           </div>
         </div>
         <p className={styles.help}>
+          The date and time are read in the time zone chosen above, pre-set to yours:{" "}
+          <strong>
+            {timeZoneLongName(zone)} ({zone})
+          </strong>
+          . Change it if you are entering a time from another zone.
+        </p>
+        <p className={styles.help}>
           Stored once, shown to each student in their own time zone. Students can join from {JOIN_OPENS_MINUTES_BEFORE} minutes
-          before the start until the end. One host cannot run two overlapping sessions.
+          before the start until the end, or as soon as the host starts the meeting. One host cannot run two overlapping sessions.
         </p>
       </fieldset>
     </>
@@ -215,7 +227,9 @@ function SessionLedger({
   now,
   canStart,
   editable,
+  zone,
 }: {
+  zone: string;
   sessions: SessionView[];
   counts: Map<string, JoinCounts>;
   attendance: Map<string, SessionAttendance>;
@@ -320,7 +334,7 @@ function SessionLedger({
                     <form action={updateLiveSession} className={styles.form}>
                       <input type="hidden" name="id" value={session.id} />
                       <input type="hidden" name="cohortId" value={session.cohortId} />
-                      <SessionFields idPrefix={anchor} session={session} />
+                      <SessionFields idPrefix={anchor} session={session} zone={zone} />
                       <div className={styles.formFoot}>
                         <button type="submit" className={styles.primary}>
                           Save changes
@@ -357,6 +371,7 @@ export default async function LiveSessionsAdminPage({
   if (!access) redirect("/admin/sirah/login");
   if (!(access.role === "SUPER_ADMIN" || access.role === "MANAGER")) redirect("/admin/sirah");
   const { cohort: requested, notice, error } = await searchParams;
+  const zone = (await viewerTimeZone()) ?? SIRAH_DEFAULT_TIMEZONE;
   const themed = `${styles.screen} ${sirahFont.variable}`;
 
   if (!(await lmsSessionsAvailable())) {
@@ -464,7 +479,7 @@ export default async function LiveSessionsAdminPage({
                 <p>Sessions you schedule appear here and in every enrolled student&rsquo;s classroom.</p>
               </div>
             ) : (
-              <SessionLedger sessions={data.upcoming} counts={data.counts} attendance={attendance} now={now} canStart={canStart} editable />
+              <SessionLedger sessions={data.upcoming} counts={data.counts} attendance={attendance} now={now} canStart={canStart} editable zone={zone} />
             )}
           </section>
 
@@ -478,7 +493,7 @@ export default async function LiveSessionsAdminPage({
             {data.past.length === 0 ? (
               <p className={styles.emptyLine}>No past sessions yet.</p>
             ) : (
-              <SessionLedger sessions={data.past} counts={data.counts} attendance={attendance} now={now} canStart={false} editable={false} />
+              <SessionLedger sessions={data.past} counts={data.counts} attendance={attendance} now={now} canStart={false} editable={false} zone={zone} />
             )}
           </section>
         </>
@@ -501,7 +516,7 @@ export default async function LiveSessionsAdminPage({
             <form action={createLiveSession} className={styles.form}>
               <input type="hidden" name="cohortId" value={cohortId} />
               <p className={styles.help}>Cohort: {cohortId}</p>
-              <SessionFields idPrefix="new-session" hosts={hosts} />
+              <SessionFields idPrefix="new-session" hosts={hosts} zone={zone} />
               <div className={styles.formFoot}>
                 <button type="submit" className={styles.primary}>
                   Schedule session

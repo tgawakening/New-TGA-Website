@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { JOIN_OPENS_MINUTES_BEFORE } from "@/lib/lms/access";
 import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
+import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { classroomClock } from "@/components/indigo/classroom/clock";
 import { ClassroomHeader, SectionHead } from "@/components/indigo/classroom/parts";
@@ -24,7 +25,7 @@ export default async function LiveSchedulePage() {
   if (!user) redirect("/login");
 
   const now = new Date();
-  const clock = classroomClock(user.studentProfile?.timezone);
+  const clock = classroomClock((await viewerTimeZone()) ?? user.studentProfile?.timezone);
   const schedule = (await lmsSessionsAvailable()) ? await studentSchedule(user.id, now) : null;
 
   return (
@@ -64,7 +65,7 @@ export default async function LiveSchedulePage() {
             <section className={s.section} aria-labelledby="upcoming">
               <SectionHead id="upcoming">Upcoming classes</SectionHead>
               <p className={s.sectionLede}>
-                Times in {clock.zoneName}. Join opens {JOIN_OPENS_MINUTES_BEFORE} minutes before each class.
+                Times are your time ({clock.zoneName}). Join opens {JOIN_OPENS_MINUTES_BEFORE} minutes before each class, or as soon as the host starts it.
               </p>
               {schedule.upcoming.length ? (
                 <LiveSessionRows sessions={schedule.upcoming} clock={clock} nextId={schedule.next?.id} />

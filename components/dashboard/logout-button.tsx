@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function LogoutButton() {
+export default function LogoutButton({ className = "ga-btn ga-btn-outline" }: { className?: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -15,7 +15,7 @@ export default function LogoutButton() {
   }
 
   return (
-    <button type="button" className="ga-btn ga-btn-outline" onClick={handleLogout} disabled={loading}>
+    <button type="button" className={className} onClick={handleLogout} disabled={loading}>
       {loading ? "Logging out..." : "Logout"}
     </button>
   );

@@ -30,6 +30,23 @@ export function joinWindow(session: Pick<LmsSession, "startsAt" | "durationMin">
   return "open";
 }
 
+/**
+ * Whether an enrolled student may join now. Zoom's own state wins over the
+ * clock: once the host has started the meeting (status LIVE, from the
+ * meeting.started webhook) the class is open, even before the scheduled
+ * window or past the scheduled end (an overrun); once Zoom reports it ENDED it
+ * is closed. Otherwise the scheduled window decides. Cancelled sessions are
+ * handled by the callers before this.
+ */
+export function studentJoinWindow(
+  session: Pick<LmsSession, "startsAt" | "durationMin" | "status">,
+  now = new Date(),
+): JoinWindow {
+  if (session.status === "LIVE") return "open";
+  if (session.status === "ENDED") return "ended";
+  return joinWindow(session, now);
+}
+
 export const joinOpensAt = (session: Pick<LmsSession, "startsAt">) =>
   new Date(session.startsAt.getTime() - JOIN_OPENS_MINUTES_BEFORE * 60_000);
 
