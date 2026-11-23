@@ -60,6 +60,7 @@ export function SirahAdminShell({
         { href: "/admin/sirah/scholarships", label: "Scholarship reviews", icon: ICONS.scholarships, show: true, sub: true },
         { href: "/admin/sirah/classroom", label: "Classroom", icon: ICONS.classroom, show: access.canManageEnrolments },
         { href: "/admin/sirah/classroom/live", label: "Live sessions", icon: ICONS.classroom, show: access.canManageEnrolments, sub: true },
+        { href: "/admin/sirah/classroom/content", label: "Resources and notices", icon: ICONS.classroom, show: access.canManageEnrolments, sub: true },
       ],
     },
     {
