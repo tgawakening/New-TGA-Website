@@ -6,8 +6,6 @@ import { IndigoLoginForm } from "@/components/indigo/auth/login-form";
 import s from "@/components/indigo/auth/login.module.css";
 import { Experience } from "@/components/indigo/motion/experience";
 import { Wordmark } from "@/components/indigo/nav";
-import { Rig } from "@/components/indigo/rig";
-import { Eyebrow } from "@/components/indigo/section-heading";
 import { SirahNotice } from "@/components/sirah/sirah-notice";
 import { getCurrentUser } from "@/lib/auth/session";
 import { DATABASE_UNAVAILABLE_MESSAGE, isDatabaseUnavailable } from "@/lib/db-errors";
@@ -52,59 +50,55 @@ export default async function LoginPage({
   return (
     <div className={`${s.page} ${indigoFontVariables}`} data-experience="">
       <header className={s.top}>
-        <Wordmark href="/" />
+        {/* The wordmark shows here only when the intro column is hidden (tablet and phone). */}
+        <span className={s.topMark}>
+          <Wordmark href="/" />
+        </span>
         <Link href="/" className={s.back}>
-          ← Back to the site
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Back to the site
         </Link>
       </header>
 
       <main className={s.split}>
+        {/* Desktop only: a short welcome beside the card. Hidden on tablet and phone. */}
         <section className={s.intro} aria-labelledby="login-title">
-          <div className={s.introRig} aria-hidden="true">
-            <Rig />
+          <div data-rise="" style={i(0)}>
+            <Wordmark href="/" />
           </div>
-          <div className={s.introCopy}>
-            <div data-rise="" style={i(0)}>
-              <Eyebrow>{finishing ? "Finish your registration" : "Student access"}</Eyebrow>
-            </div>
-            <h1 id="login-title" className={s.title} data-rise="" style={i(1)}>
-              {finishing ? (
-                <>
-                  Sign in to <em>complete your payment</em>
-                </>
-              ) : (
-                <>
-                  Sign in to your <em>Sīrah dashboard</em>
-                </>
-              )}
-            </h1>
-            <p className={s.lede} data-rise="" style={i(2)}>
-              {finishing
-                ? "Your booking is saved. Sign in with the email and password you used when you registered, and you will go straight back to it to complete your payment."
-                : "Use the same email and password you created during registration. Once your payment is approved, your dashboard and LMS access open automatically."}
-            </p>
-            {finishing ? null : (
-              <ul className={s.notes} data-rise="" style={i(3)}>
-                <li>
-                  <b>Pending manual payment?</b>
-                  <span>You will receive an email once admin confirms it from the backend.</span>
-                </li>
-                <li>
-                  <b>Need a new registration?</b>
-                  <span>Open the course registration flow again and choose your payment method.</span>
-                </li>
-              </ul>
+          <h1 id="login-title" className={s.title} data-rise="" style={i(1)}>
+            {finishing ? (
+              <>
+                Finish your <em>registration</em>
+              </>
+            ) : (
+              <>
+                Welcome to your <em>Sīrah dashboard</em>
+              </>
             )}
-          </div>
+          </h1>
+          {finishing ? null : (
+            <ul className={s.notes} data-rise="" style={i(2)}>
+              <li>Use the email and password from your registration.</li>
+              <li>Paid manually? We email you once it is confirmed.</li>
+            </ul>
+          )}
         </section>
 
-        <section className={s.panel} aria-labelledby="signin-title" data-rise="" style={i(2)}>
+        <section className={s.panel} aria-labelledby="signin-title" data-rise="" style={i(1)}>
           <div className={s.card}>
             {/* Operational notice from SIRAH_NOTICE (renders nothing when unset). */}
             <SirahNotice />
             <h2 id="signin-title" className={s.cardTitle}>
               {finishing ? "Sign in to continue" : "Sign in"}
             </h2>
+            <p className={s.cardLede}>
+              {finishing
+                ? "Your booking is saved. Sign in with the email and password you registered with to go straight back and complete your payment."
+                : "Use the email and password you created when you registered."}
+            </p>
             {unavailable ? (
               <p role="status" className={s.status}>
                 {DATABASE_UNAVAILABLE_MESSAGE}

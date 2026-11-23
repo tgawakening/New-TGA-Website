@@ -17,7 +17,6 @@ import {
 } from "@/components/sirah/dashboard-registration";
 import LogoutButton from "@/components/dashboard/logout-button";
 import { paymentPlanTypeLabels } from "@/lib/course-payment";
-import { BrandLogo } from "@/components/brand-logo";
 import { indigoFontVariables } from "@/lib/fonts";
 import s from "./student-dashboard.module.css";
 
@@ -115,6 +114,10 @@ export default function StudentDashboard({ user }: DashboardProps) {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const paymentSyncRan = useRef(false);
+  // Layout only: which dashboard section is shown. Follows the URL hash
+  // (#overview, #course, #payments) so links and the back button work.
+  const [section, setSection] = useState<DashboardSection>("overview");
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   const sirahOrders = user.sirahOrders ?? [];
   const latestSirahOrder = sirahOrders[0];
@@ -275,6 +278,25 @@ export default function StudentDashboard({ user }: DashboardProps) {
     }
   }, [pathname, router, searchParams]);
 
+  useEffect(() => {
+    const fromHash = () => {
+      const id = window.location.hash.slice(1) as DashboardSection;
+      setSection(SECTIONS.includes(id) ? id : "overview");
+    };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => window.removeEventListener("hashchange", fromHash);
+  }, []);
+
+  const go = (id: DashboardSection) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (window.location.hash !== `#${id}`) window.history.pushState(null, "", `#${id}`);
+    setSection(id);
+    window.scrollTo({ top: 0 });
+    // Move focus to the new section's heading for keyboard and screen-reader users.
+    window.requestAnimationFrame(() => titleRef.current?.focus({ preventScroll: true }));
+  };
+
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -329,344 +351,562 @@ export default function StudentDashboard({ user }: DashboardProps) {
     }
   }
 
+  /* ---------- The cards, each defined once and placed in its section ---------- */
+
+  const notices = (
+    <>
+      {paymentMessage ? (
+        <p className={s.notice} role="status">
+          {paymentMessage}
+        </p>
+      ) : null}
+      {paymentError ? (
+        <p className={s.noticeError} role="alert">
+          {paymentError}
+        </p>
+      ) : null}
+    </>
+  );
+
+  const pendingCard = hasPendingPayment ? (
+    <section className={`${s.card} ${s.cardAttention}`} aria-labelledby="pending-payment">
+      <p id="pending-payment" className={s.cardTitle}>
+        Pending Payment
+      </p>
+      <p className={s.muted}>
+        Your registration account is active, but this order still needs payment completion. You can reopen the payment page, switch payment method, or change between monthly and full course payment.
+      </p>
+      <div className={`${s.actions} ${s.cardActions}`}>
+        <Link href={pendingPaymentHref} className={s.btn}>
+          Complete Pending Payment
+        </Link>
+        <Link href="/dashboard" className={s.btnGhost}>
+          Stay on Dashboard
+        </Link>
+      </div>
+    </section>
+  ) : null;
+
+  const sirahOverviewCard = latestSirahOrder ? (
+    <article className={s.card}>
+      <h2 className={s.cardTitle}>Overview</h2>
+      <dl className={s.facts}>
+        <Fact label="Email">{user.email}</Fact>
+        <Fact label="Country">{countryName}</Fact>
+        <Fact label="Enrolment">{sirahOrderStatus(latestSirahOrder).label}</Fact>
+        <Fact label="Plan">{sirahPlanLabel(latestSirahOrder)}</Fact>
+      </dl>
+    </article>
+  ) : null;
+
+  const sirahPaymentCard = latestSirahOrder ? (
+    <article className={s.card}>
+      <h2 className={s.cardTitle}>Payment Status</h2>
+      <dl className={s.facts}>
+        <Fact label="Status">{sirahOrderStatus(latestSirahOrder).label}</Fact>
+        <Fact label="Method">{sirahMethodLabel(latestSirahOrder)}</Fact>
+        <Fact label="Amount">{sirahAmountLabel(latestSirahOrder)}</Fact>
+        <Fact label="Reference">{latestSirahOrder.reference}</Fact>
+      </dl>
+      <RenewalCycle
+        className={s.renewal}
+        plan={latestSirahOrder.plan}
+        method={latestSirahOrder.method}
+        cycle={latestSirahOrder.renewalCycle ?? null}
+        paid={(latestSirahOrder.paidCount ?? 0) > 0}
+        paymentState={latestSirahOrder.paymentState}
+        enrolmentState={latestSirahOrder.enrolmentState}
+        cancelled={latestSirahOrder.cancelled}
+        nextBillingAt={latestSirahOrder.nextBillingAt}
+        accessEndsAt={latestSirahOrder.accessEndsAt}
+      />
+      {pendingSirahOrder ? null : (
+        <div className={`${s.actions} ${s.cardActions}`}>
+          <Link href={sirahOrderHref(latestSirahOrder)} className={s.btnGhost}>
+            View your registration
+          </Link>
+        </div>
+      )}
+    </article>
+  ) : null;
+
+  const legacyOverviewCard = (
+    <article className={s.card}>
+      <h2 className={s.cardTitle}>Overview</h2>
+      <dl className={s.facts}>
+        <Fact label="Email">{user.email}</Fact>
+        <Fact label="Country">{countryName}</Fact>
+        <Fact label="Enrollment">{seerahEnrollment?.status ?? "NOT_REGISTERED"}</Fact>
+        <Fact label="LMS Access">{hasActiveLmsAccess ? "Granted" : "Locked pending payment approval"}</Fact>
+        <Fact label="Subscription">
+          {latestRegistration?.paymentPlanType === "FULL_COURSE"
+            ? "Not required for full course payment"
+            : latestSubscription?.status ?? "Not started"}
+        </Fact>
+        <Fact label="Renewal">
+          {latestRegistration?.paymentPlanType === "FULL_COURSE"
+            ? "Not applicable"
+            : latestSubscription?.currentPeriodEnd
+              ? new Date(latestSubscription.currentPeriodEnd).toLocaleDateString()
+              : "Will appear after subscription activation"}
+        </Fact>
+        <Fact label="Auto renew">
+          {latestRegistration?.paymentPlanType === "FULL_COURSE"
+            ? "Off"
+            : latestSubscription
+              ? latestSubscription.cancelAtPeriodEnd
+                ? "Will stop"
+                : "On"
+              : "N/A"}
+        </Fact>
+      </dl>
+    </article>
+  );
+
+  const legacyPaymentCard = (
+    <article className={s.card}>
+      <h2 className={s.cardTitle}>Payment Status</h2>
+      <dl className={s.facts}>
+        <Fact label="Plan">{latestPaymentPlanLabel}</Fact>
+        <Fact label="Method">{latestRegistration?.paymentMethod ?? "N/A"}</Fact>
+        <Fact label="Registration status">{latestRegistration?.status ?? "N/A"}</Fact>
+        <Fact label="Payment status">{latestRegistration?.payment?.status ?? "N/A"}</Fact>
+        <Fact label="Reference">{latestRegistration?.paymentReference ?? "N/A"}</Fact>
+        <Fact label="Latest amount">
+          {latestRegistration
+            ? formatMoney(
+                latestRegistration.payment?.amount ?? latestRegistration.finalAmount,
+                latestRegistration.payment?.currency ?? latestRegistration.selectedCurrency,
+              )
+            : "N/A"}
+        </Fact>
+        <Fact label="Paid at">
+          {latestRegistration?.payment?.paidAt ? new Date(latestRegistration.payment.paidAt).toLocaleString() : "Pending or awaiting review"}
+        </Fact>
+      </dl>
+      {user.canManageStripeBilling ? (
+        <div className={`${s.actions} ${s.cardActions}`}>
+          <button type="button" className={s.btnGhost} onClick={openBillingPortal} disabled={billingPortalLoading}>
+            {billingPortalLoading ? "Opening Billing..." : "Update Card Details"}
+          </button>
+        </div>
+      ) : null}
+    </article>
+  );
+
+  // The existing rule: current-cohort Sīrah students see the order cards,
+  // everyone else the legacy registration cards.
+  const sirahOnly = Boolean(user.currentSirahOnly && latestSirahOrder);
+  const overviewCard = sirahOnly ? sirahOverviewCard : legacyOverviewCard;
+  const paymentCard = sirahOnly ? sirahPaymentCard : legacyPaymentCard;
+
+  const lmsCard = (
+    <article className={s.card}>
+      <h2 className={s.cardTitle}>My LMS</h2>
+      <p className={s.muted}>
+        {user.currentSirahOnly
+          ? "Open your Sīrah Beyond Chronology registration above for verified payment status, private evidence and your course invitation."
+          : "Recorded lessons, weekly live links, and batch support appear here after activation."}
+      </p>
+      <ul className={s.list}>
+        {(user.currentSirahOnly ? [] : seerahLessons).map((lesson) => (
+          <li key={lesson.title} className={s.item}>
+            <div>
+              <strong>{lesson.title}</strong>
+              <p>{lesson.type}</p>
+            </div>
+            <span className={s.itemValue}>{hasActiveLmsAccess ? lesson.access : "Locked"}</span>
+          </li>
+        ))}
+      </ul>
+      <div className={`${s.actions} ${s.cardActions}`}>
+        {user.currentSirahOnly ? (
+          <Link href="/seerah/register" className={s.btn}>
+            Manage your Sīrah registration
+          </Link>
+        ) : hasActiveLmsAccess ? (
+          <Link href="/seerah/lms" className={s.btn}>
+            Open Seerah LMS
+          </Link>
+        ) : (
+          <Link href="/seerah/register" className={s.btnGhost}>
+            Complete Payment First
+          </Link>
+        )}
+        <Link href="/seerah/register" className={s.btnGhost} target="_blank">
+          Join Batch Community
+        </Link>
+      </div>
+    </article>
+  );
+
+  const profileCard = (
+    <article className={s.card}>
+      <h2 className={s.cardTitle}>Profile Settings</h2>
+      <form onSubmit={saveProfile} className={s.form}>
+        <label className={s.field}>
+          Full Name
+          <input value={fullName} onChange={(event) => setFullName(event.target.value)} required />
+        </label>
+        <div className={s.formRow}>
+          <label className={s.field}>
+            Phone Country Code
+            <input value={phoneCountryCode} onChange={(event) => setPhoneCountryCode(event.target.value)} required />
+          </label>
+          <label className={s.field}>
+            Phone Number
+            <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} required />
+          </label>
+        </div>
+        <label className={s.field}>
+          Country
+          <select
+            value={countryCode}
+            onChange={(event) => {
+              const nextCode = event.target.value;
+              const match = countryEntries.find((entry) => entry.code === nextCode);
+              setCountryCode(nextCode);
+              setCountryName(match?.name ?? nextCode);
+              if (match?.phone) {
+                setPhoneCountryCode(`+${match.phone}`);
+              }
+            }}
+          >
+            {countryEntries.map((entry) => (
+              <option key={entry.code} value={entry.code}>
+                {entry.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={s.field}>
+          Timezone
+          <input value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="Asia/Karachi" />
+        </label>
+        {profileMessage ? <p className={s.success}>{profileMessage}</p> : null}
+        {profileError ? <p className={s.error}>{profileError}</p> : null}
+        <div className={s.actions}>
+          <button type="submit" className={s.btn} disabled={saving}>
+            {saving ? "Saving..." : "Save Profile"}
+          </button>
+        </div>
+      </form>
+    </article>
+  );
+
+  const historyCard = (
+    <article className={s.card}>
+      <h2 className={s.cardTitle}>Payment History</h2>
+      <ul className={s.list}>
+        {user.registrations.length
+          ? user.registrations.map((registration) => (
+              <li key={registration.id} className={s.item}>
+                <div>
+                  <strong>{registration.course.title}</strong>
+                  <p>
+                    {paymentPlanTypeLabels[registration.paymentPlanType]} - {registration.paymentMethod} - {registration.status}
+                  </p>
+                </div>
+                <span className={s.itemValue}>
+                  {formatMoney(registration.payment?.amount ?? registration.finalAmount, registration.payment?.currency ?? registration.selectedCurrency)}
+                </span>
+              </li>
+            ))
+          : null}
+        {sirahOrders.map((order) => (
+          <li key={order.id} className={s.item}>
+            <div>
+              <strong>Sīrah | Beyond Chronology</strong>
+              <p>
+                {sirahPlanLabel(order)} - {sirahMethodLabel(order)} - {sirahOrderStatus(order).label}
+              </p>
+            </div>
+            <span className={s.itemValue}>{sirahAmountLabel(order)}</span>
+          </li>
+        ))}
+      </ul>
+      {!user.registrations.length && !sirahOrders.length ? <p className={s.muted}>No registrations yet.</p> : null}
+    </article>
+  );
+
+  const supportCard = (
+    <article className={s.card}>
+      <h2 className={s.cardTitle}>Support</h2>
+      <ul className={s.list}>
+        {supportLinks.map((item) => (
+          <li key={item.label} className={s.item}>
+            <div>
+              <strong>{item.label}</strong>
+            </div>
+            <Link href={item.href} target={item.href.startsWith("http") ? "_blank" : undefined} className={`${s.btnGhost} ${s.btnSmall}`}>
+              Open
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+
+  const heroActions = (
+    <div className={s.actions}>
+      {hasPendingPayment ? (
+        <Link href={pendingPaymentHref} className={s.btn}>
+          Complete Pending Payment
+        </Link>
+      ) : null}
+      {user.canManageStripeBilling ? (
+        <button type="button" className={s.btn} onClick={openBillingPortal} disabled={billingPortalLoading}>
+          {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
+        </button>
+      ) : null}
+      <Link href="/seerah/register" className={s.btnGhost}>
+        Register Another Seat
+      </Link>
+    </div>
+  );
+
+  // Classroom links lead to existing pages that admit only enrolled students,
+  // so they are live only for an enrolled student (display rule only; each
+  // page keeps its own gate).
+  const classroomOpen = sirahOrders.some((order) => sirahOrderStatus(order).kind === "ACTIVE") || hasActiveLmsAccess;
+
+  const SECTION_TITLES: Record<DashboardSection, { eyebrow: string; title: string; lede: string }> = {
+    overview: {
+      eyebrow: "Student dashboard",
+      title: `Assalam-u-Alaikum, ${fullName}`,
+      lede: "Track your enrollment, payment, subscription, and Seerah LMS access from one place.",
+    },
+    course: {
+      eyebrow: "My course",
+      title: "Your registration",
+      lede: "Your Sīrah enrolment, its registration page and your course access.",
+    },
+    payments: {
+      eyebrow: "Payments",
+      title: "Payments and subscription",
+      lede: "Payment status, renewals, billing and every payment you have made.",
+    },
+  };
+  const heading = SECTION_TITLES[section];
+
   return (
     <div className={`${s.page} ${indigoFontVariables}`}>
-      <header className={s.header}>
-        <div className={`${s.wrap} ${s.headRow}`}>
-          <Link href="/" className={s.logo} aria-label="The Global Awakening home">
-            <BrandLogo alt="" sizes="(min-width: 64rem) 160px, 112px" priority className={s.logoImg} />
-            <span className={s.place} aria-hidden="true">
-              Student dashboard
+      <div className={s.frame}>
+        <aside className={s.sidebar} aria-label="Dashboard navigation">
+          <a href="#overview" className={s.brand} onClick={go("overview")} aria-label="Student dashboard: overview">
+            <span className={s.brandMark} aria-hidden="true">
+              TGA
             </span>
-          </Link>
-          <span className={s.spacer} />
-          <LogoutButton className={`${s.btnGhost} ${s.btnSmall}`} />
-        </div>
-      </header>
+            <span className={s.brandText} aria-hidden="true">
+              <strong>Student dashboard</strong>
+              <span>Sīrah · Beyond Chronology</span>
+            </span>
+          </a>
+          <nav className={s.nav} aria-label="Dashboard sections">
+            <div className={s.navGroup}>
+              <span className={s.navLabel}>Dashboard</span>
+              <NavSection id="overview" current={section} go={go} icon={ICONS.overview}>
+                Overview
+              </NavSection>
+              <NavSection id="course" current={section} go={go} icon={ICONS.course}>
+                My course
+              </NavSection>
+              <NavSection id="payments" current={section} go={go} icon={ICONS.payments}>
+                Payments &amp; subscription
+              </NavSection>
+            </div>
+            <div className={s.navGroup}>
+              <span className={s.navLabel}>Classroom</span>
+              <NavRoute href="/seerah/classroom/schedule" icon={ICONS.live} open={classroomOpen}>
+                Live classes
+              </NavRoute>
+              <NavRoute href="/seerah/classroom#resources" icon={ICONS.resources} open={classroomOpen}>
+                Resources &amp; notices
+              </NavRoute>
+              {user.showTeachingLink ? (
+                <NavRoute href="/seerah/classroom/teaching" icon={ICONS.teaching} open>
+                  My sessions
+                </NavRoute>
+              ) : null}
+            </div>
+            <div className={s.navGroup}>
+              <span className={s.navLabel}>Account</span>
+              {user.showAdminLink ? (
+                <NavRoute href="/admin" icon={ICONS.admin} open>
+                  Admin Panel
+                </NavRoute>
+              ) : null}
+              <LogoutButton className={s.navLink}>{ICONS.logout}</LogoutButton>
+            </div>
+          </nav>
+          {!classroomOpen ? <p className={s.navHint}>Live classes and resources open once your enrolment is confirmed.</p> : null}
+        </aside>
 
-      <main className={s.wrap}>
-        <section className={s.hero} aria-labelledby="dashboard-title">
-          <div>
-            <p className={s.eyebrow}>Student dashboard</p>
-            <h1 id="dashboard-title" className={s.title}>
-              Assalam-u-Alaikum, {fullName}
-            </h1>
-            <p className={s.lede}>Track your enrollment, payment, subscription, and Seerah LMS access from one place.</p>
-            {paymentMessage ? (
-              <p className={s.notice} role="status">
-                {paymentMessage}
-              </p>
-            ) : null}
-            {paymentError ? (
-              <p className={s.noticeError} role="alert">
-                {paymentError}
-              </p>
-            ) : null}
-          </div>
-          <div className={s.actions}>
-            {hasPendingPayment ? (
-              <Link href={pendingPaymentHref} className={s.btn}>
-                Complete Pending Payment
-              </Link>
-            ) : null}
-            {user.canManageStripeBilling ? (
-              <button type="button" className={s.btn} onClick={openBillingPortal} disabled={billingPortalLoading}>
-                {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
-              </button>
-            ) : null}
-            <Link href="/seerah/register" className={s.btnGhost}>
-              Register Another Seat
-            </Link>
-          </div>
-        </section>
+        <main className={s.main} id="dashboard-content">
+          <header className={s.hero} aria-labelledby="dashboard-title">
+            <div>
+              <p className={s.eyebrow}>{heading.eyebrow}</p>
+              <h1 id="dashboard-title" className={s.title} tabIndex={-1} ref={titleRef}>
+                {heading.title}
+              </h1>
+              <p className={s.lede}>{heading.lede}</p>
+              {notices}
+            </div>
+            {section === "overview" ? heroActions : null}
+          </header>
 
-        <div className={s.stack}>
-          <div className={s.section}>
-            <SirahDashboardRegistration orders={sirahOrders} />
-
-            {hasPendingPayment ? (
-              <section className={`${s.card} ${s.cardAttention}`} aria-labelledby="pending-payment">
-                <p id="pending-payment" className={s.cardTitle}>
-                  Pending Payment
-                </p>
-                <p className={s.muted}>
-                  Your registration account is active, but this order still needs payment completion. You can reopen the payment page, switch payment method, or change between monthly and full course payment.
-                </p>
-                <div className={`${s.actions} ${s.cardActions}`}>
-                  <Link href={pendingPaymentHref} className={s.btn}>
-                    Complete Pending Payment
-                  </Link>
-                  <Link href="/dashboard" className={s.btnGhost}>
-                    Stay on Dashboard
-                  </Link>
+          <div className={s.stack}>
+            {section === "overview" ? (
+              <>
+                <div className={s.section}>
+                  <SirahDashboardRegistration orders={sirahOrders} />
+                  {pendingCard}
+                  <section className={s.grid} aria-label="Enrolment and payment">
+                    {overviewCard}
+                    {paymentCard}
+                  </section>
                 </div>
-              </section>
+                <section className={s.grid} aria-label="History and support">
+                  {historyCard}
+                  {supportCard}
+                </section>
+              </>
             ) : null}
 
-            {user.currentSirahOnly && latestSirahOrder ? (
-              <section className={s.grid} aria-label="Enrolment and payment">
-                <article className={s.card}>
-                  <h2 className={s.cardTitle}>Overview</h2>
-                  <dl className={s.facts}>
-                    <Fact label="Email">{user.email}</Fact>
-                    <Fact label="Country">{countryName}</Fact>
-                    <Fact label="Enrolment">{sirahOrderStatus(latestSirahOrder).label}</Fact>
-                    <Fact label="Plan">{sirahPlanLabel(latestSirahOrder)}</Fact>
-                  </dl>
-                </article>
-                <article className={s.card}>
-                  <h2 className={s.cardTitle}>Payment Status</h2>
-                  <dl className={s.facts}>
-                    <Fact label="Status">{sirahOrderStatus(latestSirahOrder).label}</Fact>
-                    <Fact label="Method">{sirahMethodLabel(latestSirahOrder)}</Fact>
-                    <Fact label="Amount">{sirahAmountLabel(latestSirahOrder)}</Fact>
-                    <Fact label="Reference">{latestSirahOrder.reference}</Fact>
-                  </dl>
-                  <RenewalCycle
-                    className={s.renewal}
-                    plan={latestSirahOrder.plan}
-                    method={latestSirahOrder.method}
-                    cycle={latestSirahOrder.renewalCycle ?? null}
-                    paid={(latestSirahOrder.paidCount ?? 0) > 0}
-                    paymentState={latestSirahOrder.paymentState}
-                    enrolmentState={latestSirahOrder.enrolmentState}
-                    cancelled={latestSirahOrder.cancelled}
-                    nextBillingAt={latestSirahOrder.nextBillingAt}
-                    accessEndsAt={latestSirahOrder.accessEndsAt}
-                  />
-                  {pendingSirahOrder ? null : (
-                    <div className={`${s.actions} ${s.cardActions}`}>
-                      <Link href={sirahOrderHref(latestSirahOrder)} className={s.btnGhost}>
-                        View your registration
-                      </Link>
-                    </div>
-                  )}
-                </article>
-              </section>
-            ) : (
-              <section className={s.grid} aria-label="Enrolment and payment">
-                <article className={s.card}>
-                  <h2 className={s.cardTitle}>Overview</h2>
-                  <dl className={s.facts}>
-                    <Fact label="Email">{user.email}</Fact>
-                    <Fact label="Country">{countryName}</Fact>
-                    <Fact label="Enrollment">{seerahEnrollment?.status ?? "NOT_REGISTERED"}</Fact>
-                    <Fact label="LMS Access">{hasActiveLmsAccess ? "Granted" : "Locked pending payment approval"}</Fact>
-                    <Fact label="Subscription">
-                      {latestRegistration?.paymentPlanType === "FULL_COURSE"
-                        ? "Not required for full course payment"
-                        : latestSubscription?.status ?? "Not started"}
-                    </Fact>
-                    <Fact label="Renewal">
-                      {latestRegistration?.paymentPlanType === "FULL_COURSE"
-                        ? "Not applicable"
-                        : latestSubscription?.currentPeriodEnd
-                          ? new Date(latestSubscription.currentPeriodEnd).toLocaleDateString()
-                          : "Will appear after subscription activation"}
-                    </Fact>
-                    <Fact label="Auto renew">
-                      {latestRegistration?.paymentPlanType === "FULL_COURSE"
-                        ? "Off"
-                        : latestSubscription
-                          ? latestSubscription.cancelAtPeriodEnd
-                            ? "Will stop"
-                            : "On"
-                          : "N/A"}
-                    </Fact>
-                  </dl>
-                </article>
+            {section === "course" ? (
+              <>
+                <div className={s.section}>
+                  <SirahDashboardRegistration orders={sirahOrders} />
+                  {!sirahOrders.length ? (
+                    <section className={s.card} aria-label="No registration">
+                      <p className={s.muted}>You have no Sīrah registration yet.</p>
+                      <div className={`${s.actions} ${s.cardActions}`}>
+                        <Link href="/seerah/register" className={s.btn}>
+                          Register Another Seat
+                        </Link>
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
+                <section className={s.grid} aria-label="Course access">
+                  {overviewCard}
+                  <article className={s.card}>
+                    <h2 className={s.cardTitle}>Classroom</h2>
+                    <p className={s.muted}>
+                      {classroomOpen
+                        ? "Your live classes, recordings, resources and notices are in the classroom."
+                        : "The classroom opens here once your enrolment is confirmed."}
+                    </p>
+                    {classroomOpen ? (
+                      <div className={`${s.actions} ${s.cardActions}`}>
+                        <Link href="/seerah/classroom" className={s.btn}>
+                          Open the classroom
+                        </Link>
+                        <Link href="/seerah/classroom/schedule" className={s.btnGhost}>
+                          Live classes
+                        </Link>
+                      </div>
+                    ) : null}
+                  </article>
+                </section>
+                {!user.currentSirahOnly ? (
+                  <section className={s.grid} aria-label="Learning and profile">
+                    {lmsCard}
+                    {profileCard}
+                  </section>
+                ) : null}
+              </>
+            ) : null}
 
-                <article className={s.card}>
-                  <h2 className={s.cardTitle}>Payment Status</h2>
-                  <dl className={s.facts}>
-                    <Fact label="Plan">{latestPaymentPlanLabel}</Fact>
-                    <Fact label="Method">{latestRegistration?.paymentMethod ?? "N/A"}</Fact>
-                    <Fact label="Registration status">{latestRegistration?.status ?? "N/A"}</Fact>
-                    <Fact label="Payment status">{latestRegistration?.payment?.status ?? "N/A"}</Fact>
-                    <Fact label="Reference">{latestRegistration?.paymentReference ?? "N/A"}</Fact>
-                    <Fact label="Latest amount">
-                      {latestRegistration
-                        ? formatMoney(
-                            latestRegistration.payment?.amount ?? latestRegistration.finalAmount,
-                            latestRegistration.payment?.currency ?? latestRegistration.selectedCurrency,
-                          )
-                        : "N/A"}
-                    </Fact>
-                    <Fact label="Paid at">
-                      {latestRegistration?.payment?.paidAt
-                        ? new Date(latestRegistration.payment.paidAt).toLocaleString()
-                        : "Pending or awaiting review"}
-                    </Fact>
-                  </dl>
-                  {user.canManageStripeBilling ? (
+            {section === "payments" ? (
+              <>
+                {pendingCard ? <div className={s.section}>{pendingCard}</div> : null}
+                <section className={s.grid} aria-label="Payment status and history">
+                  {paymentCard}
+                  {historyCard}
+                </section>
+                {user.canManageStripeBilling ? (
+                  <section className={s.card} aria-label="Billing">
+                    <h2 className={s.cardTitle}>Billing</h2>
+                    <p className={s.muted}>Update your card or manage your subscription on the secure billing page.</p>
                     <div className={`${s.actions} ${s.cardActions}`}>
-                      <button type="button" className={s.btnGhost} onClick={openBillingPortal} disabled={billingPortalLoading}>
-                        {billingPortalLoading ? "Opening Billing..." : "Update Card Details"}
+                      <button type="button" className={s.btn} onClick={openBillingPortal} disabled={billingPortalLoading}>
+                        {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
                       </button>
                     </div>
-                  ) : null}
-                </article>
-              </section>
-            )}
+                  </section>
+                ) : null}
+              </>
+            ) : null}
           </div>
 
-          {!user.currentSirahOnly && (
-            <section className={s.grid} aria-label="Learning and profile">
-              <article className={s.card}>
-                <h2 className={s.cardTitle}>My LMS</h2>
-                <p className={s.muted}>
-                  {user.currentSirahOnly
-                    ? "Open your Sīrah Beyond Chronology registration above for verified payment status, private evidence and your course invitation."
-                    : "Recorded lessons, weekly live links, and batch support appear here after activation."}
-                </p>
-                <ul className={s.list}>
-                  {(user.currentSirahOnly ? [] : seerahLessons).map((lesson) => (
-                    <li key={lesson.title} className={s.item}>
-                      <div>
-                        <strong>{lesson.title}</strong>
-                        <p>{lesson.type}</p>
-                      </div>
-                      <span className={s.itemValue}>{hasActiveLmsAccess ? lesson.access : "Locked"}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className={`${s.actions} ${s.cardActions}`}>
-                  {user.currentSirahOnly ? (
-                    <Link href="/seerah/register" className={s.btn}>
-                      Manage your Sīrah registration
-                    </Link>
-                  ) : hasActiveLmsAccess ? (
-                    <Link href="/seerah/lms" className={s.btn}>
-                      Open Seerah LMS
-                    </Link>
-                  ) : (
-                    <Link href="/seerah/register" className={s.btnGhost}>
-                      Complete Payment First
-                    </Link>
-                  )}
-                  <Link href="/seerah/register" className={s.btnGhost} target="_blank">
-                    Join Batch Community
-                  </Link>
-                </div>
-              </article>
-
-              <article className={s.card}>
-                <h2 className={s.cardTitle}>Profile Settings</h2>
-                <form onSubmit={saveProfile} className={s.form}>
-                  <label className={s.field}>
-                    Full Name
-                    <input value={fullName} onChange={(event) => setFullName(event.target.value)} required />
-                  </label>
-                  <div className={s.formRow}>
-                    <label className={s.field}>
-                      Phone Country Code
-                      <input value={phoneCountryCode} onChange={(event) => setPhoneCountryCode(event.target.value)} required />
-                    </label>
-                    <label className={s.field}>
-                      Phone Number
-                      <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} required />
-                    </label>
-                  </div>
-                  <label className={s.field}>
-                    Country
-                    <select
-                      value={countryCode}
-                      onChange={(event) => {
-                        const nextCode = event.target.value;
-                        const match = countryEntries.find((entry) => entry.code === nextCode);
-                        setCountryCode(nextCode);
-                        setCountryName(match?.name ?? nextCode);
-                        if (match?.phone) {
-                          setPhoneCountryCode(`+${match.phone}`);
-                        }
-                      }}
-                    >
-                      {countryEntries.map((entry) => (
-                        <option key={entry.code} value={entry.code}>
-                          {entry.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className={s.field}>
-                    Timezone
-                    <input value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="Asia/Karachi" />
-                  </label>
-                  {profileMessage ? <p className={s.success}>{profileMessage}</p> : null}
-                  {profileError ? <p className={s.error}>{profileError}</p> : null}
-                  <div className={s.actions}>
-                    <button type="submit" className={s.btn} disabled={saving}>
-                      {saving ? "Saving..." : "Save Profile"}
-                    </button>
-                  </div>
-                </form>
-              </article>
-            </section>
-          )}
-
-          <section className={s.grid} aria-label="History and support">
-            <article className={s.card}>
-              <h2 className={s.cardTitle}>Payment History</h2>
-              <ul className={s.list}>
-                {user.registrations.length
-                  ? user.registrations.map((registration) => (
-                      <li key={registration.id} className={s.item}>
-                        <div>
-                          <strong>{registration.course.title}</strong>
-                          <p>
-                            {paymentPlanTypeLabels[registration.paymentPlanType]} - {registration.paymentMethod} - {registration.status}
-                          </p>
-                        </div>
-                        <span className={s.itemValue}>
-                          {formatMoney(
-                            registration.payment?.amount ?? registration.finalAmount,
-                            registration.payment?.currency ?? registration.selectedCurrency,
-                          )}
-                        </span>
-                      </li>
-                    ))
-                  : null}
-                {sirahOrders.map((order) => (
-                  <li key={order.id} className={s.item}>
-                    <div>
-                      <strong>Sīrah | Beyond Chronology</strong>
-                      <p>
-                        {sirahPlanLabel(order)} - {sirahMethodLabel(order)} - {sirahOrderStatus(order).label}
-                      </p>
-                    </div>
-                    <span className={s.itemValue}>{sirahAmountLabel(order)}</span>
-                  </li>
-                ))}
-              </ul>
-              {!user.registrations.length && !sirahOrders.length ? <p className={s.muted}>No registrations yet.</p> : null}
-            </article>
-
-            <article className={s.card}>
-              <h2 className={s.cardTitle}>Support</h2>
-              <ul className={s.list}>
-                {supportLinks.map((item) => (
-                  <li key={item.label} className={s.item}>
-                    <div>
-                      <strong>{item.label}</strong>
-                    </div>
-                    <Link
-                      href={item.href}
-                      target={item.href.startsWith("http") ? "_blank" : undefined}
-                      className={`${s.btnGhost} ${s.btnSmall}`}
-                    >
-                      Open
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          </section>
-        </div>
-      </main>
-      <footer className={s.foot}>
-        <b>Sīrah · Beyond Chronology</b> · The Global Awakening
-      </footer>
+          <footer className={s.foot}>
+            <b>Sīrah · Beyond Chronology</b> · The Global Awakening
+          </footer>
+        </main>
+      </div>
     </div>
+  );
+}
+
+/* ---------- Navigation ---------- */
+
+type DashboardSection = "overview" | "course" | "payments";
+const SECTIONS: DashboardSection[] = ["overview", "course", "payments"];
+
+const navIcon = (path: string) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={path} />
+  </svg>
+);
+const ICONS = {
+  overview: navIcon("M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"),
+  course: navIcon("M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z"),
+  payments: navIcon("M3 7h18v10H3zM3 11h18M7 15h3"),
+  live: navIcon("M15 10l5-3v10l-5-3M3 6h12v12H3z"),
+  resources: navIcon("M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"),
+  teaching: navIcon("M3 4h18v12H3zM8 20h8M12 16v4"),
+  admin: navIcon("M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"),
+  logout: navIcon("M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"),
+};
+
+/** An in-dashboard section: a hash link (works without JavaScript too). */
+function NavSection({
+  id,
+  current,
+  go,
+  icon,
+  children,
+}: {
+  id: DashboardSection;
+  current: DashboardSection;
+  go: (id: DashboardSection) => (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const active = current === id;
+  return (
+    <a href={`#${id}`} onClick={go(id)} className={`${s.navLink} ${active ? s.navActive : ""}`} aria-current={active ? "page" : undefined}>
+      {icon}
+      <span>{children}</span>
+    </a>
+  );
+}
+
+/** A link to an existing page. Shown but inactive when that page would not admit the student. */
+function NavRoute({ href, icon, open, children }: { href: string; icon: React.ReactNode; open: boolean; children: React.ReactNode }) {
+  if (!open)
+    return (
+      <span className={`${s.navLink} ${s.navDisabled}`} aria-disabled="true">
+        {icon}
+        <span>{children}</span>
+      </span>
+    );
+  return (
+    <Link href={href} className={s.navLink}>
+      {icon}
+      <span>{children}</span>
+    </Link>
   );
 }
 
