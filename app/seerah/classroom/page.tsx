@@ -4,6 +4,7 @@ import { ClassroomOverview } from "@/components/indigo/classroom/classroom-overv
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
+import { studentPhase5 } from "@/lib/lms/student-phase5";
 import {
   getClassroomData,
   getCompletedLessonIds,
@@ -29,6 +30,8 @@ export default async function SirahClassroomPage() {
   const now = new Date();
   // Live Zoom classes for the student's cohort, by the same paid + active rule.
   const live = (await lmsSessionsAvailable()) ? await studentSchedule(user.id, now) : null;
+  // Phase 5: the cohort's published resources and notices, calendar, inbox.
+  const phase5 = await studentPhase5(user.id, now);
 
   return (
     <ClassroomOverview
@@ -38,6 +41,7 @@ export default async function SirahClassroomPage() {
       timezone={(await viewerTimeZone()) ?? user.studentProfile?.timezone}
       now={now}
       live={live?.allowed ? live : null}
+      phase5={phase5}
     />
   );
 }

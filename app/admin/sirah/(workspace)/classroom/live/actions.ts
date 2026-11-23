@@ -1,11 +1,11 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { LmsFieldCryptoError } from "@/lib/lms/field-crypto";
 import { cancelSession, createSession, LmsSessionError, updateSession } from "@/lib/lms/sessions";
-import { dispatchLmsNotificationEmails, notifySessionScheduled, notifySessionTimeChanged } from "@/lib/lms/notifications";
+import { notifySessionScheduled, notifySessionTimeChanged } from "@/lib/lms/notifications";
+import { notifyLater } from "@/lib/lms/notify-later";
 import { prisma } from "@/lib/prisma";
 import { zonedLocalToUtc } from "@/lib/sirah/classroom";
 import { ZoomApiError } from "@/lib/zoom/client";
@@ -54,20 +54,6 @@ function describe(error: unknown): string {
   if (error instanceof ZoomApiError) return error.message;
   console.error("[lms-admin] session action failed", error instanceof Error ? error.name : "error");
   return "The session could not be saved. Please try again.";
-}
-
-/** Phase 5 notices, after the response: the cohort's students are told once
- * (in the classroom and by email). Never fails or delays the save; the
- * hourly sweep sends any email this pass does not reach. */
-function notifyLater(work: () => Promise<unknown>) {
-  after(async () => {
-    try {
-      await work();
-      await dispatchLmsNotificationEmails({ limit: 100 });
-    } catch (error) {
-      console.error("[lms-admin] notification pass failed", error instanceof Error ? error.name : "error");
-    }
-  });
 }
 
 function readSchedule(form: FormData): { startsAt: Date; durationMin: number } | string {

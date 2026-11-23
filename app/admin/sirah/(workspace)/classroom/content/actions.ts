@@ -1,7 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { after } from "next/server";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { getSessionIdentity } from "@/lib/auth/session";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
@@ -16,7 +15,8 @@ import {
   updateAnnouncement,
   type ResourceScope,
 } from "@/lib/lms/content";
-import { dispatchLmsNotificationEmails, notifyAnnouncement, notifyResource } from "@/lib/lms/notifications";
+import { notifyAnnouncement, notifyResource } from "@/lib/lms/notifications";
+import { notifyLater } from "@/lib/lms/notify-later";
 import { confirmUploadedResource, removeStoredObject, resourceUploadTicket, type UploadTicket } from "@/lib/lms/resource-upload";
 
 const PAGE = "/admin/sirah/classroom/content";
@@ -58,19 +58,6 @@ function describe(error: unknown) {
   if (error instanceof LmsContentError) return error.message;
   console.error("[lms-content] action failed", error instanceof Error ? error.name : "error");
   return "That could not be saved. Please try again.";
-}
-
-/** Runs after the response is sent: the fan-out, then a first email pass.
- * The hourly sweep sends anything this pass does not reach. */
-function notifyLater(work: () => Promise<unknown>) {
-  after(async () => {
-    try {
-      await work();
-      await dispatchLmsNotificationEmails({ limit: 100 });
-    } catch (error) {
-      console.error("[lms-content] notification pass failed", error instanceof Error ? error.name : "error");
-    }
-  });
 }
 
 /* ---------- Resources ---------- */

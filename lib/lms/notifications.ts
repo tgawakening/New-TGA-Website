@@ -177,7 +177,7 @@ export async function notifyAnnouncement(announcementId: string, now = new Date(
     "ANNOUNCEMENT",
     post.id,
     "-",
-    () => ({ title: post.title, body: post.body, link: `${CLASSROOM_LINK}#announcements` }),
+    () => ({ title: post.title, body: post.body, link: `${CLASSROOM_LINK}#cohort-notices` }),
     now,
   );
 }

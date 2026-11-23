@@ -5,6 +5,8 @@ import { classroomClock, STATUS_TEXT } from "./clock";
 import { ClassroomHeader, Dispatch, MaterialRows, ProgressBar, SectionHead } from "./parts";
 import { LiveClassesSection } from "./live-sessions";
 import type { StudentSessionView } from "@/lib/lms/schedule";
+import type { StudentAnnouncement, StudentResource } from "@/lib/lms/content";
+import { CalendarSection, CohortNotices, ResourceList } from "./phase5-sections";
 import s from "./classroom.module.css";
 
 type Data = Awaited<ReturnType<typeof getClassroomData>>;
@@ -18,6 +20,7 @@ export function ClassroomOverview({
   timezone,
   now,
   live = null,
+  phase5 = null,
 }: {
   base: string;
   data: Data;
@@ -26,6 +29,13 @@ export function ClassroomOverview({
   now: Date;
   /** Live Zoom classes for the student's cohort (null: none, or not deployed yet). */
   live?: { upcoming: StudentSessionView[]; past: StudentSessionView[]; next: StudentSessionView | null } | null;
+  /** LMS Phase 5 for the student's cohort (null: not deployed yet, or not enrolled). */
+  phase5?: {
+    resources: StudentResource[];
+    announcements: StudentAnnouncement[];
+    calendar: { https: string; webcal: string } | null;
+    inbox: { href: string; unread: number };
+  } | null;
 }) {
   const { lessons, courseMaterials, announcements } = data;
   const clock = classroomClock(timezone);
@@ -48,6 +58,7 @@ export function ClassroomOverview({
         week={progress.currentWeek ? { current: progress.currentWeek, total: progress.totalWeeks } : null}
         percent={percent}
         back={{ href: "/dashboard", label: "Dashboard" }}
+        inbox={phase5?.inbox ?? null}
       />
 
       <main className={s.wrap}>
@@ -78,6 +89,10 @@ export function ClassroomOverview({
         {live && (live.upcoming.length > 0 || live.past.length > 0) ? (
           <LiveClassesSection schedule={live} now={now} clock={clock} scheduleHref={`${base}/schedule`} />
         ) : null}
+
+        {phase5?.calendar ? <CalendarSection links={phase5.calendar} /> : null}
+
+        {phase5 ? <CohortNotices announcements={phase5.announcements} clock={clock} /> : null}
 
         {pinned.length > 0 ? (
           <section className={s.notes} aria-label="Pinned announcements">
@@ -222,6 +237,8 @@ export function ClassroomOverview({
             />
           </section>
         ) : null}
+
+        {phase5 ? <ResourceList resources={phase5.resources} /> : null}
 
         {earlier.length > 0 ? (
           <section className={s.section} aria-labelledby="announcements">

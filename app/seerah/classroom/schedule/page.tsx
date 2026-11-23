@@ -5,6 +5,8 @@ import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { JOIN_OPENS_MINUTES_BEFORE } from "@/lib/lms/access";
 import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
+import { studentPhase5 } from "@/lib/lms/student-phase5";
+import { CalendarSection } from "@/components/indigo/classroom/phase5-sections";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { classroomClock } from "@/components/indigo/classroom/clock";
 import { ClassroomHeader, SectionHead } from "@/components/indigo/classroom/parts";
@@ -27,10 +29,11 @@ export default async function LiveSchedulePage() {
   const now = new Date();
   const clock = classroomClock((await viewerTimeZone()) ?? user.studentProfile?.timezone);
   const schedule = (await lmsSessionsAvailable()) ? await studentSchedule(user.id, now) : null;
+  const phase5 = schedule?.allowed ? await studentPhase5(user.id, now) : null;
 
   return (
     <div className={s.page}>
-      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={{ href: "/seerah/classroom", label: "Classroom" }} />
+      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={{ href: "/seerah/classroom", label: "Classroom" }} inbox={phase5?.inbox ?? null} />
       <main className={s.wrap}>
         {!schedule?.allowed ? (
           <section className={s.hero} aria-labelledby="gated-title">
@@ -73,6 +76,8 @@ export default async function LiveSchedulePage() {
                 <p className={s.emptyLine}>Nothing scheduled yet.</p>
               )}
             </section>
+
+            {phase5?.calendar ? <CalendarSection links={phase5.calendar} /> : null}
 
             <section className={s.section} aria-labelledby="past">
               <SectionHead id="past">Past classes</SectionHead>
