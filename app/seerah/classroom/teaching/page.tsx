@@ -4,6 +4,7 @@ import { getSessionIdentity } from "@/lib/auth/session";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { hostsForIdentity, lmsSessionsAvailable, teacherSessions, type SessionView } from "@/lib/lms/schedule";
 import { prisma } from "@/lib/prisma";
+import { lmsContentAvailable } from "@/lib/lms/content";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { classroomClock } from "@/components/indigo/classroom/clock";
 import { ClassroomHeader, SectionHead } from "@/components/indigo/classroom/parts";
@@ -27,7 +28,18 @@ const PILL: Record<SessionView["phase"], { text: string; cls: string }> = {
   cancelled: { text: "Cancelled", cls: s.stLock },
 };
 
-function Rows({ sessions, clock, startable }: { sessions: SessionView[]; clock: ReturnType<typeof classroomClock>; startable: boolean }) {
+function Rows({
+  sessions,
+  clock,
+  startable,
+  resources,
+}: {
+  sessions: SessionView[];
+  clock: ReturnType<typeof classroomClock>;
+  startable: boolean;
+  /** Phase 5: link each session to its resources page (hosts add and publish files and links). */
+  resources: boolean;
+}) {
   return (
     <ol className={s.chapters}>
       {sessions.map((session) => {
@@ -40,6 +52,12 @@ function Rows({ sessions, clock, startable }: { sessions: SessionView[]; clock: 
                 {session.title}
                 <small>
                   <time dateTime={session.startsAt.toISOString()}>{clock.shortDate.format(session.startsAt)}</time> · {session.cohortId}
+                  {resources ? (
+                    <>
+                      {" · "}
+                      <a href={`/seerah/classroom/teaching/resources/${encodeURIComponent(session.id)}`}>Resources</a>
+                    </>
+                  ) : null}
                 </small>
               </span>
               {canStart ? (
@@ -72,6 +90,7 @@ export default async function TeacherSessionsPage() {
     now,
   );
   const next = upcoming.find((v) => v.phase !== "cancelled");
+  const resources = await lmsContentAvailable();
 
   return (
     <div className={s.page}>
@@ -93,12 +112,12 @@ export default async function TeacherSessionsPage() {
         <section className={s.section} aria-labelledby="upcoming">
           <SectionHead id="upcoming">Upcoming</SectionHead>
           <p className={s.sectionLede}>Times are your time ({clock.zoneName}). Signed in as {identity.email}.</p>
-          {upcoming.length ? <Rows sessions={upcoming} clock={clock} startable /> : <p className={s.emptyLine}>Nothing scheduled.</p>}
+          {upcoming.length ? <Rows sessions={upcoming} clock={clock} startable resources={resources} /> : <p className={s.emptyLine}>Nothing scheduled.</p>}
         </section>
 
         <section className={s.section} aria-labelledby="past">
           <SectionHead id="past">Past</SectionHead>
-          {past.length ? <Rows sessions={past} clock={clock} startable={false} /> : <p className={s.emptyLine}>No past sessions yet.</p>}
+          {past.length ? <Rows sessions={past} clock={clock} startable={false} resources={resources} /> : <p className={s.emptyLine}>No past sessions yet.</p>}
         </section>
       </main>
       <footer className={s.foot}>

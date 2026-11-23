@@ -9,6 +9,7 @@ import {
 import { ClassroomCountdown } from "@/components/sirah/classroom-countdown";
 import type { ClassroomClock } from "./clock";
 import s from "./classroom.module.css";
+import p5 from "./phase5.module.css";
 import { BrandLogo } from "@/components/brand-logo";
 
 /* ---------- Header ---------- */
@@ -17,11 +18,14 @@ export function ClassroomHeader({
   week,
   percent,
   back,
+  inbox,
 }: {
   home: string;
   week: { current: number; total: number } | null;
   percent: number | null;
   back: { href: string; label: string };
+  /** LMS Phase 5: the notifications link and unread count (omitted before the migration). */
+  inbox?: { href: string; unread: number } | null;
 }) {
   return (
     <header className={s.header}>
@@ -49,6 +53,23 @@ export function ClassroomHeader({
           >
             <i>{percent}%</i>
           </span>
+        ) : null}
+        {inbox ? (
+          <Link
+            href={inbox.href}
+            className={p5.bell}
+            aria-label={inbox.unread ? `Notifications, ${inbox.unread} unread` : "Notifications"}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+            </svg>
+            <span className={p5.bellLabel}>Notifications</span>
+            {inbox.unread ? (
+              <span className={p5.count} aria-hidden="true">
+                {inbox.unread > 99 ? "99+" : inbox.unread}
+              </span>
+            ) : null}
+          </Link>
         ) : null}
         <Link href={back.href} className={s.back}>
           {back.label}

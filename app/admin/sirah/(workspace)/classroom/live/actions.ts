@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { LmsFieldCryptoError } from "@/lib/lms/field-crypto";
 import { cancelSession, createSession, LmsSessionError, updateSession } from "@/lib/lms/sessions";
+import { notifySessionScheduled, notifySessionTimeChanged } from "@/lib/lms/notifications";
+import { notifyLater } from "@/lib/lms/notify-later";
+import { prisma } from "@/lib/prisma";
 import { zonedLocalToUtc } from "@/lib/sirah/classroom";
 import { ZoomApiError } from "@/lib/zoom/client";
 import { ZoomConfigError } from "@/lib/zoom/env";
@@ -75,6 +78,7 @@ export async function createLiveSession(form: FormData) {
     error = describe(failure);
   }
   if (error) back({ error, cohort, anchor: "new-session" });
+  notifyLater(() => notifySessionScheduled(id));
   done("Session scheduled. The Zoom meeting was created.", cohort, `live-${id}`);
 }
 
@@ -86,12 +90,15 @@ export async function updateLiveSession(form: FormData) {
   if (typeof schedule === "string") back({ error: schedule, cohort, anchor: `live-${id}` });
 
   let error = "";
+  const before = await prisma.lmsSession.findUnique({ where: { id }, select: { startsAt: true } });
   try {
     await updateSession(id, { title: text(form, "title"), ...schedule });
   } catch (failure) {
     error = describe(failure);
   }
   if (error) back({ error, cohort, anchor: `live-${id}` });
+  // Only a moved start notifies; a title or duration edit does not.
+  if (before && before.startsAt.getTime() !== schedule.startsAt.getTime()) notifyLater(() => notifySessionTimeChanged(id, before.startsAt));
   done("Session saved. The Zoom meeting was updated.", cohort, `live-${id}`);
 }
 

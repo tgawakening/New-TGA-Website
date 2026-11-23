@@ -19,6 +19,7 @@ import {
   paypalRequest,
 } from "./sirah-online.service";
 import { runClassroomEmails } from "./sirah-classroom-email.service";
+import { runLmsNotifications } from "@/lib/lms/notifications";
 import { purgeExpiredArchivedSirahOrders } from "./sirah-records.service";
 
 /** Minutes a checkout may sit in PROCESSING before the sweep reconciles it. */
@@ -295,6 +296,9 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
   // Classroom email (welcome backstop, class reminders, announcements). Its
   // own failure is reported, never allowed to fail the payment sweep.
   const classroomEmail = await runClassroomEmails(now).catch(() => ({ available: true, error: "Classroom email pass failed." }));
+  // LMS notifications (class starting soon, then any queued notice emails).
+  // Same isolation: its failure is reported, never fails the payment sweep.
+  const lmsNotifications = await runLmsNotifications(now).catch(() => ({ available: true, error: "LMS notification pass failed." }));
   // Hard-delete orders archived (admin "Delete") more than 7 days ago. This is
   // the only place an order is ever deleted. Its failure never fails the sweep.
   const archivePurge = await purgeExpiredArchivedSirahOrders(now).catch(() => {
@@ -308,6 +312,7 @@ export async function maintainSirahOrders(options: { stripe?: Stripe } = {}) {
     failures,
     ...notifications,
     classroomEmail,
+    lmsNotifications,
     archivePurge,
   };
 }
