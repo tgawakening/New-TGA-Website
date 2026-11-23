@@ -846,6 +846,7 @@ model LmsSession {
   attendanceIntervals AttendanceInterval[]
   attendance  Attendance[]
   resources           LmsResource[]
+  recordings          Recording[]
 
   @@index([cohortId, startsAt])
   @@index([zoomHostId, startsAt])
@@ -1031,4 +1032,75 @@ model LmsNotification {
   @@index([userId, readAt])
   @@index([userId, createdAt])
   @@index([emailState, emailLockedUntil])
+}
+
+/// Where a recording or one of its files is in the copy from Zoom cloud
+/// storage into our own object storage (lib/lms/recordings).
+enum RecordingCopyStatus {
+  PENDING
+  COPYING
+  READY
+  FAILED
+}
+
+/// Whether enrolled students may watch a recording. New recordings start
+/// HIDDEN; staff publish them from the Live sessions admin.
+enum RecordingVisibility {
+  HIDDEN
+  PUBLISHED
+}
+
+/// Which Zoom cloud-recording file an asset is.
+enum RecordingAssetKind {
+  VIDEO
+  AUDIO
+  TRANSCRIPT
+  CHAT
+}
+
+/// One Zoom cloud recording of a session's meeting instance (one meeting
+/// UUID), ingested from recording.completed webhooks or the backfill. status
+/// follows its primary media file (VIDEO, else AUDIO). The Zoom cloud copy is
+/// kept; nothing here deletes it.
+model Recording {
+  id              String              @id @default(cuid())
+  sessionId       String
+  zoomMeetingUuid String              @unique @db.VarChar(128)
+  startedAt       DateTime?           @db.DateTime(3)
+  endedAt         DateTime?           @db.DateTime(3)
+  status          RecordingCopyStatus @default(PENDING)
+  visibility      RecordingVisibility @default(HIDDEN)
+  publishedAt     DateTime?           @db.DateTime(3)
+  attempts        Int                 @default(0)
+  lastError       String?             @db.Text
+  createdAt       DateTime            @default(now()) @db.DateTime(3)
+  updatedAt       DateTime            @updatedAt @db.DateTime(3)
+
+  session LmsSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  assets  RecordingAsset[]
+
+  @@index([sessionId])
+  @@index([status, visibility])
+}
+
+/// One file of a Recording, copied from Zoom into object storage. storageKey
+/// is set once the object is stored; it is never sent to a browser (students
+/// get a short-lived presigned URL from the play route instead).
+model RecordingAsset {
+  id          String              @id @default(cuid())
+  recordingId String
+  kind        RecordingAssetKind
+  zoomFileId  String              @unique @db.VarChar(191)
+  sizeBytes   BigInt              @default(0)
+  storageKey  String?             @db.VarChar(512)
+  status      RecordingCopyStatus @default(PENDING)
+  attempts    Int                 @default(0)
+  lastError   String?             @db.Text
+  createdAt   DateTime            @default(now()) @db.DateTime(3)
+  updatedAt   DateTime            @updatedAt @db.DateTime(3)
+
+  recording Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+
+  @@index([recordingId])
+  @@index([status, updatedAt])
 }

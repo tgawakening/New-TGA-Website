@@ -7,6 +7,7 @@ import { cancelSession, createSession, LmsSessionError, updateSession } from "@/
 import { notifySessionScheduled, notifySessionTimeChanged } from "@/lib/lms/notifications";
 import { notifyLater } from "@/lib/lms/notify-later";
 import { prisma } from "@/lib/prisma";
+import { RecordingActionError, retryRecordingAsset, setRecordingVisibility } from "@/lib/lms/recordings";
 import { zonedLocalToUtc } from "@/lib/sirah/classroom";
 import { ZoomApiError } from "@/lib/zoom/client";
 import { ZoomConfigError } from "@/lib/zoom/env";
@@ -114,4 +115,35 @@ export async function cancelLiveSession(form: FormData) {
   }
   if (error) back({ error, cohort, anchor: `live-${id}` });
   done("Session cancelled. The Zoom meeting was deleted.", cohort, `live-${id}`);
+}
+
+/** Recordings (Phase 4): a failed file goes back to the copy queue. */
+export async function retryRecordingFile(form: FormData) {
+  await requireSessionEditor();
+  const sessionId = text(form, "sessionId");
+  const cohort = text(form, "cohortId");
+  let error = "";
+  try {
+    await retryRecordingAsset(text(form, "assetId"));
+  } catch (failure) {
+    error = failure instanceof RecordingActionError ? failure.message : describe(failure);
+  }
+  if (error) back({ error, cohort, anchor: `live-${sessionId}` });
+  done("Queued again. The next copy run picks it up.", cohort, `live-${sessionId}`);
+}
+
+/** Recordings (Phase 4): publish to enrolled students, or hide again. */
+export async function setRecordingPublished(form: FormData) {
+  await requireSessionEditor();
+  const sessionId = text(form, "sessionId");
+  const cohort = text(form, "cohortId");
+  const publish = text(form, "publish") === "1";
+  let error = "";
+  try {
+    await setRecordingVisibility(text(form, "recordingId"), publish);
+  } catch (failure) {
+    error = failure instanceof RecordingActionError ? failure.message : describe(failure);
+  }
+  if (error) back({ error, cohort, anchor: `live-${sessionId}` });
+  done(publish ? "Recording published to enrolled students." : "Recording hidden from students.", cohort, `live-${sessionId}`);
 }

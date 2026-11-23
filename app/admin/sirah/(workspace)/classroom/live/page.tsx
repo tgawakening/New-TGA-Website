@@ -23,7 +23,9 @@ import { ScheduleFields, SelectField } from "@/components/sirah/classroom-picker
 import { CancelSessionButton } from "@/components/sirah/cancel-session-button";
 import "@/app/seerah/classroom/tokens.css";
 import styles from "@/components/sirah/admin-classroom.module.css";
-import { cancelLiveSession, createLiveSession, updateLiveSession } from "./actions";
+import { recordingsAvailable, recordingsForSessions, type RecordingAdminView } from "@/lib/lms/recordings";
+import { RECORDING_MAX_AUTO_ATTEMPTS } from "@/lib/lms/recording-policy";
+import { cancelLiveSession, createLiveSession, retryRecordingFile, setRecordingPublished, updateLiveSession } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -220,10 +222,94 @@ function AttendanceList({ attendance }: { attendance: SessionAttendance | undefi
   );
 }
 
+const COPY_TEXT = { PENDING: "Waiting to copy", COPYING: "Copying", READY: "Copied", FAILED: "Failed" } as const;
+const ASSET_TEXT = { VIDEO: "Video", AUDIO: "Audio", TRANSCRIPT: "Transcript", CHAT: "Chat" } as const;
+
+function sizeText(bytes: number) {
+  if (!bytes) return "size unknown";
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.max(1, Math.round(mb))} MB`;
+}
+
+/** Recording status per Zoom recording of this session: copy state, files, Retry and Publish. */
+function RecordingPanel({ recordings, session }: { recordings: RecordingAdminView[] | undefined; session: SessionView }) {
+  if (!recordings?.length)
+    return (
+      <p className={styles.emptyLine}>
+        No recording yet. When Zoom finishes processing a cloud recording of this class, it is copied here automatically.
+      </p>
+    );
+  return (
+    <ul className={styles.rows}>
+      {recordings.map((recording) => (
+        <li key={recording.id} className={styles.row}>
+          <span
+            className={
+              recording.status === "FAILED"
+                ? styles.warn
+                : `${styles.status} ${recording.status === "READY" && recording.visibility === "PUBLISHED" ? styles.statusLive : ""}`
+            }
+          >
+            {recording.status === "READY" ? (recording.visibility === "PUBLISHED" ? "Published" : "Ready, hidden") : COPY_TEXT[recording.status]}
+          </span>
+          <span className={styles.rowMain}>
+            <span>
+              {recording.startedAt ? `Recorded ${listDate.format(recording.startedAt)}` : "Zoom recording"}
+              {recording.endedAt ? ` to ${endTime.format(recording.endedAt)}` : ""}
+            </span>
+            {recording.assets.map((asset) => (
+              <span key={asset.id} className={styles.rowMeta}>
+                {ASSET_TEXT[asset.kind]} · {sizeText(asset.sizeBytes)} · {COPY_TEXT[asset.status]}
+                {asset.status === "FAILED"
+                  ? ` (attempt ${asset.attempts}${asset.attempts < RECORDING_MAX_AUTO_ATTEMPTS ? `; retries automatically up to ${RECORDING_MAX_AUTO_ATTEMPTS}` : ""})`
+                  : ""}
+                {asset.lastError && asset.status !== "READY" ? ` · ${asset.lastError}` : ""}
+              </span>
+            ))}
+            <span className={styles.rowMeta}>
+              {recording.visibility === "PUBLISHED"
+                ? `Visible to enrolled students${recording.publishedAt ? ` since ${listDate.format(recording.publishedAt)}` : ""}. Stream only.`
+                : recording.status === "READY"
+                  ? "Hidden from students until you publish it."
+                  : "Can be published once the video is copied."}
+            </span>
+          </span>
+          <div className={styles.rowActions}>
+            {recording.assets
+              .filter((asset) => asset.status === "FAILED")
+              .map((asset) => (
+                <form key={asset.id} action={retryRecordingFile}>
+                  <input type="hidden" name="assetId" value={asset.id} />
+                  <input type="hidden" name="sessionId" value={session.id} />
+                  <input type="hidden" name="cohortId" value={session.cohortId} />
+                  <button type="submit" className={styles.secondarySmall}>
+                    Retry {ASSET_TEXT[asset.kind].toLowerCase()}
+                  </button>
+                </form>
+              ))}
+            {recording.status === "READY" || recording.visibility === "PUBLISHED" ? (
+              <form action={setRecordingPublished}>
+                <input type="hidden" name="recordingId" value={recording.id} />
+                <input type="hidden" name="sessionId" value={session.id} />
+                <input type="hidden" name="cohortId" value={session.cohortId} />
+                <input type="hidden" name="publish" value={recording.visibility === "PUBLISHED" ? "0" : "1"} />
+                <button type="submit" className={styles.secondarySmall}>
+                  {recording.visibility === "PUBLISHED" ? "Unpublish" : "Publish"}
+                </button>
+              </form>
+            ) : null}
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function SessionLedger({
   sessions,
   counts,
   attendance,
+  recordings,
   now,
   canStart,
   editable,
@@ -233,6 +319,8 @@ function SessionLedger({
   sessions: SessionView[];
   counts: Map<string, JoinCounts>;
   attendance: Map<string, SessionAttendance>;
+  /** Phase 4. Absent until the recordings migration is deployed. */
+  recordings?: Map<string, RecordingAdminView[]>;
   now: Date;
   canStart: boolean;
   editable: boolean;
@@ -329,6 +417,13 @@ function SessionLedger({
                   </div>
                 ) : null}
 
+                {recordings && (session.phase === "past" || recordings.has(session.id)) ? (
+                  <div className={styles.subsection}>
+                    <h4 className={styles.subTitle}>Recording</h4>
+                    <RecordingPanel recordings={recordings.get(session.id)} session={session} />
+                  </div>
+                ) : null}
+
                 {editable && open ? (
                   <>
                     <form action={updateLiveSession} className={styles.form}>
@@ -396,6 +491,9 @@ export default async function LiveSessionsAdminPage({
   const now = new Date();
   const data = cohortId ? await adminSessionsForCohort(cohortId, now) : null;
   const attendance = data ? await attendanceForSessions([...data.upcoming, ...data.past], now) : new Map<string, SessionAttendance>();
+  // Phase 4: undefined until the recordings migration is deployed, so the page works either way.
+  const recordings =
+    data && (await recordingsAvailable()) ? await recordingsForSessions([...data.upcoming, ...data.past].map((s) => s.id)) : undefined;
   // The start route admits the env super admin or the host's own account.
   const canStart = access.role === "SUPER_ADMIN";
   const nextUp = data?.upcoming.find((s) => s.phase !== "cancelled");
@@ -479,7 +577,16 @@ export default async function LiveSessionsAdminPage({
                 <p>Sessions you schedule appear here and in every enrolled student&rsquo;s classroom.</p>
               </div>
             ) : (
-              <SessionLedger sessions={data.upcoming} counts={data.counts} attendance={attendance} now={now} canStart={canStart} editable zone={zone} />
+              <SessionLedger
+                sessions={data.upcoming}
+                counts={data.counts}
+                attendance={attendance}
+                recordings={recordings}
+                zone={zone}
+                now={now}
+                canStart={canStart}
+                editable
+              />
             )}
           </section>
 
@@ -488,12 +595,23 @@ export default async function LiveSessionsAdminPage({
               <h3 id="past-title" className={styles.cardTitle}>
                 Past
               </h3>
-              <p className={styles.cardLede}>Latest first, with how many students joined. Recordings come in a later phase.</p>
+              <p className={styles.cardLede}>
+                Latest first, with how many students joined. Open one for its attendance and recording (copy status, Publish).
+              </p>
             </div>
             {data.past.length === 0 ? (
               <p className={styles.emptyLine}>No past sessions yet.</p>
             ) : (
-              <SessionLedger sessions={data.past} counts={data.counts} attendance={attendance} now={now} canStart={false} editable={false} zone={zone} />
+              <SessionLedger
+                sessions={data.past}
+                counts={data.counts}
+                attendance={attendance}
+                recordings={recordings}
+                zone={zone}
+                now={now}
+                canStart={false}
+                editable={false}
+              />
             )}
           </section>
         </>

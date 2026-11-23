@@ -20,6 +20,8 @@ export const ZOOM_SCOPES = {
   updateMeeting: { granular: "meeting:update:meeting:admin", classic: "meeting:write:admin" },
   deleteMeeting: { granular: "meeting:delete:meeting:admin", classic: "meeting:write:admin" },
   listRecordings: { granular: "cloud_recording:read:list_recording_files:admin", classic: "recording:read:admin" },
+  listUserRecordings: { granular: "cloud_recording:read:list_user_recordings:admin", classic: "recording:read:admin" },
+  downloadRecording: { granular: "cloud_recording:read:recording:admin", classic: "recording:read:admin" },
   getPastMeetingParticipants: { granular: "meeting:read:list_past_participants:admin", classic: "meeting:read:admin" },
   getUser: { granular: "user:read:user:admin", classic: "user:read:admin" },
 } satisfies Record<string, ScopeSpec>;
@@ -300,6 +302,52 @@ export async function deleteMeeting(meetingId: string | number, options: { occur
 /** Cloud recordings for a meeting ID (latest instance) or a specific meeting UUID. */
 export function listRecordings(meetingIdOrUuid: string | number): Promise<ZoomMeetingRecordings> {
   return call("listRecordings", `/meetings/${encodeMeetingIdOrUuid(meetingIdOrUuid)}/recordings`);
+}
+
+/**
+ * A host's cloud recordings with a start date in [from, to] (UTC dates;
+ * Zoom allows at most one month per request). Follows pagination.
+ */
+export async function listUserRecordings(hostUserId: string, from: Date, to: Date): Promise<ZoomMeetingRecordings[]> {
+  const day = (date: Date) => date.toISOString().slice(0, 10);
+  const meetings: ZoomMeetingRecordings[] = [];
+  let nextPageToken: string | undefined;
+  do {
+    const page = await call<{ meetings?: ZoomMeetingRecordings[]; next_page_token?: string }>(
+      "listUserRecordings",
+      withQuery(`/users/${encodeURIComponent(hostUserId)}/recordings`, {
+        from: day(from),
+        to: day(to),
+        page_size: 300,
+        next_page_token: nextPageToken,
+      }),
+    );
+    meetings.push(...(page.meetings ?? []));
+    nextPageToken = page.next_page_token || undefined;
+  } while (nextPageToken);
+  return meetings;
+}
+
+/**
+ * Open a cloud-recording file's download_url as a stream, with the OAuth
+ * bearer token (Zoom then redirects to its storage). Only Zoom's own HTTPS
+ * hosts are fetched. The caller must consume or cancel the body; the URL is
+ * never logged or returned.
+ */
+export async function openRecordingDownload(downloadUrl: string): Promise<Response> {
+  let url: URL;
+  try {
+    url = new URL(downloadUrl);
+  } catch {
+    throw new ZoomApiError("Zoom downloadRecording failed: the download URL is not valid.", "downloadRecording", 0);
+  }
+  const host = url.hostname.toLowerCase();
+  if (url.protocol !== "https:" || !["zoom.us", "zoomgov.com"].some((domain) => host === domain || host.endsWith(`.${domain}`)))
+    throw new ZoomApiError("Zoom downloadRecording failed: the download URL is not a Zoom URL.", "downloadRecording", 0);
+  const response = await zoomFetch(url.toString(), { method: "GET" });
+  if (!response.ok) return fail("downloadRecording", response);
+  if (!response.body) throw new ZoomApiError("Zoom downloadRecording failed: empty response body.", "downloadRecording", response.status);
+  return response;
 }
 
 /** All participants of an ended meeting instance (follows pagination). */
