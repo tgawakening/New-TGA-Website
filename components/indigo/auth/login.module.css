@@ -448,6 +448,87 @@
   .top {
     padding-top: var(--sp-6);
   }
+  /* Forgot / reset password: one centred card, wordmark stays in the top bar. */
+  .solo .split {
+    grid-template-columns: minmax(0, 28rem);
+    gap: 0;
+  }
+  .solo .topMark {
+    visibility: visible;
+  }
+}
+
+/* ---------- Forgot / reset password states ---------- */
+.help {
+  font-size: var(--fs-xs);
+  color: var(--faint);
+}
+
+.success,
+.expired {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+}
+
+.success {
+  border: 1px solid rgba(43, 182, 163, 0.35);
+  background: rgba(43, 182, 163, 0.1);
+  color: var(--sand);
+}
+
+.expired {
+  border: 1px solid rgba(217, 121, 79, 0.4);
+  background: rgba(217, 121, 79, 0.1);
+  color: var(--sand);
+}
+
+.stateIcon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--sp-4);
+  border-radius: 50%;
+  background: rgba(43, 182, 163, 0.14);
+  color: var(--tealb);
+}
+
+.stateIconWarn {
+  background: rgba(217, 121, 79, 0.14);
+  color: var(--terrab);
+}
+
+.stateIcon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.buttons {
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+}
+
+/* "Remembered it?" + a secondary button, under a hairline. */
+.altRow {
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--line);
+}
+
+/* Link-buttons: the button look, no underline. */
+a.primary,
+a.ghost {
+  text-decoration: none;
+}
+
+a.primary {
+  margin-top: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
