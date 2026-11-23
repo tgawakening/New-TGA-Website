@@ -1,6 +1,7 @@
-/* Indigo Geometry · sign in. A calm split: the welcome and the living geometry
- * on one side, the form on the other. Phones: form first after a short intro.
- * Only transform and opacity animate. */
+/* Indigo Geometry · sign in. The card is centred in the viewport on the navy
+ * ground; on desktop a short welcome (logo, one line, two notes) sits beside
+ * it, and on tablet and phone only the card shows. Only transform and
+ * opacity animate. */
 
 .page {
   position: relative;
@@ -43,7 +44,7 @@
   outline-offset: 3px;
 }
 
-/* Top bar */
+/* Top bar: wordmark (tablet and phone only) and the way back */
 .top {
   display: flex;
   align-items: center;
@@ -55,73 +56,69 @@
   padding: var(--sp-4) var(--gutter);
 }
 
-.back {
-  position: relative;
-  padding: var(--sp-2) 0;
-  font-size: var(--fs-xs);
-  color: var(--dim);
-  text-decoration: none;
-}
-
-.back::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 4px;
-  height: 1px;
-  background: var(--teal);
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.3s var(--ease);
-}
-
-.back:hover {
-  color: var(--sand);
-}
-
-.back:hover::after,
-.back:focus-visible::after {
-  transform: scaleX(1);
-}
-
-/* Split */
-.split {
-  flex: 1;
-  display: grid;
-  gap: var(--sp-6);
-  width: 100%;
-  max-width: var(--wrap);
-  margin: 0 auto;
-  padding: var(--sp-4) var(--gutter) var(--sp-12);
-}
-
-.intro {
-  position: relative;
+.topMark {
+  display: inline-flex;
   min-width: 0;
 }
 
-/* The geometry: a watermark behind the intro on phones, a presence on desktop */
-.introRig {
-  position: absolute;
-  top: -2rem;
-  right: -7rem;
-  width: 18rem;
-  opacity: 0.22;
-  perspective: 900px;
-  pointer-events: none;
+/* "Back to the site": a ghost button, always top right */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: rgba(237, 234, 223, 0.03);
+  color: var(--sand);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 
-.introCopy {
-  position: relative;
+.back svg {
+  width: 15px;
+  height: 15px;
+  transition: transform var(--dur) var(--ease);
+}
+
+.back:hover {
+  border-color: var(--teal);
+  background: rgba(43, 182, 163, 0.08);
+  color: var(--tealb);
+}
+
+.back:hover svg {
+  transform: translate3d(-2px, 0, 0);
+}
+
+/* The stage: the card centred both ways in the space under the top bar */
+.split {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--gutter) var(--sp-12);
+}
+
+/* The short welcome: desktop only */
+.intro {
+  display: none;
+  min-width: 0;
 }
 
 .title {
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-6);
   font-family: var(--display);
   font-weight: 500;
-  font-size: clamp(2rem, 1.4rem + 3vw, 3.25rem);
-  line-height: 1.05;
+  font-size: clamp(1.75rem, 1.2rem + 1.6vw, 2.5rem);
+  line-height: 1.1;
   letter-spacing: var(--track-display);
 }
 
@@ -131,36 +128,27 @@
   color: var(--tealb);
 }
 
-.lede {
-  max-width: 30rem;
-  margin-top: var(--sp-4);
-  color: var(--dim);
-  line-height: var(--lh-body);
-  text-wrap: pretty;
-}
-
 .notes {
-  display: none;
+  display: grid;
   gap: var(--sp-3);
-  max-width: 30rem;
-  margin-top: var(--sp-8);
+  max-width: 22rem;
+  margin-top: var(--sp-6);
   padding: 0;
   list-style: none;
 }
 
 .notes li {
   position: relative;
-  display: grid;
-  gap: 2px;
   padding-left: var(--sp-6);
   font-size: var(--fs-sm);
+  color: var(--dim);
 }
 
 .notes li::before {
   content: "";
   position: absolute;
   left: 2px;
-  top: 0.55em;
+  top: 0.6em;
   width: 7px;
   height: 7px;
   border-radius: 1px;
@@ -168,16 +156,10 @@
   transform: rotate(45deg);
 }
 
-.notes b {
-  font-weight: 600;
-}
-
-.notes span {
-  color: var(--faint);
-}
-
 /* Form card */
 .panel {
+  width: 100%;
+  max-width: 28rem;
   min-width: 0;
 }
 
@@ -207,6 +189,13 @@
   font-weight: 500;
   font-size: var(--fs-2xl);
   letter-spacing: var(--track-title);
+}
+
+.cardLede {
+  margin-top: var(--sp-2);
+  color: var(--dim);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
 }
 
 .status {
@@ -263,6 +252,47 @@
 
 .input[aria-invalid="true"] {
   border-color: rgba(217, 121, 79, 0.6);
+}
+
+/* Password with a show/hide toggle inside the field, on the right */
+.passwordWrap {
+  position: relative;
+}
+
+.passwordInput {
+  padding-right: 3.25rem;
+}
+
+.reveal {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.reveal svg {
+  width: 20px;
+  height: 20px;
+}
+
+.reveal:hover {
+  color: var(--tealb);
+  background: rgba(237, 234, 223, 0.06);
+}
+
+.page .reveal:focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 0;
 }
 
 .error {
@@ -395,37 +425,25 @@
   .card {
     padding: var(--sp-10) var(--sp-8);
   }
-  .notes {
-    display: grid;
-  }
 }
 
-@media (min-width: 60rem) {
+/* Desktop: the short welcome beside the card; the pair is centred as one
+ * group, and the wordmark moves from the top bar into the welcome. */
+@media (min-width: 64rem) {
   .split {
-    grid-template-columns: 1.1fr 0.9fr;
+    grid-template-columns: minmax(0, 22rem) minmax(0, 28rem);
+    justify-content: center;
+    align-content: center;
     gap: var(--sp-16);
-    align-items: center;
-    padding-top: var(--sp-8);
+    padding-top: var(--sp-4);
     padding-bottom: var(--sp-16);
   }
-  /* Desktop: the geometry becomes a halo behind the sign-in card, so the
-   * reading side stays clean and the form is the thing framed. */
-  .split {
-    position: relative;
-  }
   .intro {
-    position: static;
+    display: block;
+    justify-self: end;
   }
-  .introRig {
-    top: 50%;
-    right: calc(var(--gutter) - 4.25rem); /* centred on the ~29.5rem card */
-    width: 38rem;
-    opacity: 0.38;
-    transform: translateY(-50%);
-  }
-  .panel {
-    position: relative;
-    z-index: 1;
+  .topMark {
+    visibility: hidden;
   }
   .top {
     padding-top: var(--sp-6);
@@ -433,7 +451,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .back::after,
+  .back,
+  .back svg,
   .primary,
   .primary::after,
   .ghost::after,
