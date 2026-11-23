@@ -107,6 +107,8 @@ model User {
   sirahLessonProgress     SirahLessonProgress[]
   sirahClassroomEmails    SirahClassroomEmail[]
   passwordResetTokens     PasswordResetToken[]
+  /// Prisma-side back-relation only: no column on User.
+  lmsNotifications        LmsNotification[]
 }
 
 model StudentProfile {
@@ -598,7 +600,6 @@ model SirahNotification {
   @@index([state, lockedUntil])
 }
 
-
 // Scoped payment-resume grants; these never create a general account session.
 model SirahResumeLink {
   id        String     @id @default(cuid())
@@ -627,8 +628,10 @@ model SirahCohort {
   /// same month; after it, access pauses until payment. Must be after billingDay.
   graceDay       Int      @default(15)
   updatedAt      DateTime @updatedAt
-  /// Prisma-side back-relation only: no column on SirahCohort.
+  /// Prisma-side back-relations only: no column on SirahCohort.
   lmsSessions    LmsSession[]
+  lmsResources     LmsResource[]
+  lmsAnnouncements LmsAnnouncement[]
 }
 
 /// Append-only record of Sīrah workspace access changes (add, promote, demote,
@@ -842,6 +845,7 @@ model LmsSession {
   joinIntents SessionJoinIntent[]
   attendanceIntervals AttendanceInterval[]
   attendance  Attendance[]
+  resources           LmsResource[]
 
   @@index([cohortId, startsAt])
   @@index([zoomHostId, startsAt])
@@ -940,4 +944,91 @@ model Attendance {
 
   @@unique([sessionId, userId])
   @@index([userId])
+}
+
+// ── LMS Phase 5: resources, announcements, notifications ───────────────────
+
+enum LmsResourceKind {
+  FILE
+  LINK
+}
+
+enum LmsVisibility {
+  HIDDEN
+  PUBLISHED
+}
+
+/// A course material for a whole cohort (cohortId set) or one live session
+/// (sessionId set; its cohort is the session's). Exactly one of the two is
+/// set, enforced by the service. FILE: the object lives in the private Spaces
+/// bucket under storageKey and reaches students only as a short-lived
+/// presigned GET from the enrolment-checked route; url stays null. LINK: url
+/// is the https link; storageKey stays null. Hidden until published.
+model LmsResource {
+  id               String          @id @default(cuid())
+  cohortId         String?
+  sessionId        String?
+  title            String          @db.VarChar(191)
+  kind             LmsResourceKind
+  storageKey       String?         @unique @db.VarChar(191)
+  url              String?         @db.VarChar(1024)
+  contentType      String?         @db.VarChar(191)
+  sizeBytes        BigInt?
+  originalFilename String?         @db.VarChar(255)
+  visibility       LmsVisibility   @default(HIDDEN)
+  publishedAt      DateTime?       @db.DateTime(3)
+  uploadedBy       String          @db.VarChar(320)
+  createdAt        DateTime        @default(now()) @db.DateTime(3)
+  updatedAt        DateTime        @updatedAt @db.DateTime(3)
+
+  cohort  SirahCohort? @relation(fields: [cohortId], references: [batchCode], onDelete: Restrict)
+  session LmsSession?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([cohortId, visibility])
+  @@index([sessionId, visibility])
+}
+
+/// A notice to one cohort. publishedAt null = draft (students never see it).
+model LmsAnnouncement {
+  id          String    @id @default(cuid())
+  cohortId    String
+  title       String    @db.VarChar(191)
+  body        String    @db.Text
+  publishedAt DateTime? @db.DateTime(3)
+  createdBy   String    @db.VarChar(320)
+  createdAt   DateTime  @default(now()) @db.DateTime(3)
+  updatedAt   DateTime  @updatedAt @db.DateTime(3)
+
+  cohort SirahCohort @relation(fields: [cohortId], references: [batchCode], onDelete: Restrict)
+
+  @@index([cohortId, publishedAt])
+}
+
+/// One in-app notification for one student, and its email. dedupeKey is
+/// unique per (event, subject, student), so an event never notifies or
+/// emails anyone twice. emailState: null = in-app only; PENDING / SENDING /
+/// FAILED while queued; SENT, CANCELLED or GAVE_UP when settled. The email is
+/// rendered and the enrolment re-checked when it is sent.
+model LmsNotification {
+  id               String    @id @default(cuid())
+  userId           String
+  type             String    @db.VarChar(64)
+  title            String    @db.VarChar(191)
+  body             String    @db.Text
+  link             String?   @db.VarChar(1024)
+  readAt           DateTime? @db.DateTime(3)
+  createdAt        DateTime  @default(now()) @db.DateTime(3)
+  dedupeKey        String    @unique @db.VarChar(191)
+  emailState       String?   @db.VarChar(32)
+  emailAttempts    Int       @default(0)
+  emailLockedUntil DateTime? @db.DateTime(3)
+  emailSentAt      DateTime? @db.DateTime(3)
+  emailProviderId  String?   @db.VarChar(191)
+  emailError       String?   @db.VarChar(500)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@index([emailState, emailLockedUntil])
 }
