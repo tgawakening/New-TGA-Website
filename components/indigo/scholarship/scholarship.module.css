@@ -110,7 +110,7 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  padding: 28px 16px 32px;
+  padding: 20px 16px 24px;
 }
 
 .heroRosette {
@@ -130,7 +130,7 @@
 }
 
 .heroInner {
-  max-width: 1100px;
+  max-width: 820px;
   margin: 0 auto;
 }
 
@@ -155,7 +155,7 @@
 
 .facts {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin: 24px 0 0;
   padding: 0;
@@ -176,54 +176,88 @@
 .facts strong {
   font-family: var(--display);
   font-weight: 500;
-  font-size: var(--fs-xl);
+  font-size: var(--fs-lg);
   line-height: 1.1;
   color: var(--gold);
 }
 
 .facts span {
-  font-size: var(--fs-xs);
-  line-height: 1.35;
-  color: var(--faint);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--dim);
+}
+
+/* "How selection works": the long explainer, folded away. */
+.explainer {
+  max-width: 640px;
+  margin: 14px 0 0;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-md);
+  background: var(--surface-grad);
+}
+
+.explainer summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--tealb);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.explainer summary::-webkit-details-marker {
+  display: none;
+}
+
+.explainer summary::before {
+  content: "+";
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.explainer[open] summary::before {
+  content: "−";
+}
+
+.explainer summary:focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 2px;
+  border-radius: var(--r-md);
+}
+
+.explainer > div {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.explainer > div > p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--dim);
 }
 
 /* ---------- Layout ---------- */
 .layout {
   display: grid;
   gap: 20px;
-  max-width: 1100px;
+  max-width: 820px;
   margin: 0 auto;
   padding: 0 16px;
 }
 
 .main {
   min-width: 0;
-}
-
-/* The summary: dark, beside the form from 1024px */
-.asideCard {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-  border: 1px solid var(--line2);
-  border-radius: var(--r-xl);
-  background: var(--surface-grad);
-  box-shadow: var(--highlight), var(--shadow-card);
-}
-
-.asideTitle {
-  margin: 0;
-  font-family: var(--display);
-  font-weight: 500;
-  font-size: var(--fs-xl);
-  line-height: var(--lh-snug);
-  color: var(--sand);
-}
-
-.asideCard > p {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--dim);
 }
 
 .ribbon {
@@ -252,54 +286,6 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--sand);
-}
-
-.toc {
-  display: none;
-}
-
-.toc ol {
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  padding: 14px 0 0;
-  border-top: 1px solid var(--line);
-  list-style: none;
-}
-
-.toc a {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 36px;
-  padding: 4px 8px;
-  margin: 0 -8px;
-  border-radius: var(--r-xs);
-  color: var(--dim);
-  font-size: var(--fs-sm);
-  text-decoration: none;
-}
-
-.toc a:hover {
-  background: rgba(237, 234, 223, 0.05);
-  color: var(--sand);
-}
-
-.toc a:focus-visible {
-  outline: 2px solid var(--tealb);
-  outline-offset: 1px;
-}
-
-.toc a span {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--line2);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  color: var(--gold);
 }
 
 /* ---------- The form: a light paper surface ---------- */
@@ -784,17 +770,6 @@
   padding-top: 22px;
 }
 
-.submitRow {
-  display: grid;
-  gap: 14px;
-}
-
-.submitRow p {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--dim);
-}
-
 .error,
 .success {
   margin: 0;
@@ -816,8 +791,387 @@
   color: var(--ok);
 }
 
+/* ---------- Steps: the /seerah/register stepper ---------- */
+/* Each number in an eight-point seal: current teal, finished indigo,
+ * upcoming grey, with an underline per step. */
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepper li {
+  display: grid;
+  min-width: 0;
+}
+
+.stepper button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 56px;
+  padding: 6px 2px;
+  border: 0;
+  border-bottom: 2px solid var(--line2);
+  background: transparent;
+  color: var(--faint);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+
+.stepper button:disabled {
+  cursor: default;
+}
+
+.stepper button em {
+  display: none;
+  font-style: normal;
+}
+
+.stepper button span {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--faint);
+}
+
+.stepper button span::before,
+.stepper button span::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  z-index: -1;
+  border: 1px solid var(--faint);
+  background: var(--paper);
+  transition: transform 0.6s var(--ease);
+}
+
+.stepper button span::after {
+  transform: rotate(45deg);
+}
+
+.stepDone button {
+  border-bottom-color: var(--tealb);
+  color: var(--sand);
+}
+
+.stepDone button span {
+  color: #ffffff;
+}
+
+.stepDone button span::before,
+.stepDone button span::after {
+  border-color: var(--tealb);
+  background: var(--tealb);
+}
+
+.stepper [aria-current="step"] button {
+  border-bottom-color: var(--teal);
+  color: var(--sand);
+  font-weight: 700;
+}
+
+.stepper [aria-current="step"] button span {
+  color: var(--on-teal);
+}
+
+.stepper [aria-current="step"] button span::before,
+.stepper [aria-current="step"] button span::after {
+  border-color: var(--teal);
+  background: var(--teal);
+}
+
+.stepper li:not([aria-current="step"]) button span::before {
+  transform: rotate(-45deg);
+}
+
+.stepper li:not([aria-current="step"]) button span::after {
+  transform: rotate(0deg);
+}
+
+.stepCount {
+  margin: 12px 0 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* The current step's heading takes focus on a step change. */
+.sectionTitle:focus {
+  outline: none;
+}
+
+.sectionTitle:focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 4px;
+}
+
+/* Back and Next / Submit. */
+.stepNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.backStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--sand);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.backStep:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.submitNote {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--dim);
+}
+
+.successBanner {
+  margin-bottom: 16px;
+}
+
+/* Review: the key answers, each with an Edit link back to its step. */
+.review {
+  display: grid;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: #ffffff;
+}
+
+.reviewRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label edit"
+    "value edit";
+  gap: 2px 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.reviewRow:first-child {
+  border-top: 0;
+}
+
+.reviewRow dt {
+  grid-area: label;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.reviewRow dd {
+  grid-area: value;
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--sand);
+  overflow-wrap: anywhere;
+}
+
+.reviewEmpty {
+  font-weight: 500;
+  color: var(--danger);
+}
+
+.reviewEdit {
+  grid-area: edit;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-xs);
+  background: transparent;
+  color: var(--tealb);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reviewEdit:hover {
+  border-color: var(--tealb);
+}
+
+.reviewTitle {
+  margin: 8px 0 0;
+  font-family: var(--display);
+  font-size: var(--fs-lg);
+  color: var(--sand);
+}
+
+/* The receipt: a drop zone around the real file input. */
+.drop {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px 14px;
+  padding: 16px;
+  border: 1.5px dashed var(--field-line);
+  border-radius: var(--r-md);
+  background: #ffffff;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background-color 0.2s var(--ease);
+}
+
+.drop:hover,
+.drop[data-over] {
+  border-color: var(--teal);
+  background: #f0f8f6;
+}
+
+.drop[data-state="selected"] {
+  border-style: solid;
+  border-color: var(--teal);
+  background: #f0f8f6;
+}
+
+.drop[data-state="invalid"] {
+  border-style: solid;
+  border-color: var(--danger);
+  background: #fdf0ee;
+}
+
+.drop:focus-within {
+  outline: 2px solid var(--tealb);
+  outline-offset: 2px;
+}
+
+/* Visually hidden, still focusable and still the form's control. */
+.dropInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+  white-space: nowrap;
+}
+
+.dropIcon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: rgba(11, 117, 102, 0.1);
+  color: var(--teal);
+}
+
+.drop[data-state="invalid"] .dropIcon {
+  background: rgba(180, 35, 24, 0.1);
+  color: var(--danger);
+}
+
+.dropIcon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.dropText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dropText strong {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--sand);
+  overflow-wrap: anywhere;
+}
+
+.dropText small {
+  font-size: var(--fs-xs);
+  color: var(--dim);
+}
+
+.drop[data-state="invalid"] .dropText small {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.dropActions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dropChoose,
+.dropRemove {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.dropChoose {
+  background: var(--teal);
+  color: var(--on-teal);
+}
+
+.dropRemove {
+  border: 1px solid var(--line2);
+  background: transparent;
+  color: var(--sand);
+  cursor: pointer;
+}
+
+.dropRemove:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* ---------- Larger screens ---------- */
 @media (min-width: 640px) {
+  .facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .grid,
   .accounts,
   .amounts,
@@ -834,9 +1188,16 @@
     padding: 22px 22px;
   }
 
-  .submitRow {
-    grid-template-columns: 1fr auto;
-    align-items: center;
+  .stepper button em {
+    display: block;
+  }
+
+  .drop {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .dropActions {
+    grid-column: auto;
   }
 }
 
@@ -862,27 +1223,15 @@
 }
 
 @media (min-width: 1024px) {
-  .layout {
-    grid-template-columns: 300px minmax(0, 1fr);
-    align-items: start;
-    gap: 32px;
-  }
-
-  .aside {
-    position: sticky;
-    top: 24px;
-  }
-
-  .toc {
-    display: block;
-  }
-
   .form {
     padding: 10px 44px 40px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .stepper button span::before,
+  .stepper button span::after,
+  .drop,
   .choice,
   .amount,
   .segmented label,

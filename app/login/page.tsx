@@ -48,12 +48,8 @@ export default async function LoginPage({
   const passwordReset = params.reset === "1";
 
   return (
-    <div className={`${s.page} ${indigoFontVariables}`} data-experience="">
+    <div className={`${s.page} ${s.solo} ${indigoFontVariables}`} data-experience="">
       <header className={s.top}>
-        {/* The wordmark shows here only when the intro column is hidden (tablet and phone). */}
-        <span className={s.topMark}>
-          <Wordmark href="/" />
-        </span>
         <Link href="/" className={s.back}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -62,38 +58,18 @@ export default async function LoginPage({
         </Link>
       </header>
 
+      {/* One card, centred both ways on the navy ground. */}
       <main className={s.split}>
-        {/* Desktop only: a short welcome beside the card. Hidden on tablet and phone. */}
-        <section className={s.intro} aria-labelledby="login-title">
-          <div data-rise="" style={i(0)}>
-            <Wordmark href="/" />
-          </div>
-          <h1 id="login-title" className={s.title} data-rise="" style={i(1)}>
-            {finishing ? (
-              <>
-                Finish your <em>registration</em>
-              </>
-            ) : (
-              <>
-                Welcome to your <em>Sīrah dashboard</em>
-              </>
-            )}
-          </h1>
-          {finishing ? null : (
-            <ul className={s.notes} data-rise="" style={i(2)}>
-              <li>Use the email and password from your registration.</li>
-              <li>Paid manually? We email you once it is confirmed.</li>
-            </ul>
-          )}
-        </section>
-
         <section className={s.panel} aria-labelledby="signin-title" data-rise="" style={i(1)}>
           <div className={s.card}>
+            <div className={s.cardMark}>
+              <Wordmark href="/" />
+            </div>
             {/* Operational notice from SIRAH_NOTICE (renders nothing when unset). */}
             <SirahNotice />
-            <h2 id="signin-title" className={s.cardTitle}>
-              {finishing ? "Sign in to continue" : "Sign in"}
-            </h2>
+            <h1 id="signin-title" className={s.cardTitle}>
+              {finishing ? "Sign in to continue" : "Sign in to your student dashboard"}
+            </h1>
             <p className={s.cardLede}>
               {finishing
                 ? "Your booking is saved. Sign in with the email and password you registered with to go straight back and complete your payment."
