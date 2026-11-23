@@ -11,3 +11,11 @@ export const SCHEDULE_TIME_ZONES = [
   { value: "Australia/Sydney", label: "Sydney", hint: "Australia/Sydney" },
   { value: "UTC", label: "UTC", hint: "Coordinated Universal Time" },
 ];
+
+/** The zone list with the admin's own zone in it (first, when it is not one of
+ * the usual ones), so the form can default to where the admin actually is. */
+export function scheduleZoneOptions(zone: string) {
+  return SCHEDULE_TIME_ZONES.some((option) => option.value === zone)
+    ? SCHEDULE_TIME_ZONES
+    : [{ value: zone, label: "Your time zone", hint: zone }, ...SCHEDULE_TIME_ZONES];
+}

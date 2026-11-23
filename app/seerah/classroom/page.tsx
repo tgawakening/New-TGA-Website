@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ClassroomOverview } from "@/components/indigo/classroom/classroom-overview";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
+import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import {
   getClassroomData,
   getCompletedLessonIds,
@@ -34,7 +35,7 @@ export default async function SirahClassroomPage() {
       base="/seerah/classroom"
       data={data}
       completedIds={completedIds}
-      timezone={user.studentProfile?.timezone}
+      timezone={(await viewerTimeZone()) ?? user.studentProfile?.timezone}
       now={now}
       live={live?.allowed ? live : null}
     />

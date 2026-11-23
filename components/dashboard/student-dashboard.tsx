@@ -17,6 +17,9 @@ import {
 } from "@/components/sirah/dashboard-registration";
 import LogoutButton from "@/components/dashboard/logout-button";
 import { paymentPlanTypeLabels } from "@/lib/course-payment";
+import { BrandLogo } from "@/components/brand-logo";
+import { indigoFontVariables } from "@/lib/fonts";
+import s from "./student-dashboard.module.css";
 
 type DashboardProps = {
   user: {
@@ -327,334 +330,352 @@ export default function StudentDashboard({ user }: DashboardProps) {
   }
 
   return (
-    <main className="ga-page">
-      <section className="ga-section">
-        <div className="ga-container" style={{ display: "grid", gap: "1.4rem" }}>
-          <SirahDashboardRegistration orders={sirahOrders} />
-          <div className="ga-dashboard-hero">
-            <div>
-              <p className="ga-dashboard-kicker">Student dashboard</p>
-              <h1 className="ga-heading">Assalam-u-Alaikum, {fullName}</h1>
-              <p className="ga-copy" style={{ marginTop: "0.75rem", maxWidth: 760 }}>
-                Track your enrollment, payment, subscription, and Seerah LMS access from one place.
+    <div className={`${s.page} ${indigoFontVariables}`}>
+      <header className={s.header}>
+        <div className={`${s.wrap} ${s.headRow}`}>
+          <Link href="/" className={s.logo} aria-label="The Global Awakening home">
+            <BrandLogo alt="" sizes="(min-width: 64rem) 160px, 112px" priority className={s.logoImg} />
+            <span className={s.place} aria-hidden="true">
+              Student dashboard
+            </span>
+          </Link>
+          <span className={s.spacer} />
+          <LogoutButton className={`${s.btnGhost} ${s.btnSmall}`} />
+        </div>
+      </header>
+
+      <main className={s.wrap}>
+        <section className={s.hero} aria-labelledby="dashboard-title">
+          <div>
+            <p className={s.eyebrow}>Student dashboard</p>
+            <h1 id="dashboard-title" className={s.title}>
+              Assalam-u-Alaikum, {fullName}
+            </h1>
+            <p className={s.lede}>Track your enrollment, payment, subscription, and Seerah LMS access from one place.</p>
+            {paymentMessage ? (
+              <p className={s.notice} role="status">
+                {paymentMessage}
               </p>
-              {paymentMessage ? (
-                <p className="ga-copy" style={{ marginTop: "0.75rem", color: "#0f5e91" }}>
-                  {paymentMessage}
-                </p>
-              ) : null}
-              {paymentError ? (
-                <p className="ga-copy" style={{ marginTop: "0.75rem", color: "#a33f3f" }}>
-                  {paymentError}
-                </p>
-              ) : null}
-            </div>
-            <div className="ga-dashboard-actions">
-              {hasPendingPayment ? (
-                <Link href={pendingPaymentHref} className="ga-btn ga-btn-primary">
-                  Complete Pending Payment
-                </Link>
-              ) : null}
-              {user.canManageStripeBilling ? (
-                <button
-                  type="button"
-                  className="ga-btn ga-btn-primary"
-                  onClick={openBillingPortal}
-                  disabled={billingPortalLoading}
-                >
-                  {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
-                </button>
-              ) : null}
-              <Link href="/seerah/register" className="ga-btn ga-btn-outline">
-                Register Another Seat
+            ) : null}
+            {paymentError ? (
+              <p className={s.noticeError} role="alert">
+                {paymentError}
+              </p>
+            ) : null}
+          </div>
+          <div className={s.actions}>
+            {hasPendingPayment ? (
+              <Link href={pendingPaymentHref} className={s.btn}>
+                Complete Pending Payment
               </Link>
-              <LogoutButton />
-            </div>
+            ) : null}
+            {user.canManageStripeBilling ? (
+              <button type="button" className={s.btn} onClick={openBillingPortal} disabled={billingPortalLoading}>
+                {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
+              </button>
+            ) : null}
+            <Link href="/seerah/register" className={s.btnGhost}>
+              Register Another Seat
+            </Link>
+          </div>
+        </section>
+
+        <div className={s.stack}>
+          <div className={s.section}>
+            <SirahDashboardRegistration orders={sirahOrders} />
+
+            {hasPendingPayment ? (
+              <section className={`${s.card} ${s.cardAttention}`} aria-labelledby="pending-payment">
+                <p id="pending-payment" className={s.cardTitle}>
+                  Pending Payment
+                </p>
+                <p className={s.muted}>
+                  Your registration account is active, but this order still needs payment completion. You can reopen the payment page, switch payment method, or change between monthly and full course payment.
+                </p>
+                <div className={`${s.actions} ${s.cardActions}`}>
+                  <Link href={pendingPaymentHref} className={s.btn}>
+                    Complete Pending Payment
+                  </Link>
+                  <Link href="/dashboard" className={s.btnGhost}>
+                    Stay on Dashboard
+                  </Link>
+                </div>
+              </section>
+            ) : null}
+
+            {user.currentSirahOnly && latestSirahOrder ? (
+              <section className={s.grid} aria-label="Enrolment and payment">
+                <article className={s.card}>
+                  <h2 className={s.cardTitle}>Overview</h2>
+                  <dl className={s.facts}>
+                    <Fact label="Email">{user.email}</Fact>
+                    <Fact label="Country">{countryName}</Fact>
+                    <Fact label="Enrolment">{sirahOrderStatus(latestSirahOrder).label}</Fact>
+                    <Fact label="Plan">{sirahPlanLabel(latestSirahOrder)}</Fact>
+                  </dl>
+                </article>
+                <article className={s.card}>
+                  <h2 className={s.cardTitle}>Payment Status</h2>
+                  <dl className={s.facts}>
+                    <Fact label="Status">{sirahOrderStatus(latestSirahOrder).label}</Fact>
+                    <Fact label="Method">{sirahMethodLabel(latestSirahOrder)}</Fact>
+                    <Fact label="Amount">{sirahAmountLabel(latestSirahOrder)}</Fact>
+                    <Fact label="Reference">{latestSirahOrder.reference}</Fact>
+                  </dl>
+                  <RenewalCycle
+                    className={s.renewal}
+                    plan={latestSirahOrder.plan}
+                    method={latestSirahOrder.method}
+                    cycle={latestSirahOrder.renewalCycle ?? null}
+                    paid={(latestSirahOrder.paidCount ?? 0) > 0}
+                    paymentState={latestSirahOrder.paymentState}
+                    enrolmentState={latestSirahOrder.enrolmentState}
+                    cancelled={latestSirahOrder.cancelled}
+                    nextBillingAt={latestSirahOrder.nextBillingAt}
+                    accessEndsAt={latestSirahOrder.accessEndsAt}
+                  />
+                  {pendingSirahOrder ? null : (
+                    <div className={`${s.actions} ${s.cardActions}`}>
+                      <Link href={sirahOrderHref(latestSirahOrder)} className={s.btnGhost}>
+                        View your registration
+                      </Link>
+                    </div>
+                  )}
+                </article>
+              </section>
+            ) : (
+              <section className={s.grid} aria-label="Enrolment and payment">
+                <article className={s.card}>
+                  <h2 className={s.cardTitle}>Overview</h2>
+                  <dl className={s.facts}>
+                    <Fact label="Email">{user.email}</Fact>
+                    <Fact label="Country">{countryName}</Fact>
+                    <Fact label="Enrollment">{seerahEnrollment?.status ?? "NOT_REGISTERED"}</Fact>
+                    <Fact label="LMS Access">{hasActiveLmsAccess ? "Granted" : "Locked pending payment approval"}</Fact>
+                    <Fact label="Subscription">
+                      {latestRegistration?.paymentPlanType === "FULL_COURSE"
+                        ? "Not required for full course payment"
+                        : latestSubscription?.status ?? "Not started"}
+                    </Fact>
+                    <Fact label="Renewal">
+                      {latestRegistration?.paymentPlanType === "FULL_COURSE"
+                        ? "Not applicable"
+                        : latestSubscription?.currentPeriodEnd
+                          ? new Date(latestSubscription.currentPeriodEnd).toLocaleDateString()
+                          : "Will appear after subscription activation"}
+                    </Fact>
+                    <Fact label="Auto renew">
+                      {latestRegistration?.paymentPlanType === "FULL_COURSE"
+                        ? "Off"
+                        : latestSubscription
+                          ? latestSubscription.cancelAtPeriodEnd
+                            ? "Will stop"
+                            : "On"
+                          : "N/A"}
+                    </Fact>
+                  </dl>
+                </article>
+
+                <article className={s.card}>
+                  <h2 className={s.cardTitle}>Payment Status</h2>
+                  <dl className={s.facts}>
+                    <Fact label="Plan">{latestPaymentPlanLabel}</Fact>
+                    <Fact label="Method">{latestRegistration?.paymentMethod ?? "N/A"}</Fact>
+                    <Fact label="Registration status">{latestRegistration?.status ?? "N/A"}</Fact>
+                    <Fact label="Payment status">{latestRegistration?.payment?.status ?? "N/A"}</Fact>
+                    <Fact label="Reference">{latestRegistration?.paymentReference ?? "N/A"}</Fact>
+                    <Fact label="Latest amount">
+                      {latestRegistration
+                        ? formatMoney(
+                            latestRegistration.payment?.amount ?? latestRegistration.finalAmount,
+                            latestRegistration.payment?.currency ?? latestRegistration.selectedCurrency,
+                          )
+                        : "N/A"}
+                    </Fact>
+                    <Fact label="Paid at">
+                      {latestRegistration?.payment?.paidAt
+                        ? new Date(latestRegistration.payment.paidAt).toLocaleString()
+                        : "Pending or awaiting review"}
+                    </Fact>
+                  </dl>
+                  {user.canManageStripeBilling ? (
+                    <div className={`${s.actions} ${s.cardActions}`}>
+                      <button type="button" className={s.btnGhost} onClick={openBillingPortal} disabled={billingPortalLoading}>
+                        {billingPortalLoading ? "Opening Billing..." : "Update Card Details"}
+                      </button>
+                    </div>
+                  ) : null}
+                </article>
+              </section>
+            )}
           </div>
 
-          {hasPendingPayment ? (
-            <section className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Pending Payment</p>
-              <p className="ga-dashboard-muted">
-                Your registration account is active, but this order still needs payment completion. You can reopen the payment page, switch payment method, or change between monthly and full course payment.
-              </p>
-              <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
-                <Link href={pendingPaymentHref} className="ga-btn ga-btn-primary">
-                  Complete Pending Payment
-                </Link>
-                <Link href="/dashboard" className="ga-btn ga-btn-outline">
-                  Stay on Dashboard
-                </Link>
-              </div>
-            </section>
-          ) : null}
-
-          {user.currentSirahOnly && latestSirahOrder ? (
-          <section className="ga-dashboard-grid">
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Overview</p>
-              <div className="ga-dashboard-stack">
-                <p>Email: {user.email}</p>
-                <p>Country: {countryName}</p>
-                <p>Enrolment: {sirahOrderStatus(latestSirahOrder).label}</p>
-                <p>Plan: {sirahPlanLabel(latestSirahOrder)}</p>
-              </div>
-            </article>
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Payment Status</p>
-              <div className="ga-dashboard-stack">
-                <p>Status: {sirahOrderStatus(latestSirahOrder).label}</p>
-                <p>Method: {sirahMethodLabel(latestSirahOrder)}</p>
-                <p>Amount: {sirahAmountLabel(latestSirahOrder)}</p>
-                <p style={{ overflowWrap: "anywhere" }}>Reference: {latestSirahOrder.reference}</p>
-              </div>
-              <RenewalCycle
-                className="ga-dashboard-stack ga-dashboard-renewal"
-                plan={latestSirahOrder.plan}
-                method={latestSirahOrder.method}
-                cycle={latestSirahOrder.renewalCycle ?? null}
-                paid={(latestSirahOrder.paidCount ?? 0) > 0}
-                paymentState={latestSirahOrder.paymentState}
-                enrolmentState={latestSirahOrder.enrolmentState}
-                cancelled={latestSirahOrder.cancelled}
-                nextBillingAt={latestSirahOrder.nextBillingAt}
-                accessEndsAt={latestSirahOrder.accessEndsAt}
-              />
-              {pendingSirahOrder ? null : (
-                <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
-                  <Link href={sirahOrderHref(latestSirahOrder)} className="ga-btn ga-btn-outline">
-                    View your registration
+          {!user.currentSirahOnly && (
+            <section className={s.grid} aria-label="Learning and profile">
+              <article className={s.card}>
+                <h2 className={s.cardTitle}>My LMS</h2>
+                <p className={s.muted}>
+                  {user.currentSirahOnly
+                    ? "Open your Sīrah Beyond Chronology registration above for verified payment status, private evidence and your course invitation."
+                    : "Recorded lessons, weekly live links, and batch support appear here after activation."}
+                </p>
+                <ul className={s.list}>
+                  {(user.currentSirahOnly ? [] : seerahLessons).map((lesson) => (
+                    <li key={lesson.title} className={s.item}>
+                      <div>
+                        <strong>{lesson.title}</strong>
+                        <p>{lesson.type}</p>
+                      </div>
+                      <span className={s.itemValue}>{hasActiveLmsAccess ? lesson.access : "Locked"}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className={`${s.actions} ${s.cardActions}`}>
+                  {user.currentSirahOnly ? (
+                    <Link href="/seerah/register" className={s.btn}>
+                      Manage your Sīrah registration
+                    </Link>
+                  ) : hasActiveLmsAccess ? (
+                    <Link href="/seerah/lms" className={s.btn}>
+                      Open Seerah LMS
+                    </Link>
+                  ) : (
+                    <Link href="/seerah/register" className={s.btnGhost}>
+                      Complete Payment First
+                    </Link>
+                  )}
+                  <Link href="/seerah/register" className={s.btnGhost} target="_blank">
+                    Join Batch Community
                   </Link>
                 </div>
-              )}
-            </article>
-          </section>
-          ) : (
-          <section className="ga-dashboard-grid">
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Overview</p>
-              <div className="ga-dashboard-stack">
-                <p>Email: {user.email}</p>
-                <p>Country: {countryName}</p>
-                <p>Enrollment: {seerahEnrollment?.status ?? "NOT_REGISTERED"}</p>
-                <p>LMS Access: {hasActiveLmsAccess ? "Granted" : "Locked pending payment approval"}</p>
-                <p>
-                  Subscription:{" "}
-                  {latestRegistration?.paymentPlanType === "FULL_COURSE"
-                    ? "Not required for full course payment"
-                    : latestSubscription?.status ?? "Not started"}
-                </p>
-                <p>
-                  Renewal:{" "}
-                  {latestRegistration?.paymentPlanType === "FULL_COURSE"
-                    ? "Not applicable"
-                    : latestSubscription?.currentPeriodEnd
-                      ? new Date(latestSubscription.currentPeriodEnd).toLocaleDateString()
-                      : "Will appear after subscription activation"}
-                </p>
-                <p>
-                  Auto renew:{" "}
-                  {latestRegistration?.paymentPlanType === "FULL_COURSE"
-                    ? "Off"
-                    : latestSubscription
-                      ? latestSubscription.cancelAtPeriodEnd
-                        ? "Will stop"
-                        : "On"
-                      : "N/A"}
-                </p>
-              </div>
-            </article>
+              </article>
 
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Payment Status</p>
-              <div className="ga-dashboard-stack">
-                <p>Plan: {latestPaymentPlanLabel}</p>
-                <p>Method: {latestRegistration?.paymentMethod ?? "N/A"}</p>
-                <p>Registration status: {latestRegistration?.status ?? "N/A"}</p>
-                <p>Payment status: {latestRegistration?.payment?.status ?? "N/A"}</p>
-                <p>Reference: {latestRegistration?.paymentReference ?? "N/A"}</p>
-                <p>
-                  Latest amount:{" "}
-                  {latestRegistration
-                    ? formatMoney(
-                        latestRegistration.payment?.amount ?? latestRegistration.finalAmount,
-                        latestRegistration.payment?.currency ?? latestRegistration.selectedCurrency,
-                      )
-                    : "N/A"}
-                </p>
-                <p>
-                  Paid at:{" "}
-                  {latestRegistration?.payment?.paidAt
-                    ? new Date(latestRegistration.payment.paidAt).toLocaleString()
-                    : "Pending or awaiting review"}
-                </p>
-              </div>
-              {user.canManageStripeBilling ? (
-                <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
-                  <button
-                    type="button"
-                    className="ga-btn ga-btn-outline"
-                    onClick={openBillingPortal}
-                    disabled={billingPortalLoading}
-                  >
-                    {billingPortalLoading ? "Opening Billing..." : "Update Card Details"}
-                  </button>
-                </div>
-              ) : null}
-            </article>
-          </section>
+              <article className={s.card}>
+                <h2 className={s.cardTitle}>Profile Settings</h2>
+                <form onSubmit={saveProfile} className={s.form}>
+                  <label className={s.field}>
+                    Full Name
+                    <input value={fullName} onChange={(event) => setFullName(event.target.value)} required />
+                  </label>
+                  <div className={s.formRow}>
+                    <label className={s.field}>
+                      Phone Country Code
+                      <input value={phoneCountryCode} onChange={(event) => setPhoneCountryCode(event.target.value)} required />
+                    </label>
+                    <label className={s.field}>
+                      Phone Number
+                      <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} required />
+                    </label>
+                  </div>
+                  <label className={s.field}>
+                    Country
+                    <select
+                      value={countryCode}
+                      onChange={(event) => {
+                        const nextCode = event.target.value;
+                        const match = countryEntries.find((entry) => entry.code === nextCode);
+                        setCountryCode(nextCode);
+                        setCountryName(match?.name ?? nextCode);
+                        if (match?.phone) {
+                          setPhoneCountryCode(`+${match.phone}`);
+                        }
+                      }}
+                    >
+                      {countryEntries.map((entry) => (
+                        <option key={entry.code} value={entry.code}>
+                          {entry.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={s.field}>
+                    Timezone
+                    <input value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="Asia/Karachi" />
+                  </label>
+                  {profileMessage ? <p className={s.success}>{profileMessage}</p> : null}
+                  {profileError ? <p className={s.error}>{profileError}</p> : null}
+                  <div className={s.actions}>
+                    <button type="submit" className={s.btn} disabled={saving}>
+                      {saving ? "Saving..." : "Save Profile"}
+                    </button>
+                  </div>
+                </form>
+              </article>
+            </section>
           )}
 
-          {!user.currentSirahOnly && <>
-          <section className="ga-dashboard-split">
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">My LMS</p>
-              <p className="ga-dashboard-muted">
-                {user.currentSirahOnly ? "Open your Sīrah Beyond Chronology registration above for verified payment status, private evidence and your course invitation." : "Recorded lessons, weekly live links, and batch support appear here after activation."}
-              </p>
-              <div className="ga-dashboard-list" style={{ marginTop: "1rem" }}>
-                {(user.currentSirahOnly ? [] : seerahLessons).map((lesson) => (
-                  <div key={lesson.title} className="ga-dashboard-list-item">
-                    <div>
-                      <strong>{lesson.title}</strong>
-                      <p>{lesson.type}</p>
-                    </div>
-                    <span>{hasActiveLmsAccess ? lesson.access : "Locked"}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="ga-dashboard-actions" style={{ marginTop: "1rem" }}>
-                {user.currentSirahOnly ? <Link href="/seerah/register" className="ga-btn ga-btn-primary">Manage your Sīrah registration</Link> : hasActiveLmsAccess ? (
-                  <Link href="/seerah/lms" className="ga-btn ga-btn-primary">
-                    Open Seerah LMS
-                  </Link>
-                ) : (
-                  <Link href="/seerah/register" className="ga-btn ga-btn-outline">
-                    Complete Payment First
-                  </Link>
-                )}
-                <Link href="/seerah/register" className="ga-btn ga-btn-outline" target="_blank">
-                  Join Batch Community
-                </Link>
-              </div>
-            </article>
-
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Profile Settings</p>
-              <form onSubmit={saveProfile} className="ga-dashboard-form">
-                <label>
-                  Full Name
-                  <input value={fullName} onChange={(event) => setFullName(event.target.value)} required />
-                </label>
-                <label>
-                  Phone Country Code
-                  <input
-                    value={phoneCountryCode}
-                    onChange={(event) => setPhoneCountryCode(event.target.value)}
-                    required
-                  />
-                </label>
-                <label>
-                  Phone Number
-                  <input value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} required />
-                </label>
-                <label>
-                  Country
-                  <select
-                    value={countryCode}
-                    onChange={(event) => {
-                      const nextCode = event.target.value;
-                      const match = countryEntries.find((entry) => entry.code === nextCode);
-                      setCountryCode(nextCode);
-                      setCountryName(match?.name ?? nextCode);
-                      if (match?.phone) {
-                        setPhoneCountryCode(`+${match.phone}`);
-                      }
-                    }}
-                  >
-                    {countryEntries.map((entry) => (
-                      <option key={entry.code} value={entry.code}>
-                        {entry.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Timezone
-                  <input value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="Asia/Karachi" />
-                </label>
-                {profileMessage ? <p className="ga-dashboard-success">{profileMessage}</p> : null}
-                {profileError ? <p className="ga-dashboard-error">{profileError}</p> : null}
-                <button type="submit" className="ga-btn ga-btn-primary" disabled={saving}>
-                  {saving ? "Saving..." : "Save Profile"}
-                </button>
-              </form>
-            </article>
-          </section>
-          </>}
-
-          <section className="ga-dashboard-split">
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Payment History</p>
-              <div className="ga-dashboard-list">
-                {user.registrations.length ? (
-                  user.registrations.map((registration) => (
-                    <div key={registration.id} className="ga-dashboard-list-item">
-                      <div>
-                        <strong>{registration.course.title}</strong>
-                        <p>
-                          {paymentPlanTypeLabels[registration.paymentPlanType]} - {registration.paymentMethod} - {registration.status}
-                        </p>
-                      </div>
-                      <span>
-                        {formatMoney(
-                          registration.payment?.amount ?? registration.finalAmount,
-                          registration.payment?.currency ?? registration.selectedCurrency,
-                        )}
-                      </span>
-                    </div>
-                  ))
-                ) : null}
+          <section className={s.grid} aria-label="History and support">
+            <article className={s.card}>
+              <h2 className={s.cardTitle}>Payment History</h2>
+              <ul className={s.list}>
+                {user.registrations.length
+                  ? user.registrations.map((registration) => (
+                      <li key={registration.id} className={s.item}>
+                        <div>
+                          <strong>{registration.course.title}</strong>
+                          <p>
+                            {paymentPlanTypeLabels[registration.paymentPlanType]} - {registration.paymentMethod} - {registration.status}
+                          </p>
+                        </div>
+                        <span className={s.itemValue}>
+                          {formatMoney(
+                            registration.payment?.amount ?? registration.finalAmount,
+                            registration.payment?.currency ?? registration.selectedCurrency,
+                          )}
+                        </span>
+                      </li>
+                    ))
+                  : null}
                 {sirahOrders.map((order) => (
-                  <div key={order.id} className="ga-dashboard-list-item">
+                  <li key={order.id} className={s.item}>
                     <div>
                       <strong>Sīrah | Beyond Chronology</strong>
                       <p>
                         {sirahPlanLabel(order)} - {sirahMethodLabel(order)} - {sirahOrderStatus(order).label}
                       </p>
                     </div>
-                    <span>{sirahAmountLabel(order)}</span>
-                  </div>
+                    <span className={s.itemValue}>{sirahAmountLabel(order)}</span>
+                  </li>
                 ))}
-                {!user.registrations.length && !sirahOrders.length ? (
-                  <p className="ga-dashboard-muted">No registrations yet.</p>
-                ) : null}
-              </div>
+              </ul>
+              {!user.registrations.length && !sirahOrders.length ? <p className={s.muted}>No registrations yet.</p> : null}
             </article>
 
-            <article className="ga-dashboard-card">
-              <p className="ga-dashboard-card-title">Support</p>
-              <div className="ga-dashboard-list">
+            <article className={s.card}>
+              <h2 className={s.cardTitle}>Support</h2>
+              <ul className={s.list}>
                 {supportLinks.map((item) => (
-                  <div key={item.label} className="ga-dashboard-list-item">
+                  <li key={item.label} className={s.item}>
                     <div>
                       <strong>{item.label}</strong>
                     </div>
                     <Link
                       href={item.href}
                       target={item.href.startsWith("http") ? "_blank" : undefined}
-                      className="ga-btn ga-btn-outline"
+                      className={`${s.btnGhost} ${s.btnSmall}`}
                     >
                       Open
                     </Link>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </article>
           </section>
         </div>
-      </section>
-    </main>
+      </main>
+      <footer className={s.foot}>
+        <b>Sīrah · Beyond Chronology</b> · The Global Awakening
+      </footer>
+    </div>
   );
 }
 
+/** One label / value row of a card's facts list. */
+function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className={s.fact}>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}

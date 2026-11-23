@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ClassroomLesson } from "@/components/indigo/classroom/classroom-lesson";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
+import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import {
   gateFrom,
   getLessonDetail,
@@ -32,7 +33,7 @@ export default async function SirahLessonPage({ params }: { params: Promise<{ le
     <ClassroomLesson
       base="/seerah/classroom"
       detail={detail}
-      timezone={access.user.studentProfile?.timezone}
+      timezone={(await viewerTimeZone()) ?? access.user.studentProfile?.timezone}
       now={now}
       completeAction={toggleLessonComplete}
     />

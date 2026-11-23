@@ -1,7 +1,7 @@
 import "server-only";
 import { Prisma, type LmsSessionStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isAssignedHost, joinWindow, sirahStudentCohortAccess, type JoinWindow } from "./access";
+import { isAssignedHost, sirahStudentCohortAccess, studentJoinWindow, type JoinWindow } from "./access";
 import { sessionEnd } from "./sessions";
 import { coveredMinutes } from "./attendance";
 
@@ -176,7 +176,8 @@ export async function studentSchedule(userId: string, now = new Date()) {
   });
   const views: StudentSessionView[] = rows.map((row) => {
     const view = toView(row, now);
-    const window = joinWindow(row, now);
+    // LIVE (the host has started) opens Join even before the scheduled window.
+    const window = studentJoinWindow(row, now);
     return { ...view, window, joinable: view.phase !== "cancelled" && view.phase !== "past" && window === "open" && Boolean(row.zoomMeetingId) };
   });
   const { upcoming, past } = splitSessions(views, now) as { upcoming: StudentSessionView[]; past: StudentSessionView[] };

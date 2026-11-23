@@ -4,6 +4,7 @@ import { getSessionIdentity } from "@/lib/auth/session";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { hostsForIdentity, lmsSessionsAvailable, teacherSessions, type SessionView } from "@/lib/lms/schedule";
 import { prisma } from "@/lib/prisma";
+import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { classroomClock } from "@/components/indigo/classroom/clock";
 import { ClassroomHeader, SectionHead } from "@/components/indigo/classroom/parts";
 import s from "@/components/indigo/classroom/classroom.module.css";
@@ -65,7 +66,7 @@ export default async function TeacherSessionsPage() {
 
   const now = new Date();
   const profile = await prisma.studentProfile.findUnique({ where: { userId: identity.id }, select: { timezone: true } });
-  const clock = classroomClock(profile?.timezone);
+  const clock = classroomClock((await viewerTimeZone()) ?? profile?.timezone);
   const { upcoming, past } = await teacherSessions(
     hosts.map((h) => h.id),
     now,
@@ -91,7 +92,7 @@ export default async function TeacherSessionsPage() {
 
         <section className={s.section} aria-labelledby="upcoming">
           <SectionHead id="upcoming">Upcoming</SectionHead>
-          <p className={s.sectionLede}>Times in {clock.zoneName}. Signed in as {identity.email}.</p>
+          <p className={s.sectionLede}>Times are your time ({clock.zoneName}). Signed in as {identity.email}.</p>
           {upcoming.length ? <Rows sessions={upcoming} clock={clock} startable /> : <p className={s.emptyLine}>Nothing scheduled.</p>}
         </section>
 

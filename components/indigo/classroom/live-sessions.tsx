@@ -2,6 +2,7 @@ import Link from "next/link";
 import { JOIN_OPENS_MINUTES_BEFORE } from "@/lib/lms/access";
 import type { SessionView, StudentSessionView } from "@/lib/lms/schedule";
 import { ClassroomCountdown } from "@/components/sirah/classroom-countdown";
+import { LiveStatusRefresh } from "@/components/sirah/live-status-refresh";
 import type { ClassroomClock } from "./clock";
 import { SectionHead } from "./parts";
 import s from "./classroom.module.css";
@@ -9,8 +10,10 @@ import s from "./classroom.module.css";
 /* Live classes (LMS Phase 2), in the classroom's own styling. The Join link
  * always points at /api/sirah/lms/sessions/[id]/join, which re-checks the
  * enrolment and the window before redirecting to Zoom: no Zoom URL is ever
- * rendered. Before the window opens it is a dormant label, and the countdown
- * refreshes the page when the window opens, which turns it into a link. */
+ * rendered. Join is a link while the class is LIVE on Zoom (the host has
+ * started it, even early) or inside the scheduled window. Before that it is a
+ * dormant label; the countdown refreshes the page when the window opens, and
+ * LiveStatusRefresh re-checks every minute in case the host starts early. */
 
 const minutes = (n: number) => (n % 60 === 0 ? `${n / 60} h` : n > 60 ? `${Math.floor(n / 60)} h ${n % 60} min` : `${n} min`);
 
@@ -24,11 +27,11 @@ export function JoinControl({ session }: { session: StudentSessionView }) {
     );
   if (session.window === "open")
     return <p className={s.joinHint}>The class is being set up. Refresh in a minute, or check the course group.</p>;
-  // Zoom still reports it live (an overrun), but joining closes at the scheduled end.
+  // Past the scheduled end and Zoom does not report it live.
   if (session.window === "ended") return <span className={s.bjDormant}>The join window has closed</span>;
   return (
     <span className={s.bjDormant} role="link" aria-disabled="true">
-      Join opens {JOIN_OPENS_MINUTES_BEFORE} min before
+      Join opens {JOIN_OPENS_MINUTES_BEFORE} min before, or when the host starts
     </span>
   );
 }
@@ -79,6 +82,7 @@ export function NextLiveClass({
           )}
           <div className={s.join}>
             <JoinControl session={session} />
+            {session.window === "not_open" ? <LiveStatusRefresh /> : null}
             {live ? (
               <p className={s.inroom}>
                 Started at <b>{clock.time.format(session.startsAt)}</b> · ends at <b>{clock.time.format(session.endsAt)}</b>
@@ -149,7 +153,7 @@ export function LiveClassesSection({
     <section className={s.section} aria-labelledby="live-classes">
       <SectionHead id="live-classes">Live classes</SectionHead>
       <p className={s.sectionLede}>
-        Join from {JOIN_OPENS_MINUTES_BEFORE} minutes before each class starts. Times in {clock.zoneName}.{" "}
+        Join from {JOIN_OPENS_MINUTES_BEFORE} minutes before each class starts, or as soon as the host starts it. Times are your time ({clock.zoneName}).{" "}
         <Link href={scheduleHref}>Full schedule</Link>
       </p>
       {schedule.next ? (

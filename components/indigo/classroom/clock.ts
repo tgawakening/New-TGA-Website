@@ -8,9 +8,12 @@ export const STATUS_TEXT: Record<SirahLessonStatus, string> = {
   past: "Took place",
 };
 
-/** Dates in the student's profile zone, London when unset or unknown. */
-export function classroomClock(profileZone: string | null | undefined) {
-  const timeZone = profileZone && isValidTimeZone(profileZone) ? profileZone : SIRAH_DEFAULT_TIMEZONE;
+/** Dates in the viewer's zone. Pages pass the browser-reported zone first
+ * (lib/time/viewer-zone.server), then the profile zone. London is only the
+ * stand-in for the very first render, before the browser has reported its
+ * zone; ViewerTimeZoneSync then re-renders the page in the right one. */
+export function classroomClock(zone: string | null | undefined) {
+  const timeZone = zone && isValidTimeZone(zone) ? zone : SIRAH_DEFAULT_TIMEZONE;
   const make = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-GB", { timeZone, ...options });
   return {
     timeZone,
