@@ -247,10 +247,21 @@
  * 5.4:1), field edges 3.1:1 (non-text), clear-filters #0a5f54 7.4:1, names
  * and amounts #1a2233 15:1. Avatar tints: teal 6.6:1, indigo 10:1, gold
  * 7.5:1, terra 5.3:1 (bold initials). */
-:global([data-theme="indigo-admin"]) .recordsCard {
+/* section.recordsCard: one element more than the shared
+ * [data-theme] .ga-admin-workspace-card rule, so the transparent panel wins
+ * whatever order the stylesheets load in. */
+:global([data-theme="indigo-admin"]) section.recordsCard {
   container: records / inline-size;
   padding: 0;
   overflow: visible; /* the row menus open past the card edge */
+  /* No panel around the records: the filters keep their own white card and
+   * the record cards sit directly on the workspace ground. */
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  display: grid;
+  gap: var(--sp-5);
 }
 
 /* -- Page head ----------------------------------------------------------- */
@@ -285,10 +296,10 @@
   gap: var(--sp-3) var(--sp-4);
   margin: 0;
   padding: var(--sp-4);
-  border: 0;
-  border-bottom: 1px solid var(--adm-rule);
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-lg);
   background: var(--adm-card);
+  box-shadow: var(--adm-shadow-card);
   align-items: end;
 }
 
@@ -417,14 +428,14 @@
   }
 }
 
-/* -- List area: the white panel the record cards sit on ------------------- */
+/* -- List area: the record cards straight on the workspace ground -------- */
 :global([data-theme="indigo-admin"]) .recordsCard .listArea {
   container: list / inline-size;
   display: grid;
   gap: var(--sp-4);
-  padding: var(--sp-5) var(--sp-5) var(--sp-6);
-  border-radius: 0 0 var(--r-lg) var(--r-lg);
-  background: var(--adm-card);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .listArea > :is(:global(.ga-admin-error-banner), :global(.ga-admin-loading), :global(.ga-admin-empty-state)) {
