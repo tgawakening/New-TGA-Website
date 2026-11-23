@@ -2,7 +2,6 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import AdminLogoutButton from "@/components/admin/admin-logout-button";
-import { BrandLogo } from "@/components/brand-logo";
 import { SirahAppInstallButton } from "./admin-app";
 import styles from "./admin-shell.module.css";
 
@@ -84,15 +83,12 @@ export function SirahAdminShell({
   return (
     <div className={styles.frame}>
       <aside className={styles.sidebar}>
-        <a href="/admin/sirah/overview" className={styles.brand}>
-          {/* The color lockup, straight on the light rail. */}
-          <BrandLogo
-            alt="The Global Awakening"
-            sizes="(min-width: 1024px) 168px, 112px"
-            className={styles.brandLogo}
-            priority
-          />
-          <span className={styles.brandText}>
+        <a href="/admin/sirah/overview" className={styles.brand} aria-label="The Global Awakening: Sīrah workspace">
+          {/* The navy TGA monogram: the mark that reads on the white card. */}
+          <span className={styles.brandMark} aria-hidden="true">
+            TGA
+          </span>
+          <span className={styles.brandText} aria-hidden="true">
             <strong>Sīrah workspace</strong>
             <span>Beyond Chronology</span>
           </span>

@@ -24,12 +24,21 @@
   gap: 0.75rem;
 }
 
-/* The official lockup, at its own proportions (640 × 246). */
-.logo {
-  display: block;
-  width: 140px;
-  height: auto;
+/* The navy rounded-square "TGA" monogram, the same mark as the Sīrah rail
+ * (components/sirah/admin-shell.module.css). White on #141d33: 16.9:1. */
+.mark {
+  display: grid;
+  place-items: center;
   flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, #1b2742, #141d33);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(20, 29, 51, 0.18);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .brandName {

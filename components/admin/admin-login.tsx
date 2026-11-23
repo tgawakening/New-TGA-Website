@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BrandLogo } from "@/components/brand-logo";
 import styles from "./admin-login.module.css";
 
 /** One login card for both entry points. `workspace="sirah"` is used by the
@@ -46,7 +45,9 @@ export default function AdminLogin({ workspace = "all" }: { workspace?: "all" | 
     <div className={styles.shell}>
       <article className={styles.card}>
         <div className={styles.brand}>
-          <BrandLogo alt="The Global Awakening" sizes="140px" className={styles.logo} priority />
+          <span className={styles.mark} role="img" aria-label="The Global Awakening">
+            TGA
+          </span>
           <span className={styles.brandName}>
             {sirah ? "Sīrah team access" : "Admin workspace"}
           </span>

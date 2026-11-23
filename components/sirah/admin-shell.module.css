@@ -3,8 +3,10 @@
  * Always rendered inside data-theme="indigo-admin" (app/admin/layout.tsx), so
  * it is written straight against the admin palette (--adm-*, styles/
  * admin-indigo.css) and the brand scales (--r-*, --sp-*, --ease, styles/
- * tokens.css). The rail is light: white with a hairline right edge, beside
- * the soft neutral canvas. The color lockup sits straight on the rail.
+ * tokens.css). The rail is a white floating card (rounded, hairline edge,
+ * soft shadow) on the light canvas, with the navy "TGA" monogram as its
+ * mark (the layout of 97febc3, in the current palette). Navy monogram:
+ * white on #141d33 is 16.9:1.
  * Contrast (WCAG 2.x) on white: links #3d4757 9.6:1, section labels #6b7380
  * 4.9:1, icons #5b6472 6.2:1; active #0a5f54 on #dcf1ed 6.6:1 (plus a teal
  * edge and a heavier weight, so state never rests on colour alone).
@@ -15,6 +17,7 @@
   grid-template-columns: minmax(0, 1fr); /* never wider than the screen */
   min-height: 100vh;
   color: var(--adm-ink);
+  background: var(--adm-page);
 }
 
 /* ---- Rail ---- */
@@ -22,10 +25,13 @@
   display: grid;
   gap: var(--sp-3);
   align-content: start;
-  padding: var(--sp-3) var(--gutter);
+  margin: var(--sp-3) var(--gutter) 0;
+  padding: var(--sp-3);
   background: var(--adm-card);
   color: var(--adm-neutral);
-  border-bottom: 1px solid var(--adm-rule);
+  border: 1px solid var(--adm-rule);
+  border-radius: var(--r-xl);
+  box-shadow: 0 18px 40px rgba(18, 48, 88, 0.08), 0 1px 2px rgba(18, 48, 88, 0.04);
 }
 
 .brand {
@@ -43,21 +49,27 @@
   outline-offset: 3px;
 }
 
-/* The official color lockup, at its own proportions (640 × 246), on the
- * light rail with no plate. */
-.brandLogo {
-  display: block;
+/* The navy rounded-square monogram. */
+.brandMark {
+  display: grid;
+  place-items: center;
   flex: none;
-  width: 112px;
-  height: auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  background: linear-gradient(135deg, #1b2742, #141d33);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(20, 29, 51, 0.18);
+  color: #ffffff;
+  font-family: var(--body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .brandText {
   display: grid;
   gap: 1px;
   min-width: 0;
-  padding-left: var(--sp-3);
-  border-left: 1px solid var(--adm-rule);
 }
 
 .brandText strong {
@@ -80,8 +92,8 @@
   display: flex;
   gap: var(--sp-1);
   overflow-x: auto;
-  margin-inline: calc(var(--gutter) * -1);
-  padding: 2px var(--gutter) 4px;
+  margin-inline: calc(var(--sp-3) * -1);
+  padding: 2px var(--sp-3) 4px;
   scrollbar-width: thin;
 }
 
@@ -309,36 +321,26 @@
 
 @media (min-width: 1024px) {
   .frame {
-    grid-template-columns: 248px minmax(0, 1fr);
+    grid-template-columns: 264px minmax(0, 1fr);
   }
 
+  /* Floating: inset from the viewport edges, sticky, scrolls inside itself. */
   .sidebar {
     position: sticky;
-    top: 0;
-    height: 100vh;
+    top: var(--sp-4);
+    align-self: start;
+    height: calc(100vh - 2 * var(--sp-4));
     overflow: auto;
     gap: var(--sp-2);
+    margin: var(--sp-4) 0 var(--sp-4) var(--sp-4);
     padding: var(--sp-4) var(--sp-3) var(--sp-6);
-    border-bottom: 0;
-    border-right: 1px solid var(--adm-rule);
   }
 
   .brand {
-    display: grid;
     gap: var(--sp-3);
-    padding: 0 0 var(--sp-4);
+    padding: var(--sp-1) 0.5rem var(--sp-4);
     border-bottom: 1px solid var(--adm-rule);
     border-radius: 0;
-  }
-
-  .brandLogo {
-    width: 168px;
-  }
-
-  /* Title on the nav items' 24px inset (link padding 0.75rem). */
-  .brandText {
-    padding: 0 0.75rem;
-    border-left: 0;
   }
 
   .nav {
