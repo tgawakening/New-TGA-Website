@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { externalUrl } from "@/lib/external-origin";
 import { DOCUMENT_URL_SECONDS, RECORDING_URL_SECONDS, type FileSigner } from "@/lib/sirah/spaces";
 import type { StudentGate } from "./sirah-classroom.service";
 
@@ -45,7 +46,7 @@ export function materialFileHandler(deps: {
   return async function GET(request: Request, context: { params: Promise<{ materialId: string }> }) {
     const { materialId } = await context.params;
     const gate = await deps.gate();
-    const to = (path: string) => new URL(path, request.url).toString();
+    const to = (path: string) => externalUrl(path, request).toString();
     if (!gate.studentId) return new Response(null, { status: 302, headers: { ...NO_STORE, Location: to(deps.loginPath ?? "/login") } });
     if (!gate.allowed) return new Response(null, { status: 302, headers: { ...NO_STORE, Location: to(deps.deniedPath ?? "/dashboard") } });
     if (!deps.configured()) return new Response("File storage is not configured.", { status: 503, headers: NO_STORE });

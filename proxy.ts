@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { externalUrl } from "@/lib/external-origin";
 
 // General protection against case-sensitive 404s: members share links with
 // inconsistent casing (e.g. /Seerah instead of /seerah) and Next.js routes are
@@ -21,8 +22,9 @@ export function proxy(request: NextRequest) {
   const lower = pathname.toLowerCase();
   if (lower === pathname) return NextResponse.next();
 
-  const url = request.nextUrl.clone();
-  url.pathname = lower;
+  // Same path in lowercase, same query string, on the public origin (never
+  // the container's internal address that request.nextUrl carries).
+  const url = externalUrl(`${lower}${request.nextUrl.search}`, request);
   return NextResponse.redirect(url, 308);
 }
 

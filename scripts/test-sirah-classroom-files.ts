@@ -36,8 +36,15 @@ function handler(gate: { allowed: boolean; studentId: string | null }, configure
   return files.materialFileHandler({ gate: async () => gate, sign: mockSigner, configured: () => configured });
 }
 
+// As the app sees it behind the proxy: the container's internal address, with
+// the public origin only in the forwarded headers. Redirects must use the latter.
 const get = (h: ReturnType<typeof handler>, id: string) =>
-  h(new Request(`https://tga.example/seerah/classroom/files/${id}`), { params: Promise.resolve({ materialId: id }) });
+  h(
+    new Request(`http://localhost:8080/seerah/classroom/files/${id}`, {
+      headers: { "x-forwarded-proto": "https", "x-forwarded-host": "tga.example" },
+    }),
+    { params: Promise.resolve({ materialId: id }) },
+  );
 
 beforeEach(() => {
   tables.clear();

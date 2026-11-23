@@ -1,4 +1,5 @@
 import { getSessionIdentity } from "@/lib/auth/session";
+import { externalUrl } from "@/lib/external-origin";
 import { resolveResourceFile } from "@/lib/lms/content";
 import { presignDownload, spacesConfigured } from "@/lib/sirah/spaces";
 
@@ -15,7 +16,7 @@ const NO_STORE = { "Cache-Control": "private, no-store", "Referrer-Policy": "no-
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const to = (path: string) => new URL(path, request.url).toString();
+  const to = (path: string) => externalUrl(path, request).toString();
   const user = await getSessionIdentity(request);
   if (!user) return new Response(null, { status: 302, headers: { ...NO_STORE, Location: to("/login") } });
   if (!spacesConfigured()) return new Response("File storage is not configured.", { status: 503, headers: NO_STORE });

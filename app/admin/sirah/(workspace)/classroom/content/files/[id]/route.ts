@@ -1,4 +1,5 @@
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
+import { externalUrl } from "@/lib/external-origin";
 import { getResource } from "@/lib/lms/content";
 import { DOCUMENT_URL_SECONDS, RECORDING_URL_SECONDS, presignDownload, spacesConfigured } from "@/lib/sirah/spaces";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 const NO_STORE = { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer" };
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const to = (path: string) => new URL(path, request.url).toString();
+  const to = (path: string) => externalUrl(path, request).toString();
   const access = await getSirahWorkspaceAccess();
   if (!access) return new Response(null, { status: 302, headers: { ...NO_STORE, Location: to("/admin/sirah/login") } });
   if (!(access.role === "SUPER_ADMIN" || access.role === "MANAGER"))
