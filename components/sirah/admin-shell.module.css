@@ -4,9 +4,8 @@
  * it is written straight against the admin palette (--adm-*, styles/
  * admin-indigo.css) and the brand scales (--r-*, --sp-*, --ease, styles/
  * tokens.css). The rail is a white floating card (rounded, hairline edge,
- * soft shadow) on the light canvas, with the navy "TGA" monogram as its
- * mark (the layout of 97febc3, in the current palette). Navy monogram:
- * white on #141d33 is 16.9:1.
+ * soft shadow) on the soft blue canvas, with the site's Global Awakening
+ * logo as its mark.
  * Contrast (WCAG 2.x) on white: links #3d4757 9.6:1, section labels #6b7380
  * 4.9:1, icons #5b6472 6.2:1; active #0a5f54 on #dcf1ed 6.6:1 (plus a teal
  * edge and a heavier weight, so state never rests on colour alone).
@@ -17,9 +16,11 @@
   grid-template-columns: minmax(0, 1fr); /* never wider than the screen */
   min-height: 100vh;
   color: var(--adm-ink);
-  /* A plain white ground. The sidebar, panels and record cards stay
-   * distinct on it through their hairline borders and soft shadows. */
-  background: #ffffff;
+  /* One soft, even blue-lavender canvas behind the whole workspace (top bar
+   * included). Light and calm: the white sidebar and record cards float on
+   * it. Ink #1a2233 on #e9eefa is 13.9:1; muted labels #5b6472 5.3:1. */
+  background: linear-gradient(160deg, #e8eefa 0%, #e9edfa 50%, #ecebf9 100%);
+  background-attachment: fixed;
 }
 
 /* ---- Rail ---- */
@@ -53,21 +54,13 @@
   outline-offset: 3px;
 }
 
-/* The navy rounded-square monogram. */
-.brandMark {
-  display: grid;
-  place-items: center;
+/* The site's Global Awakening logo (the same asset as the classroom and
+ * main dashboard headers). */
+.brandLogo {
+  display: block;
   flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.8rem;
-  background: linear-gradient(135deg, #1b2742, #141d33);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(20, 29, 51, 0.18);
-  color: #ffffff;
-  font-family: var(--body);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  width: 112px;
+  height: auto;
 }
 
 .brandText {
@@ -194,8 +187,12 @@
   gap: var(--sp-3) var(--sp-4);
   min-height: 64px;
   padding: var(--sp-3) var(--gutter);
-  background: var(--adm-card);
-  border-bottom: 1px solid var(--adm-rule);
+  /* Part of the canvas, not a white strip: the canvas tint, slightly
+   * translucent so it stays readable when the page scrolls under it. */
+  background: rgba(233, 238, 250, 0.86);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(30, 56, 110, 0.08);
 }
 
 .headerTitle {
@@ -334,11 +331,18 @@
     padding: var(--sp-4) var(--sp-3) var(--sp-5);
   }
 
+  /* Logo on top, the workspace name under it. */
   .brand {
-    gap: var(--sp-3);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2);
     padding: var(--sp-1) 0.5rem var(--sp-4);
     border-bottom: 1px solid var(--adm-rule);
     border-radius: 0;
+  }
+
+  .brandLogo {
+    width: 160px;
   }
 
   .nav {
