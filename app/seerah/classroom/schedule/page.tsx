@@ -7,7 +7,7 @@ import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { studentPhase5 } from "@/lib/lms/student-phase5";
 import { CalendarSection } from "@/components/indigo/classroom/phase5-sections";
-import { studentExternalRecordings } from "@/lib/lms/external-recordings";
+import { studentExternalRecordings, studentStandaloneRecordings } from "@/lib/lms/external-recordings";
 import { recordingsAvailable, studentRecordings, watchPath, type StudentRecording } from "@/lib/lms/recordings";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { classroomClock } from "@/components/indigo/classroom/clock";
@@ -36,6 +36,7 @@ export default async function LiveSchedulePage() {
   const recordings: StudentRecording[] = schedule?.allowed && (await recordingsAvailable()) ? await studentRecordings(user.id, now) : [];
   const watchBySession = new Map(recordings.map((r) => [r.sessionId, watchPath(r.recordingId)] as const));
   const external = phase5 ? await studentExternalRecordings(user.id, now) : [];
+  const standalone = phase5 ? await studentStandaloneRecordings(user.id, now) : [];
   const externalBySession = new Map<string, { id: string; title: string; url: string }[]>();
   for (const item of external) {
     if (!item.sessionId || !item.url) continue;
@@ -117,12 +118,24 @@ export default async function LiveSchedulePage() {
             <section className={s.section} aria-labelledby="past">
               <SectionHead id="past">Past classes</SectionHead>
               <p className={s.sectionLede}>
-                {recordings.length || external.length ? "Published recordings are shown with their classes." : "Recordings appear here once they are published."}
+                {recordings.length || external.length || standalone.length ? "Published recordings are shown with their classes." : "Recordings appear here once they are published."}
               </p>
               {schedule.past.length ? (
                 <LiveSessionRows sessions={schedule.past} clock={clock} recordings={watchBySession} externalRecordings={externalBySession} />
-              ) : (
+              ) : standalone.length ? null : (
                 <p className={s.emptyLine}>No classes have taken place yet.</p>
+              )}
+              {standalone.length > 0 && (
+                <ol className={s.chapters}>
+                  {standalone.map((item) => item.url && (
+                    <li key={item.id}>
+                      <div className={s.chap}>
+                        <span className={s.ti}>{item.title}{item.originalFilename && <small>{item.originalFilename}</small>}</span>
+                        <a className={`${s.st} ${s.stNext}`} href={item.url} target="_blank" rel="noopener noreferrer">Watch ?</a>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               )}
             </section>
           </>

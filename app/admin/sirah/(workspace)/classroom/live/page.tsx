@@ -25,9 +25,9 @@ import "@/app/seerah/classroom/tokens.css";
 import styles from "@/components/sirah/admin-classroom.module.css";
 import { recordingsAvailable, recordingsForSessions, type RecordingAdminView } from "@/lib/lms/recordings";
 import { lmsContentAvailable } from "@/lib/lms/content";
-import { externalRecordingsForSessions } from "@/lib/lms/external-recordings";
+import { externalRecordingsForSessions, standaloneRecordings } from "@/lib/lms/external-recordings";
 import { RECORDING_MAX_AUTO_ATTEMPTS } from "@/lib/lms/recording-policy";
-import { cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, retryRecordingFile, saveExternalRecording, setRecordingPublished, updateLiveSession } from "./actions";
+import { cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, deleteStandaloneRecordingAction, retryRecordingFile, saveExternalRecording, saveStandaloneRecordingAction, setRecordingPublished, updateLiveSession } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -525,7 +525,9 @@ export default async function LiveSessionsAdminPage({
   // Phase 4: undefined until the recordings migration is deployed, so the page works either way.
   const recordings =
     data && (await recordingsAvailable()) ? await recordingsForSessions([...data.upcoming, ...data.past].map((s) => s.id)) : undefined;
-  const externalRecordings = data && (await lmsContentAvailable()) ? await externalRecordingsForSessions(data.past.map((session) => session.id)) : undefined;
+  const contentAvailable = await lmsContentAvailable();
+  const externalRecordings = data && contentAvailable ? await externalRecordingsForSessions(data.past.map((session) => session.id)) : undefined;
+  const standalone = contentAvailable ? await standaloneRecordings() : [];
   // The start route admits the env super admin or the host's own account.
   const canStart = access.role === "SUPER_ADMIN";
   const nextUp = data?.upcoming.find((s) => s.phase !== "cancelled");
@@ -551,6 +553,7 @@ export default async function LiveSessionsAdminPage({
           ) : null}
         </div>
         <div className={styles.introActions}>
+          {contentAvailable && <a href="#manual-recordings" className={styles.secondary}>Add a recording</a>}
           <a href="#new-session" className={styles.primary}>
             New session
           </a>
@@ -650,6 +653,42 @@ export default async function LiveSessionsAdminPage({
           </section>
         </>
       ) : null}
+
+      {contentAvailable && (
+        <section className={styles.card} id="manual-recordings" aria-labelledby="manual-recordings-title">
+          <div className={styles.cardHead}>
+            <h3 id="manual-recordings-title" className={styles.cardTitle}>Add a recording</h3>
+            <p className={styles.cardLede}>Add a recording without scheduling a Zoom meeting. Published links are visible to enrolled students.</p>
+          </div>
+          <form action={saveStandaloneRecordingAction} className={styles.form}>
+            <input type="hidden" name="cohortId" value={cohortId ?? ""} />
+            <label className={styles.label}>Title<input className={styles.input} name="title" placeholder="Orientation, Class 1?" maxLength={191} required /></label>
+            <label className={styles.label}>External URL<input className={styles.input} type="url" name="url" placeholder="https://" maxLength={1024} required /></label>
+            <label className={styles.label}>Description (optional)<input className={styles.input} name="description" maxLength={255} /></label>
+            <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" /> Publish to enrolled students</label>
+            <button className={styles.primary} type="submit">Save recording</button>
+          </form>
+          {standalone.map((item) => (
+            <details key={item.id} className={styles.subsection}>
+              <summary>{item.title} ? {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</summary>
+              <form action={saveStandaloneRecordingAction} className={styles.inlineForm}>
+                <input type="hidden" name="id" value={item.id} />
+                <input type="hidden" name="cohortId" value={cohortId ?? ""} />
+                <label className={styles.label}>Title<input className={styles.input} name="title" defaultValue={item.title} maxLength={191} required /></label>
+                <label className={styles.label}>External URL<input className={styles.input} type="url" name="url" defaultValue={item.url ?? ""} maxLength={1024} required /></label>
+                <label className={styles.label}>Description (optional)<input className={styles.input} name="description" defaultValue={item.originalFilename ?? ""} maxLength={255} /></label>
+                <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" defaultChecked={item.visibility === "PUBLISHED"} /> Publish to enrolled students</label>
+                <button className={styles.secondarySmall} type="submit">Save changes</button>
+              </form>
+              <form action={deleteStandaloneRecordingAction} className={styles.inlineForm}>
+                <input type="hidden" name="id" value={item.id} />
+                <input type="hidden" name="cohortId" value={cohortId ?? ""} />
+                <button className={styles.ghostDanger} type="submit">Delete recording</button>
+              </form>
+            </details>
+          ))}
+        </section>
+      )}
 
       {cohortId ? (
         <section className={styles.card} id="new-session" aria-labelledby="new-session-title">

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { getSessionIdentity } from "@/lib/auth/session";
 import { LmsContentError } from "@/lib/lms/content";
-import { addExternalRecording, setExternalRecordingVisibility } from "@/lib/lms/external-recordings";
+import { addExternalRecording, deleteStandaloneRecording, saveStandaloneRecording, setExternalRecordingVisibility } from "@/lib/lms/external-recordings";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { LmsFieldCryptoError } from "@/lib/lms/field-crypto";
 import { cancelSession, createSession, LmsSessionError, updateSession } from "@/lib/lms/sessions";
@@ -178,4 +178,27 @@ export async function changeExternalRecordingVisibility(form: FormData) {
     back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: `live-${sessionId}` });
   }
   done(publish ? "External recording published." : "External recording hidden.", cohort, `live-${sessionId}`);
+}
+
+export async function saveStandaloneRecordingAction(form: FormData) {
+  const access = await requireSessionEditor();
+  const cohort = text(form, "cohortId");
+  const actor = access.role === "SUPER_ADMIN" ? (await getCurrentAdmin())?.email || "Super Admin" : (await getSessionIdentity())?.email || "Manager";
+  try {
+    await saveStandaloneRecording({ id: text(form, "id") || undefined, title: text(form, "title"), url: text(form, "url"), description: text(form, "description"), published: form.get("publish") === "on", actor });
+  } catch (failure) {
+    back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: "manual-recordings" });
+  }
+  done("Recording saved.", cohort, "manual-recordings");
+}
+
+export async function deleteStandaloneRecordingAction(form: FormData) {
+  await requireSessionEditor();
+  const cohort = text(form, "cohortId");
+  try {
+    await deleteStandaloneRecording(text(form, "id"));
+  } catch (failure) {
+    back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: "manual-recordings" });
+  }
+  done("Recording deleted.", cohort, "manual-recordings");
 }

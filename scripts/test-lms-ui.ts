@@ -322,6 +322,24 @@ describe("admin live sessions", () => {
     assert.equal(recording.visibility, "HIDDEN");
   });
 
+  test("standalone recordings can be created, edited, unpublished and deleted without Zoom", async () => {
+    access = { role: "MANAGER" };
+    const fields = { title: "Orientation", url: "https://youtu.be/example", description: "Welcome", publish: "on" };
+    await outcome(() => actions.saveStandaloneRecordingAction(form(fields)));
+    const item = table("lmsResource")[0];
+    assert.equal(item.title, "Orientation");
+    assert.equal(item.originalFilename, "Welcome");
+    assert.equal(item.sessionId, null);
+    assert.equal(item.cohortId, null);
+    assert.equal(item.visibility, "PUBLISHED");
+    assert.equal(apiCalls().length, 0);
+    await outcome(() => actions.saveStandaloneRecordingAction(form({ ...fields, id: String(item.id), title: "Class 1", publish: "" })));
+    assert.equal(item.title, "Class 1");
+    assert.equal(item.visibility, "HIDDEN");
+    await outcome(() => actions.deleteStandaloneRecordingAction(form({ id: String(item.id) })));
+    assert.equal(table("lmsResource").length, 0);
+  });
+
   test("the overlap guard's refusal is shown clearly on the page", async () => {
     access = { role: "SUPER_ADMIN" };
     const day = future(5);
@@ -456,6 +474,27 @@ describe("student schedule", () => {
     assert.ok(!html.includes("Hidden recording") && !html.includes("Other recording"));
     signIn(seedUser("unpaid@example.test"));
     assert.ok(!(await render(SchedulePage())).includes("https://youtu.be/visible"));
+  });
+
+  test("standalone recordings are visible to enrolled students in any cohort only when published", async () => {
+    access = { role: "MANAGER" };
+    const input = new FormData();
+    for (const [key, value] of Object.entries({ title: "Orientation", url: "https://youtu.be/orientation", description: "Welcome", publish: "on" })) input.set(key, value);
+    await outcome(() => actions.saveStandaloneRecordingAction(input));
+    const item = table("lmsResource")[0];
+    for (const cohort of [SIRAH_BATCH, "other-cohort"]) {
+      const student = signIn(seedUser(`${cohort}@example.test`));
+      seedPaidOrder(student.id, cohort);
+      const html = await render(SchedulePage());
+      assert.match(html, /Orientation/);
+      assert.match(html, /Welcome/);
+      assert.match(html, /https:\/\/youtu\.be\/orientation/);
+    }
+    item.visibility = "HIDDEN";
+    assert.ok(!(await render(SchedulePage())).includes("https://youtu.be/orientation"));
+    signIn(seedUser("unpaid@example.test"));
+    item.visibility = "PUBLISHED";
+    assert.ok(!(await render(SchedulePage())).includes("https://youtu.be/orientation"));
   });
 
   test("students without an active, paid enrolment see the gated state and no sessions", async () => {
