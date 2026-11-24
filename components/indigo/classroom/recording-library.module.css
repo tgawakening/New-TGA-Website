@@ -1,0 +1,13 @@
+﻿.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
+.card { display: block; min-width: 0; overflow: hidden; color: var(--sand); background: linear-gradient(145deg, #263552, #192740); border: 1px solid rgba(237, 234, 223, .16); border-radius: 1rem; text-decoration: none; box-shadow: inset 0 1px rgba(255,255,255,.06), 0 12px 30px rgba(0,0,0,.16); }
+.card summary { cursor: pointer; list-style: none; }
+.card summary::-webkit-details-marker { display: none; }
+.thumbnail { display: grid; place-items: center; aspect-ratio: 16 / 9; background: linear-gradient(135deg, #264b54, #242c48); background-size: cover; background-position: center; }
+.thumbnail span { display: grid; place-items: center; width: 3rem; height: 3rem; padding-left: .15rem; border-radius: 50%; color: white; background: rgba(11, 22, 37, .8); }
+.content { display: grid; gap: .35rem; padding: 1rem 1rem .3rem; line-height: 1.45; }
+.content strong { font-family: var(--display); font-size: 1.2rem; }
+.content small { color: #d1d4db; }
+.action { display: block; padding: .5rem 1rem 1rem; color: #65e3ce; font-weight: 600; font-size: .85rem; }
+.player { aspect-ratio: 16 / 9; background: #000; }
+.player iframe { display: block; width: 100%; height: 100%; border: 0; }
+.empty { color: #d1d4db; }

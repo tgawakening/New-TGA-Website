@@ -150,7 +150,7 @@ export function LiveSessionRows({
             {session.phase === "past" && externalRecordings?.get(session.id)?.map((recording) => (
               <div key={recording.id} className={s.chap}>
                 <span className={s.ti}>{recording.title}</span>
-                <a className={`${s.st} ${s.stNext}`} href={recording.url} target="_blank" rel="noopener noreferrer">Watch ?</a>
+                <a className={`${s.st} ${s.stNext}`} href={recording.url} target="_blank" rel="noopener noreferrer">Watch →</a>
               </div>
             ))}
           </li>

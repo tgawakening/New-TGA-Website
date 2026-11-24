@@ -1068,7 +1068,7 @@ export function SirahAdminStudents({
                             ? `Archived ${date(student.archivedAt)}`
                             : student.excludedAt
                               ? `Excluded ${date(student.excludedAt)}${student.excludedBy ? ` by ${student.excludedBy}` : ""}`
-                              : "S?rah ? Beyond Chronology"}
+                              : "Sīrah · Beyond Chronology"}
                         </span>
                       </p>
                       {(student.archivedAt || student.excludedAt) && (

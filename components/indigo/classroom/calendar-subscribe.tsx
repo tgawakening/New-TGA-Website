@@ -28,7 +28,7 @@ export function CalendarSubscribe({ https, webcal }: { https: string; webcal: st
         </button>
       </div>
       <label>
-        <span className={p.small}>For Google Calendar, copy the link and add it under Other calendars ? From URL.</span>
+        <span className={p.small}>For Google Calendar, copy the link and add it under Other calendars → From URL.</span>
         <input className={p.feedUrl} readOnly value={https} onFocus={(event) => event.currentTarget.select()} aria-label="Your calendar link" />
       </label>
       <p className={p.small}>This link is personal to you. Do not share it.</p>

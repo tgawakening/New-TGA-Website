@@ -357,6 +357,19 @@ describe("admin live sessions", () => {
     assert.match(html, /role="alert"[^>]*>[^<]*already has &quot;First&quot;/);
   });
 
+  test("only the super admin can delete the selected session", async () => {
+    const target = seedSession(new Date(Date.now() - 2 * 86_400_000));
+    const other = seedSession(new Date(Date.now() - 3 * 86_400_000));
+    access = { role: "MANAGER" };
+    assert.equal((await outcome(() => actions.deleteLiveSession(form({ id: String(target.id), cohortId: SIRAH_BATCH })))).redirect, "/admin/sirah");
+    assert.equal(table("lmsSession").length, 2);
+    access = { role: "SUPER_ADMIN" };
+    await outcome(() => actions.deleteLiveSession(form({ id: String(target.id), cohortId: "other-cohort" })));
+    assert.equal(table("lmsSession").length, 2);
+    await outcome(() => actions.deleteLiveSession(form({ id: String(target.id), cohortId: SIRAH_BATCH })));
+    assert.deepEqual(table("lmsSession").map((item) => item.id), [other.id]);
+  });
+
   test("community leads cannot run the actions", async () => {
     access = { role: "COMMUNITY_LEAD" };
     const result = await outcome(() =>

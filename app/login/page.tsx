@@ -42,8 +42,9 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string | string[]; reset?: string }>;
 }) {
   const { user, unavailable } = await currentUserOrUnavailable();
-  if (user) redirect("/dashboard");
   const params = await searchParams;
+  const teacherEntry = params.next === "/seerah/classroom/teaching";
+  if (user) redirect(teacherEntry ? "/seerah/classroom/teaching" : "/dashboard");
   const finishing = isUnfinishedRegistration(params.next);
   const passwordReset = params.reset === "1";
 
@@ -68,7 +69,7 @@ export default async function LoginPage({
             {/* Operational notice from SIRAH_NOTICE (renders nothing when unset). */}
             <SirahNotice />
             <h1 id="signin-title" className={s.cardTitle}>
-              {finishing ? "Sign in to continue" : "Sign in to your student dashboard"}
+              {teacherEntry ? "Sign in to the teacher portal" : finishing ? "Sign in to continue" : "Sign in to your student dashboard"}
             </h1>
             <p className={s.cardLede}>
               {finishing
@@ -84,16 +85,16 @@ export default async function LoginPage({
                 Your password has been changed. Sign in with the new one.
               </p>
             ) : null}
-            <IndigoLoginForm />
+            <IndigoLoginForm teacherEntry={teacherEntry} />
             <div className={s.links}>
               <Link href="/forgot-password">Forgot password?</Link>
-              <span>
+              {!teacherEntry && <><span>
                 No account yet? <Link href="/seerah/register">Create your registration</Link>
               </span>
               {/* Teachers / hosts: sign in, then land in the teacher portal. */}
               <span>
                 Teaching a session? <Link href="/login?next=/seerah/classroom/teaching">Teacher portal sign in</Link>
-              </span>
+              </span></>}
             </div>
           </div>
         </section>

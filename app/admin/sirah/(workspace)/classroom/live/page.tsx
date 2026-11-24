@@ -20,6 +20,7 @@ import {
   type SessionView,
 } from "@/lib/lms/schedule";
 import { ScheduleFields, SelectField } from "@/components/sirah/classroom-pickers";
+import { DeleteSessionButton } from "@/components/sirah/delete-session-button";
 import { CancelSessionButton } from "@/components/sirah/cancel-session-button";
 import "@/app/seerah/classroom/tokens.css";
 import styles from "@/components/sirah/admin-classroom.module.css";
@@ -27,7 +28,7 @@ import { recordingsAvailable, recordingsForSessions, type RecordingAdminView } f
 import { lmsContentAvailable } from "@/lib/lms/content";
 import { externalRecordingsForSessions, standaloneRecordings } from "@/lib/lms/external-recordings";
 import { RECORDING_MAX_AUTO_ATTEMPTS } from "@/lib/lms/recording-policy";
-import { cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, deleteStandaloneRecordingAction, retryRecordingFile, saveExternalRecording, saveStandaloneRecordingAction, setRecordingPublished, updateLiveSession } from "./actions";
+import { cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, deleteLiveSession, deleteStandaloneRecordingAction, retryRecordingFile, saveExternalRecording, saveStandaloneRecordingAction, setRecordingPublished, updateLiveSession } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -315,6 +316,7 @@ function SessionLedger({
   externalRecordings,
   now,
   canStart,
+  canDelete,
   editable,
   zone,
 }: {
@@ -327,6 +329,7 @@ function SessionLedger({
   externalRecordings?: Awaited<ReturnType<typeof externalRecordingsForSessions>>;
   now: Date;
   canStart: boolean;
+  canDelete: boolean;
   editable: boolean;
 }) {
   return (
@@ -433,7 +436,7 @@ function SessionLedger({
                     <h4 className={styles.subTitle}>External recordings</h4>
                     {externalRecordings.filter((item) => item.sessionId === session.id).map((item) => (
                       <div key={item.id} className={styles.inlineForm}>
-                        <span>{item.title} ? {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</span>
+                        <span>{item.title} · {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</span>
                         {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer">Open recording</a>}
                         <form action={changeExternalRecordingVisibility}>
                           <input type="hidden" name="resourceId" value={item.id} />
@@ -454,6 +457,8 @@ function SessionLedger({
                     </form>
                   </div>
                 ) : null}
+
+                {canDelete && <div className={styles.formFoot}><DeleteSessionButton action={deleteLiveSession} id={session.id} cohort={session.cohortId} title={session.title} className={styles.ghostDanger} /></div>}
 
                 {editable && open ? (
                   <>
@@ -621,6 +626,7 @@ export default async function LiveSessionsAdminPage({
                 zone={zone}
                 now={now}
                 canStart={canStart}
+                canDelete={canStart}
                 editable
               />
             )}
@@ -647,6 +653,7 @@ export default async function LiveSessionsAdminPage({
                 zone={zone}
                 now={now}
                 canStart={false}
+                canDelete={canStart}
                 editable={false}
               />
             )}
@@ -662,7 +669,7 @@ export default async function LiveSessionsAdminPage({
           </div>
           <form action={saveStandaloneRecordingAction} className={styles.form}>
             <input type="hidden" name="cohortId" value={cohortId ?? ""} />
-            <label className={styles.label}>Title<input className={styles.input} name="title" placeholder="Orientation, Class 1?" maxLength={191} required /></label>
+            <label className={styles.label}>Title<input className={styles.input} name="title" placeholder="Orientation, Class 1…" maxLength={191} required /></label>
             <label className={styles.label}>External URL<input className={styles.input} type="url" name="url" placeholder="https://" maxLength={1024} required /></label>
             <label className={styles.label}>Description (optional)<input className={styles.input} name="description" maxLength={255} /></label>
             <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" /> Publish to enrolled students</label>
@@ -670,7 +677,7 @@ export default async function LiveSessionsAdminPage({
           </form>
           {standalone.map((item) => (
             <details key={item.id} className={styles.subsection}>
-              <summary>{item.title} ? {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</summary>
+              <summary>{item.title} · {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</summary>
               <form action={saveStandaloneRecordingAction} className={styles.inlineForm}>
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="cohortId" value={cohortId ?? ""} />

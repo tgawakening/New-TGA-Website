@@ -706,7 +706,7 @@ export default function StudentDashboard({ user, nextLiveClass = null, latestRec
           <h2 id="next-class-title" className={s.nextTitle}>{latestRecording.title}</h2>
         ) : (
           <>
-            <h2 id="next-class-title" className={s.nextTitle}>You?re all caught up</h2>
+            <h2 id="next-class-title" className={s.nextTitle}>You’re all caught up</h2>
             <p className={s.muted}>{classroomOpen ? "Your next class will appear here." : lockedHint}</p>
           </>
         )}
@@ -714,10 +714,10 @@ export default function StudentDashboard({ user, nextLiveClass = null, latestRec
       <div className={s.nextActions}>
         {showNextClass && nextLiveClass ? (
           nextLiveClass.joinable ? (
-            <a href={nextLiveClass.joinPath} className={s.btn} target="_blank" rel="noopener noreferrer">{nextLiveClass.live ? "Enter the class" : "Join the class"} <span aria-hidden="true">?</span></a>
+            <a href={nextLiveClass.joinPath} className={s.btn} target="_blank" rel="noopener noreferrer">{nextLiveClass.live ? "Enter the class" : "Join the class"} <span aria-hidden="true">→</span></a>
           ) : <span className={s.muted}>Join opens 15 minutes before class or when the host starts.</span>
         ) : latestRecording ? (
-          <a href={latestRecording.href} className={s.btn} {...(latestRecording.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>Watch recording <span aria-hidden="true">?</span></a>
+          <a href={latestRecording.href} className={s.btn} {...(latestRecording.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>Watch recording <span aria-hidden="true">→</span></a>
         ) : null}
         {classroomOpen ? <Link href="/seerah/classroom/schedule" className={showNextClass && nextLiveClass?.joinable || latestRecording && !showNextClass ? s.btnGhost : s.btn}>View live classes</Link> : null}
       </div>
@@ -772,7 +772,7 @@ export default function StudentDashboard({ user, nextLiveClass = null, latestRec
       <Tile href="/seerah/classroom#resources" icon={ICONS.resources} locked={!classroomOpen} hint={lockedHint} meta={resourceCount === null ? undefined : `${resourceCount} ${resourceCount === 1 ? "resource" : "resources"} available`}>
         Resources &amp; notices
       </Tile>
-      <Tile href="#payments" icon={ICONS.payments} onClick={go("payments")} meta={latestSirahOrder ? <>{sirahPlanLabel(latestSirahOrder)}{latestSirahOrder.plan === "MONTHLY" && latestSirahOrder.nextBillingAt ? <> ? Next due <LocalTime iso={latestSirahOrder.nextBillingAt} fallback={new Date(latestSirahOrder.nextBillingAt).toLocaleDateString("en-GB")} fallbackZone="" /></> : ` ? ${sirahOrderStatus(latestSirahOrder).label}`}</> : latestRegistration ? `${latestPaymentPlanLabel} ? ${latestRegistration.status}` : undefined}>
+      <Tile href="#payments" icon={ICONS.payments} onClick={go("payments")} meta={latestSirahOrder ? <>{sirahPlanLabel(latestSirahOrder)}{latestSirahOrder.plan === "MONTHLY" && latestSirahOrder.nextBillingAt ? <> · Next due <LocalTime iso={latestSirahOrder.nextBillingAt} fallback={new Date(latestSirahOrder.nextBillingAt).toLocaleDateString("en-GB")} fallbackZone="" /></> : ` · ${sirahOrderStatus(latestSirahOrder).label}`}</> : latestRegistration ? `${latestPaymentPlanLabel} · ${latestRegistration.status}` : undefined}>
         Payments &amp; subscription
       </Tile>
       <Tile href="/seerah/register" icon={ICONS.seat} meta="Invite someone to learn alongside our community.">

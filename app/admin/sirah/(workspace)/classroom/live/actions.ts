@@ -202,3 +202,21 @@ export async function deleteStandaloneRecordingAction(form: FormData) {
   }
   done("Recording deleted.", cohort, "manual-recordings");
 }
+
+/** Delete one session and its dependent database rows through existing cascades. */
+export async function deleteLiveSession(form: FormData) {
+  const access = await requireSessionEditor();
+  if (access.role !== "SUPER_ADMIN") redirect("/admin/sirah");
+  const id = safe(text(form, "id"));
+  const cohort = safe(text(form, "cohortId"));
+  if (!id || !cohort) back({ error: "Choose a session to delete.", cohort });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const result = await tx.lmsSession.deleteMany({ where: { id, cohortId: cohort } });
+      if (result.count !== 1) throw new LmsSessionError("That session no longer exists.", "NOT_FOUND", 404);
+    });
+  } catch (failure) {
+    back({ error: describe(failure), cohort, anchor: `live-${id}` });
+  }
+  done("Session deleted.", cohort);
+}

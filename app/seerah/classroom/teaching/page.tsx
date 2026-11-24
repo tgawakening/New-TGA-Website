@@ -94,7 +94,7 @@ export default async function TeacherSessionsPage() {
 
   return (
     <div className={s.page}>
-      <ClassroomHeader home="/seerah/classroom/teaching" week={null} percent={null} back={{ href: "/dashboard", label: "Dashboard" }} />
+      <ClassroomHeader home="/seerah/classroom/teaching" week={null} percent={null} back={{ href: "/seerah/classroom/teaching", label: "Dashboard" }} />
       <main className={s.wrap}>
         <section className={s.hero} aria-labelledby="teaching-title">
           <p className={s.eyebrow}>Teaching</p>
@@ -106,6 +106,7 @@ export default async function TeacherSessionsPage() {
                 : "You have no upcoming sessions."}{" "}
               Start as host opens Zoom with a fresh host link each time; students wait in the waiting room until you admit them.
             </p>
+            <p><a href="mailto:admin@tgaawakening.com?subject=Schedule%20a%20class">Request a class time</a> from the course administrator.</p>
           </div>
         </section>
 

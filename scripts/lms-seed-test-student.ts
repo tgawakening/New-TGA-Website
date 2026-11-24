@@ -44,7 +44,8 @@ import { addMonthsClamped, canAccessSirah } from "../services/sirah-confirmation
 // ── Configure ──────────────────────────────────────────────────────────────
 
 /** Login email (stored lower-case, as the login form does). */
-const TEST_STUDENT_EMAIL = "test.student@tga-awakening.com";
+const TEST_STUDENT_EMAIL = "huraira.bulc@gmail.com";
+const PREVIOUS_TEST_STUDENT_EMAIL = "test.student@tga-awakening.com";
 /**
  * Login password, 8 to 72 characters. Leave empty to have --apply generate a
  * strong random one and print it once. Prefer empty: anything typed here is
@@ -110,6 +111,22 @@ async function main() {
   if (!course) throw new Stop(`The Sīrah course (${SIRAH_SLUG}) is not in this database. Nothing was written.`);
   if (!cohort) throw new Stop(`Cohort ${COHORT_BATCH_CODE} is not in this database. Nothing was written.`);
 
+  const previous = await prisma.user.findUnique({ where: { email: PREVIOUS_TEST_STUDENT_EMAIL }, select: { id: true } });
+  if (previous) {
+    if (existing) throw new Stop(`Both the old test account and ${email} exist. Neither account was changed.`);
+    const orders = await prisma.sirahOrder.findMany({ where: { userId: previous.id, courseId: course.id, batchCode: COHORT_BATCH_CODE }, select: { id: true } });
+    const seeded = orders.length ? await prisma.sirahAudit.findFirst({ where: { orderId: { in: orders.map((order) => order.id) }, action: SEED_MARKER, actor: ACTOR }, select: { id: true } }) : null;
+    if (!seeded) throw new Stop("The previous account was not created by this script. Nothing was changed.");
+    if (!apply) {
+      console.log(`Dry run: would change the verified test account email to ${email}; password and enrolment remain unchanged.`);
+      return;
+    }
+    await prisma.user.update({ where: { id: previous.id }, data: { email } });
+    console.log(`Test account email changed to ${email}; password and enrolment remain unchanged.`);
+    await reportAccess(previous.id);
+    return;
+  }
+
   if (existing) {
     // Ours only if one of its orders in this cohort carries this script's seed audit.
     const orders = await prisma.sirahOrder.findMany({
@@ -131,6 +148,8 @@ async function main() {
     await reportAccess(existing.id);
     return;
   }
+
+  if (!previous && !existing) throw new Stop("The previous seeded test account was not found. Nothing was changed; its existing password cannot be retained.");
 
   const price = priceFor(COUNTRY_CODE, PLAN, METHOD);
   const countryName = countries[COUNTRY_CODE as keyof typeof countries].name;

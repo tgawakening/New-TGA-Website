@@ -6,11 +6,11 @@ import { JOIN_OPENS_MINUTES_BEFORE } from "@/lib/lms/access";
 import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { studentPhase5 } from "@/lib/lms/student-phase5";
-import { CalendarSection } from "@/components/indigo/classroom/phase5-sections";
 import { studentExternalRecordings, studentStandaloneRecordings } from "@/lib/lms/external-recordings";
 import { recordingsAvailable, studentRecordings, watchPath, type StudentRecording } from "@/lib/lms/recordings";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { classroomClock } from "@/components/indigo/classroom/clock";
+import { RecordingLibrary } from "@/components/indigo/classroom/recording-library";
 import { ClassroomHeader, SectionHead } from "@/components/indigo/classroom/parts";
 import { LiveSessionRows, NextLiveClass } from "@/components/indigo/classroom/live-sessions";
 import s from "@/components/indigo/classroom/classroom.module.css";
@@ -89,31 +89,15 @@ export default async function LiveSchedulePage() {
               )}
             </section>
 
-            {phase5?.calendar ? <CalendarSection links={phase5.calendar} /> : null}
-            {recordings.length ? (
-              <section className={s.section} aria-labelledby="recordings">
-                <SectionHead id="recordings">Recordings</SectionHead>
-                <p className={s.sectionLede}>Watch past classes here. For enrolled students only; they stream and cannot be downloaded.</p>
-                <ol className={s.chapters}>
-                  {recordings.map((r) => (
-                    <li key={r.recordingId}>
-                      <div className={s.chap}>
-                        <span className={s.wkn}>{r.kind === "AUDIO" ? "Audio" : "Video"}</span>
-                        <span className={s.ti}>
-                          {r.title}
-                          <small>
-                            <time dateTime={r.startsAt.toISOString()}>{clock.shortDate.format(r.startsAt)}</time>
-                          </small>
-                        </span>
-                        <Link className={`${s.st} ${s.stNext}`} href={watchPath(r.recordingId)}>
-                          Watch →
-                        </Link>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            ) : null}
+            <section className={s.section} aria-labelledby="recordings">
+              <SectionHead id="recordings">Recordings</SectionHead>
+              <p className={s.sectionLede}>Watch published classes at your own pace.</p>
+              <RecordingLibrary items={[
+                ...recordings.map((r) => ({ id: `zoom-${r.recordingId}`, title: r.title, date: clock.shortDate.format(r.startsAt), href: watchPath(r.recordingId), external: false })),
+                ...external.flatMap((r) => { const session = schedule.past.find((item) => item.id === r.sessionId); return session && r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(session.startsAt), href: r.url, external: true }] : []; }),
+                ...standalone.flatMap((r) => r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: r.url, description: r.originalFilename, external: true }] : []),
+              ]} />
+            </section>
 
             <section className={s.section} aria-labelledby="past">
               <SectionHead id="past">Past classes</SectionHead>
@@ -131,7 +115,7 @@ export default async function LiveSchedulePage() {
                     <li key={item.id}>
                       <div className={s.chap}>
                         <span className={s.ti}>{item.title}{item.originalFilename && <small>{item.originalFilename}</small>}</span>
-                        <a className={`${s.st} ${s.stNext}`} href={item.url} target="_blank" rel="noopener noreferrer">Watch ?</a>
+                        <a className={`${s.st} ${s.stNext}`} href={item.url} target="_blank" rel="noopener noreferrer">Watch →</a>
                       </div>
                     </li>
                   ))}

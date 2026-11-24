@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "../ornaments";
 import s from "./login.module.css";
 
-export function IndigoLoginForm() {
+export function IndigoLoginForm({ teacherEntry = false }: { teacherEntry?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -119,13 +119,13 @@ export function IndigoLoginForm() {
           </>
         )}
       </button>
-      <button
+      {!teacherEntry && <button
         type="button"
         className={s.ghost}
         onClick={() => router.push("/seerah/register")}
       >
         Create account
-      </button>
+      </button>}
     </form>
   );
 }
