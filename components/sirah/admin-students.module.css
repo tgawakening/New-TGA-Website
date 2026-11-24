@@ -509,9 +509,6 @@
  * with a soft border and shadow, stacked with clear space between them. The
  * labels and every card share one column template, so the fields line up.
  *   wide        ORDER CUSTOMER AMOUNT PAYMENT COURSE ACCESS GROUP DATE ACTIONS
- *   mid widths  two tiers per card (and in the labels):
- *                 ORDER    CUSTOMER        AMOUNT  ACTIONS
- *                 PAYMENT  COURSE ACCESS   GROUP   DATE
  *   phones      each card stacks, every field labelled
  * Contrast on white: labels #5b6472 6.2:1, muted text 6.0:1. */
 :global([data-theme="indigo-admin"]) .recordsCard .dataTable {
@@ -746,10 +743,10 @@
 
 :global([data-theme="indigo-admin"]) .recordsCard .row .actionsCell :is(:global(.ga-admin-primary-btn), :global(.ga-admin-outline-btn), :global(.ga-admin-ghost-btn)) {
   min-height: 2.5rem;
-  padding: 0 var(--sp-4);
+  padding: 0 var(--sp-2);
   border-width: 1px;
   border-radius: 10px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1;
   text-align: center;
@@ -757,7 +754,7 @@
 }
 
 /* -- Column labels and aligned cards: from tablet width up -------------- */
-@container list (min-width: 760px) {
+@container list (min-width: 900px) {
   /* Cell labels step aside for the column labels (kept for screen readers). */
   .cellLabel {
     position: absolute;
@@ -770,14 +767,11 @@
   }
 
   :global([data-theme="indigo-admin"]) .recordsCard :is(.head, .row) {
-    --record-cols: [a] minmax(9rem, 1.15fr) [b] minmax(8rem, 1.2fr) [c] minmax(7rem, 0.9fr) [d] 16rem;
+    --record-cols: minmax(0, 1fr) minmax(0, 1.2fr) minmax(6.5rem, 0.8fr) minmax(0, 0.85fr) minmax(0, 0.7fr) minmax(0, 0.75fr) minmax(0, 0.8fr) 14rem;
     display: grid;
     grid-template-columns: var(--record-cols);
-    grid-template-areas:
-      "order customer amount actions"
-      "payment access group date";
-    column-gap: var(--sp-5);
-    row-gap: var(--sp-5);
+    grid-template-areas: "order customer amount payment access group date actions";
+    column-gap: var(--sp-2);
   }
 
   /* The labels: light, small caps, no band, aligned with the card insides
@@ -795,7 +789,7 @@
   }
 
   :global([data-theme="indigo-admin"]) .recordsCard .row {
-    padding: var(--sp-3) var(--sp-4);
+    padding: var(--sp-2) var(--sp-4);
     align-items: start;
   }
 
@@ -809,17 +803,6 @@
     justify-content: flex-end;
     align-items: center;
     min-width: 0;
-  }
-}
-
-/* Wide: all eight columns on one line per card. */
-/* The Actions column accommodates the primary action, details and menu. */
-@container list (min-width: 1280px) {
-  :global([data-theme="indigo-admin"]) .recordsCard :is(.head, .row) {
-    --record-cols:
-      minmax(9rem, 1.15fr) minmax(10rem, 1.3fr) minmax(7.5rem, 0.8fr) minmax(7.5rem, 0.85fr) 6.75rem 7rem 6.5rem 16rem;
-    grid-template-areas: "order customer amount payment access group date actions";
-    column-gap: var(--sp-4);
   }
 }
 

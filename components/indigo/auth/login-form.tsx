@@ -5,19 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "../ornaments";
 import s from "./login.module.css";
 
-/* The live sign-in form (app/login/page.tsx): POST /api/login,
- * then go to ?next= or /dashboard and refresh. "Create account" always goes to
- * the registration flow: it keeps ?next= only when that is the registration
- * page itself (returning to a saved booking), never another destination such
- * as the teacher portal. Only the presentation differs. */
-
-/** Where "Create account" goes: /seerah/register, or a same-site
- * /seerah/register?... from ?next= (a saved booking). */
-function createAccountHref(next: string | null) {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/seerah/register";
-  const url = new URL(next, "https://local.invalid");
-  return url.pathname === "/seerah/register" ? `${url.pathname}${url.search}` : "/seerah/register";
-}
 export function IndigoLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -135,7 +122,7 @@ export function IndigoLoginForm() {
       <button
         type="button"
         className={s.ghost}
-        onClick={() => router.push(createAccountHref(searchParams.get("next")))}
+        onClick={() => router.push("/seerah/register")}
       >
         Create account
       </button>

@@ -635,6 +635,10 @@ export default async function LiveSessionsAdminPage({
               <input type="hidden" name="cohortId" value={cohortId} />
               <p className={styles.help}>Cohort: {cohortId}</p>
               <SessionFields idPrefix="new-session" hosts={hosts} zone={zone} />
+              <label className={styles.check}>
+                <input className={styles.checkbox} type="checkbox" name="notifyStudents" defaultChecked />
+                Notify students about this new class
+              </label>
               <div className={styles.formFoot}>
                 <button type="submit" className={styles.primary}>
                   Schedule session

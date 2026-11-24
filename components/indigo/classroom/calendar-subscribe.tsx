@@ -18,7 +18,7 @@ export function CalendarSubscribe({ https, webcal }: { https: string; webcal: st
   }
   return (
     <div className={p.calendar}>
-      <p>Get every live class in your own calendar. It updates itself when a class is added, moved or cancelled.</p>
+      <p>Subscribe to add live classes to your calendar. It updates automatically when a class is added, moved or cancelled.</p>
       <div className={p.calendarActions}>
         <a className={p.btn} href={webcal}>
           Subscribe to calendar
@@ -28,7 +28,7 @@ export function CalendarSubscribe({ https, webcal }: { https: string; webcal: st
         </button>
       </div>
       <label>
-        <span className={p.small}>For Google Calendar: Other calendars, From URL, then paste this link.</span>
+        <span className={p.small}>For Google Calendar, copy the link and add it under Other calendars ? From URL.</span>
         <input className={p.feedUrl} readOnly value={https} onFocus={(event) => event.currentTarget.select()} aria-label="Your calendar link" />
       </label>
       <p className={p.small}>This link is personal to you. Do not share it.</p>

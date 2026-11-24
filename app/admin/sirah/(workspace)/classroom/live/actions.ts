@@ -79,7 +79,7 @@ export async function createLiveSession(form: FormData) {
     error = describe(failure);
   }
   if (error) back({ error, cohort, anchor: "new-session" });
-  notifyLater(() => notifySessionScheduled(id));
+  if (form.get("notifyStudents") === "on") notifyLater(() => notifySessionScheduled(id));
   done("Session scheduled. The Zoom meeting was created.", cohort, `live-${id}`);
 }
 

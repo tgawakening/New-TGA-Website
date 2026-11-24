@@ -33,6 +33,10 @@ type Identity = { id: string; fullName: string; email: string; role: string; sta
 type Access = { role: "SUPER_ADMIN" | "MANAGER" | "COMMUNITY_LEAD" } | null;
 let identity: Identity = null;
 let access: Access = null;
+let scheduledNotifications = 0;
+mock.module(file("../lib/lms/notify-later.ts"), {
+  namedExports: { notifyLater: () => { scheduledNotifications += 1; } },
+});
 const currentUser = () => {
   if (!identity) return null;
   const enrollments = table("enrollment")
@@ -145,6 +149,7 @@ const apiCalls = () => calls.filter((c) => !c.url.startsWith("https://zoom.us/oa
 
 beforeEach(() => {
   tables.clear();
+  scheduledNotifications = 0;
   calls = [];
   meetingSeq = 0;
   identity = null;
@@ -285,6 +290,18 @@ describe("admin live sessions", () => {
     assert.match(query(cancelled.redirect!).notice, /Session cancelled/);
     assert.equal(apiCalls()[0].method, "DELETE");
     assert.equal(row.status, "CANCELLED");
+  });
+
+  test("new-session notification checkbox controls the creation announcement", async () => {
+    access = { role: "MANAGER" };
+    const html = await render(AdminPage({ searchParams: Promise.resolve({}) }));
+    assert.match(html, /name="notifyStudents"[^>]*checked/);
+    const fields = { cohortId: SIRAH_BATCH, title: "Class", timeZone: "UTC", durationMin: "60", hostId: "host_1" };
+    await outcome(() => actions.createLiveSession(form({ ...fields, startsLocal: `${future(5)}T19:00`, notifyStudents: "on" })));
+    assert.equal(scheduledNotifications, 1);
+    await outcome(() => actions.createLiveSession(form({ ...fields, startsLocal: `${future(6)}T19:00` })));
+    assert.equal(scheduledNotifications, 1);
+    assert.equal(table("lmsSession").length, 2);
   });
 
   test("the overlap guard's refusal is shown clearly on the page", async () => {
