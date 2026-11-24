@@ -24,8 +24,10 @@ import { CancelSessionButton } from "@/components/sirah/cancel-session-button";
 import "@/app/seerah/classroom/tokens.css";
 import styles from "@/components/sirah/admin-classroom.module.css";
 import { recordingsAvailable, recordingsForSessions, type RecordingAdminView } from "@/lib/lms/recordings";
+import { lmsContentAvailable } from "@/lib/lms/content";
+import { externalRecordingsForSessions } from "@/lib/lms/external-recordings";
 import { RECORDING_MAX_AUTO_ATTEMPTS } from "@/lib/lms/recording-policy";
-import { cancelLiveSession, createLiveSession, retryRecordingFile, setRecordingPublished, updateLiveSession } from "./actions";
+import { cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, retryRecordingFile, saveExternalRecording, setRecordingPublished, updateLiveSession } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -310,6 +312,7 @@ function SessionLedger({
   counts,
   attendance,
   recordings,
+  externalRecordings,
   now,
   canStart,
   editable,
@@ -321,6 +324,7 @@ function SessionLedger({
   attendance: Map<string, SessionAttendance>;
   /** Phase 4. Absent until the recordings migration is deployed. */
   recordings?: Map<string, RecordingAdminView[]>;
+  externalRecordings?: Awaited<ReturnType<typeof externalRecordingsForSessions>>;
   now: Date;
   canStart: boolean;
   editable: boolean;
@@ -424,6 +428,33 @@ function SessionLedger({
                   </div>
                 ) : null}
 
+                {externalRecordings && session.phase === "past" ? (
+                  <div className={styles.subsection}>
+                    <h4 className={styles.subTitle}>External recordings</h4>
+                    {externalRecordings.filter((item) => item.sessionId === session.id).map((item) => (
+                      <div key={item.id} className={styles.inlineForm}>
+                        <span>{item.title} ? {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</span>
+                        {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer">Open recording</a>}
+                        <form action={changeExternalRecordingVisibility}>
+                          <input type="hidden" name="resourceId" value={item.id} />
+                          <input type="hidden" name="sessionId" value={session.id} />
+                          <input type="hidden" name="cohortId" value={session.cohortId} />
+                          <input type="hidden" name="publish" value={item.visibility === "PUBLISHED" ? "0" : "1"} />
+                          <button className={styles.secondarySmall} type="submit">{item.visibility === "PUBLISHED" ? "Unpublish" : "Publish"}</button>
+                        </form>
+                      </div>
+                    ))}
+                    <form action={saveExternalRecording} className={styles.inlineForm}>
+                      <input type="hidden" name="sessionId" value={session.id} />
+                      <input type="hidden" name="cohortId" value={session.cohortId} />
+                      <label className={styles.label}>Recording label <input className={styles.input} name="title" maxLength={191} required /></label>
+                      <label className={styles.label}>Recording URL <input className={styles.input} type="url" name="url" maxLength={1024} placeholder="https://" required /></label>
+                      <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" /> Publish to enrolled students</label>
+                      <button className={styles.secondarySmall} type="submit">Save external recording</button>
+                    </form>
+                  </div>
+                ) : null}
+
                 {editable && open ? (
                   <>
                     <form action={updateLiveSession} className={styles.form}>
@@ -494,6 +525,7 @@ export default async function LiveSessionsAdminPage({
   // Phase 4: undefined until the recordings migration is deployed, so the page works either way.
   const recordings =
     data && (await recordingsAvailable()) ? await recordingsForSessions([...data.upcoming, ...data.past].map((s) => s.id)) : undefined;
+  const externalRecordings = data && (await lmsContentAvailable()) ? await externalRecordingsForSessions(data.past.map((session) => session.id)) : undefined;
   // The start route admits the env super admin or the host's own account.
   const canStart = access.role === "SUPER_ADMIN";
   const nextUp = data?.upcoming.find((s) => s.phase !== "cancelled");
@@ -582,6 +614,7 @@ export default async function LiveSessionsAdminPage({
                 counts={data.counts}
                 attendance={attendance}
                 recordings={recordings}
+                externalRecordings={externalRecordings}
                 zone={zone}
                 now={now}
                 canStart={canStart}
@@ -607,6 +640,7 @@ export default async function LiveSessionsAdminPage({
                 counts={data.counts}
                 attendance={attendance}
                 recordings={recordings}
+                externalRecordings={externalRecordings}
                 zone={zone}
                 now={now}
                 canStart={false}

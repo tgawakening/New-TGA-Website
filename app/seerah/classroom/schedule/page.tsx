@@ -7,6 +7,7 @@ import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { studentPhase5 } from "@/lib/lms/student-phase5";
 import { CalendarSection } from "@/components/indigo/classroom/phase5-sections";
+import { studentExternalRecordings } from "@/lib/lms/external-recordings";
 import { recordingsAvailable, studentRecordings, watchPath, type StudentRecording } from "@/lib/lms/recordings";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { classroomClock } from "@/components/indigo/classroom/clock";
@@ -34,6 +35,12 @@ export default async function LiveSchedulePage() {
   // Published recordings, under the same paid + active rule (none when not allowed).
   const recordings: StudentRecording[] = schedule?.allowed && (await recordingsAvailable()) ? await studentRecordings(user.id, now) : [];
   const watchBySession = new Map(recordings.map((r) => [r.sessionId, watchPath(r.recordingId)] as const));
+  const external = phase5 ? await studentExternalRecordings(user.id, now) : [];
+  const externalBySession = new Map<string, { id: string; title: string; url: string }[]>();
+  for (const item of external) {
+    if (!item.sessionId || !item.url) continue;
+    externalBySession.set(item.sessionId, [...(externalBySession.get(item.sessionId) ?? []), { id: item.id, title: item.title, url: item.url }]);
+  }
 
   return (
     <div className={s.page}>
@@ -110,10 +117,10 @@ export default async function LiveSchedulePage() {
             <section className={s.section} aria-labelledby="past">
               <SectionHead id="past">Past classes</SectionHead>
               <p className={s.sectionLede}>
-                {recordings.length ? "Classes with a published recording have a Watch link." : "Recordings appear here once they are published."}
+                {recordings.length || external.length ? "Published recordings are shown with their classes." : "Recordings appear here once they are published."}
               </p>
               {schedule.past.length ? (
-                <LiveSessionRows sessions={schedule.past} clock={clock} recordings={watchBySession} />
+                <LiveSessionRows sessions={schedule.past} clock={clock} recordings={watchBySession} externalRecordings={externalBySession} />
               ) : (
                 <p className={s.emptyLine}>No classes have taken place yet.</p>
               )}

@@ -111,11 +111,13 @@ export function LiveSessionRows({
   clock,
   nextId,
   recordings,
+  externalRecordings,
 }: {
   sessions: StudentSessionView[];
   clock: ClassroomClock;
   nextId?: string;
   recordings?: Map<string, string>;
+  externalRecordings?: Map<string, { id: string; title: string; url: string }[]>;
 }) {
   return (
     <ol className={s.chapters}>
@@ -145,6 +147,12 @@ export function LiveSessionRows({
                 <span className={`${s.st} ${pill.cls}`}>{pill.text}</span>
               )}
             </div>
+            {session.phase === "past" && externalRecordings?.get(session.id)?.map((recording) => (
+              <div key={recording.id} className={s.chap}>
+                <span className={s.ti}>{recording.title}</span>
+                <a className={`${s.st} ${s.stNext}`} href={recording.url} target="_blank" rel="noopener noreferrer">Watch ?</a>
+              </div>
+            ))}
           </li>
         );
       })}

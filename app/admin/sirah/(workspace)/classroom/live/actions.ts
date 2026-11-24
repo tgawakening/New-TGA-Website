@@ -1,6 +1,10 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentAdmin } from "@/lib/auth/admin-session";
+import { getSessionIdentity } from "@/lib/auth/session";
+import { LmsContentError } from "@/lib/lms/content";
+import { addExternalRecording, setExternalRecordingVisibility } from "@/lib/lms/external-recordings";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { LmsFieldCryptoError } from "@/lib/lms/field-crypto";
 import { cancelSession, createSession, LmsSessionError, updateSession } from "@/lib/lms/sessions";
@@ -20,6 +24,7 @@ async function requireSessionEditor() {
   const access = await getSirahWorkspaceAccess();
   if (!access) redirect("/admin/sirah/login");
   if (!(access.role === "SUPER_ADMIN" || access.role === "MANAGER")) redirect("/admin/sirah");
+  return access;
 }
 
 const text = (form: FormData, name: string) => {
@@ -146,4 +151,31 @@ export async function setRecordingPublished(form: FormData) {
   }
   if (error) back({ error, cohort, anchor: `live-${sessionId}` });
   done(publish ? "Recording published to enrolled students." : "Recording hidden from students.", cohort, `live-${sessionId}`);
+}
+
+/** Session-linked external recordings use the existing resource visibility. */
+export async function saveExternalRecording(form: FormData) {
+  const access = await requireSessionEditor();
+  const cohort = text(form, "cohortId");
+  const sessionId = text(form, "sessionId");
+  const actor = access.role === "SUPER_ADMIN" ? (await getCurrentAdmin())?.email || "Super Admin" : (await getSessionIdentity())?.email || "Manager";
+  try {
+    await addExternalRecording({ sessionId, title: text(form, "title"), url: text(form, "url"), published: form.get("publish") === "on", actor });
+  } catch (failure) {
+    back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: `live-${sessionId}` });
+  }
+  done("External recording saved.", cohort, `live-${sessionId}`);
+}
+
+export async function changeExternalRecordingVisibility(form: FormData) {
+  await requireSessionEditor();
+  const cohort = text(form, "cohortId");
+  const sessionId = text(form, "sessionId");
+  const publish = text(form, "publish") === "1";
+  try {
+    await setExternalRecordingVisibility(text(form, "resourceId"), sessionId, publish);
+  } catch (failure) {
+    back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: `live-${sessionId}` });
+  }
+  done(publish ? "External recording published." : "External recording hidden.", cohort, `live-${sessionId}`);
 }

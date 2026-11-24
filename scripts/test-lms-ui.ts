@@ -304,6 +304,24 @@ describe("admin live sessions", () => {
     assert.equal(table("lmsSession").length, 2);
   });
 
+  test("external recording links are scoped, validated and published explicitly", async () => {
+    access = { role: "MANAGER" };
+    const past = seedSession(new Date(Date.now() - 3 * 86_400_000));
+    const upcoming = seedSession(new Date(Date.now() + 3 * 86_400_000));
+    const fields = { sessionId: String(past.id), cohortId: SIRAH_BATCH, title: "Class recording", url: "https://youtu.be/example" };
+    await outcome(() => actions.saveExternalRecording(form({ ...fields, sessionId: String(upcoming.id) })));
+    await outcome(() => actions.saveExternalRecording(form({ ...fields, url: "javascript:alert(1)" })));
+    assert.equal(table("lmsResource").length, 0);
+    await outcome(() => actions.saveExternalRecording(form(fields)));
+    const recording = table("lmsResource")[0];
+    assert.equal(recording.visibility, "HIDDEN");
+    assert.equal(recording.title, "Class recording");
+    await outcome(() => actions.changeExternalRecordingVisibility(form({ sessionId: String(past.id), cohortId: SIRAH_BATCH, resourceId: String(recording.id), publish: "1" })));
+    assert.equal(recording.visibility, "PUBLISHED");
+    await outcome(() => actions.changeExternalRecordingVisibility(form({ sessionId: String(past.id), cohortId: SIRAH_BATCH, resourceId: String(recording.id), publish: "0" })));
+    assert.equal(recording.visibility, "HIDDEN");
+  });
+
   test("the overlap guard's refusal is shown clearly on the page", async () => {
     access = { role: "SUPER_ADMIN" };
     const day = future(5);
@@ -419,6 +437,25 @@ describe("student schedule", () => {
     assert.match(html, /Called off/);
     assert.match(html, /Cancelled/);
     assert.ok(!html.includes(`/api/sirah/lms/sessions/${cancelled.id}/join`));
+  });
+
+  test("past classes show only published external recordings for the enrolled cohort", async () => {
+    const student = signIn(seedUser("student@example.test"));
+    seedPaidOrder(student.id);
+    const past = seedSession(new Date(Date.now() - 2 * 86_400_000));
+    const other = seedSession(new Date(Date.now() - 2 * 86_400_000), { cohortId: "other-cohort" });
+    const base = { kind: "LINK", contentType: "video/x-external-recording", createdAt: new Date(), publishedAt: new Date(), cohortId: null };
+    table("lmsResource").push(
+      { ...base, id: "visible", sessionId: past.id, title: "Visible recording", url: "https://youtu.be/visible", visibility: "PUBLISHED" },
+      { ...base, id: "hidden", sessionId: past.id, title: "Hidden recording", url: "https://youtu.be/hidden", visibility: "HIDDEN" },
+      { ...base, id: "other", sessionId: other.id, title: "Other recording", url: "https://youtu.be/other", visibility: "PUBLISHED" },
+    );
+    const html = await render(SchedulePage());
+    assert.match(html, /Visible recording/);
+    assert.match(html, /https:\/\/youtu\.be\/visible/);
+    assert.ok(!html.includes("Hidden recording") && !html.includes("Other recording"));
+    signIn(seedUser("unpaid@example.test"));
+    assert.ok(!(await render(SchedulePage())).includes("https://youtu.be/visible"));
   });
 
   test("students without an active, paid enrolment see the gated state and no sessions", async () => {
