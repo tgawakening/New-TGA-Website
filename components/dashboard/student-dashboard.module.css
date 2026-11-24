@@ -1,43 +1,22 @@
-/* Indigo Geometry · student dashboard. Mobile first. The same light look as
- * the admin workspace (components/sirah/admin-shell.module.css): a near-white
- * canvas with a whisper of blue-lavender (#eef2fa to #f5f3fb), the white
- * floating sidebar card and white cards. The shared colour tokens
- * (styles/tokens.css) are re-pointed to light values on .page, so every card,
- * list and form below (and RenewalCycle inside) follows without per-rule
- * colours. Contrast on white: ink #1a2233 16:1, body #3d4757 9.6:1, labels
- * #5b6472 6.2:1, teal #0b7566 5.6:1. Fonts from lib/fonts. */
+/* Indigo Geometry · student dashboard, dark celestial. Mobile first. The
+ * navy ground, the faint star lattice, teal / terracotta accents, Fraunces
+ * headings and Sora body of the classroom (components/indigo/classroom/
+ * classroom.module.css), under the shared student top bar (components/
+ * student/student-topnav.tsx), so the dashboard, Live classes and Resources
+ * read as one product. Tokens from styles/tokens.css, fonts from lib/fonts.
+ * Contrast on --surf #1b2742: body #c9c3b6 8.1:1, labels #aeaab5 6.4:1,
+ * teal #48d6c2 7.9:1. */
 
 .page {
   position: relative;
   isolation: isolate;
-  /* Light palette (scoped to the dashboard). */
-  --bg: #f1f3fb;
-  --ink: #ffffff;
-  --surf: #ffffff;
-  --surf2: #f6f8fc;
-  --line: #e4e8f0;
-  --line2: #d4dbe8;
-  --sand: #1a2233;
-  --dim: #3d4757;
-  --faint: #5b6472;
-  --teal: #0b7566;
-  --tealb: #0a5f54;
-  --terra: #b4532a;
-  --terrab: #a4461f;
-  --on-teal: #ffffff;
-  --surface-grad: #ffffff;
-  --highlight: 0 1px 2px rgba(20, 29, 51, 0.04), 0 10px 28px -16px rgba(20, 29, 51, 0.18);
-  --focus-ring: 0 0 0 3px rgba(11, 117, 102, 0.22);
   min-height: 100vh;
   overflow-x: clip;
-  background-color: #f1f3fb;
-  background-image: linear-gradient(160deg, #eef2fa 0%, #f5f3fb 100%);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--sand);
   font-family: var(--body);
   font-size: var(--fs-base);
   line-height: 1.55;
-  color-scheme: light;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -50,10 +29,19 @@
   pointer-events: none;
 }
 
-/* The old navy ground and lattice: off on the light canvas. */
-.page::before,
+.page::before {
+  background:
+    radial-gradient(900px 540px at 80% -8%, rgba(43, 182, 163, 0.1), transparent 60%),
+    radial-gradient(700px 500px at 5% 110%, rgba(217, 121, 79, 0.07), transparent 60%),
+    linear-gradient(180deg, #0f1729, var(--bg) 55%, #111a2e);
+}
+
 .page::after {
-  display: none;
+  opacity: 0.035;
+  background-image:
+    linear-gradient(45deg, var(--sand) 1px, transparent 1px),
+    linear-gradient(-45deg, var(--sand) 1px, transparent 1px);
+  background-size: 44px 44px;
 }
 
 .page :where(h1, h2, h3, p, dl, dd, ul, ol) {
@@ -70,254 +58,23 @@
 }
 
 .page :focus-visible {
-  outline: 2px solid var(--teal);
+  outline: 2px solid var(--tealb);
   outline-offset: 3px;
 }
 
-/* ---------- Shell: floating sidebar + content ---------- */
-.frame {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  min-height: 100vh;
-}
 
-/* The admin shell's sidebar card. Contrast on white: links #3d4757 9.6:1,
- * labels #6b7380 4.9:1, active white on #1e3a68 11.3:1. Never draws a
- * scrollbar (vertical or horizontal). */
-.sidebar {
-  display: grid;
-  gap: var(--sp-3);
-  align-content: start;
-  min-width: 0;
-  margin: var(--sp-3) var(--gutter) 0;
-  padding: var(--sp-3);
-  overflow: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  background: #ffffff;
-  color: #3d4757;
-  border: 1px solid #e3e7ee;
-  border-radius: 20px;
-  box-shadow: 0 18px 40px -20px rgba(20, 29, 51, 0.22), 0 2px 6px rgba(20, 29, 51, 0.06);
-}
-
-.sidebar::-webkit-scrollbar,
-.nav::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-  border-radius: var(--r-sm);
-}
-
-.brandMark {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 0.8rem;
-  background: linear-gradient(135deg, #1b2742, #141d33);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(20, 29, 51, 0.18);
-  color: #ffffff;
-  font-family: var(--body);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.brandText {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.brandText strong {
-  color: #141d33;
-  font-family: var(--display);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.brandText span {
-  color: #6b7380;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-/* Phones and tablets: the items wrap onto rows (no sideways scroller). */
-.nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-1);
-  min-width: 0;
-  padding: 2px 0 4px;
-}
-
-.navGroup {
-  display: contents;
-}
-
-.navLabel,
-.navHint {
-  display: none;
-}
-
-.page .navLink {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  flex: none;
-  min-height: 2.5rem;
-  padding: 0 0.75rem;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: transparent;
-  color: #3d4757;
-  font-family: var(--body);
-  font-size: 0.84375rem;
-  font-weight: 500;
-  text-align: left;
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
-}
-
-.navLink svg {
-  width: 18px;
-  height: 18px;
-  flex: none;
-  color: #5b6472;
-}
-
-.page .navLink:hover {
-  background: #f1f3f7;
-  color: #141d33;
-}
-
-.page .navLink:focus-visible {
-  outline: 2px solid #2bb6a3;
-  outline-offset: 1px;
-}
-
-/* Active: the admin's solid navy pill, white text and icon. */
-.page .navActive,
-.page .navActive:hover {
-  background: linear-gradient(180deg, #24467a, #1e3a68);
-  box-shadow: 0 6px 14px -6px rgba(30, 58, 104, 0.55);
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.navActive svg {
-  color: #ffffff;
-}
-
-.page .navDisabled,
-.page .navDisabled:hover {
-  background: transparent;
-  color: #9aa1ad;
-  cursor: not-allowed;
-}
-
-.navDisabled svg {
-  color: #b3b9c3;
-}
-
+/* ---------- Content column (under the top bar) ---------- */
 .main {
   display: grid;
   align-content: start;
   min-width: 0;
+  max-width: 64rem;
+  margin: 0 auto;
   padding: 0 var(--gutter);
-}
-
-@media (min-width: 64rem) {
-  .frame {
-    grid-template-columns: 264px minmax(0, 1fr);
-  }
-
-  /* Floating: inset from the viewport edges, sticky. On a very short window
-   * it still scrolls (wheel, touch, keyboard), but no scrollbar is drawn. */
-  .sidebar {
-    position: sticky;
-    top: var(--sp-4);
-    align-self: start;
-    max-height: calc(100vh - 2 * var(--sp-4));
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    gap: var(--sp-2);
-    margin: var(--sp-4) 0 var(--sp-4) var(--sp-4);
-    padding: var(--sp-4) var(--sp-3) var(--sp-5);
-  }
-
-  .brand {
-    padding: var(--sp-1) 0.5rem var(--sp-4);
-    border-bottom: 1px solid #e3e7ee;
-    border-radius: 0;
-  }
-
-  .nav {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    gap: var(--sp-1);
-    overflow: visible;
-    margin: 0;
-    padding: 0;
-  }
-
-  .page .navLink {
-    min-width: 0;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .navGroup {
-    display: grid;
-    gap: 2px;
-  }
-
-  .navLabel {
-    display: block;
-    margin: var(--sp-4) 0 6px 0.75rem;
-    color: #6b7380;
-    font-size: 0.65625rem;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-  }
-
-  .navHint {
-    display: block;
-    margin: var(--sp-3) 0.75rem 0;
-    color: #6b7380;
-    font-size: 0.75rem;
-    line-height: 1.45;
-  }
-
-  .main {
-    padding: 0 var(--sp-8) 0 var(--sp-8);
-    max-width: 72rem;
-  }
 }
 
 /* ---------- Hero ---------- */
 .hero {
-  display: grid;
-  gap: var(--sp-6);
   padding: var(--sp-8) 0 var(--sp-2);
 }
 
@@ -335,12 +92,13 @@
   font-family: var(--display);
   font-weight: 500;
   font-size: var(--fs-3xl);
+  letter-spacing: var(--track-title);
   line-height: var(--lh-snug);
   overflow-wrap: anywhere;
 }
 
 .lede {
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
   max-width: 46rem;
   font-size: var(--fs-md);
   color: var(--dim);
@@ -348,8 +106,6 @@
 
 @media (min-width: 56rem) {
   .hero {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
     padding-top: var(--sp-12);
   }
 }
@@ -364,14 +120,14 @@
 }
 
 .notice {
-  border: 1px solid #b5ddd6;
-  background: #e8f5f2;
+  border: 1px solid rgba(43, 182, 163, 0.4);
+  background: rgba(43, 182, 163, 0.1);
   color: var(--sand);
 }
 
 .noticeError {
-  border: 1px solid #f0c6b3;
-  background: #fdf0ea;
+  border: 1px solid rgba(217, 121, 79, 0.5);
+  background: rgba(217, 121, 79, 0.12);
   color: var(--sand);
 }
 
@@ -409,7 +165,7 @@
   padding: var(--sp-5);
   background: var(--surface-grad);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--r-lg);
   box-shadow: var(--highlight);
 }
 
@@ -421,9 +177,9 @@
 
 /* A booking that still needs payment: the one card that should catch the eye. */
 .cardAttention {
-  border-color: #eab79f;
+  border-color: rgba(217, 121, 79, 0.6);
   background:
-    linear-gradient(135deg, #fdf0ea, #ffffff 55%),
+    linear-gradient(135deg, rgba(217, 121, 79, 0.1), transparent 55%),
     var(--surf);
 }
 
@@ -506,7 +262,7 @@
   justify-content: space-between;
   gap: var(--sp-4);
   padding: var(--sp-3) var(--sp-4);
-  background: var(--surf2);
+  background: rgba(237, 234, 223, 0.03);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
 }
@@ -531,7 +287,7 @@
   flex: none;
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: var(--teal);
+  color: var(--tealb);
   text-align: right;
 }
 
@@ -568,28 +324,26 @@
     color var(--dur) var(--ease);
 }
 
-/* The admin's buttons: solid navy primary, white outline secondary. */
 .btn {
-  border: 1px solid #26346e;
-  background: #26346e;
-  color: #ffffff !important;
+  border: 1px solid var(--teal);
+  background: var(--teal);
+  color: var(--on-teal) !important;
 }
 
 .btn:hover {
-  border-color: #1b2654;
-  background: #1b2654;
+  border-color: var(--tealb);
+  background: var(--tealb);
 }
 
 .btnGhost {
   border: 1px solid var(--line2);
-  background: #ffffff;
+  background: transparent;
   color: var(--sand);
 }
 
 .btnGhost:hover {
-  border-color: #b8c2d4;
-  background: #f6f8fc;
-  color: var(--sand);
+  border-color: var(--teal);
+  color: var(--tealb);
 }
 
 .btn:disabled,
@@ -624,7 +378,7 @@
   padding: 0 var(--sp-3);
   border: 1px solid var(--line2);
   border-radius: var(--r-sm);
-  background: #ffffff;
+  background: rgba(13, 20, 36, 0.55);
   color: var(--sand);
   font-family: var(--body);
   font-size: var(--fs-base);
@@ -678,9 +432,283 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .navLink,
   .btn,
   .btnGhost {
     transition: none;
+  }
+}
+
+/* ---------- Overview: next class, enrolment, quick actions ---------- */
+
+/* The most prominent element: the next live class. A raised panel with a
+ * teal edge glow, the title in Fraunces, the time in the student's zone. */
+.nextCard {
+  position: relative;
+  display: grid;
+  gap: var(--sp-5);
+  padding: var(--sp-6) var(--sp-5);
+  overflow: hidden;
+  border: 1px solid rgba(72, 214, 194, 0.28);
+  border-radius: var(--r-2xl);
+  background:
+    radial-gradient(520px 260px at 100% 0%, rgba(43, 182, 163, 0.16), transparent 70%),
+    radial-gradient(420px 240px at 0% 120%, rgba(217, 121, 79, 0.1), transparent 70%),
+    var(--surf);
+  box-shadow: var(--highlight), var(--shadow-card);
+}
+
+/* A hairline of the brand across the top. */
+.nextCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--teal), var(--tealb) 60%, var(--terra));
+}
+
+.nextLive {
+  border-color: rgba(217, 121, 79, 0.55);
+}
+
+.nextBody {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.nextTitle {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: var(--fs-2xl);
+  letter-spacing: var(--track-title);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.nextWhen {
+  color: var(--sand);
+  font-size: var(--fs-md);
+  font-weight: 500;
+}
+
+.zone {
+  color: var(--faint);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+}
+
+.nextActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.nextActions:empty {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .nextCard {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-8);
+    padding: var(--sp-8);
+  }
+
+  .nextActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* The compact enrolment status: one small card. */
+.statusCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-grad);
+  box-shadow: var(--highlight);
+}
+
+.statusMain {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.statusCourse {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: var(--fs-lg);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.statusSide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  color: var(--dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.chipACTIVE {
+  border-color: rgba(72, 214, 194, 0.45);
+  background: rgba(43, 182, 163, 0.12);
+  color: var(--tealb);
+}
+
+.chipPAY {
+  border-color: rgba(217, 121, 79, 0.55);
+  background: rgba(217, 121, 79, 0.12);
+  color: var(--terrab);
+}
+
+.chipVERIFYING {
+  border-color: rgba(201, 162, 76, 0.5);
+  background: rgba(201, 162, 76, 0.12);
+  color: #e3c47e;
+}
+
+.chipCLOSED {
+  color: var(--faint);
+}
+
+.statusLink {
+  color: var(--tealb);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(72, 214, 194, 0.35);
+  text-underline-offset: 3px;
+}
+
+.page .statusLink {
+  color: var(--tealb);
+}
+
+.statusLink:hover {
+  text-decoration-color: var(--tealb);
+}
+
+/* Quick actions: four simple tiles, 2 x 2 on phones, one row on desktop. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+
+.tile {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  gap: var(--sp-4);
+  min-height: 7.5rem;
+  padding: var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-grad);
+  box-shadow: var(--highlight);
+  color: var(--sand);
+  text-decoration: none;
+  transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+
+.tileIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  background: rgba(43, 182, 163, 0.12);
+  color: var(--tealb);
+}
+
+.tileIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.tileLabel {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.tileGo {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-4);
+  color: var(--faint);
+  transition: transform var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+@media (hover: hover) {
+  a.tile:hover {
+    border-color: rgba(72, 214, 194, 0.45);
+    transform: translate3d(0, -2px, 0);
+  }
+
+  a.tile:hover .tileGo {
+    color: var(--tealb);
+    transform: translate3d(2px, 0, 0);
+  }
+}
+
+.tileLocked {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.tileLocked .tileIcon {
+  background: rgba(237, 234, 223, 0.06);
+  color: var(--faint);
+}
+
+@media (min-width: 48rem) {
+  .tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .tile {
+    padding: var(--sp-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile,
+  .tileGo {
+    transition: none;
+  }
+
+  a.tile:hover,
+  a.tile:hover .tileGo {
+    transform: none;
   }
 }

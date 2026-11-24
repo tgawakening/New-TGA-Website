@@ -16,12 +16,13 @@
   grid-template-columns: minmax(0, 1fr); /* never wider than the screen */
   min-height: 100vh;
   color: var(--adm-ink);
-  /* Near-white canvas with only a whisper of blue-lavender: #eef2fa to
-   * #f5f3fb, no dark end and no overlay. The white sidebar and record cards
-   * float on it. Ink #1a2233 on #eef2fa is 14.6:1; muted #5b6472 5.6:1. */
-  --adm-page: #f1f3fb;
-  background-color: #f1f3fb;
-  background-image: linear-gradient(160deg, #eef2fa 0%, #f5f3fb 100%);
+  /* Essentially white, only the faintest cool hint (blue saturation close
+   * to zero): #f5f7fb to #fbfcfe, no dark end and no overlay. The white
+   * sidebar and record cards float on it by their border and shadow.
+   * Ink #1a2233 on #f5f7fb is 15.4:1; muted #5b6472 5.9:1. */
+  --adm-page: #f8f9fc;
+  background-color: #f8f9fc;
+  background-image: linear-gradient(160deg, #f5f7fb 0%, #fbfcfe 100%);
   background-attachment: fixed;
 }
 
@@ -199,10 +200,10 @@
   padding: var(--sp-3) var(--gutter);
   /* Part of the canvas, not a white strip: the canvas tint, slightly
    * translucent so it stays readable when the page scrolls under it. */
-  background: rgba(240, 243, 251, 0.9);
+  background: rgba(248, 249, 252, 0.92);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(30, 56, 110, 0.08);
+  border-bottom: 1px solid #e8ebf0;
 }
 
 .headerTitle {

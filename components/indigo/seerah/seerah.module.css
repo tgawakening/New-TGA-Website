@@ -1441,8 +1441,34 @@
 }
 
 .feeFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-6);
   margin-top: var(--sp-6);
   font-size: var(--fs-sm);
+}
+
+/* "Apply for a scholarship": an outlined teal button beside the fee-support
+ * link, so it reads as a clear next step under the fees. */
+.feeFoot a.scholarshipBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 0 1.125rem;
+  border: 1px solid rgba(72, 214, 194, 0.5);
+  border-radius: var(--r-pill);
+  background: rgba(43, 182, 163, 0.1);
+  color: var(--tealb);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.feeFoot a.scholarshipBtn:hover {
+  border-color: var(--tealb);
+  background: rgba(43, 182, 163, 0.2);
 }
 
 .feeFoot a {

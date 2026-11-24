@@ -35,7 +35,7 @@ export default async function NotificationsPage() {
 
   return (
     <div className={s.page}>
-      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={{ href: "/seerah/classroom", label: "Classroom" }} inbox={{ href: INBOX_PATH, unread }} />
+      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={{ href: "/seerah/classroom", label: "Classroom" }} inbox={{ href: INBOX_PATH, unread }} student={{ active: null }} />
       <main className={s.wrap}>
         <section className={s.section} aria-labelledby="inbox-title">
           <div className={p.headRow}>

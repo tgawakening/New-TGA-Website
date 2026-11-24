@@ -15,12 +15,28 @@ import {
   sirahPlanLabel,
   type SirahDashboardOrder,
 } from "@/components/sirah/dashboard-registration";
-import LogoutButton from "@/components/dashboard/logout-button";
+import { StudentTopNav } from "@/components/student/student-topnav";
+import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { paymentPlanTypeLabels } from "@/lib/course-payment";
 import { indigoFontVariables } from "@/lib/fonts";
 import s from "./student-dashboard.module.css";
 
+/** The student's next live class (read-only, from the dashboard page). */
+export type DashboardNextLiveClass = {
+  title: string;
+  startsAt: string;
+  /** Server-formatted in the viewer's (or profile) zone, until the browser's own zone takes over. */
+  when: string;
+  zone: string;
+  live: boolean;
+  joinable: boolean;
+  joinPath: string;
+};
+
 type DashboardProps = {
+  nextLiveClass?: DashboardNextLiveClass | null;
+  /** The classroom inbox for the top bar's bell (null: not enrolled in a cohort). */
+  inbox?: { href: string; unread: number } | null;
   user: {
     id: string;
     currentSirahOnly?: boolean;
@@ -97,7 +113,7 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
-export default function StudentDashboard({ user }: DashboardProps) {
+export default function StudentDashboard({ user, nextLiveClass = null, inbox = null }: DashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -647,34 +663,122 @@ export default function StudentDashboard({ user }: DashboardProps) {
     </article>
   );
 
-  const heroActions = (
-    <div className={s.actions}>
-      {hasPendingPayment ? (
-        <Link href={pendingPaymentHref} className={s.btn}>
-          Complete Pending Payment
-        </Link>
-      ) : null}
-      {user.canManageStripeBilling ? (
-        <button type="button" className={s.btn} onClick={openBillingPortal} disabled={billingPortalLoading}>
-          {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
-        </button>
-      ) : null}
-      <Link href="/seerah/register" className={s.btnGhost}>
-        Register Another Seat
-      </Link>
-    </div>
-  );
-
   // Classroom links lead to existing pages that admit only enrolled students,
   // so they are live only for an enrolled student (display rule only; each
   // page keeps its own gate).
   const classroomOpen = sirahOrders.some((order) => sirahOrderStatus(order).kind === "ACTIVE") || hasActiveLmsAccess;
+  const lockedHint = "Live classes and resources open once your enrolment is confirmed.";
+
+  const firstName = fullName.trim().split(/\s+/)[0] || fullName;
+
+  /* ---------- Overview: the action-first hub ---------- */
+
+  // Bookings that still need payment keep their prominent call to action.
+  const ordersToPay = sirahOrders.filter((order) => sirahOrderStatus(order).kind === "PAY");
+
+  const nextClassCard = (
+    <section className={`${s.nextCard} ${nextLiveClass?.live ? s.nextLive : ""}`} aria-labelledby="next-class-title">
+      <div className={s.nextBody}>
+        <p className={s.cardTitle}>{nextLiveClass?.live ? "Happening now" : "Your next live class"}</p>
+        {nextLiveClass ? (
+          <>
+            <h2 id="next-class-title" className={s.nextTitle}>
+              {nextLiveClass.title}
+            </h2>
+            <p className={s.nextWhen}>
+              <LocalTime iso={nextLiveClass.startsAt} fallback={nextLiveClass.when} fallbackZone={nextLiveClass.zone} />
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 id="next-class-title" className={s.nextTitle}>
+              No live class scheduled right now
+            </h2>
+            <p className={s.muted}>
+              {classroomOpen
+                ? "New classes appear here as soon as they are published."
+                : lockedHint}
+            </p>
+          </>
+        )}
+      </div>
+      <div className={s.nextActions}>
+        {nextLiveClass?.joinable ? (
+          <a href={nextLiveClass.joinPath} className={s.btn} target="_blank" rel="noopener noreferrer">
+            {nextLiveClass.live ? "Enter the class" : "Join the class"} <span aria-hidden="true">→</span>
+          </a>
+        ) : null}
+        {classroomOpen ? (
+          <Link href="/seerah/classroom/schedule" className={nextLiveClass?.joinable ? s.btnGhost : s.btn}>
+            View live classes
+          </Link>
+        ) : null}
+      </div>
+    </section>
+  );
+
+  // One small card: the course, a status chip, and the registration link.
+  const statusOrder = latestSirahOrder && (sirahOnly || !seerahEnrollment) ? latestSirahOrder : null;
+  const sirahStatus = statusOrder ? sirahOrderStatus(statusOrder) : null;
+  const enrolmentCard = (
+    <section className={s.statusCard} aria-labelledby="enrolment-title">
+      <div className={s.statusMain}>
+        <p className={s.cardTitle}>Your enrolment</p>
+        <h2 id="enrolment-title" className={s.statusCourse}>
+          {statusOrder ? SIRAH_TITLE : seerahEnrollment?.course.title ?? SIRAH_TITLE}
+        </h2>
+      </div>
+      <div className={s.statusSide}>
+        {statusOrder && sirahStatus ? (
+          <>
+            <span className={`${s.chip} ${s[`chip${sirahStatus.kind}`]}`}>{sirahStatus.label}</span>
+            <Link href={sirahOrderHref(statusOrder)} className={s.statusLink}>
+              View your registration
+            </Link>
+          </>
+        ) : seerahEnrollment ? (
+          <>
+            <span className={`${s.chip} ${hasActiveLmsAccess ? s.chipACTIVE : s.chipVERIFYING}`}>
+              {hasActiveLmsAccess ? "Active" : seerahEnrollment.status}
+            </span>
+            <a href="#course" onClick={go("course")} className={s.statusLink}>
+              View your registration
+            </a>
+          </>
+        ) : (
+          <>
+            <span className={`${s.chip} ${s.chipCLOSED}`}>Not registered yet</span>
+            <Link href="/seerah/register" className={s.statusLink}>
+              Register now
+            </Link>
+          </>
+        )}
+      </div>
+    </section>
+  );
+
+  const tiles = (
+    <nav className={s.tiles} aria-label="Quick actions">
+      <Tile href="/seerah/classroom/schedule" icon={ICONS.live} locked={!classroomOpen} hint={lockedHint}>
+        Live classes
+      </Tile>
+      <Tile href="/seerah/classroom#resources" icon={ICONS.resources} locked={!classroomOpen} hint={lockedHint}>
+        Resources &amp; notices
+      </Tile>
+      <Tile href="#payments" icon={ICONS.payments} onClick={go("payments")}>
+        Payments &amp; subscription
+      </Tile>
+      <Tile href="/seerah/register" icon={ICONS.seat}>
+        Register another seat
+      </Tile>
+    </nav>
+  );
 
   const SECTION_TITLES: Record<DashboardSection, { eyebrow: string; title: string; lede: string }> = {
     overview: {
       eyebrow: "Student dashboard",
-      title: `Assalam-u-Alaikum, ${fullName}`,
-      lede: "Track your enrollment, payment, subscription, and Seerah LMS access from one place.",
+      title: `Assalam-u-Alaikum, ${firstName}`,
+      lede: "Your next class, your enrolment and everything else, one tap away.",
     },
     course: {
       eyebrow: "My course",
@@ -691,160 +795,118 @@ export default function StudentDashboard({ user }: DashboardProps) {
 
   return (
     <div className={`${s.page} ${indigoFontVariables}`}>
-      <div className={s.frame}>
-        <aside className={s.sidebar} aria-label="Dashboard navigation">
-          <a href="#overview" className={s.brand} onClick={go("overview")} aria-label="Student dashboard: overview">
-            <span className={s.brandMark} aria-hidden="true">
-              TGA
-            </span>
-            <span className={s.brandText} aria-hidden="true">
-              <strong>Student dashboard</strong>
-              <span>Sīrah · Beyond Chronology</span>
-            </span>
-          </a>
-          <nav className={s.nav} aria-label="Dashboard sections">
-            <div className={s.navGroup}>
-              <span className={s.navLabel}>Dashboard</span>
-              <NavSection id="overview" current={section} go={go} icon={ICONS.overview}>
-                Overview
-              </NavSection>
-              <NavSection id="course" current={section} go={go} icon={ICONS.course}>
-                My course
-              </NavSection>
-              <NavSection id="payments" current={section} go={go} icon={ICONS.payments}>
-                Payments &amp; subscription
-              </NavSection>
-            </div>
-            <div className={s.navGroup}>
-              <span className={s.navLabel}>Classroom</span>
-              <NavRoute href="/seerah/classroom/schedule" icon={ICONS.live} open={classroomOpen}>
-                Live classes
-              </NavRoute>
-              <NavRoute href="/seerah/classroom#resources" icon={ICONS.resources} open={classroomOpen}>
-                Resources &amp; notices
-              </NavRoute>
-              {user.showTeachingLink ? (
-                <NavRoute href="/seerah/classroom/teaching" icon={ICONS.teaching} open>
-                  My sessions
-                </NavRoute>
-              ) : null}
-            </div>
-            <div className={s.navGroup}>
-              <span className={s.navLabel}>Account</span>
-              {user.showAdminLink ? (
-                <NavRoute href="/admin" icon={ICONS.admin} open>
-                  Admin Panel
-                </NavRoute>
-              ) : null}
-              <LogoutButton className={s.navLink}>{ICONS.logout}</LogoutButton>
-            </div>
-          </nav>
-          {!classroomOpen ? <p className={s.navHint}>Live classes and resources open once your enrolment is confirmed.</p> : null}
-        </aside>
+      <StudentTopNav
+        active={section}
+        inbox={inbox}
+        classroomLocked={!classroomOpen}
+        lockedHint={lockedHint}
+        accountName={fullName}
+        accountLinks={[
+          ...(user.showTeachingLink ? [{ label: "My sessions", href: "/seerah/classroom/teaching" }] : []),
+          ...(user.showAdminLink ? [{ label: "Admin Panel", href: "/admin" }] : []),
+        ]}
+        onSection={(id, event) => go(id)(event)}
+      />
 
-        <main className={s.main} id="dashboard-content">
-          <header className={s.hero} aria-labelledby="dashboard-title">
-            <div>
-              <p className={s.eyebrow}>{heading.eyebrow}</p>
-              <h1 id="dashboard-title" className={s.title} tabIndex={-1} ref={titleRef}>
-                {heading.title}
-              </h1>
-              <p className={s.lede}>{heading.lede}</p>
-              {notices}
-            </div>
-            {section === "overview" ? heroActions : null}
-          </header>
+      <main className={s.main} id="dashboard-content">
+        <header className={s.hero} aria-labelledby="dashboard-title">
+          <p className={s.eyebrow}>{heading.eyebrow}</p>
+          <h1 id="dashboard-title" className={s.title} tabIndex={-1} ref={titleRef}>
+            {heading.title}
+          </h1>
+          <p className={s.lede}>{heading.lede}</p>
+          {notices}
+        </header>
 
-          <div className={s.stack}>
-            {section === "overview" ? (
-              <>
+        <div className={s.stack}>
+          {section === "overview" ? (
+            <>
+              {ordersToPay.length || pendingCard ? (
                 <div className={s.section}>
-                  <SirahDashboardRegistration orders={sirahOrders} />
+                  <SirahDashboardRegistration orders={ordersToPay} />
                   {pendingCard}
-                  <section className={s.grid} aria-label="Enrolment and payment">
-                    {overviewCard}
-                    {paymentCard}
-                  </section>
                 </div>
-                <section className={s.grid} aria-label="History and support">
-                  {historyCard}
-                  {supportCard}
-                </section>
-              </>
-            ) : null}
+              ) : null}
+              {nextClassCard}
+              {enrolmentCard}
+              {tiles}
+            </>
+          ) : null}
 
-            {section === "course" ? (
-              <>
-                <div className={s.section}>
-                  <SirahDashboardRegistration orders={sirahOrders} />
-                  {!sirahOrders.length ? (
-                    <section className={s.card} aria-label="No registration">
-                      <p className={s.muted}>You have no Sīrah registration yet.</p>
-                      <div className={`${s.actions} ${s.cardActions}`}>
-                        <Link href="/seerah/register" className={s.btn}>
-                          Register Another Seat
-                        </Link>
-                      </div>
-                    </section>
-                  ) : null}
-                </div>
-                <section className={s.grid} aria-label="Course access">
-                  {overviewCard}
-                  <article className={s.card}>
-                    <h2 className={s.cardTitle}>Classroom</h2>
-                    <p className={s.muted}>
-                      {classroomOpen
-                        ? "Your live classes, recordings, resources and notices are in the classroom."
-                        : "The classroom opens here once your enrolment is confirmed."}
-                    </p>
-                    {classroomOpen ? (
-                      <div className={`${s.actions} ${s.cardActions}`}>
-                        <Link href="/seerah/classroom" className={s.btn}>
-                          Open the classroom
-                        </Link>
-                        <Link href="/seerah/classroom/schedule" className={s.btnGhost}>
-                          Live classes
-                        </Link>
-                      </div>
-                    ) : null}
-                  </article>
-                </section>
-                {!user.currentSirahOnly ? (
-                  <section className={s.grid} aria-label="Learning and profile">
-                    {lmsCard}
-                    {profileCard}
-                  </section>
-                ) : null}
-              </>
-            ) : null}
-
-            {section === "payments" ? (
-              <>
-                {pendingCard ? <div className={s.section}>{pendingCard}</div> : null}
-                <section className={s.grid} aria-label="Payment status and history">
-                  {paymentCard}
-                  {historyCard}
-                </section>
-                {user.canManageStripeBilling ? (
-                  <section className={s.card} aria-label="Billing">
-                    <h2 className={s.cardTitle}>Billing</h2>
-                    <p className={s.muted}>Update your card or manage your subscription on the secure billing page.</p>
+          {section === "course" ? (
+            <>
+              <div className={s.section}>
+                <SirahDashboardRegistration orders={sirahOrders} />
+                {!sirahOrders.length ? (
+                  <section className={s.card} aria-label="No registration">
+                    <p className={s.muted}>You have no Sīrah registration yet.</p>
                     <div className={`${s.actions} ${s.cardActions}`}>
-                      <button type="button" className={s.btn} onClick={openBillingPortal} disabled={billingPortalLoading}>
-                        {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
-                      </button>
+                      <Link href="/seerah/register" className={s.btn}>
+                        Register Another Seat
+                      </Link>
                     </div>
                   </section>
                 ) : null}
-              </>
-            ) : null}
-          </div>
+              </div>
+              <section className={s.grid} aria-label="Course access">
+                {overviewCard}
+                <article className={s.card}>
+                  <h2 className={s.cardTitle}>Classroom</h2>
+                  <p className={s.muted}>
+                    {classroomOpen
+                      ? "Your live classes, recordings, resources and notices are in the classroom."
+                      : "The classroom opens here once your enrolment is confirmed."}
+                  </p>
+                  {classroomOpen ? (
+                    <div className={`${s.actions} ${s.cardActions}`}>
+                      <Link href="/seerah/classroom" className={s.btn}>
+                        Open the classroom
+                      </Link>
+                      <Link href="/seerah/classroom/schedule" className={s.btnGhost}>
+                        Live classes
+                      </Link>
+                    </div>
+                  ) : null}
+                </article>
+              </section>
+              <section className={s.grid} aria-label="Support">
+                {supportCard}
+              </section>
+              {!user.currentSirahOnly ? (
+                <section className={s.grid} aria-label="Learning and profile">
+                  {lmsCard}
+                  {profileCard}
+                </section>
+              ) : null}
+            </>
+          ) : null}
 
-          <footer className={s.foot}>
-            <b>Sīrah · Beyond Chronology</b> · The Global Awakening
-          </footer>
-        </main>
-      </div>
+          {section === "payments" ? (
+            <>
+              {pendingCard ? <div className={s.section}>{pendingCard}</div> : null}
+              <section className={s.grid} aria-label="Payment status and history">
+                {paymentCard}
+                {historyCard}
+              </section>
+              {user.canManageStripeBilling ? (
+                <section className={s.card} aria-label="Billing">
+                  <h2 className={s.cardTitle}>Billing</h2>
+                  <p className={s.muted}>Update your card or manage your subscription on the secure billing page.</p>
+                  <div className={`${s.actions} ${s.cardActions}`}>
+                    <button type="button" className={s.btn} onClick={openBillingPortal} disabled={billingPortalLoading}>
+                      {billingPortalLoading ? "Opening Billing..." : "Manage Billing / Update Card"}
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+
+        <footer className={s.foot}>
+          <b>Sīrah · Beyond Chronology</b> · The Global Awakening
+        </footer>
+      </main>
     </div>
   );
 }
@@ -860,53 +922,88 @@ const navIcon = (path: string) => (
   </svg>
 );
 const ICONS = {
-  overview: navIcon("M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"),
-  course: navIcon("M4 5h7a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-7a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h7z"),
   payments: navIcon("M3 7h18v10H3zM3 11h18M7 15h3"),
   live: navIcon("M15 10l5-3v10l-5-3M3 6h12v12H3z"),
   resources: navIcon("M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"),
-  teaching: navIcon("M3 4h18v12H3zM8 20h8M12 16v4"),
-  admin: navIcon("M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"),
-  logout: navIcon("M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"),
+  seat: navIcon("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6"),
 };
 
-/** An in-dashboard section: a hash link (works without JavaScript too). */
-function NavSection({
-  id,
-  current,
-  go,
+/** A quick-action tile. Shown but inactive when the page would not admit the student. */
+function Tile({
+  href,
   icon,
+  locked = false,
+  hint,
+  onClick,
   children,
 }: {
-  id: DashboardSection;
-  current: DashboardSection;
-  go: (id: DashboardSection) => (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  href: string;
   icon: React.ReactNode;
+  locked?: boolean;
+  hint?: string;
+  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   children: React.ReactNode;
 }) {
-  const active = current === id;
+  const body = (
+    <>
+      <span className={s.tileIcon}>{icon}</span>
+      <span className={s.tileLabel}>{children}</span>
+      {!locked ? (
+        <span className={s.tileGo} aria-hidden="true">
+          →
+        </span>
+      ) : null}
+    </>
+  );
+  if (locked)
+    return (
+      <span className={`${s.tile} ${s.tileLocked}`} aria-disabled="true" title={hint}>
+        {body}
+      </span>
+    );
+  if (href.startsWith("#"))
+    return (
+      <a href={href} onClick={onClick} className={s.tile}>
+        {body}
+      </a>
+    );
   return (
-    <a href={`#${id}`} onClick={go(id)} className={`${s.navLink} ${active ? s.navActive : ""}`} aria-current={active ? "page" : undefined}>
-      {icon}
-      <span>{children}</span>
-    </a>
+    <Link href={href} className={s.tile}>
+      {body}
+    </Link>
   );
 }
 
-/** A link to an existing page. Shown but inactive when that page would not admit the student. */
-function NavRoute({ href, icon, open, children }: { href: string; icon: React.ReactNode; open: boolean; children: React.ReactNode }) {
-  if (!open)
-    return (
-      <span className={`${s.navLink} ${s.navDisabled}`} aria-disabled="true">
-        {icon}
-        <span>{children}</span>
-      </span>
-    );
+/** The class time in the browser's own time zone (the student's), after
+ * mount; the server-formatted time (viewer or profile zone) until then. */
+function LocalTime({ iso, fallback, fallbackZone }: { iso: string; fallback: string; fallbackZone: string }) {
+  const [local, setLocal] = useState<{ when: string; zone: string } | null>(null);
+  useEffect(() => {
+    try {
+      const date = new Date(iso);
+      const when = new Intl.DateTimeFormat("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }).format(date);
+      const zone =
+        new Intl.DateTimeFormat("en-GB", { timeZoneName: "long" }).formatToParts(date).find((part) => part.type === "timeZoneName")
+          ?.value ?? "";
+      // Runs once after mount to switch from the server's zone to the browser's.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocal({ when, zone });
+    } catch {
+      /* keep the server-formatted time */
+    }
+  }, [iso]);
   return (
-    <Link href={href} className={s.navLink}>
-      {icon}
-      <span>{children}</span>
-    </Link>
+    <>
+      <time dateTime={iso}>{local?.when ?? fallback}</time>{" "}
+      <span className={s.zone}>your time ({local?.zone || fallbackZone})</span>
+    </>
   );
 }
 

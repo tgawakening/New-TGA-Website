@@ -203,6 +203,9 @@ export function Fees({
         </div>
 
         <div className={s.feeFoot}>
+          <a href="/seerah/scholarship" className={s.scholarshipBtn}>
+            Apply for a scholarship <span aria-hidden="true">→</span>
+          </a>
           <a href={courseConfig.feeSupportUrl}>Request confidential fee support ↗</a>
         </div>
 

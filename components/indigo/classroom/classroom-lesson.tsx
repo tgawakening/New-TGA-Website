@@ -37,7 +37,7 @@ export function ClassroomLesson({
 
   return (
     <div className={s.page}>
-      <ClassroomHeader home={base} week={null} percent={null} back={{ href: base, label: "All sessions" }} />
+      <ClassroomHeader home={base} week={null} percent={null} back={{ href: base, label: "All sessions" }} student={{ active: null }} />
 
       <main className={s.wrap}>
         <section className={s.hero} aria-labelledby="lesson-title">

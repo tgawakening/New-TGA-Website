@@ -425,11 +425,13 @@ describe("student schedule", () => {
   test("the classroom overview shows the Live classes section only when the cohort has sessions", async () => {
     const student = signIn(seedUser("student@example.test"));
     seedPaidOrder(student.id);
+    // The section itself (id="live-classes"), not the words: the shared
+    // student top bar has a "Live classes" item on every classroom page.
     const before = await render(ClassroomPage());
-    assert.ok(!before.includes("Live classes"), "unchanged until sessions exist");
+    assert.ok(!before.includes('id="live-classes"'), "unchanged until sessions exist");
     const soon = seedSession(new Date(Date.now() + 10 * MIN), { title: "Week 5" });
     const html = await render(ClassroomPage());
-    assert.match(html, /Live classes/);
+    assert.ok(html.includes('id="live-classes"'));
     assert.match(html, /Week 5/);
     assert.ok(html.includes(`/api/sirah/lms/sessions/${soon.id}/join`));
     assert.ok(html.includes('href="/seerah/classroom/schedule"'));
