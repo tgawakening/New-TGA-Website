@@ -135,21 +135,26 @@
   display: none;
 }
 
-/* "Student login": a quiet text link with an icon beside the buttons
- * (tablet and up; on phones it is in the menu sheet). */
+/* "Student login": a compact outlined teal button with an icon, beside the
+ * header buttons (tablet and up; on phones it is a full-width button in the
+ * menu sheet). Teal #48d6c2 on the navy bar is 9.9:1. */
 .studentLogin {
   display: none;
   align-items: center;
+  justify-content: center;
   gap: var(--sp-2);
   min-height: 40px;
-  padding: 0 var(--sp-2);
-  border-radius: var(--r-sm);
-  color: var(--dim);
+  padding: 0 0.875rem;
+  border: 1px solid rgba(72, 214, 194, 0.45);
+  border-radius: var(--r-pill);
+  background: rgba(43, 182, 163, 0.08);
+  color: var(--tealb);
   font-size: var(--fs-sm);
   font-weight: 600;
+  line-height: 1;
   text-decoration: none;
   white-space: nowrap;
-  transition: color var(--dur) var(--ease);
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 
 .studentLogin svg {
@@ -158,14 +163,22 @@
   flex: none;
 }
 
-.studentLogin:hover,
-.studentLogin:focus-visible {
-  color: var(--tealb);
+.studentLogin:hover {
+  border-color: var(--tealb);
+  background: rgba(43, 182, 163, 0.18);
+  color: #e9fbf8;
 }
 
 .studentLogin:focus-visible {
   outline: 2px solid var(--tealb);
   outline-offset: 3px;
+}
+
+/* In the phone sheet: full width, above the Enrol button. */
+.sheetLogin {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
 }
 
 /* Phone menu */

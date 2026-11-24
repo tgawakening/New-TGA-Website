@@ -3,6 +3,9 @@ import { Wordmark } from "./nav";
 import { liveLinks, type SiteLinks } from "./site-links";
 import styles from "./footer.module.css";
 
+/** Teacher sign-in: lands hosts in the teacher portal after signing in. */
+const TEACHER_SIGN_IN = "/login?next=/seerah/classroom/teaching";
+
 /* Same destinations as the live footer (components/home/sections/footer.tsx).
  * `site` maps the page links; policies are never remapped. */
 function groups({ home, about, seerah, projects, support }: SiteLinks) {
@@ -14,6 +17,8 @@ function groups({ home, about, seerah, projects, support }: SiteLinks) {
         { label: "About us", href: about },
         { label: "Our mission", href: `${home}#mission` },
         { label: "Support us", href: support },
+        { label: "Student login", href: "/login" },
+        { label: "Teacher portal", href: TEACHER_SIGN_IN },
       ],
     },
     {
@@ -21,6 +26,7 @@ function groups({ home, about, seerah, projects, support }: SiteLinks) {
       links: [
         { label: "All courses", href: `${home}#courses` },
         { label: "Sīrah course", href: seerah },
+        { label: "Apply for a scholarship", href: "/seerah/scholarship" },
         { label: "Gen-Mu'min", href: projects },
         { label: "Future projects", href: `${home}#projects` },
       ],
