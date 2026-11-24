@@ -1,19 +1,43 @@
-/* Indigo Geometry · student dashboard. Mobile first. The navy ground, type and
- * cards of the classroom (components/indigo/classroom/classroom.module.css),
- * framed by the admin shell's white floating sidebar card with the navy TGA
- * monogram (components/sirah/admin-shell.module.css), so the two read as one
- * product. Tokens from styles/tokens.css, fonts from lib/fonts. */
+/* Indigo Geometry · student dashboard. Mobile first. The same light look as
+ * the admin workspace (components/sirah/admin-shell.module.css): a near-white
+ * canvas with a whisper of blue-lavender (#eef2fa to #f5f3fb), the white
+ * floating sidebar card and white cards. The shared colour tokens
+ * (styles/tokens.css) are re-pointed to light values on .page, so every card,
+ * list and form below (and RenewalCycle inside) follows without per-rule
+ * colours. Contrast on white: ink #1a2233 16:1, body #3d4757 9.6:1, labels
+ * #5b6472 6.2:1, teal #0b7566 5.6:1. Fonts from lib/fonts. */
 
 .page {
   position: relative;
   isolation: isolate;
+  /* Light palette (scoped to the dashboard). */
+  --bg: #f1f3fb;
+  --ink: #ffffff;
+  --surf: #ffffff;
+  --surf2: #f6f8fc;
+  --line: #e4e8f0;
+  --line2: #d4dbe8;
+  --sand: #1a2233;
+  --dim: #3d4757;
+  --faint: #5b6472;
+  --teal: #0b7566;
+  --tealb: #0a5f54;
+  --terra: #b4532a;
+  --terrab: #a4461f;
+  --on-teal: #ffffff;
+  --surface-grad: #ffffff;
+  --highlight: 0 1px 2px rgba(20, 29, 51, 0.04), 0 10px 28px -16px rgba(20, 29, 51, 0.18);
+  --focus-ring: 0 0 0 3px rgba(11, 117, 102, 0.22);
   min-height: 100vh;
   overflow-x: clip;
-  background: var(--bg);
+  background-color: #f1f3fb;
+  background-image: linear-gradient(160deg, #eef2fa 0%, #f5f3fb 100%);
+  background-attachment: fixed;
   color: var(--sand);
   font-family: var(--body);
   font-size: var(--fs-base);
   line-height: 1.55;
+  color-scheme: light;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -26,19 +50,10 @@
   pointer-events: none;
 }
 
-.page::before {
-  background:
-    radial-gradient(900px 540px at 80% -8%, rgba(43, 182, 163, 0.1), transparent 60%),
-    radial-gradient(700px 500px at 5% 110%, rgba(217, 121, 79, 0.07), transparent 60%),
-    linear-gradient(180deg, #0f1729, var(--bg) 55%, #111a2e);
-}
-
+/* The old navy ground and lattice: off on the light canvas. */
+.page::before,
 .page::after {
-  opacity: 0.035;
-  background-image:
-    linear-gradient(45deg, var(--sand) 1px, transparent 1px),
-    linear-gradient(-45deg, var(--sand) 1px, transparent 1px);
-  background-size: 44px 44px;
+  display: none;
 }
 
 .page :where(h1, h2, h3, p, dl, dd, ul, ol) {
@@ -55,7 +70,7 @@
 }
 
 .page :focus-visible {
-  outline: 2px solid var(--tealb);
+  outline: 2px solid var(--teal);
   outline-offset: 3px;
 }
 
@@ -66,19 +81,31 @@
   min-height: 100vh;
 }
 
-/* The admin shell's sidebar, on the navy ground. Contrast on white: links
- * #3d4757 9.6:1, labels #6b7380 4.9:1, active #0a5f54 on #dcf1ed 6.6:1. */
+/* The admin shell's sidebar card. Contrast on white: links #3d4757 9.6:1,
+ * labels #6b7380 4.9:1, active white on #1e3a68 11.3:1. Never draws a
+ * scrollbar (vertical or horizontal). */
 .sidebar {
   display: grid;
   gap: var(--sp-3);
   align-content: start;
+  min-width: 0;
   margin: var(--sp-3) var(--gutter) 0;
   padding: var(--sp-3);
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   background: #ffffff;
   color: #3d4757;
   border: 1px solid #e3e7ee;
-  border-radius: var(--r-xl);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 18px 40px -20px rgba(20, 29, 51, 0.22), 0 2px 6px rgba(20, 29, 51, 0.06);
+}
+
+.sidebar::-webkit-scrollbar,
+.nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .brand {
@@ -129,14 +156,13 @@
   text-transform: uppercase;
 }
 
-/* Phones and tablets: one scrolling row of items under the brand. */
+/* Phones and tablets: the items wrap onto rows (no sideways scroller). */
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-1);
-  overflow-x: auto;
-  margin-inline: calc(var(--sp-3) * -1);
-  padding: 2px var(--sp-3) 4px;
-  scrollbar-width: thin;
+  min-width: 0;
+  padding: 2px 0 4px;
 }
 
 .navGroup {
@@ -187,27 +213,17 @@
   outline-offset: 1px;
 }
 
+/* Active: the admin's solid navy pill, white text and icon. */
 .page .navActive,
 .page .navActive:hover {
-  background: #dcf1ed;
-  box-shadow: inset 0 0 0 1px #b5ddd6;
-  color: #0a5f54;
+  background: linear-gradient(180deg, #24467a, #1e3a68);
+  box-shadow: 0 6px 14px -6px rgba(30, 58, 104, 0.55);
+  color: #ffffff;
   font-weight: 600;
 }
 
 .navActive svg {
-  color: #0a5f54;
-}
-
-.navActive::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: #2bb6a3;
+  color: #ffffff;
 }
 
 .page .navDisabled,
@@ -233,13 +249,16 @@
     grid-template-columns: 264px minmax(0, 1fr);
   }
 
-  /* Floating: inset from the viewport edges, sticky, scrolls inside itself. */
+  /* Floating: inset from the viewport edges, sticky. On a very short window
+   * it still scrolls (wheel, touch, keyboard), but no scrollbar is drawn. */
   .sidebar {
     position: sticky;
     top: var(--sp-4);
     align-self: start;
     max-height: calc(100vh - 2 * var(--sp-4));
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     gap: var(--sp-2);
     margin: var(--sp-4) 0 var(--sp-4) var(--sp-4);
     padding: var(--sp-4) var(--sp-3) var(--sp-5);
@@ -253,10 +272,17 @@
 
   .nav {
     flex-direction: column;
+    flex-wrap: nowrap;
     gap: var(--sp-1);
     overflow: visible;
     margin: 0;
     padding: 0;
+  }
+
+  .page .navLink {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .navGroup {
@@ -338,14 +364,14 @@
 }
 
 .notice {
-  border: 1px solid rgba(43, 182, 163, 0.4);
-  background: rgba(43, 182, 163, 0.1);
+  border: 1px solid #b5ddd6;
+  background: #e8f5f2;
   color: var(--sand);
 }
 
 .noticeError {
-  border: 1px solid rgba(217, 121, 79, 0.5);
-  background: rgba(217, 121, 79, 0.12);
+  border: 1px solid #f0c6b3;
+  background: #fdf0ea;
   color: var(--sand);
 }
 
@@ -383,7 +409,7 @@
   padding: var(--sp-5);
   background: var(--surface-grad);
   border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border-radius: 16px;
   box-shadow: var(--highlight);
 }
 
@@ -395,9 +421,9 @@
 
 /* A booking that still needs payment: the one card that should catch the eye. */
 .cardAttention {
-  border-color: rgba(217, 121, 79, 0.6);
+  border-color: #eab79f;
   background:
-    linear-gradient(135deg, rgba(217, 121, 79, 0.1), transparent 55%),
+    linear-gradient(135deg, #fdf0ea, #ffffff 55%),
     var(--surf);
 }
 
@@ -480,7 +506,7 @@
   justify-content: space-between;
   gap: var(--sp-4);
   padding: var(--sp-3) var(--sp-4);
-  background: rgba(237, 234, 223, 0.03);
+  background: var(--surf2);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
 }
@@ -505,7 +531,7 @@
   flex: none;
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: var(--tealb);
+  color: var(--teal);
   text-align: right;
 }
 
@@ -542,26 +568,28 @@
     color var(--dur) var(--ease);
 }
 
+/* The admin's buttons: solid navy primary, white outline secondary. */
 .btn {
-  border: 1px solid var(--teal);
-  background: var(--teal);
-  color: var(--on-teal) !important;
+  border: 1px solid #26346e;
+  background: #26346e;
+  color: #ffffff !important;
 }
 
 .btn:hover {
-  border-color: var(--tealb);
-  background: var(--tealb);
+  border-color: #1b2654;
+  background: #1b2654;
 }
 
 .btnGhost {
   border: 1px solid var(--line2);
-  background: transparent;
+  background: #ffffff;
   color: var(--sand);
 }
 
 .btnGhost:hover {
-  border-color: var(--teal);
-  color: var(--tealb);
+  border-color: #b8c2d4;
+  background: #f6f8fc;
+  color: var(--sand);
 }
 
 .btn:disabled,
@@ -596,7 +624,7 @@
   padding: 0 var(--sp-3);
   border: 1px solid var(--line2);
   border-radius: var(--r-sm);
-  background: rgba(13, 20, 36, 0.55);
+  background: #ffffff;
   color: var(--sand);
   font-family: var(--body);
   font-size: var(--fs-base);
