@@ -189,7 +189,6 @@ function PaymentStatus({ order }: { order: Student }) {
  * full wording; the full label is the button's tooltip). */
 const inlineLabels: Record<string, string> = {
   APPROVE: "Approve",
-  COMPLETE: "Complete course",
   RESTORE: "Restore",
 };
 
@@ -529,8 +528,10 @@ export function SirahAdminStudents({
     // Managers and the super admin may approve / complete; refunds are not
     // in this row list and stay super-admin only at the endpoint.
     (!canManageEnrolments || student.archivedAt ? [] : availableActions(student))
+      // "Complete course" is not offered on the row (too easy to hit by
+      // mistake); it stays in View Details, which lists every action.
       .filter((option) =>
-        ["APPROVE", "REJECT", "PENDING", "CANCEL", "COMPLETE"].includes(option),
+        ["APPROVE", "REJECT", "PENDING", "CANCEL"].includes(option),
       )
       .forEach((option) => {
         const tone = actionClass(option);
