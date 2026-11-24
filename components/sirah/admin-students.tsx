@@ -870,18 +870,18 @@ export function SirahAdminStudents({
               </select>
             </label>
             <label>
-              Course group
+              Group status
               <select
-                aria-label="Course group"
+                aria-label="Group status"
                 value={group}
                 onChange={(event) => {
                   setGroup(event.target.value);
                   setPage(1);
                 }}
               >
-                <option value="">Added or not</option>
-                <option value="NOT_ADDED">Not yet added</option>
-                <option value="ADDED">Added to group</option>
+                <option value="">All</option>
+                <option value="NOT_ADDED">Not added</option>
+                <option value="ADDED">Added</option>
               </select>
             </label>
             {canExcludeRecords && (
@@ -1040,23 +1040,24 @@ export function SirahAdminStudents({
                     key={student.id}
                     className={`${styles.tableGrid} ${styles.row}${checked ? ` ${styles.rowChecked}` : ""}`}
                   >
+                    <div className={styles.cSelect}>
+                      {canExcludeRecords && !student.archivedAt && (
+                        <label className={styles.rowSelect}>
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${student.reference} for analytics exclusion`}
+                            checked={checked}
+                            disabled={bulkBusy}
+                            onChange={(event) =>
+                              toggleChecked(student.id, event.target.checked)
+                            }
+                          />
+                        </label>
+                      )}
+                    </div>
                     <div className={`${styles.cOrder} ${styles.orderCell}`}>
                       <span className={styles.cellLabel}>Order</span>
-                      <span className={`ga-admin-pill ${styles.coursePill}`}>Sīrah</span>
                       <div className={styles.refLine}>
-                        {canExcludeRecords && !student.archivedAt && (
-                          <label className={styles.rowSelect}>
-                            <input
-                              type="checkbox"
-                              aria-label={`Select ${student.reference} for analytics exclusion`}
-                              checked={checked}
-                              disabled={bulkBusy}
-                              onChange={(event) =>
-                                toggleChecked(student.id, event.target.checked)
-                              }
-                            />
-                          </label>
-                        )}
                         <span className={styles.ref} title={student.reference}>
                           {student.reference}
                         </span>
@@ -1067,7 +1068,7 @@ export function SirahAdminStudents({
                             ? `Archived ${date(student.archivedAt)}`
                             : student.excludedAt
                               ? `Excluded ${date(student.excludedAt)}${student.excludedBy ? ` by ${student.excludedBy}` : ""}`
-                              : "Beyond Chronology"}
+                              : "S?rah ? Beyond Chronology"}
                         </span>
                       </p>
                       {(student.archivedAt || student.excludedAt) && (
@@ -1086,7 +1087,7 @@ export function SirahAdminStudents({
                     <div className={`${styles.cCustomer} ${styles.customerCell}`}>
                       <span className={styles.cellLabel}>Customer</span>
                       <strong>{student.user.fullName}</strong>
-                      <p>{student.user.email}</p>
+                      <p className={styles.email} title={student.user.email}>{student.user.email}</p>
                       <p>{student.phoneE164}</p>
                     </div>
                     <div className={styles.cAmount}>
@@ -1141,7 +1142,7 @@ export function SirahAdminStudents({
                       {markAdded && (
                         <button
                           type="button"
-                          className={`ga-admin-outline-btn ${styles.markAdded}`}
+                          className={`ga-admin-ghost-btn ${styles.markAdded}`}
                           disabled={markAdded.disabled}
                           aria-pressed={markAdded.pressed}
                           onClick={markAdded.onSelect}
@@ -1157,6 +1158,7 @@ export function SirahAdminStudents({
                       </time>
                     </div>
                     <div className={`ga-admin-actions ${styles.cActions} ${styles.actionsCell}`}>
+                      <div className={styles.primarySlot}>
                       {primary && (
                         <button
                           type="button"
@@ -1173,6 +1175,7 @@ export function SirahAdminStudents({
                           {primary.label}
                         </button>
                       )}
+                      </div>
                       <div className={styles.actionsPair}>
                         <button
                           type="button"
