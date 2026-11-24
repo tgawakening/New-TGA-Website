@@ -8,7 +8,12 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { canSeeDashboardAdminLink } from "@/lib/auth/dashboard-admin-link";
 import { getPaymentPlanTypeFromSnapshot } from "@/lib/course-payment";
-import { hostsForIdentity, lmsSessionsAvailable } from "@/lib/lms/schedule";
+import { hostsForIdentity, lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
+import { lmsContentAvailable } from "@/lib/lms/content";
+import { unreadCount } from "@/lib/lms/notifications";
+import { INBOX_PATH } from "@/lib/lms/student-phase5";
+import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
+import { classroomClock } from "@/components/indigo/classroom/clock";
 import {
   processDueManualSubscriptions,
   reconcileMissingStripeSubscriptions,
@@ -75,8 +80,32 @@ export default async function DashboardPage() {
     refreshedUser.status === "ACTIVE" &&
     (await lmsSessionsAvailable()) &&
     (await hostsForIdentity({ email: refreshedUser.email })).length > 0;
+  // Read-only, for the Overview's "Your next live class" card and the top
+  // bar's bell: the same paid + active rule the classroom pages use (not
+  // allowed -> no sessions and no inbox are read).
+  const now = new Date();
+  const schedule = (await lmsSessionsAvailable()) ? await studentSchedule(refreshedUser.id, now) : null;
+  const next = schedule?.allowed ? schedule.next : null;
+  const clock = classroomClock((await viewerTimeZone()) ?? refreshedUser.studentProfile?.timezone);
+  const nextLiveClass = next
+    ? {
+        title: next.title,
+        startsAt: next.startsAt.toISOString(),
+        when: clock.longDate.format(next.startsAt),
+        zone: clock.zoneName,
+        live: next.phase === "live",
+        joinable: next.joinable,
+        joinPath: next.joinPath,
+      }
+    : null;
+  const inbox =
+    schedule?.allowed && (await lmsContentAvailable())
+      ? { href: INBOX_PATH, unread: await unreadCount(refreshedUser.id) }
+      : null;
   return (
     <StudentDashboard
+      nextLiveClass={nextLiveClass}
+      inbox={inbox}
       user={{
         id: refreshedUser.id,
         currentSirahOnly:
