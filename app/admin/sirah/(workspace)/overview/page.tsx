@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { sirahOverviewCounts } from "@/services/sirah-group.service";
+import { SirahAdminCohort } from "@/components/sirah/admin-cohort";
 import { SirahPaymentsReceived } from "@/components/sirah/admin-payment-totals";
 import styles from "@/components/sirah/admin-overview.module.css";
 
@@ -97,6 +98,11 @@ export default async function SirahOverviewPage() {
           </div>
         </div>
       </section>
+      {!access.readOnly && (
+        <section className="ga-admin-workspace-card" aria-label="Paid teaching commencement">
+          <SirahAdminCohort />
+        </section>
+      )}
       {canViewTotals && <SirahPaymentsReceived />}
     </>
   );

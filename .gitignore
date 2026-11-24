@@ -50,3 +50,7 @@ hostinger-deploy/*.zip
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local worktrees
+/.claude/
+/.hallmark/

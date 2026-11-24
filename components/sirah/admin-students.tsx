@@ -12,7 +12,6 @@ import {
   sirahDisplayPaymentState,
   sirahNetReceivedMinor,
 } from "@/lib/sirah/refund-display";
-import { SirahAdminCohort } from "./admin-cohort";
 import { RowMenu, type RowMenuItem } from "./admin-row-menu";
 import styles from "./admin-students.module.css";
 
@@ -737,7 +736,6 @@ export function SirahAdminStudents({
           </div>
         </div>
 
-        {!readOnly && <SirahAdminCohort />}
       </section>
 
       <section
@@ -1059,8 +1057,7 @@ export function SirahAdminStudents({
                             />
                           </label>
                         )}
-                        {/* The full reference, wrapped across lines, never truncated. */}
-                        <span className={styles.ref}>
+                        <span className={styles.ref} title={student.reference}>
                           {student.reference}
                         </span>
                       </div>
