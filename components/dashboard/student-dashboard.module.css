@@ -14,6 +14,8 @@
   overflow-x: clip;
   background: var(--bg);
   color: var(--sand);
+  --dim: #dedbd3;
+  --faint: #c9c8cd;
   font-family: var(--body);
   font-size: var(--fs-base);
   line-height: 1.55;
@@ -140,8 +142,8 @@
 
 .section {
   display: grid;
-  gap: var(--sp-5);
-  padding-top: var(--sp-6);
+  gap: var(--sp-6);
+  padding-top: var(--sp-8);
 }
 
 .grid {
@@ -470,6 +472,30 @@
   border-color: rgba(217, 121, 79, 0.55);
 }
 
+.heroRosette {
+  position: absolute;
+  right: -2rem;
+  top: 50%;
+  width: 18rem;
+  height: 18rem;
+  color: var(--tealb);
+  opacity: 0.07;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.nextBody, .nextActions {
+  position: relative;
+  z-index: 1;
+}
+
+.countdown { margin-top: var(--sp-2); }
+.countUnits { display: flex; gap: var(--sp-4); }
+.countUnit { display: flex; align-items: baseline; gap: 4px; }
+.countValue { color: var(--sand); font-size: var(--fs-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.countLabel, .countNote { color: var(--dim); font-size: var(--fs-xs); }
+.countNote { margin-top: 4px !important; }
+
 .nextBody {
   display: grid;
   gap: var(--sp-2);
@@ -629,7 +655,7 @@
   display: grid;
   align-content: space-between;
   gap: var(--sp-4);
-  min-height: 7.5rem;
+  min-height: 10rem;
   padding: var(--sp-4);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -653,6 +679,18 @@
 .tileIcon svg {
   width: 20px;
   height: 20px;
+}
+
+.tileText {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.tileMeta {
+  color: var(--dim);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .tileLabel {
@@ -683,7 +721,7 @@
 
 .tileLocked {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.8;
 }
 
 .tileLocked .tileIcon {

@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LiveStatusRefresh } from "@/components/sirah/live-status-refresh";
+import { ClassroomCountdown } from "@/components/sirah/classroom-countdown";
+import { Rosette } from "@/components/indigo/ornaments";
 import { RenewalCycle } from "@/components/sirah/renewal-cycle";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -35,6 +38,9 @@ export type DashboardNextLiveClass = {
 
 type DashboardProps = {
   nextLiveClass?: DashboardNextLiveClass | null;
+  latestRecording?: { title: string; href: string; external: boolean } | null;
+  resourceCount?: number | null;
+  serverNow: string;
   /** The classroom inbox for the top bar's bell (null: not enrolled in a cohort). */
   inbox?: { href: string; unread: number } | null;
   user: {
@@ -113,7 +119,7 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
-export default function StudentDashboard({ user, nextLiveClass = null, inbox = null }: DashboardProps) {
+export default function StudentDashboard({ user, nextLiveClass = null, latestRecording = null, resourceCount = null, serverNow, inbox = null }: DashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -134,6 +140,13 @@ export default function StudentDashboard({ user, nextLiveClass = null, inbox = n
   // (#overview, #course, #payments) so links and the back button work.
   const [section, setSection] = useState<DashboardSection>("overview");
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const [clockNow, setClockNow] = useState(() => new Date(serverNow).getTime());
+  useEffect(() => {
+    const tick = () => setClockNow(Date.now());
+    tick();
+    const timer = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const sirahOrders = user.sirahOrders ?? [];
   const latestSirahOrder = sirahOrders[0];
@@ -676,43 +689,37 @@ export default function StudentDashboard({ user, nextLiveClass = null, inbox = n
   // Bookings that still need payment keep their prominent call to action.
   const ordersToPay = sirahOrders.filter((order) => sirahOrderStatus(order).kind === "PAY");
 
+  const showNextClass = !!nextLiveClass && (nextLiveClass.live || new Date(nextLiveClass.startsAt).getTime() - clockNow <= 24 * 60 * 60 * 1000);
   const nextClassCard = (
-    <section className={`${s.nextCard} ${nextLiveClass?.live ? s.nextLive : ""}`} aria-labelledby="next-class-title">
+    <section className={`${s.nextCard} ${showNextClass && nextLiveClass?.live ? s.nextLive : ""}`} aria-labelledby="next-class-title">
+      <Rosette className={s.heroRosette} />
       <div className={s.nextBody}>
-        <p className={s.cardTitle}>{nextLiveClass?.live ? "Happening now" : "Your next live class"}</p>
-        {nextLiveClass ? (
+        <p className={s.cardTitle}>{showNextClass ? (nextLiveClass?.live ? "Happening now" : "Your next live class") : latestRecording ? "Continue with your latest recording" : "Your learning journey"}</p>
+        {showNextClass && nextLiveClass ? (
           <>
-            <h2 id="next-class-title" className={s.nextTitle}>
-              {nextLiveClass.title}
-            </h2>
-            <p className={s.nextWhen}>
-              <LocalTime iso={nextLiveClass.startsAt} fallback={nextLiveClass.when} fallbackZone={nextLiveClass.zone} />
-            </p>
+            <h2 id="next-class-title" className={s.nextTitle}>{nextLiveClass.title}</h2>
+            <p className={s.nextWhen}><LocalTime iso={nextLiveClass.startsAt} fallback={nextLiveClass.when} fallbackZone={nextLiveClass.zone} /></p>
+            {!nextLiveClass.live && <ClassroomCountdown startsAt={nextLiveClass.startsAt} serverNow={serverNow} joinWindowMinutes={15} classes={{ root: s.countdown, units: s.countUnits, unit: s.countUnit, value: s.countValue, label: s.countLabel, note: s.countNote }} />}
+            {!nextLiveClass.joinable && <LiveStatusRefresh />}
           </>
+        ) : latestRecording ? (
+          <h2 id="next-class-title" className={s.nextTitle}>{latestRecording.title}</h2>
         ) : (
           <>
-            <h2 id="next-class-title" className={s.nextTitle}>
-              No live class scheduled right now
-            </h2>
-            <p className={s.muted}>
-              {classroomOpen
-                ? "New classes appear here as soon as they are published."
-                : lockedHint}
-            </p>
+            <h2 id="next-class-title" className={s.nextTitle}>You?re all caught up</h2>
+            <p className={s.muted}>{classroomOpen ? "Your next class will appear here." : lockedHint}</p>
           </>
         )}
       </div>
       <div className={s.nextActions}>
-        {nextLiveClass?.joinable ? (
-          <a href={nextLiveClass.joinPath} className={s.btn} target="_blank" rel="noopener noreferrer">
-            {nextLiveClass.live ? "Enter the class" : "Join the class"} <span aria-hidden="true">→</span>
-          </a>
+        {showNextClass && nextLiveClass ? (
+          nextLiveClass.joinable ? (
+            <a href={nextLiveClass.joinPath} className={s.btn} target="_blank" rel="noopener noreferrer">{nextLiveClass.live ? "Enter the class" : "Join the class"} <span aria-hidden="true">?</span></a>
+          ) : <span className={s.muted}>Join opens 15 minutes before class or when the host starts.</span>
+        ) : latestRecording ? (
+          <a href={latestRecording.href} className={s.btn} {...(latestRecording.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>Watch recording <span aria-hidden="true">?</span></a>
         ) : null}
-        {classroomOpen ? (
-          <Link href="/seerah/classroom/schedule" className={nextLiveClass?.joinable ? s.btnGhost : s.btn}>
-            View live classes
-          </Link>
-        ) : null}
+        {classroomOpen ? <Link href="/seerah/classroom/schedule" className={showNextClass && nextLiveClass?.joinable || latestRecording && !showNextClass ? s.btnGhost : s.btn}>View live classes</Link> : null}
       </div>
     </section>
   );
@@ -759,17 +766,17 @@ export default function StudentDashboard({ user, nextLiveClass = null, inbox = n
 
   const tiles = (
     <nav className={s.tiles} aria-label="Quick actions">
-      <Tile href="/seerah/classroom/schedule" icon={ICONS.live} locked={!classroomOpen} hint={lockedHint}>
+      <Tile href="/seerah/classroom/schedule" icon={ICONS.live} locked={!classroomOpen} hint={lockedHint} meta={nextLiveClass ? <LocalTime iso={nextLiveClass.startsAt} fallback={nextLiveClass.when} fallbackZone={nextLiveClass.zone} /> : "No class scheduled"}>
         Live classes
       </Tile>
-      <Tile href="/seerah/classroom#resources" icon={ICONS.resources} locked={!classroomOpen} hint={lockedHint}>
+      <Tile href="/seerah/classroom#resources" icon={ICONS.resources} locked={!classroomOpen} hint={lockedHint} meta={resourceCount === null ? undefined : `${resourceCount} ${resourceCount === 1 ? "resource" : "resources"} available`}>
         Resources &amp; notices
       </Tile>
-      <Tile href="#payments" icon={ICONS.payments} onClick={go("payments")}>
+      <Tile href="#payments" icon={ICONS.payments} onClick={go("payments")} meta={latestSirahOrder ? <>{sirahPlanLabel(latestSirahOrder)}{latestSirahOrder.plan === "MONTHLY" && latestSirahOrder.nextBillingAt ? <> ? Next due <LocalTime iso={latestSirahOrder.nextBillingAt} fallback={new Date(latestSirahOrder.nextBillingAt).toLocaleDateString("en-GB")} fallbackZone="" /></> : ` ? ${sirahOrderStatus(latestSirahOrder).label}`}</> : latestRegistration ? `${latestPaymentPlanLabel} ? ${latestRegistration.status}` : undefined}>
         Payments &amp; subscription
       </Tile>
-      <Tile href="/seerah/register" icon={ICONS.seat}>
-        Register another seat
+      <Tile href="/seerah/register" icon={ICONS.seat} meta="Invite someone to learn alongside our community.">
+        Gift or register another seat
       </Tile>
     </nav>
   );
@@ -935,10 +942,12 @@ function Tile({
   locked = false,
   hint,
   onClick,
+  meta,
   children,
 }: {
   href: string;
   icon: React.ReactNode;
+  meta?: React.ReactNode;
   locked?: boolean;
   hint?: string;
   onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
@@ -947,7 +956,7 @@ function Tile({
   const body = (
     <>
       <span className={s.tileIcon}>{icon}</span>
-      <span className={s.tileLabel}>{children}</span>
+      <span className={s.tileText}><span className={s.tileLabel}>{children}</span>{meta && <span className={s.tileMeta}>{meta}</span>}</span>
       {!locked ? (
         <span className={s.tileGo} aria-hidden="true">
           →

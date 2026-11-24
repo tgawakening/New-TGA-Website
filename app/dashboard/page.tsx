@@ -9,7 +9,9 @@ import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { canSeeDashboardAdminLink } from "@/lib/auth/dashboard-admin-link";
 import { getPaymentPlanTypeFromSnapshot } from "@/lib/course-payment";
 import { hostsForIdentity, lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
-import { lmsContentAvailable } from "@/lib/lms/content";
+import { lmsContentAvailable, studentContent } from "@/lib/lms/content";
+import { recordingsAvailable, studentRecordings, watchPath } from "@/lib/lms/recordings";
+import { studentExternalRecordings } from "@/lib/lms/external-recordings";
 import { unreadCount } from "@/lib/lms/notifications";
 import { INBOX_PATH } from "@/lib/lms/student-phase5";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
@@ -98,13 +100,26 @@ export default async function DashboardPage() {
         joinPath: next.joinPath,
       }
     : null;
+  const contentAvailable = !!schedule?.allowed && (await lmsContentAvailable());
+  const content = contentAvailable ? await studentContent(refreshedUser.id, now) : null;
+  const recordings = schedule?.allowed && (await recordingsAvailable()) ? await studentRecordings(refreshedUser.id, now) : [];
+  const external = contentAvailable ? await studentExternalRecordings(refreshedUser.id, now) : [];
+  const latestRecording = schedule?.allowed ? schedule.past.flatMap((session) => {
+    const recording = recordings.find((item) => item.sessionId === session.id);
+    if (recording) return [{ title: recording.title, href: watchPath(recording.recordingId), external: false }];
+    const link = external.find((item) => item.sessionId === session.id && item.url);
+    return link?.url ? [{ title: link.title, href: link.url, external: true }] : [];
+  })[0] ?? null : null;
   const inbox =
-    schedule?.allowed && (await lmsContentAvailable())
+    contentAvailable
       ? { href: INBOX_PATH, unread: await unreadCount(refreshedUser.id) }
       : null;
   return (
     <StudentDashboard
       nextLiveClass={nextLiveClass}
+      latestRecording={latestRecording}
+      resourceCount={content?.allowed ? content.resources.length : null}
+      serverNow={now.toISOString()}
       inbox={inbox}
       user={{
         id: refreshedUser.id,
