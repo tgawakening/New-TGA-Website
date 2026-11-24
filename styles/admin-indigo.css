@@ -35,7 +35,7 @@
   color-scheme: light;
 
   /* ---- Palette ---- */
-  --adm-page: #f1efea;          /* the canvas: warm light grey, so white cards lift off it */
+  --adm-page: #f8f9fc;          /* the canvas: near-white, the faintest cool hint; white cards lift off it by border and shadow */
   --adm-rail: #eef1f6;          /* legacy hook; the rail is now --adm-nav */
   --adm-card: #ffffff;
   --adm-panel: #f8f7f4;         /* filter bar, table head: a warm tint inside white cards */
