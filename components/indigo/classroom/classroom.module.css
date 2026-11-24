@@ -212,6 +212,23 @@
   }
 }
 
+/* Under the shared student top bar: the way back, the week and the
+ * progress ring, on one slim row. */
+.ctx {
+  border-bottom: 1px solid var(--line);
+}
+
+.ctxRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 52px;
+}
+
+.ctxRow .wk {
+  display: inline-block;
+}
+
 /* ---------- Hero / dispatch ---------- */
 .hero {
   padding: var(--sp-8) 0 var(--sp-4);

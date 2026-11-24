@@ -1,0 +1,432 @@
+/* The student top bar, dark celestial: the classroom's navy (styles/tokens.css),
+ * teal for the active item, Sora for the items. Sticky, translucent over the
+ * page's celestial ground. No element here ever scrolls, so no scrollbar is
+ * drawn at any width. Contrast on #0f1729: items #c9c3b6 10.9:1, active
+ * #48d6c2 9.9:1, the unread badge white on #d9794f 3.2:1 (large, plus its
+ * label). */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(15, 23, 41, 0.88);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--body);
+}
+
+/* A hairline of the brand under the bar. */
+.header::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(43, 182, 163, 0.45) 30%, rgba(217, 121, 79, 0.35) 70%, transparent);
+  pointer-events: none;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  max-width: 76rem;
+  height: 64px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- Logo ---- */
+.logo {
+  display: flex;
+  flex: none;
+  align-items: center;
+  border-radius: var(--r-sm);
+}
+
+.logoImg {
+  display: block;
+  width: 120px;
+  height: auto;
+}
+
+.logo:focus-visible,
+.item:focus-visible,
+.sheetItem:focus-visible,
+.bell:focus-visible,
+.accountButton:focus-visible,
+.menuButton:focus-visible,
+.menuLink:focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 2px;
+}
+
+/* ---- Items (desktop) ---- */
+.items {
+  display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.items ul,
+.sheet ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.items ul {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 0.8125rem;
+  border-radius: var(--r-pill);
+  color: var(--dim);
+  font-size: 0.84375rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.item:hover {
+  background: rgba(237, 234, 223, 0.06);
+  color: var(--sand);
+}
+
+/* Active: teal text on a soft teal pill with a teal edge (the edge and the
+ * weight carry the state, not the tint alone). */
+.item.active,
+.item.active:hover,
+.sheetItem.active,
+.sheetItem.active:hover {
+  background: rgba(43, 182, 163, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(72, 214, 194, 0.4);
+  color: var(--tealb);
+  font-weight: 600;
+}
+
+.locked,
+.locked:hover {
+  background: transparent;
+  color: var(--faint);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---- Right side: bell, account, menu ---- */
+.right {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-left: auto;
+}
+
+.bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: rgba(13, 20, 36, 0.4);
+  color: var(--sand);
+  text-decoration: none;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.bell svg {
+  width: 18px;
+  height: 18px;
+}
+
+.bell:hover {
+  border-color: var(--teal);
+  color: var(--tealb);
+}
+
+.count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--terra);
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.account {
+  position: relative;
+}
+
+.accountButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 40px;
+  padding: 0 0.625rem 0 4px;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-pill);
+  background: rgba(13, 20, 36, 0.4);
+  color: var(--sand);
+  font-family: var(--body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.accountButton:hover,
+.accountButton[aria-expanded="true"] {
+  border-color: var(--teal);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--teal), #1f8f80);
+  color: var(--on-teal);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.accountLabel {
+  display: none;
+}
+
+.chevron {
+  display: grid;
+}
+
+.chevron svg {
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
+}
+
+.accountMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  display: grid;
+  gap: 2px;
+  min-width: 14rem;
+  padding: var(--sp-2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r-md);
+  background: var(--surf);
+  box-shadow: var(--shadow-lift);
+}
+
+.accountName {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--sp-1);
+  color: var(--sand);
+  font-family: var(--display);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.menuLink {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--body);
+  font-size: 0.84375rem;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menuLink:hover {
+  background: rgba(237, 234, 223, 0.06);
+  color: var(--sand);
+}
+
+.menuLink svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.logout:hover {
+  color: var(--terrab);
+}
+
+/* ---- Phone menu ---- */
+.menuButton {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--line2);
+  border-radius: var(--r-sm);
+  background: rgba(13, 20, 36, 0.4);
+  cursor: pointer;
+}
+
+.burger,
+.burger::before,
+.burger::after {
+  display: block;
+  width: 18px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: var(--sand);
+  transition: transform var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+
+.burger {
+  position: relative;
+}
+
+.burger::before,
+.burger::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.burger::before {
+  top: -6px;
+}
+
+.burger::after {
+  top: 6px;
+}
+
+.burgerOpen {
+  background: transparent;
+}
+
+.burgerOpen::before {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.burgerOpen::after {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+.sheet {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--gutter) var(--sp-5);
+  border-top: 1px solid var(--line);
+  background: var(--ink);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8);
+}
+
+.sheet[hidden] {
+  display: none;
+}
+
+.sheet ul {
+  display: grid;
+  gap: 2px;
+}
+
+.sheetItem {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-sm);
+  color: var(--sand);
+  font-size: var(--fs-base);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.sheetItem:hover {
+  background: rgba(237, 234, 223, 0.05);
+}
+
+.hint {
+  margin: 0;
+  padding: 0 var(--sp-4);
+  color: var(--faint);
+  font-size: var(--fs-xs);
+}
+
+@media (min-width: 40rem) {
+  .logoImg {
+    width: 136px;
+  }
+
+  .accountLabel {
+    display: inline;
+  }
+}
+
+/* Desktop: the items in the bar, the menu button and sheet go away. */
+@media (min-width: 72rem) {
+  .bar {
+    height: 72px;
+    gap: var(--sp-6);
+  }
+
+  .logoImg {
+    width: 150px;
+  }
+
+  .items {
+    display: block;
+  }
+
+  .menuButton,
+  .sheet,
+  .sheet[hidden] {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .bell,
+  .accountButton,
+  .burger,
+  .burger::before,
+  .burger::after {
+    transition: none;
+  }
+}

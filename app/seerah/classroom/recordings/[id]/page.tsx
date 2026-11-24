@@ -29,7 +29,7 @@ export default async function RecordingPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className={s.page}>
-      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={back} />
+      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={back} student={{ active: "live" }} />
       <main className={s.wrap}>
         {decision?.ok ? (
           <section className={s.hero} aria-labelledby="recording-title">

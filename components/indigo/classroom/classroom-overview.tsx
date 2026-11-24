@@ -59,6 +59,7 @@ export function ClassroomOverview({
         percent={percent}
         back={{ href: "/dashboard", label: "Dashboard" }}
         inbox={phase5?.inbox ?? null}
+        student={{ active: "resources" }}
       />
 
       <main className={s.wrap}>

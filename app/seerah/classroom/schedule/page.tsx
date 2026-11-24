@@ -37,7 +37,7 @@ export default async function LiveSchedulePage() {
 
   return (
     <div className={s.page}>
-      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={{ href: "/seerah/classroom", label: "Classroom" }} inbox={phase5?.inbox ?? null} />
+      <ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={{ href: "/seerah/classroom", label: "Classroom" }} inbox={phase5?.inbox ?? null} student={{ active: "live" }} />
       <main className={s.wrap}>
         {!schedule?.allowed ? (
           <section className={s.hero} aria-labelledby="gated-title">

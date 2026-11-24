@@ -11,14 +11,19 @@ import type { ClassroomClock } from "./clock";
 import s from "./classroom.module.css";
 import p5 from "./phase5.module.css";
 import { BrandLogo } from "@/components/brand-logo";
+import { StudentTopNav, type StudentNavKey } from "@/components/student/student-topnav";
 
 /* ---------- Header ---------- */
+/** With `student`, the shared student top bar (the same one the dashboard
+ * uses) plus a slim context row (the way back, the week and the progress
+ * ring). Without it (the teacher portal), the classroom's own header. */
 export function ClassroomHeader({
   home,
   week,
   percent,
   back,
   inbox,
+  student,
 }: {
   home: string;
   week: { current: number; total: number } | null;
@@ -26,7 +31,38 @@ export function ClassroomHeader({
   back: { href: string; label: string };
   /** LMS Phase 5: the notifications link and unread count (omitted before the migration). */
   inbox?: { href: string; unread: number } | null;
+  /** Student pages: which top-bar item is active (null: none). */
+  student?: { active: StudentNavKey | null };
 }) {
+  if (student)
+    return (
+      <>
+        <StudentTopNav active={student.active} inbox={inbox ?? null} />
+        <div className={s.ctx}>
+          <div className={`${s.wrap} ${s.ctxRow}`}>
+            <Link href={back.href} className={s.back}>
+              <span aria-hidden="true">←</span>&nbsp;{back.label}
+            </Link>
+            <span className={s.spacer} />
+            {week ? (
+              <span className={s.wk}>
+                Week <b>{week.current}</b> of {week.total}
+              </span>
+            ) : null}
+            {percent !== null ? (
+              <span
+                className={s.ring}
+                style={{ "--p": percent } as React.CSSProperties}
+                role="img"
+                aria-label={`${percent}% of sessions completed`}
+              >
+                <i>{percent}%</i>
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </>
+    );
   return (
     <header className={s.header}>
       <div className={`${s.wrap} ${s.headRow}`}>
