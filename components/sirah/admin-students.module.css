@@ -719,13 +719,16 @@
 
 .actionsPair {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--sp-2);
+  max-width: 100%;
 }
 
 :global([data-theme="indigo-admin"]) .recordsCard .row .actionsCell :is(:global(.ga-admin-primary-btn), :global(.ga-admin-outline-btn), :global(.ga-admin-ghost-btn)) {
   min-height: 2.5rem;
-  padding: 0 var(--sp-5);
+  padding: 0 var(--sp-4);
   border-width: 1px;
   border-radius: 10px;
   font-size: 0.875rem;
@@ -736,7 +739,7 @@
 }
 
 /* -- Column labels and aligned cards: from tablet width up -------------- */
-@container list (min-width: 660px) {
+@container list (min-width: 680px) {
   /* Cell labels step aside for the column labels (kept for screen readers). */
   .cellLabel {
     position: absolute;
@@ -749,7 +752,7 @@
   }
 
   :global([data-theme="indigo-admin"]) .recordsCard :is(.head, .row) {
-    --record-cols: [a] minmax(9rem, 1.15fr) [b] minmax(8rem, 1.2fr) [c] minmax(7rem, 0.9fr) [d] 9.5rem;
+    --record-cols: [a] minmax(9rem, 1.15fr) [b] minmax(8rem, 1.2fr) [c] minmax(7rem, 0.9fr) [d] 11rem;
     display: grid;
     grid-template-columns: var(--record-cols);
     grid-template-areas:
@@ -786,14 +789,18 @@
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: flex-end;
+    min-width: 0;
   }
 }
 
 /* Wide: all eight columns on one line per card. */
-@container list (min-width: 1080px) {
+/* The Actions column is wide enough for View Details plus the "..." menu
+ * (about 10.6rem), and the breakpoint sits where every column's minimum
+ * fits, so the buttons never spill into the Date column. */
+@container list (min-width: 1240px) {
   :global([data-theme="indigo-admin"]) .recordsCard :is(.head, .row) {
     --record-cols:
-      minmax(9rem, 1.15fr) minmax(10rem, 1.3fr) minmax(7.5rem, 0.8fr) minmax(7.5rem, 0.85fr) 6.75rem 7rem 6.25rem 8.5rem;
+      minmax(9rem, 1.15fr) minmax(10rem, 1.3fr) minmax(7.5rem, 0.8fr) minmax(7.5rem, 0.85fr) 6.75rem 7rem 6.5rem 11rem;
     grid-template-areas: "order customer amount payment access group date actions";
     column-gap: var(--sp-4);
   }

@@ -135,6 +135,39 @@
   display: none;
 }
 
+/* "Student login": a quiet text link with an icon beside the buttons
+ * (tablet and up; on phones it is in the menu sheet). */
+.studentLogin {
+  display: none;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 40px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  color: var(--dim);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--dur) var(--ease);
+}
+
+.studentLogin svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.studentLogin:hover,
+.studentLogin:focus-visible {
+  color: var(--tealb);
+}
+
+.studentLogin:focus-visible {
+  outline: 2px solid var(--tealb);
+  outline-offset: 3px;
+}
+
 /* Phone menu */
 .menu {
   position: static;
@@ -256,7 +289,8 @@
 }
 
 @media (min-width: 40rem) {
-  .enrol {
+  .enrol,
+  .studentLogin {
     display: inline-flex;
   }
 }

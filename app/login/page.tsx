@@ -48,7 +48,7 @@ export default async function LoginPage({
   const passwordReset = params.reset === "1";
 
   return (
-    <div className={`${s.page} ${s.solo} ${indigoFontVariables}`} data-experience="">
+    <div className={`${s.page} ${s.solo} ${s.compact} ${indigoFontVariables}`} data-experience="">
       <header className={s.top}>
         <Link href="/" className={s.back}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -89,6 +89,10 @@ export default async function LoginPage({
               <Link href="/forgot-password">Forgot password?</Link>
               <span>
                 No account yet? <Link href="/seerah/register">Create your registration</Link>
+              </span>
+              {/* Teachers / hosts: sign in, then land in the teacher portal. */}
+              <span>
+                Teaching a session? <Link href="/login?next=/seerah/classroom/teaching">Teacher portal sign in</Link>
               </span>
             </div>
           </div>

@@ -504,3 +504,89 @@ a.primary {
     transform: none;
   }
 }
+
+/* ---------- Sign in: compact, one screen ----------
+ * Only on the sign-in page (.compact on its root): the whole card (logo,
+ * heading, email, password, Sign in, Create account and the links) fits in
+ * one laptop-height viewport without scrolling. Forgot / reset keep the
+ * roomier rhythm above. */
+.compact .top {
+  padding-top: var(--sp-3);
+  padding-bottom: var(--sp-2);
+}
+
+.compact .split {
+  padding-top: var(--sp-2);
+  padding-bottom: var(--sp-4);
+}
+
+.compact .panel {
+  max-width: 25rem;
+}
+
+.compact .card {
+  padding: var(--sp-5) var(--sp-5);
+}
+
+.compact .cardMark {
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
+}
+
+.compact .cardTitle {
+  font-size: var(--fs-xl);
+  line-height: 1.25;
+}
+
+.compact .cardLede {
+  margin-top: var(--sp-1);
+  font-size: var(--fs-xs);
+}
+
+.compact .status {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.compact .form {
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+
+.compact .field {
+  gap: 6px;
+}
+
+.compact .input,
+.compact .primary,
+.compact .ghost {
+  min-height: 44px;
+}
+
+.compact .primary {
+  margin-top: var(--sp-1);
+}
+
+.compact .links {
+  gap: var(--sp-1);
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+  font-size: var(--fs-xs);
+}
+
+@media (min-width: 40rem) {
+  .compact .card {
+    padding: var(--sp-6) var(--sp-7);
+  }
+}
+
+@media (min-width: 64rem) {
+  .compact .top {
+    padding-top: var(--sp-4);
+  }
+
+  .compact .split {
+    padding-top: 0;
+    padding-bottom: var(--sp-6);
+  }
+}
