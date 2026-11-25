@@ -118,3 +118,36 @@
 .scholarship-application .scholarship-form button:hover:not(:disabled) { background: #70e5d3; }
 .scholarship-application .scholarship-form button:disabled { opacity: 0.7; cursor: wait; }
 .scholarship-application :focus-visible { outline: 3px solid var(--tealb, #48d6c2); outline-offset: 3px; }
+
+/* Application page: the same celestial ground and restrained surfaces as the
+   student registration flow, with the form kept in a single reading column. */
+.scholarship-application { width: min(100%, 54rem); padding-top: clamp(1.5rem, 4vw, 3rem); }
+.scholarship-topbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.scholarship-back { color: var(--tealb, #48d6c2); font-size: .875rem; font-weight: 600; text-decoration: none; }
+.scholarship-back:hover { text-decoration: underline; }
+.scholarship-logo { width: 145px; height: auto; padding: 8px 10px; border-radius: 8px; background: #fff; }
+.scholarship-intro { max-width: 46rem; padding: clamp(3rem, 8vw, 5.5rem) 0 2rem; }
+.scholarship-eyebrow { margin: 0; color: #75d8c9; font-size: .72rem; font-weight: 700; letter-spacing: .19em; text-transform: uppercase; }
+.scholarship-application .scholarship-intro h1 { max-width: 15ch; margin: 1rem 0 1.25rem; font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.08; }
+.scholarship-subtitle { max-width: 40rem; margin: 0; color: #dedbd3; font-size: clamp(1rem, 2vw, 1.1rem); line-height: 1.75; }
+.scholarship-panel { padding: clamp(1.25rem, 4vw, 2.5rem); border: 1px solid rgba(237, 234, 223, .14); border-radius: 20px; background: linear-gradient(155deg, rgba(39, 53, 80, .96), rgba(24, 36, 59, .98)); box-shadow: 0 24px 64px -35px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .06); }
+.scholarship-application .scholarship-notice { margin: 0; padding: 1.05rem 1.2rem; border-left: 4px solid #c3974e; border-radius: 4px 10px 10px 4px; background: #f8edda; color: #3b2b17; font-size: .92rem; line-height: 1.65; }
+.scholarship-application .scholarship-form { gap: 1.4rem; margin-top: 2rem; }
+.scholarship-application .scholarship-form label { gap: .55rem; color: #f1eee7; font-size: .875rem; letter-spacing: .01em; }
+.scholarship-application .scholarship-form > p:not([role]) { margin: .1rem 0; padding: 1rem 1.1rem; border: 1px solid rgba(112, 216, 199, .18); border-radius: 10px; background: rgba(72, 214, 194, .06); color: #e2e5dd; font-size: .875rem; }
+.scholarship-application .scholarship-form :is(input, select, textarea) { min-height: 3.15rem; padding: .85rem 1rem; border: 1px solid #aebbc6; border-radius: 9px; background: #fdfcf9; color: #18243a; transition: border-color .2s ease, box-shadow .2s ease; }
+.scholarship-application .scholarship-form :is(input, select, textarea):focus { border-color: #48d6c2; outline: 2px solid #48d6c2; outline-offset: 2px; box-shadow: 0 0 0 5px rgba(72, 214, 194, .12); }
+.scholarship-application .scholarship-form select { cursor: pointer; }
+.scholarship-application .scholarship-form textarea { min-height: 9rem; }
+.scholarship-application .scholarship-form input[type="file"] { padding: .65rem; font-size: .8rem; }
+.scholarship-application .scholarship-form input[type="file"]::file-selector-button { margin-right: .8rem; padding: .55rem .7rem; border: 0; border-radius: 6px; background: #e3eeeb; color: #164c53; font: inherit; font-weight: 700; cursor: pointer; }
+.scholarship-application .scholarship-form button { min-height: 3.2rem; padding-inline: 1.6rem; box-shadow: 0 8px 25px -12px rgba(72, 214, 194, .7); }
+@media (max-width: 640px) {
+  .scholarship-application { padding-inline: 1rem; }
+  .scholarship-logo { width: 118px; }
+  .scholarship-intro { padding-top: 3rem; }
+  .scholarship-panel { border-radius: 16px; }
+  .scholarship-application .scholarship-form :is(input, select, textarea) { font-size: 16px; }
+  .scholarship-application .scholarship-form button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .scholarship-application .scholarship-form :is(input, select, textarea) { transition: none; } }

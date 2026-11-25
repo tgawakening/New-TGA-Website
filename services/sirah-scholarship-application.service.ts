@@ -6,7 +6,8 @@ import { parsePhoneNumberFromString } from "libphonenumber-js/max";
 import type { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
-import { appUrl, renderEmail } from "@/lib/email-layout";
+import { appUrl } from "@/lib/email-layout";
+import { renderScholarshipApplicationEmail } from "@/lib/sirah/scholarship-application-email";
 import { SIRAH_BATCH, SIRAH_SLUG, SIRAH_TITLE, decimalToMinor, formatSirahMoney, priceFor } from "@/lib/sirah/catalog";
 import { SCHOLARSHIP_ORDER_VERSION, approvedMoney, scholarshipApplicationSchema } from "@/lib/sirah/scholarship-application";
 import { serializable } from "./sirah-confirmation.service";
@@ -20,7 +21,7 @@ export async function notifyApplication(id: string) {
     : row.status === "REJECTED"
       ? ["Thank you for applying. We are sorry that we cannot approve your application at this time. We appreciate your interest in the course."]
       : ["Your application has been approved.", row.approvedFeeMinor === 0 ? "Your approved course fee is fully waived; no payment is due." : `Your agreed total is ${formatSirahMoney(row.approvedFeeMinor!, row.currency)}.${row.approvedMonthlyMinor ? ` Your agreed monthly amount is ${formatSirahMoney(row.approvedMonthlyMinor, row.currency)}.` : ""} The TGA team will send you a secure payment link. Please contact the team if you have not received it.`, "To access your account, sign in with your existing password. If you need a password, use the password reset page with this email address."];
-  const message = renderEmail(row.status === "PENDING" ? "Application received" : row.status === "APPROVED" ? "Your application was approved" : "Your application decision", { masthead: "The Global Awakening", heading: row.status === "PENDING" ? "Application received" : row.status === "APPROVED" ? "Application approved" : "Application decision", paragraphs, ...(row.status === "APPROVED" ? { action: { label: "Sign in or set your password", href: `${appUrl()}/forgot-password` } } : {}) });
+  const message = renderScholarshipApplicationEmail(row.status === "PENDING" ? "Application received" : row.status === "APPROVED" ? "Your application was approved" : "Your application decision", { masthead: "The Global Awakening", heading: row.status === "PENDING" ? "Application received" : row.status === "APPROVED" ? "Application approved" : "Application decision", paragraphs, ...(row.status === "APPROVED" ? { action: { label: "Sign in or set your password", href: `${appUrl()}/forgot-password` } } : {}) });
   let state = "FAILED";
   try { const result = await sendTransactionalEmail({ ...message, to: row.email, emailType: `SIRAH_APPLICATION_${row.status}`, idempotencyKey: `sirah-application:${row.id}:${row.status}` }); state = result.status; } catch { state = "FAILED"; }
   await prisma.sirahScholarshipApplication.updateMany({ where: { id, status: row.status }, data: { notificationState: state } });

@@ -1,0 +1,37 @@
+﻿.section { margin-bottom: 2rem; }
+.title { margin: .4rem 0; font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.25; }
+.subtitle { color: var(--adm-muted, #5b6472); }
+.manual { margin: 1.25rem 0; border: 1px solid var(--adm-rule, #e3e7ee); border-radius: 12px; background: var(--adm-panel, #f8f9fb); }
+.manual > summary { padding: 1rem 1.15rem; color: var(--adm-teal-ink, #0a5f54); font-weight: 650; cursor: pointer; }
+.manualBody { padding: 0 1.15rem 1.2rem; }
+.manualBody :global(.scholarship-form) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding-top: .4rem; }
+.manualBody :global(.scholarship-form) label, .reviewForm label { display: grid; align-content: start; gap: .45rem; color: var(--adm-neutral, #3d4757); font-size: .82rem; font-weight: 600; }
+.manualBody :global(.scholarship-form) p, .manualBody :global(.scholarship-form) label:has(textarea), .manualBody :global(.scholarship-form) [role="alert"], .manualBody :global(.scholarship-form) [role="status"] { grid-column: 1 / -1; }
+.manualBody :global(.scholarship-form) :is(input,select,textarea), .reviewForm :is(input,textarea), .filters select { width: 100%; min-width: 0; padding: .7rem .8rem; border: 1.5px solid var(--adm-field-line, #767d93); border-radius: 9px; background: white; color: var(--adm-ink, #1a2233); font: inherit; }
+.manualBody :global(.scholarship-form) textarea, .reviewForm textarea { min-height: 90px; resize: vertical; }
+.manualBody :global(.scholarship-form) button { justify-self: start; padding: .7rem 1.1rem; border: 0; border-radius: 9px; background: var(--adm-teal, #0b7566); color: white; font: inherit; font-weight: 650; cursor: pointer; }
+.filters { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin: 1.25rem 0; padding: 1rem; border: 1px solid var(--adm-rule, #e3e7ee); border-radius: 12px; background: var(--adm-panel, #f8f9fb); color: var(--adm-muted, #5b6472); font-size: .82rem; }
+.filters label { display: grid; gap: .4rem; width: min(100%, 16rem); color: var(--adm-neutral, #3d4757); font-weight: 600; }
+.message { margin: 1rem 0; color: var(--adm-teal-ink, #0a5f54); }
+.cards { display: grid; gap: .85rem; }
+.card { min-width: 0; padding: 1.25rem; border: 1px solid var(--ai-ln-d5e2ec, #d5e2ec); border-radius: 12px; background: var(--adm-card, #fff); overflow-wrap: anywhere; }
+.cardHeader { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.cardHeader h2 { margin: 0 0 .25rem; font-family: var(--display, Georgia, serif); font-size: 1.2rem; font-weight: 600; color: var(--adm-ink, #1a2233); }
+.cardHeader p { margin: .2rem 0; font-size: .85rem; color: var(--adm-muted, #5b6472); }
+.cardStatus { display: grid; justify-items: end; align-content: start; gap: .4rem; font-size: .8rem; color: var(--adm-muted, #5b6472); }
+.metadata { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 1.1rem 0; padding: 1rem; border-radius: 9px; background: var(--adm-panel, #f8f9fb); }
+.metadata div, .reason { display: grid; gap: .35rem; }
+.metadata span, .reason > span { color: var(--adm-muted, #5b6472); font-size: .75rem; font-weight: 600; }
+.metadata strong { font-size: .85rem; color: var(--adm-ink, #1a2233); }
+.reason p, .reviewed p { margin: 0; white-space: pre-wrap; color: var(--adm-neutral, #3d4757); font-size: .875rem; line-height: 1.6; }
+.document { margin: 1rem 0 0; font-size: .875rem; font-weight: 600; }
+.document a { color: var(--adm-teal-ink, #0a5f54); text-decoration: underline; text-underline-offset: 3px; }
+.reviewed { display: grid; gap: .3rem; margin-top: 1rem; font-size: .8rem; }
+.emailStatus { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1rem; font-size: .82rem; color: var(--adm-muted, #5b6472); }
+.reviewForm { display: grid; gap: 1rem; margin-top: 1.15rem; padding: 1.1rem; border: 1px solid var(--adm-rule, #e3e7ee); border-radius: 10px; background: var(--adm-panel, #f8f9fb); }
+.reviewForm h3 { margin: 0; color: var(--adm-ink, #1a2233); font-family: var(--display, Georgia, serif); font-size: 1.1rem; }
+.amounts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.hint { margin: 0; color: var(--adm-muted, #5b6472); font-size: .8rem; line-height: 1.6; }
+.pagination { margin-top: 1.25rem; color: var(--adm-muted, #5b6472); font-size: .85rem; }
+.section :focus-visible { outline: 2px solid var(--adm-teal, #0b7566); outline-offset: 2px; }
+@media (max-width: 650px) { .manualBody :global(.scholarship-form), .metadata, .amounts { grid-template-columns: 1fr; } .card { padding: 1rem; } .cardStatus { justify-items: start; } .filters { align-items: start; flex-direction: column; } .manualBody :global(.scholarship-form) :is(input,select,textarea), .reviewForm :is(input,textarea), .filters select { font-size: 16px; } }
