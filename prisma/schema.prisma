@@ -982,6 +982,8 @@ model LmsResource {
   contentType      String?         @db.VarChar(191)
   sizeBytes        BigInt?
   originalFilename String?         @db.VarChar(255)
+  /// Bunny Stream video GUID for a protected recording (played via a server-signed embed); null for links and files.
+  bunnyVideoId     String?         @db.VarChar(36)
   visibility       LmsVisibility   @default(HIDDEN)
   publishedAt      DateTime?       @db.DateTime(3)
   uploadedBy       String          @db.VarChar(320)

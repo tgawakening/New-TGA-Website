@@ -185,7 +185,7 @@ export async function saveStandaloneRecordingAction(form: FormData) {
   const cohort = text(form, "cohortId");
   const actor = access.role === "SUPER_ADMIN" ? (await getCurrentAdmin())?.email || "Super Admin" : (await getSessionIdentity())?.email || "Manager";
   try {
-    await saveStandaloneRecording({ id: text(form, "id") || undefined, title: text(form, "title"), url: text(form, "url"), description: text(form, "description"), published: form.get("publish") === "on", actor });
+    await saveStandaloneRecording({ id: text(form, "id") || undefined, title: text(form, "title"), source: text(form, "source") === "bunny" ? "bunny" : "link", url: text(form, "url"), bunnyVideoId: text(form, "bunnyVideoId"), description: text(form, "description"), published: form.get("publish") === "on", actor });
   } catch (failure) {
     back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: "manual-recordings" });
   }

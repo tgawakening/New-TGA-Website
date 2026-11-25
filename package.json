@@ -41,6 +41,7 @@
     "test:lms-ui": "node --experimental-test-module-mocks --import tsx --test scripts/test-lms-ui.ts",
     "test:lms-attendance": "node --conditions=react-server --import tsx --test scripts/test-lms-attendance.ts",
     "test:lms-phase5": "node --conditions=react-server --import tsx --test scripts/test-lms-phase5.ts",
+    "test:bunny-recordings": "node --experimental-test-module-mocks --conditions=react-server --import tsx --test scripts/test-bunny-recordings.ts",
     "test:lms-recordings": "node --conditions=react-server --import tsx --test scripts/test-lms-recordings.ts",
     "lms:zoom-host:register": "node --conditions=react-server --import tsx scripts/lms-register-zoom-host.ts",
     "lms:test-student": "node --conditions=react-server --import tsx scripts/lms-seed-test-student.ts",

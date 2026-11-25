@@ -23,6 +23,8 @@ import {
 } from "@/lib/lms/schedule";
 import { ScheduleFields, SelectField } from "@/components/sirah/classroom-pickers";
 import { DeleteSessionButton } from "@/components/sirah/delete-session-button";
+import { RecordingSourceFields } from "@/components/sirah/recording-source-fields";
+import { bunnyConfigured } from "@/lib/lms/bunny";
 import { CancelSessionButton } from "@/components/sirah/cancel-session-button";
 import "@/app/seerah/classroom/tokens.css";
 import styles from "@/components/sirah/admin-classroom.module.css";
@@ -453,7 +455,7 @@ function SessionLedger({
                       <input type="hidden" name="sessionId" value={session.id} />
                       <input type="hidden" name="cohortId" value={session.cohortId} />
                       <label className={styles.label}>Recording label <input className={styles.input} name="title" maxLength={191} required /></label>
-                      <label className={styles.label}>Recording URL <input className={styles.input} type="url" name="url" maxLength={1024} placeholder="https://" required /></label>
+                      <label className={styles.label}>Public link (shareable) <input className={styles.input} type="url" name="url" maxLength={1024} placeholder="https://" required /></label>
                       <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" /> Publish to enrolled students</label>
                       <button className={styles.secondarySmall} type="submit">Save external recording</button>
                     </form>
@@ -537,6 +539,7 @@ export default async function LiveSessionsAdminPage({
   const contentAvailable = await lmsContentAvailable();
   const externalRecordings = data && contentAvailable ? await externalRecordingsForSessions(data.past.map((session) => session.id)) : undefined;
   const standalone = contentAvailable ? await standaloneRecordings() : [];
+  const bunnyReady = bunnyConfigured();
   // The start route admits the env super admin or the host's own account.
   const canStart = access.role === "SUPER_ADMIN";
   const nextUp = data?.upcoming.find((s) => s.phase !== "cancelled");
@@ -671,24 +674,24 @@ export default async function LiveSessionsAdminPage({
         <section className={styles.card} id="manual-recordings" aria-labelledby="manual-recordings-title">
           <div className={styles.cardHead}>
             <h3 id="manual-recordings-title" className={styles.cardTitle}>Add a recording</h3>
-            <p className={styles.cardLede}>Add a recording without scheduling a Zoom meeting. Published links are visible to enrolled students.</p>
+            <p className={styles.cardLede}>Add a recording without scheduling a Zoom meeting. Published recordings are visible to enrolled students. Use a Bunny video for anything that should stay protected: upload it to the Bunny Stream library, then paste its video ID here.</p>
           </div>
           <form action={saveStandaloneRecordingAction} className={styles.form}>
             <input type="hidden" name="cohortId" value={cohortId ?? ""} />
             <label className={styles.label}>Title<input className={styles.input} name="title" placeholder="Orientation, Class 1…" maxLength={191} required /></label>
-            <label className={styles.label}>External URL<input className={styles.input} type="url" name="url" placeholder="https://" maxLength={1024} required /></label>
+            <RecordingSourceFields bunnyReady={bunnyReady} defaultSource={bunnyReady ? "bunny" : "link"} />
             <label className={styles.label}>Description (optional)<input className={styles.input} name="description" maxLength={255} /></label>
             <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" /> Publish to enrolled students</label>
             <button className={styles.primary} type="submit">Save recording</button>
           </form>
           {standalone.map((item) => (
             <details key={item.id} className={styles.subsection}>
-              <summary>{item.title} · {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</summary>
+              <summary>{item.title} · {item.bunnyVideoId ? "Bunny (protected)" : "Public link"} · {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</summary>
               <form action={saveStandaloneRecordingAction} className={styles.inlineForm}>
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="cohortId" value={cohortId ?? ""} />
                 <label className={styles.label}>Title<input className={styles.input} name="title" defaultValue={item.title} maxLength={191} required /></label>
-                <label className={styles.label}>External URL<input className={styles.input} type="url" name="url" defaultValue={item.url ?? ""} maxLength={1024} required /></label>
+                <RecordingSourceFields bunnyReady={bunnyReady} defaultSource={item.bunnyVideoId ? "bunny" : "link"} defaultUrl={item.url ?? ""} defaultVideoId={item.bunnyVideoId ?? ""} />
                 <label className={styles.label}>Description (optional)<input className={styles.input} name="description" defaultValue={item.originalFilename ?? ""} maxLength={255} /></label>
                 <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" defaultChecked={item.visibility === "PUBLISHED"} /> Publish to enrolled students</label>
                 <button className={styles.secondarySmall} type="submit">Save changes</button>
