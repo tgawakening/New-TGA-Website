@@ -1125,9 +1125,9 @@ model LmsTask {
   createdAt           DateTime  @default(now()) @db.DateTime(3)
   updatedAt           DateTime  @updatedAt @db.DateTime(3)
 
-  session           LmsSession?  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
-  recording         Recording?   @relation(fields: [recordingId], references: [id], onDelete: Restrict)
-  externalRecording LmsResource? @relation(fields: [externalRecordingId], references: [id], onDelete: Restrict)
+  session           LmsSession?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  recording         Recording?   @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  externalRecording LmsResource? @relation(fields: [externalRecordingId], references: [id], onDelete: Cascade)
   submissions       LmsTaskSubmission[]
 
   @@index([sessionId, publishedAt])
@@ -1144,8 +1144,8 @@ model LmsTaskSubmission {
   submittedAt DateTime @default(now()) @db.DateTime(3)
   updatedAt   DateTime @updatedAt @db.DateTime(3)
 
-  task    LmsTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
-  student User    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  task    LmsTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  student User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, studentId])
   @@index([studentId])

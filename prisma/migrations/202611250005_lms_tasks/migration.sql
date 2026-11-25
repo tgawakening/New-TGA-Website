@@ -32,16 +32,16 @@ CREATE TABLE `LmsTaskSubmission` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
-ALTER TABLE `LmsTask` ADD CONSTRAINT `LmsTask_sessionId_fkey` FOREIGN KEY (`sessionId`) REFERENCES `LmsSession`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `LmsTask` ADD CONSTRAINT `LmsTask_sessionId_fkey` FOREIGN KEY (`sessionId`) REFERENCES `LmsSession`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `LmsTask` ADD CONSTRAINT `LmsTask_recordingId_fkey` FOREIGN KEY (`recordingId`) REFERENCES `Recording`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `LmsTask` ADD CONSTRAINT `LmsTask_recordingId_fkey` FOREIGN KEY (`recordingId`) REFERENCES `Recording`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `LmsTask` ADD CONSTRAINT `LmsTask_externalRecordingId_fkey` FOREIGN KEY (`externalRecordingId`) REFERENCES `LmsResource`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `LmsTask` ADD CONSTRAINT `LmsTask_externalRecordingId_fkey` FOREIGN KEY (`externalRecordingId`) REFERENCES `LmsResource`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `LmsTaskSubmission` ADD CONSTRAINT `LmsTaskSubmission_taskId_fkey` FOREIGN KEY (`taskId`) REFERENCES `LmsTask`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `LmsTaskSubmission` ADD CONSTRAINT `LmsTaskSubmission_taskId_fkey` FOREIGN KEY (`taskId`) REFERENCES `LmsTask`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `LmsTaskSubmission` ADD CONSTRAINT `LmsTaskSubmission_studentId_fkey` FOREIGN KEY (`studentId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `LmsTaskSubmission` ADD CONSTRAINT `LmsTaskSubmission_studentId_fkey` FOREIGN KEY (`studentId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
