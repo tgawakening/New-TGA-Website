@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import type { Metadata, Viewport } from "next";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-import LegacyRegistration from "@/components/sirah/legacy-registration";
 import { IndigoRoot, INDIGO_THEME_COLOR } from "@/components/indigo/indigo-root";
 import { RegisterPage } from "@/components/indigo/register/register-page";
 import { detectedResidence } from "@/lib/sirah/geolocation";
@@ -46,7 +45,6 @@ export default async function SirahRegisterPage({
       select: { id: true },
     });
     if (!registration) redirect("/seerah/register");
-    return <LegacyRegistration />;
   }
   // A dedicated page: no course landing page behind it and no dialog. The
   // form reads ?order=, #payment= and the session itself, exactly as before.
@@ -58,6 +56,7 @@ export default async function SirahRegisterPage({
         initialPlan={initialPlan}
         requireBillingCountry={Boolean(params.country && !initialCountry)}
         detectedCountry={params.country ? undefined : await detectedResidence()}
+        resumeId={resume}
       />
     </IndigoRoot>
   );

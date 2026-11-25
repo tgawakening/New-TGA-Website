@@ -1327,6 +1327,7 @@ export async function getPendingRegistrationForResume({
     include: {
       user: true,
       payment: true,
+      course: true,
     },
   });
 
@@ -1346,6 +1347,10 @@ export async function getPendingRegistrationForResume({
     registrationId: registration.id,
     paymentReference: registration.paymentReference,
     paymentMethod: registration.payment.provider,
+    courseTitle: registration.course.title,
+    charge: ["STRIPE", "PAYPAL"].includes(registration.payment.provider)
+      ? getRegistrationChargeAmount(registration as RegistrationWithPayment)
+      : { amount: registration.payment.amount, currency: registration.payment.currency },
     paymentPlanType: getPaymentPlanTypeFromSnapshot(
       registration.pricingSnapshot,
     ),

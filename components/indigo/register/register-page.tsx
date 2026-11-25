@@ -7,6 +7,7 @@ import { RegistrationStylesProvider } from "@/components/sirah/registration-styl
 import { Wordmark } from "../nav";
 import { liveLinks, type SiteLinks } from "../site-links";
 import { OrderSummary } from "./order-summary";
+import { ResumeRegistration } from "./resume-registration";
 import form from "./register-form.module.css";
 import s from "./register.module.css";
 
@@ -38,12 +39,14 @@ export function RegisterPage({
   initialPlan,
   requireBillingCountry,
   detectedCountry,
+  resumeId,
   site = liveLinks,
 }: {
   initialCountry?: string;
   initialPlan?: SirahPlan;
   requireBillingCountry?: boolean;
   detectedCountry?: string;
+  resumeId?: string;
   site?: SiteLinks;
 }) {
   return (
@@ -56,14 +59,14 @@ export function RegisterPage({
       </header>
       <main className={s.main}>
         <RegistrationStylesProvider value={form}>
-          <SirahRegistrationForm
+          {resumeId ? <ResumeRegistration registrationId={resumeId} /> : <SirahRegistrationForm
             initialCountry={initialCountry}
             initialPlan={initialPlan}
             requireBillingCountry={requireBillingCountry}
             detectedCountry={detectedCountry}
             registerPath={site.register}
             checkoutSummary={renderSummary}
-          />
+          />}
         </RegistrationStylesProvider>
       </main>
     </div>
