@@ -72,18 +72,23 @@ function cleanBody(value: unknown) {
 
 /* ---------- Scope: a cohort, or one of its sessions ---------- */
 
-export type ResourceScope = { cohortId: string; sessionId?: undefined } | { sessionId: string; cohortId?: undefined };
+export type ResourceScope = { cohortId: string; sessionId?: never; parentRecordingId?: never } | { sessionId: string; cohortId?: never; parentRecordingId?: never } | { parentRecordingId: string; cohortId?: never; sessionId?: never };
 
 async function checkScope(scope: ResourceScope) {
+  if (scope.parentRecordingId) {
+    const recording = await prisma.lmsResource.findFirst({ where: { id: scope.parentRecordingId, sessionId: null, cohortId: null, parentRecordingId: null, kind: "LINK", contentType: "video/x-external-recording" }, select: { id: true } });
+    if (!recording) throw new LmsContentError("That recording no longer exists.");
+    return { cohortId: null, sessionId: null, parentRecordingId: recording.id };
+  }
   if (scope.sessionId) {
     const session = await prisma.lmsSession.findUnique({ where: { id: scope.sessionId }, select: { id: true, cohortId: true } });
     if (!session) throw new LmsContentError("That session no longer exists.");
-    return { cohortId: null, sessionId: session.id, sessionCohortId: session.cohortId };
+    return { cohortId: null, sessionId: session.id, parentRecordingId: null };
   }
   if (!scope.cohortId) throw new LmsContentError("Choose a cohort or a session.");
   const cohort = await prisma.sirahCohort.findUnique({ where: { batchCode: scope.cohortId }, select: { batchCode: true } });
   if (!cohort) throw new LmsContentError("That cohort does not exist.");
-  return { cohortId: cohort.batchCode, sessionId: null, sessionCohortId: null };
+  return { cohortId: cohort.batchCode, sessionId: null, parentRecordingId: null };
 }
 
 /** The cohort a resource belongs to: its own, else its session's. */
@@ -109,9 +114,9 @@ export async function hostMaySessionResources(identity: { email: string } | null
 export async function createLinkResource(input: { scope: ResourceScope; title: unknown; url: unknown; uploadedBy: string }) {
   const title = cleanTitle(input.title);
   const url = cleanHttpsUrl(input.url);
-  const { cohortId, sessionId } = await checkScope(input.scope);
+  const { cohortId, sessionId, parentRecordingId } = await checkScope(input.scope);
   return prisma.lmsResource.create({
-    data: { cohortId, sessionId, title, kind: "LINK", url, storageKey: null, visibility: "HIDDEN", publishedAt: null, uploadedBy: input.uploadedBy.slice(0, 320) },
+    data: { cohortId, sessionId, parentRecordingId, title, kind: "LINK", url, storageKey: null, visibility: "HIDDEN", publishedAt: null, uploadedBy: input.uploadedBy.slice(0, 320) },
   });
 }
 
@@ -126,13 +131,14 @@ export async function createFileResource(input: {
   uploadedBy: string;
 }) {
   const title = cleanTitle(input.title);
-  const { cohortId, sessionId } = await checkScope(input.scope);
+  const { cohortId, sessionId, parentRecordingId } = await checkScope(input.scope);
   if (await prisma.lmsResource.findUnique({ where: { storageKey: input.storageKey }, select: { id: true } }))
     throw new LmsContentError("That file is already attached.");
   return prisma.lmsResource.create({
     data: {
       cohortId,
       sessionId,
+      parentRecordingId,
       title,
       kind: "FILE",
       url: null,
@@ -178,22 +184,24 @@ const byNewest = <T extends { createdAt: Date }>(a: T, b: T) => b.createdAt.getT
 const byPublishedNewest = <T extends { publishedAt: Date | null; createdAt: Date }>(a: T, b: T) =>
   (b.publishedAt ?? b.createdAt).getTime() - (a.publishedAt ?? a.createdAt).getTime();
 
-export type AdminResourceRow = LmsResource & { sessionTitle: string | null };
+export type AdminResourceRow = LmsResource & { sessionTitle: string | null; recordingTitle: string | null };
 
 /** Staff view: every resource of the cohort and of its sessions, newest first. */
 export async function adminCohortContent(cohortId: string) {
   const sessions = await prisma.lmsSession.findMany({ where: { cohortId }, select: { id: true, title: true, startsAt: true, status: true } });
   const sessionTitle = new Map(sessions.map((s) => [s.id, s.title]));
-  const [resources, announcements] = await Promise.all([
+  const [resources, announcements, recordings] = await Promise.all([
     prisma.lmsResource.findMany({
-      where: { OR: [{ cohortId }, ...(sessions.length ? [{ sessionId: { in: sessions.map((s) => s.id) } }] : [])] },
+      where: { OR: [{ cohortId }, { parentRecordingId: { not: null } }, ...(sessions.length ? [{ sessionId: { in: sessions.map((s) => s.id) } }] : [])] },
       orderBy: { createdAt: "desc" },
     }),
     prisma.lmsAnnouncement.findMany({ where: { cohortId }, orderBy: { createdAt: "desc" } }),
+    prisma.lmsResource.findMany({ where: { sessionId: null, cohortId: null, parentRecordingId: null, kind: "LINK", contentType: "video/x-external-recording" }, select: { id: true, title: true } }),
   ]);
   return {
+    recordings,
     sessions: [...sessions].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime()),
-    resources: resources.sort(byNewest).map((r) => ({ ...r, sessionTitle: r.sessionId ? (sessionTitle.get(r.sessionId) ?? null) : null })),
+    resources: resources.sort(byNewest).map((r) => ({ ...r, sessionTitle: r.sessionId ? (sessionTitle.get(r.sessionId) ?? null) : null, recordingTitle: r.parentRecordingId ? (recordings.find((recording) => recording.id === r.parentRecordingId)?.title ?? "Removed recording") : null })),
     announcements: announcements.sort(byNewest),
   };
 }
@@ -285,7 +293,10 @@ export async function resolveResourceFile(resourceId: string, userId: string | n
   if (!access.allowed || !access.cohortId) return { kind: "denied" };
   const resource = await prisma.lmsResource.findUnique({ where: { id: resourceId } });
   if (!resource || resource.kind !== "FILE" || resource.visibility !== "PUBLISHED" || !resource.storageKey) return { kind: "missing" };
-  if ((await resourceCohortId(resource)) !== access.cohortId) return { kind: "missing" };
+  if (resource.parentRecordingId) {
+    const recording = await prisma.lmsResource.findFirst({ where: { id: resource.parentRecordingId, sessionId: null, cohortId: null, parentRecordingId: null, kind: "LINK", contentType: "video/x-external-recording", visibility: "PUBLISHED" }, select: { id: true } });
+    if (!recording) return { kind: "missing" };
+  } else if ((await resourceCohortId(resource)) !== access.cohortId) return { kind: "missing" };
   const expiresIn = isMedia(resource.contentType) ? RECORDING_URL_SECONDS : DOCUMENT_URL_SECONDS;
   const url = await sign({ key: resource.storageKey, contentType: resource.contentType, filename: resource.originalFilename, expiresIn });
   return { kind: "redirect", url, expiresIn };

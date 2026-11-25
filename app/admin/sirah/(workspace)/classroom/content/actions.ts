@@ -72,6 +72,7 @@ export async function requestResourceUpload(input: { kind: string; filename: str
 /** "cohort" = the whole cohort; otherwise a session id of that cohort. */
 function scopeFrom(form: FormData, cohort: string): ResourceScope {
   const target = text(form, "target");
+  if (target.startsWith("recording:")) return { parentRecordingId: safe(target.slice("recording:".length)) || "-" };
   return target && target !== "cohort" ? { sessionId: safe(target) || "-" } : { cohortId: cohort };
 }
 

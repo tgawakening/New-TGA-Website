@@ -95,7 +95,7 @@ export default async function LiveSchedulePage() {
               <RecordingLibrary items={[
                 ...recordings.map((r) => ({ id: `zoom-${r.recordingId}`, title: r.title, date: clock.shortDate.format(r.startsAt), href: watchPath(r.recordingId), external: false })),
                 ...external.flatMap((r) => { const session = schedule.past.find((item) => item.id === r.sessionId); return session && r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(session.startsAt), href: r.url, external: true }] : []; }),
-                ...standalone.flatMap((r) => r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: r.url, description: r.originalFilename, external: true }] : []),
+                ...standalone.flatMap((r) => r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: r.url, description: r.originalFilename, resources: r.resources, external: true }] : []),
               ]} />
             </section>
 

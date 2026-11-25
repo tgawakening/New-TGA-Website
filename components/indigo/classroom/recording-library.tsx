@@ -1,7 +1,7 @@
 ﻿import Link from "next/link";
 import s from "./recording-library.module.css";
 
-type Item = { id: string; title: string; date?: string; href: string; external: boolean; description?: string | null };
+type Item = { id: string; title: string; date?: string; href: string; external: boolean; description?: string | null; resources?: { id: string; title: string; href: string }[] };
 
 function embedFor(href: string) {
   try {
@@ -23,6 +23,7 @@ export function RecordingLibrary({ items }: { items: Item[] }) {
   return <div className={s.grid}>{items.map((item) => {
     const embed = item.external ? embedFor(item.href) : null;
     const body = <><span className={s.thumbnail} style={embed?.thumbnail ? { backgroundImage: `url("${embed.thumbnail}")` } : undefined}><span aria-hidden="true">&#9654;</span></span><span className={s.content}><strong>{item.title}</strong>{item.date && <small>{item.date}</small>}{item.description && <small>{item.description}</small>}</span></>;
-    return embed ? <details key={item.id} className={s.card}><summary>{body}<span className={s.action}>Watch &#8594;</span></summary><div className={s.player}><iframe src={embed.src} title={`Recording: ${item.title}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" /></div></details> : item.external ? <a key={item.id} className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link key={item.id} className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
+    const resources = item.resources?.length ? <div className={s.content}><strong>Tasks and resources</strong><ul>{item.resources.map((resource) => <li key={resource.id}><a href={resource.href} target="_blank" rel="noopener noreferrer">{resource.title}</a></li>)}</ul></div> : null;
+    return embed ? <details key={item.id} className={s.card}><summary>{body}<span className={s.action}>Watch &#8594;</span></summary><div className={s.player}><iframe src={embed.src} title={`Recording: ${item.title}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" /></div>{resources}</details> : item.external && resources ? <details key={item.id} className={s.card}><summary>{body}<span className={s.action}>Open &#8594;</span></summary><div className={s.content}><a href={item.href} target="_blank" rel="noopener noreferrer">Open recording &#8599;</a></div>{resources}</details> : item.external ? <a key={item.id} className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link key={item.id} className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
   })}</div>;
 }

@@ -41,7 +41,7 @@ export async function setExternalRecordingVisibility(id: string, sessionId: stri
 
 // Standalone links use the otherwise unused originalFilename field for their
 // short description; the recording marker and empty scope distinguish them.
-const standaloneWhere = { sessionId: null, cohortId: null, kind: "LINK" as const, contentType: EXTERNAL_RECORDING };
+const standaloneWhere = { sessionId: null, cohortId: null, parentRecordingId: null, kind: "LINK" as const, contentType: EXTERNAL_RECORDING };
 
 export async function standaloneRecordings(publishedOnly = false) {
   return prisma.lmsResource.findMany({
@@ -54,7 +54,9 @@ export async function standaloneRecordings(publishedOnly = false) {
 export async function studentStandaloneRecordings(userId: string, now = new Date()) {
   const access = await sirahStudentCohortAccess(userId, now);
   if (!access.allowed || !access.cohortId) return [];
-  return standaloneRecordings(true);
+  const recordings = await standaloneRecordings(true);
+  const resources = await prisma.lmsResource.findMany({ where: { parentRecordingId: { in: recordings.map((recording) => recording.id) }, visibility: "PUBLISHED" }, select: { id: true, title: true, kind: true, url: true, parentRecordingId: true }, orderBy: { createdAt: "desc" } });
+  return recordings.map((recording) => ({ ...recording, resources: resources.filter((resource) => resource.parentRecordingId === recording.id).map((resource) => ({ id: resource.id, title: resource.title, href: resource.kind === "FILE" ? `/api/sirah/lms/resources/${encodeURIComponent(resource.id)}` : resource.url ?? "" })).filter((resource) => resource.href) }));
 }
 
 export async function saveStandaloneRecording(input: { id?: string; title: string; url: string; description: string; published: boolean; actor: string }) {

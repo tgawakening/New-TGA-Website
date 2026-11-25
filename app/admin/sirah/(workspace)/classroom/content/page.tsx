@@ -91,7 +91,7 @@ function ResourceRows({ resources, cohortId }: { resources: AdminResourceRow[]; 
                   ? `File · ${resource.originalFilename ?? "file"}${resource.sizeBytes !== null ? ` · ${fileSize(resource.sizeBytes)}` : ""}`
                   : `Link · ${host(resource.url)}`}
                 {" · "}
-                {resource.sessionTitle ? `Session: ${resource.sessionTitle}` : "Whole cohort"}
+                {resource.recordingTitle ? `Recording: ${resource.recordingTitle}` : resource.sessionTitle ? `Session: ${resource.sessionTitle}` : "Whole cohort"}
                 {" · "}
                 {published && resource.publishedAt ? `Published ${listDate.format(resource.publishedAt)}` : `Added ${listDate.format(resource.createdAt)}`} by{" "}
                 {resource.uploadedBy}
@@ -150,6 +150,7 @@ export default async function LmsContentAdminPage({
   const data = cohortId ? await adminCohortContent(cohortId) : null;
   const targets = [
     { value: "cohort", label: "Whole cohort" },
+    ...(data?.recordings ?? []).map((r) => ({ value: `recording:${r.id}`, label: `Recording: ${r.title}` })),
     ...(data?.sessions ?? []).filter((s) => s.status !== "CANCELLED").map((s) => ({ value: s.id, label: `Session: ${s.title}`, hint: listDate.format(s.startsAt) })),
   ];
 

@@ -969,6 +969,7 @@ model LmsResource {
   id               String          @id @default(cuid())
   cohortId         String?
   sessionId        String?
+  parentRecordingId String?
   title            String          @db.VarChar(191)
   kind             LmsResourceKind
   storageKey       String?         @unique @db.VarChar(191)

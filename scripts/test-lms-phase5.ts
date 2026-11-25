@@ -95,6 +95,27 @@ afterEach(() => {
 // ── Resources ──────────────────────────────────────────────────────────────
 
 describe("resources", () => {
+  test("recording attachments follow the published recording and enrolment", async () => {
+    const external = await import("../lib/lms/external-recordings");
+    const enrolled = student("RecordingStudent", { batchCode: OTHER });
+    const unpaid = student("UnpaidRecordingStudent", { paid: false });
+    const recording = { id: "recording", cohortId: null, sessionId: null, parentRecordingId: null, kind: "LINK", contentType: "video/x-external-recording", visibility: "PUBLISHED", title: "Recording", url: "https://example.test/video", createdAt: NOW };
+    table("lmsResource").push(recording);
+    await assert.rejects(content.createLinkResource({ scope: { parentRecordingId: "missing" }, title: "Task", url: "https://example.test/task", uploadedBy: "admin" }), content.LmsContentError);
+    const link = await content.createLinkResource({ scope: { parentRecordingId: recording.id }, title: "Task", url: "https://example.test/task", uploadedBy: "admin" });
+    assert.equal(link.sessionId, null);
+    assert.equal(link.parentRecordingId, recording.id);
+    await content.setResourceVisibility(link.id, "PUBLISHED");
+    const file = await content.createFileResource({ scope: { parentRecordingId: recording.id }, title: "File", storageKey: "recording-task", contentType: "application/pdf", sizeBytes: 10, originalFilename: "task.pdf", uploadedBy: "admin" });
+    await content.setResourceVisibility(file.id, "PUBLISHED");
+    assert.equal((await external.studentStandaloneRecordings(enrolled, NOW))[0].resources.length, 2);
+    assert.equal((await external.studentStandaloneRecordings(unpaid, NOW)).length, 0);
+    assert.equal((await content.resolveResourceFile(file.id, enrolled, signer, NOW)).kind, "redirect");
+    assert.equal((await content.resolveResourceFile(file.id, unpaid, signer, NOW)).kind, "denied");
+    recording.visibility = "HIDDEN";
+    assert.equal((await external.studentStandaloneRecordings(enrolled, NOW)).length, 0);
+    assert.equal((await content.resolveResourceFile(file.id, enrolled, signer, NOW)).kind, "missing");
+  });
   test("links must be https; titles are required", async () => {
     for (const url of ["http://example.com", "javascript:alert(1)", "data:text/html,x", ""])
       await assert.rejects(content.createLinkResource({ scope: { cohortId: SIRAH_BATCH }, title: "x", url, uploadedBy: "a@x" }), content.LmsContentError);
