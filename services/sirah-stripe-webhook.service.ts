@@ -1,6 +1,7 @@
 import "server-only";
 import Stripe from "stripe";
 import { stripeClient } from "./sirah-online.service";
+import { handleBalanceStripeEvent } from "./sirah-settlement.service";
 import { handleSirahStripeEvent } from "./sirah-webhooks.service";
 import { SirahError } from "./sirah-registration.service";
 export async function handleSirahStripeWebhook(
@@ -32,6 +33,7 @@ export async function handleSirahStripeWebhook(
     );
   if (event.account && event.account !== process.env.SIRAH_STRIPE_ACCOUNT_ID)
     throw new SirahError("Stripe account mismatch.", 400);
-  await handleSirahStripeEvent(event, stripe);
+  if (!(await handleBalanceStripeEvent(event, stripe)))
+    await handleSirahStripeEvent(event, stripe);
   return { received: true };
 }

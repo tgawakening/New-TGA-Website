@@ -472,8 +472,10 @@ model SirahManualDiscount {
 
 model SirahOrder {
   ledgerFeeMinor         Int?
+  ledgerFeeCurrency      String?             @db.VarChar(3)
   agreement              SirahAgreement?
   ledgerPayments         SirahLedgerPayment[]
+  settlements            SirahSettlement[]
   discount               Json?
   id                     String              @id @default(cuid())
   userId                 String
@@ -1179,4 +1181,19 @@ model SirahAgreement {
   data      Bytes    @db.LongBlob
   createdAt DateTime @default(now()) @db.DateTime(3)
   order     SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+}
+
+model SirahSettlement {
+  id              String   @id @default(cuid())
+  orderId         String
+  amountMinor     Int
+  currency        String   @db.VarChar(3)
+  status          String   @db.VarChar(16)
+  stripeSessionId String?  @unique
+  expiresAt       DateTime @db.DateTime(3)
+  createdBy       String   @db.VarChar(320)
+  createdAt       DateTime @default(now()) @db.DateTime(3)
+  order           SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, status])
 }

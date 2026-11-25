@@ -2,11 +2,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 
-type Ledger = { currency: string; ledgerFeeMinor: number | null; agreement: { filename: string } | null; ledgerPayments: { id: string; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
+type Ledger = { settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
 export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
   const [data, setData] = useState<Ledger | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState<{ url: string; amountMinor: number; currency: string; expiresAt: string } | null>(null);
   const load = useCallback(async () => {
     const response = await fetch(`/api/admin/sirah/ledger?id=${encodeURIComponent(id)}`, { cache: "no-store" });
     const result = await response.json();
@@ -25,17 +26,31 @@ export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
       form.reset(); await load();
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to save."); } finally { setBusy(false); }
   }
-  const received = data?.ledgerPayments.reduce((sum, payment) => sum + payment.amountMinor, 0) ?? 0;
+  async function generateLink() {
+    setBusy(true); setError(""); setLink(null);
+    try {
+      const response = await fetch("/api/admin/sirah/settlement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+      const result = await response.json();
+      if (!response.ok) { await load(); throw new Error(result.error || "Unable to create link."); }
+      setLink(result);
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to create link."); } finally { setBusy(false); }
+  }
+  const currencyMismatch = !!data && ((data.ledgerFeeMinor !== null && data.ledgerFeeCurrency !== data.currency) || data.ledgerPayments.some((payment) => payment.currency !== data.currency));
+  const received = data?.ledgerPayments.filter((payment) => payment.currency === data.currency).reduce((sum, payment) => sum + payment.amountMinor, 0) ?? 0;
   return <section style={{ marginTop: "1.5rem" }}>
     <h4>Payments &amp; balance</h4>
     {error && <p role="alert">{error}</p>}
     {!data ? <p>Loading balance?</p> : <>
-      <p>Course fee: {data.ledgerFeeMinor === null ? "Not set" : formatSirahMoney(data.ledgerFeeMinor, data.currency)}</p>
-      <p>Total received (manual ledger): {formatSirahMoney(received, data.currency)}</p>
-      <p>Outstanding: {data.ledgerFeeMinor === null ? "Set the course fee first" : formatSirahMoney(Math.max(0, data.ledgerFeeMinor - received), data.currency)}</p>
+      <p>Course fee: {data.ledgerFeeMinor === null ? "Not set" : data.ledgerFeeCurrency ? formatSirahMoney(data.ledgerFeeMinor, data.ledgerFeeCurrency) : "Currency not recorded; set the fee again"}</p>
+      <p>Total received (ledger, {data.currency}): {formatSirahMoney(received, data.currency)}</p>
+      {currencyMismatch && <p role="alert">The course fee or ledger entries have a different or unknown currency. Reconcile them before relying on the balance or generating a new link.</p>}
+      <p>Outstanding: {data.ledgerFeeMinor === null ? "Set the course fee first" : currencyMismatch ? "Unavailable: currencies differ" : formatSirahMoney(Math.max(0, data.ledgerFeeMinor - received), data.currency)}</p>
       <p>Existing payment records are separate; enter previously received payments here once.</p>
       {canEdit && <>
-        <form onSubmit={(event) => void submit(event, "fee")}><label>Course fee ({data.currency}) <input name="amount" type="number" min="0" step="any" defaultValue={data.ledgerFeeMinor === null ? "" : minorToDecimal(data.ledgerFeeMinor, data.currency)} required /></label> <button disabled={busy}>Save fee</button></form>
+        <button type="button" disabled={busy || (!data.settlements.length && (currencyMismatch || data.ledgerFeeMinor === null || data.ledgerFeeMinor <= received))} onClick={() => void generateLink()}>Generate balance payment link</button>
+        {link && <p>Card link for {formatSirahMoney(link.amountMinor, link.currency)} (expires {new Date(link.expiresAt).toLocaleString()}): <a href={link.url} target="_blank" rel="noreferrer">Open payment link</a> <button type="button" onClick={() => void navigator.clipboard.writeText(link.url)}>Copy link</button></p>}
+        <p>While a balance link is open, fee and manual payment changes are locked. Generate the link again to retrieve or reconcile it.</p>
+        <form onSubmit={(event) => void submit(event, "fee")}><label>Course fee ({data.currency}) <input name="amount" type="number" min="0" step="any" defaultValue={data.ledgerFeeMinor === null || data.ledgerFeeCurrency !== data.currency ? "" : minorToDecimal(data.ledgerFeeMinor, data.currency)} required /></label> <button disabled={busy}>Save fee</button></form>
         <form onSubmit={(event) => void submit(event, "payment")}>
           <h5>Record received payment</h5>
           <label>Amount ({data.currency}) <input name="amount" type="number" min="0" step="any" required /></label>{" "}
