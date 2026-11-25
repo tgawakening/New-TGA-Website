@@ -7,6 +7,7 @@ export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
   const [data, setData] = useState<Ledger | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [linkAmount, setLinkAmount] = useState("");
   const [link, setLink] = useState<{ url: string; amountMinor: number; currency: string; expiresAt: string } | null>(null);
   const load = useCallback(async () => {
     const response = await fetch(`/api/admin/sirah/ledger?id=${encodeURIComponent(id)}`, { cache: "no-store" });
@@ -29,7 +30,7 @@ export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
   async function generateLink() {
     setBusy(true); setError(""); setLink(null);
     try {
-      const response = await fetch("/api/admin/sirah/settlement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+      const response = await fetch("/api/admin/sirah/settlement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, amount: linkAmount }) });
       const result = await response.json();
       if (!response.ok) { await load(); throw new Error(result.error || "Unable to create link."); }
       setLink(result);
@@ -47,9 +48,10 @@ export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
       <p>Outstanding: {data.ledgerFeeMinor === null ? "Set the course fee first" : currencyMismatch ? "Unavailable: currencies differ" : formatSirahMoney(Math.max(0, data.ledgerFeeMinor - received), data.currency)}</p>
       <p>Existing payment records are separate; enter previously received payments here once.</p>
       {canEdit && <>
+        <label>Link amount ({data.currency}; leave blank for the full balance) <input type="number" min="0" step="any" value={linkAmount} onChange={event => setLinkAmount(event.target.value)} /></label>{" "}
         <button type="button" disabled={busy || (!data.settlements.length && (currencyMismatch || data.ledgerFeeMinor === null || data.ledgerFeeMinor <= received))} onClick={() => void generateLink()}>Generate balance payment link</button>
         {link && <p>Card link for {formatSirahMoney(link.amountMinor, link.currency)} (expires {new Date(link.expiresAt).toLocaleString()}): <a href={link.url} target="_blank" rel="noreferrer">Open payment link</a> <button type="button" onClick={() => void navigator.clipboard.writeText(link.url)}>Copy link</button></p>}
-        <p>While a balance link is open, fee and manual payment changes are locked. Generate the link again to retrieve or reconcile it.</p>
+        <p>While a balance link is open, fee and manual payment changes are locked. Generate the link again to retrieve or reconcile it. An existing link keeps its original amount.</p>
         <form onSubmit={(event) => void submit(event, "fee")}><label>Course fee ({data.currency}) <input name="amount" type="number" min="0" step="any" defaultValue={data.ledgerFeeMinor === null || data.ledgerFeeCurrency !== data.currency ? "" : minorToDecimal(data.ledgerFeeMinor, data.currency)} required /></label> <button disabled={busy}>Save fee</button></form>
         <form onSubmit={(event) => void submit(event, "payment")}>
           <h5>Record received payment</h5>

@@ -2,7 +2,7 @@ import "server-only";
 import type Stripe from "stripe";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { SIRAH_TITLE } from "@/lib/sirah/catalog";
+import { SIRAH_TITLE, decimalToMinor } from "@/lib/sirah/catalog";
 import { SETTLEMENT_SOURCE, settlementSessionMatches, settlementSessionState } from "@/lib/sirah/settlement-check";
 import { stripeClient, verifyStripeMerchant } from "./sirah-online.service";
 import { serializable } from "./sirah-confirmation.service";
@@ -20,7 +20,7 @@ export async function assertLedgerUnlocked(tx: Prisma.TransactionClient, id: str
     throw new SirahError("A balance payment link is open. Reconcile it before changing the fee or recording another payment.", 409);
 }
 
-export async function createBalanceLink(orderId: string, actor: string, stripe = stripeClient()) {
+export async function createBalanceLink(orderId: string, actor: string, stripe = stripeClient(), requestedAmount?: string) {
   await verifyStripeMerchant(stripe);
   // Claim a single pending attempt before contacting Stripe. A failed/ambiguous
   // request is retried with the same idempotency key and exact parameters.
@@ -34,7 +34,12 @@ export async function createBalanceLink(orderId: string, actor: string, stripe =
     const mismatch = await tx.sirahLedgerPayment.findFirst({ where: { orderId, currency: { not: order.currency } }, select: { id: true } });
     if (mismatch) throw new SirahError("Ledger currencies do not match the registration currency. Reconcile the ledger before issuing a link.", 409);
     const totals = await tx.sirahLedgerPayment.aggregate({ where: { orderId }, _sum: { amountMinor: true } });
-    const amountMinor = order.ledgerFeeMinor - (totals._sum.amountMinor || 0);
+    const outstanding = order.ledgerFeeMinor - (totals._sum.amountMinor || 0);
+    let amountMinor = outstanding;
+    if (requestedAmount) {
+      try { amountMinor = decimalToMinor(requestedAmount, order.currency); } catch { throw new SirahError("Enter a valid payment amount."); }
+      if (amountMinor <= 0 || amountMinor > outstanding) throw new SirahError("The payment amount must be above zero and no more than the outstanding balance.", 409);
+    }
     if (amountMinor <= 0) throw new SirahError("There is no outstanding balance.", 409);
     if (amountMinor > 99_999_999 || (["BHD", "KWD"].includes(order.currency) && amountMinor % 10 !== 0)) throw new SirahError("The balance cannot be charged by Stripe with this amount or currency precision.", 409);
     return tx.sirahSettlement.create({ data: { orderId, amountMinor, currency: order.currency, status: "PENDING", expiresAt: new Date((Math.floor(Date.now() / 1000) + TTL_SECONDS) * 1000), createdBy: actor } });

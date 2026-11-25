@@ -1,3 +1,4 @@
+import { SCHOLARSHIP_ORDER_VERSION } from "@/lib/sirah/scholarship-application";
 import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import "server-only";
 import { Prisma, type SirahOrder } from "@prisma/client";
@@ -352,6 +353,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
 export function canAccessSirah(
   order: Pick<SirahOrder, "enrolmentState" | "paidCount" | "programmeEnd"> & CycleFields & {
     accessEndsAt?: Date | null;
+    pricingVersion?: string;
     plan?: SirahOrder["plan"];
     method?: SirahOrder["method"];
     programmeStart?: Date | null;
@@ -376,7 +378,7 @@ export function canAccessSirah(
         : null;
   return (
     (!manualEnd || manualEnd > now) &&
-    order.paidCount > 0 &&
+    (order.paidCount > 0 || order.pricingVersion === SCHOLARSHIP_ORDER_VERSION) &&
     ["ACTIVE", "COMPLETED"].includes(order.enrolmentState) &&
     (!order.programmeEnd || order.programmeEnd > now) &&
     (!order.accessEndsAt || order.accessEndsAt > now)
