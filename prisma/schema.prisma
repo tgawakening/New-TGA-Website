@@ -356,6 +356,7 @@ model MissionSupportPayment {
   currency          String                 @default("GBP")
   status            String
   refundedAmount    Int                    @default(0)
+  pendingRefundAmount Int?
   paidAt            DateTime?
   receiptUrl        String?
   createdAt         DateTime               @default(now())

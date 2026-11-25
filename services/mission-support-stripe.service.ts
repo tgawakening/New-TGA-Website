@@ -101,6 +101,25 @@ async function recordPayment(event: Stripe.Event, donation: MissionSupportDonati
   }
 }
 
+/** Re-read all provider refunds while holding the payment row lock, so retries and
+ * out-of-order events cannot double count or restore an older provider snapshot. */
+async function syncMissionRefunds(stripe: Stripe, paymentId: string, intent: string) {
+  await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM MissionSupportPayment WHERE id = ${paymentId} FOR UPDATE`;
+    const payment = await tx.missionSupportPayment.findUnique({ where: { id: paymentId } });
+    if (!payment || payment.providerPaymentId !== intent) throw new Error("Refund payment identity mismatch.");
+    let settled = 0;
+    let pending = 0;
+    await stripe.refunds.list({ payment_intent: intent, limit: 100 }).autoPagingEach(refund => {
+      if (refund.currency.toUpperCase() !== payment.currency.toUpperCase() || (refund.payment_intent && idOf(refund.payment_intent) !== intent) || !Number.isInteger(refund.amount) || refund.amount <= 0) throw new Error("Refund amount or currency mismatch.");
+      if (refund.status === "succeeded") settled += refund.amount;
+      else if (refund.status === "pending" || refund.status === "requires_action") pending += refund.amount;
+    });
+    if (settled + pending > payment.amount) throw new Error("Refunds exceed the original payment.");
+    await tx.missionSupportPayment.update({ where: { id: paymentId }, data: { refundedAmount: settled, pendingRefundAmount: pending || null, status: settled === payment.amount ? "REFUNDED" : settled > 0 ? "PARTIALLY_REFUNDED" : "SUCCEEDED" } });
+  }, { timeout: 60000 });
+}
+
 export async function handleMissionSupportStripeEvent(event: Stripe.Event, stripe: Stripe): Promise<boolean> {
   if (event.type.startsWith("checkout.session.")) {
     const session = event.data.object as Stripe.Checkout.Session;
@@ -144,15 +163,27 @@ export async function handleMissionSupportStripeEvent(event: Stripe.Event, strip
     await prisma.missionSupportDonation.update({ where: { id: donation.id }, data: { providerSubscriptionId: subscription.id, providerCustomerId: idOf(current.customer), subscriptionStatus: current.status, cancelAtPeriodEnd: current.cancel_at_period_end } });
     return true;
   }
-  if (event.type === "charge.refunded") {
-    const charge = event.data.object as Stripe.Charge;
-    const paymentId = idOf(charge.payment_intent);
-    if (!paymentId) return false;
-    const payment = await prisma.missionSupportPayment.findFirst({ where: { providerPaymentId: paymentId } });
-    if (!payment) return false;
-    // Use provider's latest refund total rather than an older event snapshot.
-    const current = await stripe.charges.retrieve(charge.id);
-    await prisma.missionSupportPayment.update({ where: { id: payment.id }, data: { refundedAmount: current.amount_refunded, status: current.refunded ? "REFUNDED" : "PARTIALLY_REFUNDED" } });
+  if (["refund.created", "refund.updated", "refund.failed", "charge.refunded"].includes(event.type)) {
+    const object = event.data.object as Stripe.Refund | Stripe.Charge;
+    const chargeId = "charge" in object ? idOf(object.charge) : null;
+    const charge = !object.payment_intent && chargeId ? await stripe.charges.retrieve(chargeId) : null;
+    const intent = idOf(object.payment_intent ?? charge?.payment_intent);
+    if (!intent) return false;
+    const payment = await prisma.missionSupportPayment.findFirst({ where: { providerPaymentId: intent } });
+    if (!payment) {
+      const providerIntent = await stripe.paymentIntents.retrieve(intent);
+      if (providerIntent.metadata?.paymentKind === "MISSION_SUPPORT") throw new Error("Contribution payment is not recorded yet; retry the refund event.");
+      const links = await stripe.invoicePayments.list({ payment: { type: "payment_intent", payment_intent: intent }, limit: 100 });
+      for (const link of links.data) {
+        const invoice = await stripe.invoices.retrieve(idOf(link.invoice)!);
+        const details = invoice.parent?.subscription_details;
+        const subscriptionId = idOf(details?.subscription);
+        const metadata = details?.metadata?.paymentKind ? details.metadata : subscriptionId ? (await stripe.subscriptions.retrieve(subscriptionId)).metadata : null;
+        if (metadata?.paymentKind === "MISSION_SUPPORT") throw new Error("Contribution payment is not recorded yet; retry the refund event.");
+      }
+      return false;
+    }
+    await syncMissionRefunds(stripe, payment.id, intent);
     return true;
   }
   return false;
@@ -178,9 +209,9 @@ export async function createMissionBillingPortal(token: string) {
 export async function refundMissionPayment(paymentId: string, requestId: string, amount?: number) {
   const payment = await prisma.missionSupportPayment.findUnique({ where: { id: paymentId } });
   if (!payment?.providerPaymentId || !["SUCCEEDED", "PARTIALLY_REFUNDED"].includes(payment.status)) throw new Error("This contribution cannot be refunded through Stripe.");
-  const remaining = payment.amount - payment.refundedAmount;
+  const remaining = payment.amount - payment.refundedAmount - (payment.pendingRefundAmount ?? 0);
   if (amount !== undefined && (!Number.isInteger(amount) || amount < 1 || amount > remaining)) throw new Error("Invalid refund amount.");
   const refund = await stripeClient().refunds.create({ payment_intent: payment.providerPaymentId, amount: amount ?? remaining, metadata: { donationId: payment.donationId, missionPaymentId: payment.id } }, { idempotencyKey: `mission-refund-${requestId}` });
-  // charge.refunded confirms the refund ledger, rather than treating a request as completed.
+  await syncMissionRefunds(stripeClient(), payment.id, payment.providerPaymentId);
   return { refundId: refund.id, status: refund.status };
 }

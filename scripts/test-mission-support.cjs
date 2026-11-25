@@ -45,6 +45,7 @@ const store = {
     async create({ data }) { if (state.events.has(data.id)) throw duplicate(); state.events.add(data.id); },
     async findUnique({ where }) { return state.events.has(where.id) ? { id: where.id } : null; },
   },
+  async $queryRaw() { return []; },
   async $transaction(callback) { const snapshot = structuredClone(state); try { return await callback(store); } catch (error) { state = snapshot; throw error; } },
 };
 const realStripe = new ActualStripe('sk_test_local_only');
@@ -57,7 +58,7 @@ const fakeStripe = {
   subscriptions: { async retrieve() { return state.subscription; } },
   invoicePayments: { async list() { return { data: [{ status: 'paid', payment: { payment_intent: 'pi_invoice' } }] }; } },
   billingPortal: { sessions: { async create(params) { return { url: 'https://billing.stripe.com/example', ...params }; } } },
-  refunds: { async create(params, options) { return { id: 're_test', status: 'pending', ...params, options }; } },
+  refunds: { async create(params, options) { state.refunds.push({ id: 're_test', status: 'pending', currency: 'gbp', ...params }); return { id: 're_test', status: 'pending', currency: 'gbp', ...params, options }; }, list() { return { async autoPagingEach(fn) { for (const refund of state.refunds) await fn(refund); } }; } },
   charges: { async retrieve() { return state.charge; } },
 };
 class FakeStripe { constructor() { return fakeStripe; } }
@@ -80,7 +81,7 @@ const event = (type, object, id = 'evt_1') => ({ id, type, created: 1760000000, 
 const session = (extra = {}) => ({ id: 'cs_test_example', metadata: { paymentKind: 'MISSION_SUPPORT', donationId: 'donation-1' }, amount_total: 2500, currency: 'gbp', payment_status: 'paid', payment_intent: 'pi_test', customer: 'cus_test', subscription: null, ...extra });
 const invoice = (extra = {}) => ({ id: 'in_test', amount_paid: 2500, amount_due: 2500, currency: 'gbp', status: 'paid', hosted_invoice_url: 'https://invoice.stripe.com/test', customer: 'cus_test', parent: { subscription_details: { subscription: 'sub_test', metadata: { paymentKind: 'MISSION_SUPPORT', donationId: 'donation-1' } } }, ...extra });
 beforeEach(() => {
-  state = { manual: new Map(), donations: new Map([['donation-1', structuredClone(baseDonation)]]), payments: new Map(), events: new Set(), session: session(), subscription: { id: 'sub_test', customer: 'cus_test', status: 'canceled', cancel_at_period_end: true }, charge: { amount_refunded: 2500, refunded: true } };
+  state = { manual: new Map(), donations: new Map([['donation-1', structuredClone(baseDonation)]]), payments: new Map(), events: new Set(), session: session(), subscription: { id: 'sub_test', customer: 'cus_test', status: 'canceled', cancel_at_period_end: true }, charge: { amount_refunded: 2500, refunded: true }, refunds: [] };
   emails = []; createdSessions = [];
   Object.assign(process.env, { STRIPE_SECRET_KEY: 'sk_test_local_only', STRIPE_WEBHOOK_SECRET: 'whsec_local_only', MISSION_SUPPORT_MANAGEMENT_SECRET: 'local-unit-test-secret-at-least-32-characters', NEXT_PUBLIC_APP_URL: 'http://localhost:3000', MISSION_SUPPORT_PAYMENTS_ENABLED: 'false', MISSION_SUPPORT_LIVE_APPROVED: 'false' });
 });
@@ -193,9 +194,28 @@ test('refunds require confirmed income and change the ledger only after provider
   const payment = [...state.payments.values()][0];
   await assert.rejects(() => service.refundMissionPayment(payment.id, 'test-refund', 3000));
   assert.equal((await service.refundMissionPayment(payment.id, 'test-refund')).status, 'pending');
-  assert.equal(payment.refundedAmount, 0);
+  assert.equal(state.payments.get(payment.id).pendingRefundAmount, 2500);
+  state.refunds[0].status = 'succeeded';
   await service.handleMissionSupportStripeEvent(event('charge.refunded', { id: 'ch_test', payment_intent: 'pi_test' }, 'evt_refund'), fakeStripe);
   assert.equal(state.payments.get(payment.id).status, 'REFUNDED'); assert.equal(state.payments.get(payment.id).refundedAmount, 2500);
+});
+test('pending, duplicate, failed and settled refunds reconcile without double counting', async () => {
+  await service.handleMissionSupportStripeEvent(event('checkout.session.completed', session()), fakeStripe);
+  const payment = [...state.payments.values()][0];
+  const refund = { id: 're_pending', payment_intent: 'pi_test', amount: 1000, currency: 'gbp', status: 'pending' };
+  state.refunds.push(refund);
+  await service.handleMissionSupportStripeEvent(event('refund.created', refund), fakeStripe);
+  await service.handleMissionSupportStripeEvent(event('refund.updated', refund, 'evt_repeat'), fakeStripe);
+  assert.equal(state.payments.get(payment.id).pendingRefundAmount, 1000);
+  assert.equal(state.payments.get(payment.id).refundedAmount, 0);
+  refund.status = 'failed';
+  await service.handleMissionSupportStripeEvent(event('refund.updated', refund, 'evt_failed'), fakeStripe);
+  assert.equal(state.payments.get(payment.id).pendingRefundAmount, null);
+  refund.status = 'succeeded';
+  await service.handleMissionSupportStripeEvent(event('refund.updated', refund, 'evt_settled'), fakeStripe);
+  assert.equal(state.payments.get(payment.id).pendingRefundAmount, null);
+  assert.equal(state.payments.get(payment.id).refundedAmount, 1000);
+  assert.equal(state.payments.get(payment.id).status, 'PARTIALLY_REFUNDED');
 });
 test('course checkout events are left for the existing course payment handler', async () => {
   assert.equal(await service.handleMissionSupportStripeEvent(event('checkout.session.completed', session({ metadata: { paymentKind: 'COURSE' } })), fakeStripe), false);

@@ -11,6 +11,7 @@ import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import {
   sirahDisplayPaymentState,
   sirahNetReceivedMinor,
+  sirahPendingRefundMinor,
 } from "@/lib/sirah/refund-display";
 import { RowMenu, type RowMenuItem } from "./admin-row-menu";
 import styles from "./admin-students.module.css";
@@ -118,7 +119,7 @@ function availableActions(student: Student): Action[] {
   if (online && student.paymentState === "PROCESSING")
     actions.push("RECONCILE_PROVIDER");
   if (
-    student.paidMinor > student.refundedMinor &&
+    student.paidMinor > student.refundedMinor + sirahPendingRefundMinor(student) &&
     (manual ||
       (online &&
         student.events.some((entry) =>
@@ -181,7 +182,7 @@ function Status({ value }: { value: string }) {
 /** Payment status pill. A PAID order with a verified partial refund reads
  * "Partially refunded" (not the green "Completed"); display only. */
 function PaymentStatus({ order }: { order: Student }) {
-  return <Status value={sirahDisplayPaymentState(order)} />;
+  return <><Status value={sirahDisplayPaymentState(order)} />{sirahPendingRefundMinor(order) > 0 && <> <Status value="REFUND_PENDING" /></>}</>;
 }
 
 /** Short inline labels for the row's one primary action (the menu keeps the
@@ -489,6 +490,7 @@ export function SirahAdminStudents({
       setMessage(
         result.duplicate
           ? "This payment was already recorded."
+          : result.refundPending ? "Refund initiated and awaiting settlement."
           : action === "APPROVE" &&
               (student.cancelledAt || student.enrolmentState === "CANCELLED")
             ? "Received funds recorded. The existing cancellation is preserved."
@@ -1400,7 +1402,8 @@ export function SirahAdminStudents({
                 </p>
                 <p>
                   <strong>Refunded:</strong>{" "}
-                  {formatSirahMoney(selected.refundedMinor, selected.currency)}
+                  {formatSirahMoney(selected.refundedMinor + sirahPendingRefundMinor(selected), selected.currency)}
+                  {sirahPendingRefundMinor(selected) > 0 && <> (refund pending: {formatSirahMoney(sirahPendingRefundMinor(selected), selected.currency)})</>}
                 </p>
                 <p>
                   <strong>Net received:</strong>{" "}
