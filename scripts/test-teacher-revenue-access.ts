@@ -9,6 +9,7 @@ Module._extensions[".css"] = (m) => { m.exports = new Proxy({}, { get: (_, key) 
 const file = (p: string) => pathToFileURL(path.resolve(__dirname, p)).href;
 let role: string | null = null;
 let partner = false;
+let designated = false;
 let hasIdentity = false;
 let reads = 0;
 mock.module("server-only", { namedExports: {} });
@@ -16,7 +17,7 @@ mock.module("next/navigation", { namedExports: { notFound: () => { throw new Err
 mock.module(file("../lib/auth/session.ts"), { namedExports: { getSessionIdentity: async () => hasIdentity ? { id: "u", email: "teacher@example.test" } : null } });
 mock.module(file("../lib/auth/sirah-workspace.ts"), { namedExports: { getSirahWorkspaceAccess: async () => role ? { role } : null } });
 mock.module(file("../lib/lms/schedule.ts"), { namedExports: { hostsForIdentity: async (identity: unknown) => identity ? [{ id: "host" }] : [] } });
-mock.module(file("../lib/prisma.ts"), { namedExports: { prisma: { zoomHost: { findFirst: async () => partner ? { id: "host" } : null }, sirahOrder: { findMany: async () => { reads++; return []; } } } } });
+mock.module(file("../lib/prisma.ts"), { namedExports: { prisma: { zoomHost: { findFirst: async (args: { where: { id?: unknown } }) => (args.where.id ? partner : designated) ? { id: "host" } : null }, sirahOrder: { findMany: async () => { reads++; return []; } } } } });
 mock.module(file("../services/sirah-payment-totals.service.ts"), { namedExports: { sirahPaymentTotals: async () => { reads++; return { currencies: [], truncated: false }; } } });
 
 test("revenue is read only after partner or administrator authorisation", async () => {
@@ -26,8 +27,12 @@ test("revenue is read only after partner or administrator authorisation", async 
     await assert.rejects(page(), /NOT_FOUND/);
     assert.equal(reads, 0);
   }
-  role = null; hasIdentity = true; partner = true; reads = 0;
+  role = "SUPER_ADMIN"; hasIdentity = false; partner = false; designated = false; reads = 0;
+  await assert.rejects(page(), /NOT_FOUND/); assert.equal(reads, 0);
+  role = null; hasIdentity = true; partner = true; designated = true; reads = 0;
   await page(); assert.equal(reads, 2);
-  role = "SUPER_ADMIN"; hasIdentity = false; partner = false; reads = 0;
+  role = null; hasIdentity = true; partner = false; designated = true; reads = 0;
+  await assert.rejects(page(), /NOT_FOUND/); assert.equal(reads, 0);
+  role = "SUPER_ADMIN"; hasIdentity = false; partner = false; designated = true; reads = 0;
   await page(); assert.equal(reads, 2);
 });

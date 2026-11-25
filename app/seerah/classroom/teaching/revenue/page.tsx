@@ -15,8 +15,13 @@ export default async function TeacherRevenuePage() {
   const admin = await getSirahWorkspaceAccess();
   const identity = await getSessionIdentity();
   const hosts = await hostsForIdentity(identity);
+  const isAdmin = Boolean(admin && ["SUPER_ADMIN", "MANAGER"].includes(admin.role));
+  if (!hosts.length && !isAdmin) notFound();
+  // A designated active partner must exist before the revenue view opens to anyone.
+  const designated = await prisma.zoomHost.findFirst({ where: { active: true, revenuePartner: true }, select: { id: true } });
+  if (!designated) notFound();
   const partner = hosts.length ? await prisma.zoomHost.findFirst({ where: { id: { in: hosts.map(host => host.id) }, active: true, revenuePartner: true, sessions: { some: {} } }, select: { id: true } }) : null;
-  if (!partner && !(admin && ["SUPER_ADMIN", "MANAGER"].includes(admin.role))) notFound();
+  if (!partner && !isAdmin) notFound();
   const [totals, orders] = await Promise.all([
     sirahPaymentTotals(new URLSearchParams()),
     prisma.sirahOrder.findMany({ where: { ...INCLUDED_ORDERS, course: { slug: SIRAH_SLUG }, paidCount: { gt: 0 } }, select: { userId: true, enrolmentState: true } }),

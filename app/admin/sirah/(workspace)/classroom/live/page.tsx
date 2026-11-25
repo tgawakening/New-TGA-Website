@@ -521,6 +521,7 @@ export default async function LiveSessionsAdminPage({
   }
 
   const [cohorts, hosts] = await Promise.all([listCohorts(), listActiveHosts()]);
+  const designatedPartner = await prisma.zoomHost.findFirst({ where: { active: true, revenuePartner: true }, select: { id: true } });
   const revenueHosts = access.role === "SUPER_ADMIN" ? await prisma.zoomHost.findMany({ where: { active: true }, select: { id: true, email: true, revenuePartner: true }, orderBy: { email: "asc" } }) : [];
   const cohortId =
     cohorts.find((c) => c.batchCode === requested)?.batchCode ??
@@ -542,7 +543,7 @@ export default async function LiveSessionsAdminPage({
 
   return (
     <section data-theme="sirah-classroom" className={themed}>
-      <p><Link href="/seerah/classroom/teaching/revenue" className={styles.secondary}>View course revenue</Link></p>
+      {designatedPartner && <p><Link href="/seerah/classroom/teaching/revenue" className={styles.secondary}>View course revenue</Link></p>}
       {access.role === "SUPER_ADMIN" && <section id="revenue-partners" className={styles.card}><h3 className={styles.cardTitle}>Revenue partners</h3><p className={styles.cardLede}>Grant course financial access only to a designated partner teacher.</p>{revenueHosts.map(host => <form key={host.id} action={setRevenuePartner} className={styles.inlineForm}><input type="hidden" name="hostId" value={host.id} /><input type="hidden" name="enabled" value={host.revenuePartner ? "0" : "1"} /><span>{host.email} - {host.revenuePartner ? "Access granted" : "No revenue access"}</span> <button type="submit" className={styles.secondarySmall}>{host.revenuePartner ? "Revoke access" : "Grant access"}</button></form>)}</section>}
       <header className={styles.intro}>
         <div>
