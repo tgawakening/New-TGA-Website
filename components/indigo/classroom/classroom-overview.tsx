@@ -7,6 +7,7 @@ import { LiveSessionRows, NextLiveClass } from "./live-sessions";
 import type { StudentSessionView } from "@/lib/lms/schedule";
 import type { StudentAnnouncement, StudentResource } from "@/lib/lms/content";
 import { CohortNotices, ResourceList } from "./phase5-sections";
+import { TaskLinks, type TaskLink } from "@/components/sirah/tasks/task-links";
 import s from "./classroom.module.css";
 
 type Data = Awaited<ReturnType<typeof getClassroomData>>;
@@ -24,6 +25,7 @@ export function ClassroomOverview({
   recordings = [],
   externalRecordings = [],
   standaloneRecordings = [],
+  tasks = [],
 }: {
   base: string;
   data: Data;
@@ -42,6 +44,7 @@ export function ClassroomOverview({
   recordings?: { sessionId: string; href: string }[];
   externalRecordings?: { id: string; sessionId: string; title: string; url: string }[];
   standaloneRecordings?: { id: string; title: string; description: string | null }[];
+  tasks?: (TaskLink & { sessionId: string | null; recordingId: string | null; externalRecordingId: string | null })[];
 }) {
   const { lessons, courseMaterials, announcements } = data;
   const clock = classroomClock(timezone);
@@ -54,6 +57,7 @@ export function ClassroomOverview({
   const earlier = announcements.filter((a) => !a.pinned);
   const weeks = groupByWeek(lessons);
   const liveSessions = live ? [...live.upcoming, ...live.past] : [];
+  const sessionTasks = new Map(liveSessions.map((session) => [session.id, tasks.filter((task) => task.sessionId === session.id)]));
   const watchBySession = new Map(recordings.map((recording) => [recording.sessionId, recording.href]));
   const externalBySession = new Map<string, { id: string; title: string; url: string }[]>();
   for (const recording of externalRecordings) {
@@ -206,7 +210,7 @@ export function ClassroomOverview({
             <p className={s.emptyLine}>Sessions appear here once the team publishes them.</p>
           ) : (
             <>
-            {liveSessions.length > 0 && <LiveSessionRows sessions={liveSessions} clock={clock} nextId={live?.next?.id} recordings={watchBySession} externalRecordings={externalBySession} />}
+            {liveSessions.length > 0 && <LiveSessionRows sessions={liveSessions} clock={clock} nextId={live?.next?.id} recordings={watchBySession} externalRecordings={externalBySession} tasks={sessionTasks} />}
             {standaloneRecordings.length > 0 && <ol className={s.chapters}>
               {standaloneRecordings.map((recording) => <li key={recording.id}>
                 <div className={s.chap}>
@@ -214,6 +218,7 @@ export function ClassroomOverview({
                   <span className={s.ti}>{recording.title}{recording.description && <small>{recording.description}</small>}</span>
                   <Link className={`${s.st} ${s.stNext}`} href={`${base}/schedule#recordings`}>View recordings</Link>
                 </div>
+                <TaskLinks tasks={tasks.filter((task) => task.externalRecordingId === recording.id)} />
               </li>)}
             </ol>}
             {weeks.length > 0 && (

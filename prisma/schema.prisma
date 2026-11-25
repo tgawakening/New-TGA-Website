@@ -109,6 +109,7 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   /// Prisma-side back-relation only: no column on User.
   lmsNotifications        LmsNotification[]
+  taskSubmissions         LmsTaskSubmission[]
 }
 
 model StudentProfile {
@@ -850,6 +851,7 @@ model LmsSession {
   attendance  Attendance[]
   resources           LmsResource[]
   recordings          Recording[]
+  tasks               LmsTask[]
 
   @@index([cohortId, startsAt])
   @@index([zoomHostId, startsAt])
@@ -988,6 +990,7 @@ model LmsResource {
 
   cohort  SirahCohort? @relation(fields: [cohortId], references: [batchCode], onDelete: Restrict)
   session LmsSession?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tasks   LmsTask[]
 
   @@index([cohortId, visibility])
   @@index([sessionId, visibility])
@@ -1082,6 +1085,7 @@ model Recording {
 
   session LmsSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   assets  RecordingAsset[]
+  tasks   LmsTask[]
 
   @@index([sessionId])
   @@index([status, visibility])
@@ -1107,4 +1111,42 @@ model RecordingAsset {
 
   @@index([recordingId])
   @@index([status, updatedAt])
+}
+
+/// A task belongs to exactly one class target, enforced by the task service.
+model LmsTask {
+  id                  String    @id @default(cuid())
+  sessionId           String?
+  recordingId         String?
+  externalRecordingId String?
+  title               String    @db.VarChar(191)
+  body                String    @db.LongText
+  publishedAt         DateTime? @db.DateTime(3)
+  createdAt           DateTime  @default(now()) @db.DateTime(3)
+  updatedAt           DateTime  @updatedAt @db.DateTime(3)
+
+  session           LmsSession?  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  recording         Recording?   @relation(fields: [recordingId], references: [id], onDelete: Restrict)
+  externalRecording LmsResource? @relation(fields: [externalRecordingId], references: [id], onDelete: Restrict)
+  submissions       LmsTaskSubmission[]
+
+  @@index([sessionId, publishedAt])
+  @@index([recordingId, publishedAt])
+  @@index([externalRecordingId, publishedAt])
+}
+
+model LmsTaskSubmission {
+  id          String   @id @default(cuid())
+  taskId      String
+  studentId   String
+  answer      String   @db.LongText
+  link        String?  @db.VarChar(1024)
+  submittedAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @db.DateTime(3)
+
+  task    LmsTask @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  student User    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([taskId, studentId])
+  @@index([studentId])
 }

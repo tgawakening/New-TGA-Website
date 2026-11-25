@@ -9,6 +9,7 @@ import { studentPhase5 } from "@/lib/lms/student-phase5";
 import { studentExternalRecordings, studentStandaloneRecordings } from "@/lib/lms/external-recordings";
 import { recordingsAvailable, studentRecordings, watchPath, playPath, type StudentRecording } from "@/lib/lms/recordings";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
+import { studentTaskList } from "@/lib/lms/tasks";
 import { classroomClock } from "@/components/indigo/classroom/clock";
 import { RecordingLibrary } from "@/components/indigo/classroom/recording-library";
 import { ClassroomHeader, SectionHead } from "@/components/indigo/classroom/parts";
@@ -37,6 +38,9 @@ export default async function LiveSchedulePage() {
   const watchBySession = new Map(recordings.map((r) => [r.sessionId, watchPath(r.recordingId)] as const));
   const external = phase5 ? await studentExternalRecordings(user.id, now) : [];
   const standalone = phase5 ? await studentStandaloneRecordings(user.id, now) : [];
+  const tasks = schedule?.allowed && user.status === "ACTIVE" ? await studentTaskList(user.id, now) : [];
+  const linksFor = (key: "sessionId" | "recordingId" | "externalRecordingId", id: string) => tasks.filter((task) => task[key] === id).map((task) => ({ id: task.id, title: task.title, submitted: task.submissions.length > 0 }));
+  const sessionTasks = new Map([...schedule?.upcoming ?? [], ...schedule?.past ?? []].map((session) => [session.id, linksFor("sessionId", session.id)]));
   const externalBySession = new Map<string, { id: string; title: string; url: string }[]>();
   for (const item of external) {
     if (!item.sessionId || !item.url) continue;
@@ -83,7 +87,7 @@ export default async function LiveSchedulePage() {
                 Times are your time ({clock.zoneName}). Join opens {JOIN_OPENS_MINUTES_BEFORE} minutes before each class, or as soon as the host starts it.
               </p>
               {schedule.upcoming.length ? (
-                <LiveSessionRows sessions={schedule.upcoming} clock={clock} nextId={schedule.next?.id} />
+                <LiveSessionRows sessions={schedule.upcoming} clock={clock} nextId={schedule.next?.id} tasks={sessionTasks} />
               ) : (
                 <p className={s.emptyLine}>Nothing scheduled yet.</p>
               )}
@@ -93,9 +97,9 @@ export default async function LiveSchedulePage() {
               <SectionHead id="recordings">Recordings</SectionHead>
               <p className={s.sectionLede}>Watch published classes at your own pace.</p>
               <RecordingLibrary items={[
-                ...recordings.map((r) => ({ id: `zoom-${r.recordingId}`, title: r.title, date: clock.shortDate.format(r.startsAt), href: watchPath(r.recordingId), player: { src: playPath(r.recordingId), kind: r.kind }, external: false })),
-                ...external.flatMap((r) => { const session = schedule.past.find((item) => item.id === r.sessionId); return session && r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(session.startsAt), href: r.url, external: true }] : []; }),
-                ...standalone.flatMap((r) => r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: r.url, description: r.originalFilename, resources: r.resources, external: true }] : []),
+                ...recordings.map((r) => ({ id: `zoom-${r.recordingId}`, title: r.title, date: clock.shortDate.format(r.startsAt), href: watchPath(r.recordingId), player: { src: playPath(r.recordingId), kind: r.kind }, external: false, tasks: [...linksFor("sessionId", r.sessionId), ...linksFor("recordingId", r.recordingId)] })),
+                ...external.flatMap((r) => { const session = schedule.past.find((item) => item.id === r.sessionId); return session && r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(session.startsAt), href: r.url, external: true, tasks: [...linksFor("sessionId", session.id), ...linksFor("externalRecordingId", r.id)] }] : []; }),
+                ...standalone.flatMap((r) => r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: r.url, description: r.originalFilename, resources: r.resources, external: true, tasks: linksFor("externalRecordingId", r.id) }] : []),
               ]} />
             </section>
 
@@ -105,7 +109,7 @@ export default async function LiveSchedulePage() {
                 {recordings.length || external.length || standalone.length ? "Published recordings are shown with their classes." : "Recordings appear here once they are published."}
               </p>
               {schedule.past.length ? (
-                <LiveSessionRows sessions={schedule.past} clock={clock} recordings={watchBySession} externalRecordings={externalBySession} />
+                <LiveSessionRows sessions={schedule.past} clock={clock} recordings={watchBySession} externalRecordings={externalBySession} tasks={sessionTasks} />
               ) : standalone.length ? null : (
                 <p className={s.emptyLine}>No classes have taken place yet.</p>
               )}

@@ -1,0 +1,18 @@
+﻿.prose { line-height: 1.7; overflow-wrap: anywhere; }
+.prose p, .prose ol, .prose ul { margin: .8rem 0; }
+.prose ol, .prose ul { padding-left: 1.6rem; }
+.prose li + li { margin-top: .55rem; }
+.editor { display: grid; gap: .5rem; }
+.editor textarea, .answer { display: block; width: 100%; min-height: 12rem; padding: .8rem; border: 1px solid #8591a7; border-radius: .6rem; background: #fff; color: #141d33; font: inherit; resize: vertical; }
+.toolbar { display: flex; gap: .5rem; flex-wrap: wrap; }
+.toolbar button { padding: .45rem .75rem; border: 1px solid #7a879e; border-radius: .5rem; background: #fff; color: #17223b; cursor: pointer; }
+.editor p { margin: 0; font-size: .875rem; }
+.editor details { padding: .7rem; border: 1px solid #8591a7; border-radius: .5rem; }
+.editor summary { cursor: pointer; }
+.studentForm { display: grid; gap: .8rem; margin-top: 1.5rem; }
+.studentForm label { display: grid; gap: .4rem; font-weight: 600; }
+.studentForm input { min-height: 3rem; width: 100%; padding: .65rem; border: 1px solid #8591a7; border-radius: .6rem; background: #fff; color: #141d33; font: inherit; }
+.studentForm button { justify-self: start; }
+.studentForm .answer { font-weight: 400; }
+.taskLinks { display: flex; flex-wrap: wrap; gap: .45rem; padding: .6rem 1rem; }
+.taskLinks a { color: #a1f0df; font-size: .9rem; font-weight: 600; }

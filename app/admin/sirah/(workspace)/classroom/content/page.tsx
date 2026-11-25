@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { sirahFont } from "@/lib/sirah/font";
 import { SIRAH_BATCH } from "@/lib/sirah/catalog";
@@ -166,6 +167,7 @@ export default async function LmsContentAdminPage({
           </p>
         </div>
         <div className={styles.introActions}>
+          <Link href="/admin/sirah/classroom/tasks" className={styles.secondary}>Class tasks</Link>
           <a href="#new-resource" className={styles.primary}>
             Add resource
           </a>

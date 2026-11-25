@@ -4,6 +4,7 @@ import type { SessionView, StudentSessionView } from "@/lib/lms/schedule";
 import { ClassroomCountdown } from "@/components/sirah/classroom-countdown";
 import { LiveStatusRefresh } from "@/components/sirah/live-status-refresh";
 import type { ClassroomClock } from "./clock";
+import { TaskLinks, type TaskLink } from "@/components/sirah/tasks/task-links";
 import { SectionHead } from "./parts";
 import s from "./classroom.module.css";
 
@@ -114,12 +115,14 @@ export function LiveSessionRows({
   nextId,
   recordings,
   externalRecordings,
+  tasks,
 }: {
   sessions: StudentSessionView[];
   clock: ClassroomClock;
   nextId?: string;
   recordings?: Map<string, string>;
   externalRecordings?: Map<string, { id: string; title: string; url: string }[]>;
+  tasks?: Map<string, TaskLink[]>;
 }) {
   return (
     <ol className={s.chapters}>
@@ -155,6 +158,7 @@ export function LiveSessionRows({
                 <a className={`${s.st} ${s.stNext}`} href={recording.url} target="_blank" rel="noopener noreferrer">Watch →</a>
               </div>
             ))}
+            <TaskLinks tasks={tasks?.get(session.id)} />
           </li>
         );
       })}

@@ -5,8 +5,9 @@ import Link from "next/link";
 import s from "./recording-library.module.css";
 import { RecordingPlayer } from "./recording-player";
 import { Rosette } from "@/components/indigo/ornaments";
+import { TaskLinks, type TaskLink } from "@/components/sirah/tasks/task-links";
 
-type Item = { id: string; title: string; date?: string; href: string; external: boolean; player?: { src: string; kind: "VIDEO" | "AUDIO" }; description?: string | null; resources?: { id: string; title: string; href: string }[] };
+type Item = { id: string; title: string; date?: string; href: string; external: boolean; player?: { src: string; kind: "VIDEO" | "AUDIO" }; description?: string | null; resources?: { id: string; title: string; href: string }[]; tasks?: TaskLink[] };
 
 function embedFor(href: string) {
   try {
@@ -52,7 +53,8 @@ export function RecordingLibrary({ items }: { items: Item[] }) {
     <div className={s.grid}>{items.map((item) => {
       const preview = item.external ? embedFor(item.href) : null;
       const body = <><RecordingThumbnail title={item.title} thumbnail={preview?.thumbnail} /><span className={s.content}><strong>{item.title}</strong>{item.date && <small>{item.date}</small>}{item.description && <small>{item.description}</small>}</span></>;
-      return (item.player || (item.external && (preview || item.resources?.length))) ? <button key={item.id} type="button" className={s.card} onClick={() => { setSelected(item); dialog.current?.showModal(); }} aria-haspopup="dialog">{body}<span className={s.action}>Watch &#8594;</span></button> : item.external ? <a key={item.id} className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link key={item.id} className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
+      const card = (item.player || (item.external && (preview || item.resources?.length))) ? <button type="button" className={s.card} onClick={() => { setSelected(item); dialog.current?.showModal(); }} aria-haspopup="dialog">{body}<span className={s.action}>Watch &#8594;</span></button> : item.external ? <a className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
+      return <div key={item.id}>{card}<TaskLinks tasks={item.tasks} /></div>;
     })}</div>
     <dialog ref={dialog} className={s.dialog} onClose={() => setSelected(null)} aria-labelledby="recording-player-title">
       {selected && <><header className={s.dialogHeader}><h2 id="recording-player-title">{selected.title}</h2><form method="dialog"><button className={s.close} aria-label="Close recording">Close &#215;</button></form></header>

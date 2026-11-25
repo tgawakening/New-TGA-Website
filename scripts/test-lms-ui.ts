@@ -92,6 +92,8 @@ let SchedulePage: typeof import("../app/seerah/classroom/schedule/page").default
 let ClassroomPage: typeof import("../app/seerah/classroom/page").default;
 let TeachingPage: typeof import("../app/seerah/classroom/teaching/page").default;
 let RecordingLibrary: typeof import("../components/indigo/classroom/recording-library").RecordingLibrary;
+let taskActions: typeof import("../app/admin/sirah/(workspace)/classroom/tasks/actions");
+let TaskBody: typeof import("../components/sirah/tasks/task-body").TaskBody;
 let SIRAH_BATCH: string;
 let SIRAH_SLUG: string;
 before(async () => {
@@ -109,6 +111,8 @@ before(async () => {
   ClassroomPage = (await import("../app/seerah/classroom/page")).default;
   TeachingPage = (await import("../app/seerah/classroom/teaching/page")).default;
   ({ RecordingLibrary } = await import("../components/indigo/classroom/recording-library"));
+  taskActions = await import("../app/admin/sirah/(workspace)/classroom/tasks/actions");
+  ({ TaskBody } = await import("../components/sirah/tasks/task-body"));
   ({ SIRAH_BATCH, SIRAH_SLUG } = await import("../lib/sirah/catalog"));
 });
 
@@ -429,6 +433,53 @@ describe("admin live sessions", () => {
 // ── Student ────────────────────────────────────────────────────────────────
 
 describe("student schedule", () => {
+  test("task instructions render paragraphs, numbered questions, emphasis and Arabic without interpreting HTML", async () => {
+    const html = await render(React.createElement(TaskBody, { body: "Research the life of the Prophet ﷺ\n1. First question\n2. **Second** question\n\nA second paragraph.\n<script>alert(1)</script>" }));
+    assert.match(html, /<ol start="1"><li>First question<\/li><li><strong>Second<\/strong> question<\/li><\/ol>/);
+    assert.match(html, /ﷺ/);
+    assert.match(html, /A second paragraph/);
+    assert.ok(!html.includes("<script>"));
+    assert.match(html, /&lt;script&gt;/);
+  });
+  test("community leads and signed-out visitors cannot create or edit tasks", async () => {
+    const form = new FormData();
+    access = { role: "COMMUNITY_LEAD" };
+    assert.equal((await outcome(() => taskActions.createTask(form))).redirect, "/admin/sirah");
+    assert.equal((await outcome(() => taskActions.updateTask(form))).redirect, "/admin/sirah");
+    assert.equal((await outcome(() => taskActions.publishTask(form))).redirect, "/admin/sirah");
+    access = null;
+    assert.equal((await outcome(() => taskActions.createTask(form))).redirect, "/admin/sirah/login");
+  });
+  test("a leftover super-admin cookie does not expose task submissions to a different signed-in student", async () => {
+    access = { role: "SUPER_ADMIN" };
+    signIn(seedUser("student@example.test"));
+    const form = new FormData();
+    assert.equal((await outcome(() => taskActions.createTask(form))).redirect, "/admin/sirah");
+    assert.equal((await outcome(() => taskActions.updateTask(form))).redirect, "/admin/sirah");
+  });
+  test("a manager can create, edit, publish and unpublish a session task", async () => {
+    access = { role: "MANAGER" };
+    const session = seedSession(new Date(Date.now() - 86_400_000));
+    const form = new FormData();
+    form.set("target", `session:${session.id}`);
+    form.set("title", "Research task");
+    form.set("body", "1. First question\n2. The Prophet ﷺ");
+    await outcome(() => taskActions.createTask(form));
+    const task = table("lmsTask")[0];
+    assert.equal(task.sessionId, session.id);
+    assert.equal(task.body, "1. First question\n2. The Prophet ﷺ");
+    assert.ok(!task.publishedAt);
+    const edit = new FormData();
+    edit.set("id", String(task.id)); edit.set("title", "Revised task"); edit.set("body", "Revised instructions");
+    await outcome(() => taskActions.updateTask(edit));
+    assert.equal(task.title, "Revised task");
+    const publish = new FormData(); publish.set("id", String(task.id)); publish.set("publish", "1");
+    await outcome(() => taskActions.publishTask(publish));
+    assert.ok(task.publishedAt instanceof Date);
+    publish.set("publish", "0");
+    await outcome(() => taskActions.publishTask(publish));
+    assert.equal(task.publishedAt, null);
+  });
   test("recording thumbnails use YouTube images and branded title cards for other sources", async () => {
     const html = await render(React.createElement(RecordingLibrary, { items: [
       { id: "youtube", title: "YouTube class", href: "https://youtu.be/abcdefghijk", external: true },
