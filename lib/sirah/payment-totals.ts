@@ -75,7 +75,7 @@ export function sumSirahLedger(
   const students = new Set<string>();
   for (const line of lines) {
     const received = receivedKinds.includes(line.kind);
-    if (!received && line.kind !== "REFUND") continue;
+    if (!received && !["REFUND", "REFUND_PENDING"].includes(line.kind)) continue;
     const methods = byCurrency.get(line.currency) ?? new Map();
     byCurrency.set(line.currency, methods);
     const total = methods.get(line.provider) ?? empty(line.provider);

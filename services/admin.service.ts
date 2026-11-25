@@ -200,6 +200,7 @@ export type AdminDashboardSnapshot = {
       currency: string;
       status: string;
       refundedAmount: number;
+      pendingRefundAmount: number;
       providerReference: string;
       providerPaymentId: string | null;
       paidAt: string | null;
@@ -636,7 +637,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
                 )
                 .reduce(
                   (total, payment) =>
-                    total + payment.amount - payment.refundedAmount,
+                    total + payment.amount - payment.refundedAmount - (payment.pendingRefundAmount ?? 0),
                   0,
                 )
             : item.status === PaymentStatus.SUCCEEDED ||
@@ -797,6 +798,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
         currency: payment.currency,
         status: payment.status,
         refundedAmount: payment.refundedAmount,
+        pendingRefundAmount: payment.pendingRefundAmount ?? 0,
         providerReference: payment.providerReference,
         providerPaymentId: payment.providerPaymentId,
         paidAt: payment.paidAt?.toISOString() ?? null,

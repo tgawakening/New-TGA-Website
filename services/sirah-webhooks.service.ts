@@ -10,7 +10,7 @@ import {
   resetUnsettledSirahCheckout,
   paypalRequest,
 } from "./sirah-online.service";
-import { recordSirahRefund, holdSirahRefund } from "./sirah-admin.service";
+import { recordSirahRefund, holdSirahRefund, reflectPendingSirahRefund } from "./sirah-admin.service";
 import { SirahError, auditSirah } from "./sirah-registration.service";
 import { decimalToMinor } from "@/lib/sirah/catalog";
 import { type SirahTerms } from "@/lib/sirah/config";
@@ -151,13 +151,12 @@ export async function handleSirahStripeEvent(
     }
     return true;
   }
-  if (event.type === "refund.updated" || event.type === "refund.created") {
+  if (event.type === "refund.updated" || event.type === "refund.created" || event.type === "refund.failed") {
     const refund = event.data.object;
-    if (refund.status !== "succeeded") return false;
-    const intent =
-      typeof refund.payment_intent === "string"
-        ? refund.payment_intent
-        : refund.payment_intent?.id;
+    const chargeId = typeof refund.charge === "string" ? refund.charge : refund.charge?.id;
+    const charge = !refund.payment_intent && chargeId ? await stripe.charges.retrieve(chargeId) : null;
+    const intentValue = refund.payment_intent || charge?.payment_intent;
+    const intent = typeof intentValue === "string" ? intentValue : intentValue?.id;
     if (!intent) return false;
     // Payment events identify the actual settled charge, never a browser return URL.
     const relatedInvoices: string[] = [];
@@ -180,6 +179,12 @@ export async function handleSirahStripeEvent(
       }
     }
     const verified = await stripe.refunds.retrieve(refund.id);
+    const verifiedChargeId = typeof verified.charge === "string" ? verified.charge : verified.charge?.id;
+    const verifiedCharge = !verified.payment_intent && verifiedChargeId ? await stripe.charges.retrieve(verifiedChargeId) : null;
+    const verifiedIntentValue = verified.payment_intent || verifiedCharge?.payment_intent;
+    const verifiedIntent = typeof verifiedIntentValue === "string" ? verifiedIntentValue : verifiedIntentValue?.id;
+    if (verifiedIntent !== intent) throw new SirahError("Refund payment identity mismatch.");
+    if (!payment && ["failed", "canceled"].includes(verified.status || "")) return false;
     if (!payment) {
       const intentRecord = await stripe.paymentIntents.retrieve(intent);
       let orderId = intentRecord.metadata.sirahOrderId;
@@ -216,7 +221,7 @@ export async function handleSirahStripeEvent(
         intentRecord.currency.toUpperCase() !== order.currency
       )
         throw new SirahError("Refund settlement identity mismatch.");
-      await holdSirahRefund(
+      if (verified.status === "succeeded") await holdSirahRefund(
         order.id,
         `stripe:refund:${verified.id}`,
         verified.currency.toUpperCase(),
@@ -243,7 +248,11 @@ export async function handleSirahStripeEvent(
         503,
       );
     }
-    if (verified.status !== "succeeded") return true;
+    if (verified.status !== "succeeded") {
+      if (["pending", "requires_action", "failed", "canceled"].includes(verified.status || ""))
+        await reflectPendingSirahRefund(payment.orderId, `stripe:refund:${verified.id}`, verified.amount, verified.currency.toUpperCase(), ["pending", "requires_action"].includes(verified.status || ""));
+      return true;
+    }
     await recordSirahRefund(
       payment.orderId,
       `stripe:refund:${verified.id}`,
