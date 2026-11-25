@@ -7,7 +7,7 @@ import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { studentPhase5 } from "@/lib/lms/student-phase5";
 import { studentExternalRecordings, studentStandaloneRecordings } from "@/lib/lms/external-recordings";
-import { recordingsAvailable, studentRecordings, watchPath, type StudentRecording } from "@/lib/lms/recordings";
+import { recordingsAvailable, studentRecordings, watchPath, playPath, type StudentRecording } from "@/lib/lms/recordings";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { classroomClock } from "@/components/indigo/classroom/clock";
 import { RecordingLibrary } from "@/components/indigo/classroom/recording-library";
@@ -93,7 +93,7 @@ export default async function LiveSchedulePage() {
               <SectionHead id="recordings">Recordings</SectionHead>
               <p className={s.sectionLede}>Watch published classes at your own pace.</p>
               <RecordingLibrary items={[
-                ...recordings.map((r) => ({ id: `zoom-${r.recordingId}`, title: r.title, date: clock.shortDate.format(r.startsAt), href: watchPath(r.recordingId), external: false })),
+                ...recordings.map((r) => ({ id: `zoom-${r.recordingId}`, title: r.title, date: clock.shortDate.format(r.startsAt), href: watchPath(r.recordingId), player: { src: playPath(r.recordingId), kind: r.kind }, external: false })),
                 ...external.flatMap((r) => { const session = schedule.past.find((item) => item.id === r.sessionId); return session && r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(session.startsAt), href: r.url, external: true }] : []; }),
                 ...standalone.flatMap((r) => r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: r.url, description: r.originalFilename, resources: r.resources, external: true }] : []),
               ]} />

@@ -1,7 +1,11 @@
-﻿import Link from "next/link";
-import s from "./recording-library.module.css";
+"use client";
 
-type Item = { id: string; title: string; date?: string; href: string; external: boolean; description?: string | null; resources?: { id: string; title: string; href: string }[] };
+import { useRef, useState } from "react";
+import Link from "next/link";
+import s from "./recording-library.module.css";
+import { RecordingPlayer } from "./recording-player";
+
+type Item = { id: string; title: string; date?: string; href: string; external: boolean; player?: { src: string; kind: "VIDEO" | "AUDIO" }; description?: string | null; resources?: { id: string; title: string; href: string }[] };
 
 function embedFor(href: string) {
   try {
@@ -19,11 +23,22 @@ function embedFor(href: string) {
 }
 
 export function RecordingLibrary({ items }: { items: Item[] }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [selected, setSelected] = useState<Item | null>(null);
   if (!items.length) return <p className={s.empty}>Recordings will appear here once published.</p>;
-  return <div className={s.grid}>{items.map((item) => {
-    const embed = item.external ? embedFor(item.href) : null;
-    const body = <><span className={s.thumbnail} style={embed?.thumbnail ? { backgroundImage: `url("${embed.thumbnail}")` } : undefined}><span aria-hidden="true">&#9654;</span></span><span className={s.content}><strong>{item.title}</strong>{item.date && <small>{item.date}</small>}{item.description && <small>{item.description}</small>}</span></>;
-    const resources = item.resources?.length ? <div className={s.content}><strong>Tasks and resources</strong><ul>{item.resources.map((resource) => <li key={resource.id}><a href={resource.href} target="_blank" rel="noopener noreferrer">{resource.title}</a></li>)}</ul></div> : null;
-    return embed ? <details key={item.id} className={s.card}><summary>{body}<span className={s.action}>Watch &#8594;</span></summary><div className={s.player}><iframe src={embed.src} title={`Recording: ${item.title}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" /></div>{resources}</details> : item.external && resources ? <details key={item.id} className={s.card}><summary>{body}<span className={s.action}>Open &#8594;</span></summary><div className={s.content}><a href={item.href} target="_blank" rel="noopener noreferrer">Open recording &#8599;</a></div>{resources}</details> : item.external ? <a key={item.id} className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link key={item.id} className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
-  })}</div>;
+  const embed = selected?.external ? embedFor(selected.href) : null;
+  return <>
+    <div className={s.grid}>{items.map((item) => {
+      const preview = item.external ? embedFor(item.href) : null;
+      const body = <><span className={s.thumbnail} style={preview?.thumbnail ? { backgroundImage: `url("${preview.thumbnail}")` } : undefined}><span aria-hidden="true">&#9654;</span></span><span className={s.content}><strong>{item.title}</strong>{item.date && <small>{item.date}</small>}{item.description && <small>{item.description}</small>}</span></>;
+      return (item.player || (item.external && (preview || item.resources?.length))) ? <button key={item.id} type="button" className={s.card} onClick={() => { setSelected(item); dialog.current?.showModal(); }} aria-haspopup="dialog">{body}<span className={s.action}>Watch &#8594;</span></button> : item.external ? <a key={item.id} className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link key={item.id} className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
+    })}</div>
+    <dialog ref={dialog} className={s.dialog} onClose={() => setSelected(null)} aria-labelledby="recording-player-title">
+      {selected && <><header className={s.dialogHeader}><h2 id="recording-player-title">{selected.title}</h2><form method="dialog"><button className={s.close} aria-label="Close recording">Close &#215;</button></form></header>
+        {selected.player ? <div className={s.player}><RecordingPlayer src={selected.player.src} kind={selected.player.kind} title={selected.title} /></div> : embed ? <div className={s.player}><iframe src={embed.src} title={`Recording: ${selected.title}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /></div> : <p className={s.dialogContent}><a href={selected.href} target="_blank" rel="noopener noreferrer">Open recording &#8599;</a></p>}
+        {(embed || selected.player) && <p className={s.dialogContent}><a href={selected.href} target={selected.external ? "_blank" : undefined} rel={selected.external ? "noopener noreferrer" : undefined}>Open recording separately &#8599;</a></p>}
+        {selected.resources?.length ? <div className={s.dialogContent}><strong>Tasks and resources</strong><ul>{selected.resources.map((resource) => <li key={resource.id}><a href={resource.href} target="_blank" rel="noopener noreferrer">{resource.title}</a></li>)}</ul></div> : null}
+      </>}
+    </dialog>
+  </>;
 }
