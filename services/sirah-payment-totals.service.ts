@@ -106,7 +106,7 @@ export async function sirahPaymentsCsv(search: URLSearchParams) {
         sirahMethodLabel(line.provider),
         line.currency,
         minorToDecimal(line.amountMinor, line.currency),
-        SIRAH_RECEIVED_KINDS.includes(line.kind) ? "Received" : "Refunded",
+        SIRAH_RECEIVED_KINDS.includes(line.kind) ? "Received" : line.kind === "REFUND_PENDING" ? "Refund pending" : "Refunded",
         line.createdAt.toISOString().slice(0, 16).replace("T", " "),
       ]
         .map(sirahCsvCell)

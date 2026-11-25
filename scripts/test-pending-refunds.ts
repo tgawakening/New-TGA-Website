@@ -1,0 +1,32 @@
+﻿import assert from "node:assert/strict";
+import test from "node:test";
+import { installFakePrisma, table, tables } from "./fixtures/fake-prisma";
+installFakePrisma();
+
+test("pending refunds are idempotent, removed on failure, and settled once", async () => {
+  tables.clear();
+  const { reflectPendingSirahRefund, recordSirahRefund } = await import("../services/sirah-admin.service");
+  const { sumSirahLedger } = await import("../lib/sirah/payment-totals");
+  const { sirahDisplayPaymentState, sirahNetReceivedMinor } = await import("../lib/sirah/refund-display");
+  table("user").push({ id: "user", status: "ACTIVE", fullName: "Test", email: "test@example.test" });
+  table("sirahOrder").push({ id: "order", userId: "user", amountMinor: 10000, method: "STRIPE", currency: "GBP", paidMinor: 10000, refundedMinor: 0, paymentState: "PAID", enrolmentState: "ACTIVE", revision: 0, terms: null });
+  const refundId = "stripe:refund:re_1";
+  await reflectPendingSirahRefund("order", refundId, 3000, "GBP", true);
+  await reflectPendingSirahRefund("order", refundId, 3000, "GBP", true);
+  assert.equal(table("sirahPaymentEvent").length, 1);
+  const display = { paidMinor: 10000, refundedMinor: 0, paymentState: "PAID", events: table("sirahPaymentEvent") as { kind: string; amountMinor: number }[] };
+  assert.equal(sirahDisplayPaymentState(display), "PARTIALLY_REFUNDED");
+  assert.equal(sirahNetReceivedMinor(display), 7000);
+  const pending = table("sirahPaymentEvent")[0];
+  const totals = sumSirahLedger([{ orderId: "order", provider: "STRIPE", kind: "FIRST", amountMinor: 10000, currency: "GBP" }, pending as never], ["FIRST"]);
+  assert.equal(totals.currencies[0].netMinor, 7000);
+  await reflectPendingSirahRefund("order", refundId, 3000, "GBP", false);
+  assert.equal(sirahNetReceivedMinor(display), 10000);
+  await reflectPendingSirahRefund("order", refundId, 3000, "GBP", true);
+  await recordSirahRefund("order", refundId, 3000, "GBP", "provider:stripe", "test");
+  await recordSirahRefund("order", refundId, 3000, "GBP", "provider:stripe", "test");
+  assert.equal(table("sirahOrder")[0].refundedMinor, 3000);
+  assert.equal(table("sirahPaymentEvent")[0].kind, "REFUND");
+  await reflectPendingSirahRefund("order", refundId, 3000, "GBP", true);
+  assert.equal(table("sirahPaymentEvent")[0].kind, "REFUND");
+});

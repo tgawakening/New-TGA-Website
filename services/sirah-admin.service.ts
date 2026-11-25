@@ -24,7 +24,7 @@ import {
 } from "@/lib/sirah/catalog";
 import { getGroupInvitation, type SirahTerms } from "@/lib/sirah/config";
 import { sirahAdminActionSchema } from "@/lib/sirah/validation";
-import { sirahNetReceivedMinor } from "@/lib/sirah/refund-display";
+import { sirahDisplayPaymentState, sirahNetReceivedMinor, sirahPendingRefundMinor } from "@/lib/sirah/refund-display";
 import {
   ADMIN_CUSTOM_PRICING_VERSION,
   adminCustomSnapshot,
@@ -50,7 +50,7 @@ import {
 /** Payment-ledger kinds that move money: a verified payment received (first or
  * renewal) and a recorded refund. FAILED events carry no money. */
 export const SIRAH_RECEIVED_KINDS = ["FIRST", "RENEWAL"];
-export const SIRAH_LEDGER_KINDS = [...SIRAH_RECEIVED_KINDS, "REFUND"];
+export const SIRAH_LEDGER_KINDS = [...SIRAH_RECEIVED_KINDS, "REFUND", "REFUND_PENDING"];
 
 const DATE_PARAM = /^\d{4}-\d{2}-\d{2}$/;
 function dateParam(value: string | null, label: string) {
@@ -359,6 +359,26 @@ export async function cancelSirahProvider(
   }
 }
 
+/** Pending refunds are separate ledger entries, so settlement and access state remain unchanged. */
+export async function reflectPendingSirahRefund(orderId: string, refundId: string, amountMinor: number, currency: string, pending: boolean) {
+  await serializable(async (tx) => {
+    const previous = await tx.sirahPaymentEvent.findUnique({ where: { id: refundId } });
+    if (previous && (previous.orderId !== orderId || previous.amountMinor !== amountMinor || previous.currency !== currency || previous.provider !== "STRIPE")) throw new SirahError("Refund identity mismatch.");
+    if (previous?.kind === "REFUND" || previous?.kind === (pending ? "REFUND_PENDING" : "REFUND_FAILED")) return;
+    if (previous && !["REFUND_PENDING", "REFUND_FAILED"].includes(previous.kind)) throw new SirahError("Refund identity mismatch.");
+    const order = await tx.sirahOrder.findUniqueOrThrow({ where: { id: orderId } });
+    if (order.currency !== currency || amountMinor <= 0) throw new SirahError("Refund amount or currency does not match recorded payments.");
+    if (pending) {
+      const pendingRows = await tx.sirahPaymentEvent.findMany({ where: { orderId, kind: "REFUND_PENDING" } });
+      const otherPending = pendingRows.filter((row) => row.id !== refundId).reduce((sum, row) => sum + row.amountMinor, 0);
+      if (amountMinor + otherPending > order.paidMinor - order.refundedMinor) throw new SirahError("Refund exceeds recorded payments.");
+    }
+    if (previous) await tx.sirahPaymentEvent.update({ where: { id: refundId }, data: { kind: pending ? "REFUND_PENDING" : "REFUND_FAILED" } });
+    else if (pending) await tx.sirahPaymentEvent.create({ data: { id: refundId, orderId, provider: "STRIPE", amountMinor, currency, kind: "REFUND_PENDING" } });
+    if (previous || pending) await tx.sirahOrder.update({ where: { id: orderId }, data: { revision: { increment: 1 } } });
+  });
+}
+
 export async function recordSirahRefund(
   orderId: string,
   refundId: string,
@@ -372,9 +392,10 @@ export async function recordSirahRefund(
       where: { id: refundId },
     });
     if (previous) {
-      if (previous.orderId !== orderId)
+      if (previous.orderId !== orderId || previous.amountMinor !== amountMinor || previous.currency !== currency)
         throw new SirahError("Refund identity mismatch.");
-      return;
+      if (previous.kind === "REFUND") return;
+      if (!["REFUND_PENDING", "REFUND_FAILED"].includes(previous.kind)) throw new SirahError("Refund identity mismatch.");
     }
     const order = await tx.sirahOrder.findUniqueOrThrow({
       where: { id: orderId },
@@ -387,15 +408,9 @@ export async function recordSirahRefund(
       throw new SirahError(
         "Refund amount or currency does not match recorded payments.",
       );
-    await tx.sirahPaymentEvent.create({
-      data: {
-        id: refundId,
-        orderId,
-        provider: order.method!,
-        amountMinor,
-        currency,
-        kind: "REFUND",
-      },
+    if (previous) await tx.sirahPaymentEvent.update({ where: { id: refundId }, data: { kind: "REFUND" } });
+    else await tx.sirahPaymentEvent.create({
+      data: { id: refundId, orderId, provider: order.method!, amountMinor, currency, kind: "REFUND" },
     });
     const all = order.refundedMinor + amountMinor === order.paidMinor;
     const terms = order.terms as SirahTerms | null;
@@ -680,7 +695,7 @@ export async function actOnSirahOrder(
     );
     if (
       input.currency.toUpperCase() !== order.currency ||
-      amount > order.paidMinor - order.refundedMinor
+      amount > order.paidMinor - order.refundedMinor - order.events.filter((event) => event.kind === "REFUND_PENDING").reduce((sum, event) => sum + event.amountMinor, 0)
     )
       throw new SirahError(
         "Refund exceeds unrefunded payments or uses the wrong currency.",
@@ -713,11 +728,12 @@ export async function actOnSirahOrder(
           { payment_intent: intent, amount },
           { idempotencyKey: `sirah-refund:${order.id}:${input.revision}` },
         );
-        if (refund.status !== "succeeded")
-          throw new SirahError(
-            "The provider refund is processing. Payment status has not been changed.",
-            409,
-          );
+        if (refund.amount !== amount || refund.currency.toUpperCase() !== order.currency) throw new SirahError("Provider refund amount or currency mismatch.");
+        if (["pending", "requires_action"].includes(refund.status || "")) {
+          await reflectPendingSirahRefund(order.id, `stripe:refund:${refund.id}`, refund.amount, refund.currency.toUpperCase(), true);
+          return { refundPending: true };
+        }
+        if (refund.status !== "succeeded") throw new SirahError("The provider did not accept the refund.", 409);
         refundId = `stripe:refund:${refund.id}`;
       } else {
         const capture = event.id.replace(/^paypal:(capture|sale):/, "");
@@ -889,7 +905,7 @@ type SirahCsvRow = Pick<
   | "customLink"
   | "groupAddedAt"
   | "groupAddedBy"
->;
+> & { events?: { kind: string; amountMinor: number }[] };
 
 /** Every record matching the list filters (not just one page), with only the
  * columns the students CSV needs. */
@@ -916,6 +932,7 @@ export async function listSirahAdminForCsv(search: URLSearchParams) {
       groupAddedAt: true,
       groupAddedBy: true,
       user: { select: { fullName: true, email: true } },
+      events: { where: { kind: "REFUND_PENDING" }, select: { kind: true, amountMinor: true } },
     },
   });
   return {
@@ -977,10 +994,10 @@ export function sirahCsv(data: { rows: SirahCsvRow[] }) {
         row.method,
         formatSirahMoney(row.amountMinor, row.currency),
         formatSirahMoney(row.paidMinor, row.currency),
-        formatSirahMoney(row.refundedMinor, row.currency),
+        formatSirahMoney(row.refundedMinor + sirahPendingRefundMinor(row), row.currency),
         formatSirahMoney(sirahNetReceivedMinor(row), row.currency),
         row.currency,
-        row.paymentState,
+        `${sirahDisplayPaymentState(row)}${sirahPendingRefundMinor(row) ? " (REFUND PENDING)" : ""}`,
         row.enrolmentState,
         row.customLink ? "Admin custom link" : "Self-registered",
         row.customLink
