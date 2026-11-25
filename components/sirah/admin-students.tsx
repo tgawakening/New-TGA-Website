@@ -13,6 +13,7 @@ import {
   sirahNetReceivedMinor,
   sirahPendingRefundMinor,
 } from "@/lib/sirah/refund-display";
+import { AdminLedger } from "./admin-ledger";
 import { RowMenu, type RowMenuItem } from "./admin-row-menu";
 import styles from "./admin-students.module.css";
 
@@ -1659,6 +1660,7 @@ export function SirahAdminStudents({
             </section>
 
             <div className={`ga-admin-modal-section ${styles.records}`}>
+              <AdminLedger key={selected.id} id={selected.id} canEdit={canManageEnrolments} />
               <details>
                 <summary>Receipt evidence ({selected.receipts.length})</summary>
                 {selected.receipts.map((receipt) => (

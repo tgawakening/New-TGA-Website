@@ -1,0 +1,67 @@
+"use client";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
+
+type Ledger = { settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
+export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const [data, setData] = useState<Ledger | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [link, setLink] = useState<{ url: string; amountMinor: number; currency: string; expiresAt: string } | null>(null);
+  const load = useCallback(async () => {
+    const response = await fetch(`/api/admin/sirah/ledger?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Unable to load balance.");
+    setData(result);
+  }, [id]);
+  useEffect(() => { void load().catch((e) => setError(e.message)); }, [load]);
+  async function submit(event: FormEvent<HTMLFormElement>, action: string) {
+    event.preventDefault();
+    const form = event.currentTarget, values = new FormData(form);
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(action === "agreement" ? "/api/admin/sirah/agreement" : "/api/admin/sirah/ledger", action === "agreement" ? { method: "POST", body: values } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action, amount: values.get("amount"), method: values.get("method"), date: values.get("date"), note: values.get("note") }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to save.");
+      form.reset(); await load();
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to save."); } finally { setBusy(false); }
+  }
+  async function generateLink() {
+    setBusy(true); setError(""); setLink(null);
+    try {
+      const response = await fetch("/api/admin/sirah/settlement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+      const result = await response.json();
+      if (!response.ok) { await load(); throw new Error(result.error || "Unable to create link."); }
+      setLink(result);
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to create link."); } finally { setBusy(false); }
+  }
+  const currencyMismatch = !!data && ((data.ledgerFeeMinor !== null && data.ledgerFeeCurrency !== data.currency) || data.ledgerPayments.some((payment) => payment.currency !== data.currency));
+  const received = data?.ledgerPayments.filter((payment) => payment.currency === data.currency).reduce((sum, payment) => sum + payment.amountMinor, 0) ?? 0;
+  return <section style={{ marginTop: "1.5rem" }}>
+    <h4>Payments &amp; balance</h4>
+    {error && <p role="alert">{error}</p>}
+    {!data ? <p>Loading balance?</p> : <>
+      <p>Course fee: {data.ledgerFeeMinor === null ? "Not set" : data.ledgerFeeCurrency ? formatSirahMoney(data.ledgerFeeMinor, data.ledgerFeeCurrency) : "Currency not recorded; set the fee again"}</p>
+      <p>Total received (ledger, {data.currency}): {formatSirahMoney(received, data.currency)}</p>
+      {currencyMismatch && <p role="alert">The course fee or ledger entries have a different or unknown currency. Reconcile them before relying on the balance or generating a new link.</p>}
+      <p>Outstanding: {data.ledgerFeeMinor === null ? "Set the course fee first" : currencyMismatch ? "Unavailable: currencies differ" : formatSirahMoney(Math.max(0, data.ledgerFeeMinor - received), data.currency)}</p>
+      <p>Existing payment records are separate; enter previously received payments here once.</p>
+      {canEdit && <>
+        <button type="button" disabled={busy || (!data.settlements.length && (currencyMismatch || data.ledgerFeeMinor === null || data.ledgerFeeMinor <= received))} onClick={() => void generateLink()}>Generate balance payment link</button>
+        {link && <p>Card link for {formatSirahMoney(link.amountMinor, link.currency)} (expires {new Date(link.expiresAt).toLocaleString()}): <a href={link.url} target="_blank" rel="noreferrer">Open payment link</a> <button type="button" onClick={() => void navigator.clipboard.writeText(link.url)}>Copy link</button></p>}
+        <p>While a balance link is open, fee and manual payment changes are locked. Generate the link again to retrieve or reconcile it.</p>
+        <form onSubmit={(event) => void submit(event, "fee")}><label>Course fee ({data.currency}) <input name="amount" type="number" min="0" step="any" defaultValue={data.ledgerFeeMinor === null || data.ledgerFeeCurrency !== data.currency ? "" : minorToDecimal(data.ledgerFeeMinor, data.currency)} required /></label> <button disabled={busy}>Save fee</button></form>
+        <form onSubmit={(event) => void submit(event, "payment")}>
+          <h5>Record received payment</h5>
+          <label>Amount ({data.currency}) <input name="amount" type="number" min="0" step="any" required /></label>{" "}
+          <label>Method <select name="method" required><option value="JAZZCASH">JazzCash</option><option value="BANK">Bank</option><option value="CASH">Cash</option><option value="STRIPE">Stripe</option><option value="OTHER">Other</option></select></label>{" "}
+          <label>Date <input name="date" type="date" required /></label>{" "}
+          <label>Note <input name="note" maxLength={1000} /></label>{" "}<button disabled={busy}>Record payment</button>
+        </form>
+        {!data.agreement && <form onSubmit={(event) => void submit(event, "agreement")}><h5>Signed agreement</h5><input type="hidden" name="id" value={id} /><input type="file" name="file" accept="application/pdf,.pdf" required /> <button disabled={busy}>Upload PDF</button></form>}
+      </>}
+      {data.agreement && <p><a href={`/api/admin/sirah/agreement?id=${encodeURIComponent(id)}`}>Download agreement: {data.agreement.filename}</a></p>}
+      {data.ledgerPayments.length > 0 && <ul>{data.ledgerPayments.map((payment) => <li key={payment.id}>{payment.receivedAt.slice(0, 10)} ? {formatSirahMoney(payment.amountMinor, payment.currency)} ? {payment.method}{payment.note && ` ? ${payment.note}`}</li>)}</ul>}
+    </>}
+  </section>;
+}
