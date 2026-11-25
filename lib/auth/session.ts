@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { clearAdminSessionCookie } from "@/lib/auth/admin-session";
 
 const SESSION_COOKIE_NAME = "ga_session";
 const SESSION_DAYS = 14;
@@ -44,6 +45,9 @@ export async function createSession(userId: string, hours?: number): Promise<str
 
 export async function attachSessionCookie(response: NextResponse, userId: string, hours?: number) {
   const token = await createSession(userId, hours);
+  // A browser holds one identity at a time: signing a student in must never
+  // leave an earlier super-admin session (ga_admin_session) active alongside it.
+  clearAdminSessionCookie(response);
   response.cookies.set(SESSION_COOKIE_NAME, token, getCookieOptions(getExpiryDate(hours)));
 }
 
@@ -69,6 +73,8 @@ export async function clearSessionCookie(response: NextResponse) {
     });
   }
   response.cookies.set(SESSION_COOKIE_NAME, "", { path: "/", maxAge: 0 });
+  // Signing out ends any super-admin session in this browser too.
+  clearAdminSessionCookie(response);
 }
 
 export async function getCurrentUser() {
