@@ -1,8 +1,120 @@
-.scholarship-application { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem; line-height: 1.6; color: #272a30; }
-.scholarship-application h1 { font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.15; margin: 1.5rem 0; }
-.scholarship-notice { background: #fff0d1; border-left: 4px solid #a76505; padding: 1rem; }
-.scholarship-form { display: grid; gap: 1rem; margin-top: 1.5rem; }
-.scholarship-form label { display: grid; gap: .35rem; font-weight: 600; }
-.scholarship-form input, .scholarship-form select, .scholarship-form textarea { width: 100%; border: 1px solid #9299a1; border-radius: 5px; padding: .7rem; color: #15191f; background: white; font: inherit; }
-.scholarship-form textarea { min-height: 8rem; }
-.scholarship-form button { justify-self: start; padding: .8rem 1.2rem; border: 0; border-radius: 5px; color: white; background: #243b5b; cursor: pointer; }
+.scholarship-application {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 48rem);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 1.5rem 5rem;
+  color: var(--sand, #ede9df);
+  font-family: var(--body, sans-serif);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.scholarship-application::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 85% 0%, rgba(43, 182, 163, 0.12), transparent 50%),
+    radial-gradient(ellipse at 5% 95%, rgba(217, 121, 79, 0.08), transparent 48%),
+    linear-gradient(180deg, #0f1729, var(--bg, #141d33) 55%, #111a2e);
+}
+
+.scholarship-application::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image:
+    linear-gradient(45deg, #ede9df 1px, transparent 1px),
+    linear-gradient(-45deg, #ede9df 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.scholarship-application > a {
+  color: var(--tealb, #48d6c2);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.scholarship-application > a:hover { text-decoration: underline; }
+
+.scholarship-application h1 {
+  margin: 1.5rem 0 1rem;
+  color: var(--sand, #ede9df);
+  font-family: var(--display, Georgia, serif);
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  font-weight: 500;
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+}
+
+.scholarship-application > p:not(.scholarship-notice) {
+  color: #dedbd3;
+  font-size: 1.05rem;
+}
+
+.scholarship-application .scholarship-notice {
+  margin: 1.75rem 0 0;
+  padding: 1rem 1.2rem;
+  border-left: 4px solid #a76505;
+  border-radius: 0 8px 8px 0;
+  background: #fff0d1;
+  color: #302311;
+}
+
+.scholarship-application .scholarship-form {
+  display: grid;
+  gap: 1.2rem;
+  margin-top: 2rem;
+}
+
+.scholarship-application .scholarship-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--sand, #ede9df);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.scholarship-application .scholarship-form p { color: #dedbd3; }
+.scholarship-application .scholarship-form [role="alert"] { color: #ffb8a7; }
+.scholarship-application .scholarship-form [role="status"] { color: #a4f0d9; }
+
+.scholarship-application .scholarship-form :is(input, select, textarea) {
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #bec5cc;
+  border-radius: 8px;
+  background: #fff;
+  color: #15191f;
+  font: inherit;
+  font-weight: 400;
+}
+
+.scholarship-application .scholarship-form input::placeholder { color: #565f6a; opacity: 1; }
+.scholarship-application .scholarship-form textarea { min-height: 8rem; resize: vertical; }
+.scholarship-application .scholarship-form input[type="file"] { font-size: 0.875rem; }
+
+.scholarship-application .scholarship-form button {
+  justify-self: start;
+  padding: 0.85rem 1.35rem;
+  border: 0;
+  border-radius: 8px;
+  background: var(--tealb, #48d6c2);
+  color: var(--on-teal, #06211c);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.scholarship-application .scholarship-form button:hover:not(:disabled) { background: #70e5d3; }
+.scholarship-application .scholarship-form button:disabled { opacity: 0.7; cursor: wait; }
+.scholarship-application :focus-visible { outline: 3px solid var(--tealb, #48d6c2); outline-offset: 3px; }
