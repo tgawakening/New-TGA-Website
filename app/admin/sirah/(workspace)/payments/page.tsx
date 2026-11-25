@@ -8,6 +8,7 @@ import { getAdminNotifications } from "@/services/admin.service";
 export default async function SirahPaymentsPage() {
   const access = await getSirahWorkspaceAccess();
   if (!access) redirect("/admin/sirah/login");
+  if (access.role === "COMMUNITY_LEAD") redirect("/admin/sirah/overview");
   const notifications = access.readOnly ? [] : await getAdminNotifications();
   return (
     <SirahAdminStudents

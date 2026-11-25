@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSessionIdentity } from "@/lib/auth/session";
+import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { hostsForIdentity, lmsSessionsAvailable, teacherSessions, type SessionView } from "@/lib/lms/schedule";
 import { prisma } from "@/lib/prisma";
@@ -99,7 +100,7 @@ export default async function TeacherSessionsPage({ searchParams }: { searchPara
   const pastIds = past.map(session => session.id);
   const recordingMap = await recordingsAvailable() ? await recordingsForSessions(pastIds) : new Map<string, RecordingAdminView[]>();
   const external = resources ? await externalRecordingsForSessions(pastIds) : [];
-  const partner = await prisma.zoomHost.findFirst({ where: { id: { in: hosts.map(host => host.id) }, active: true, revenuePartner: true }, select: { id: true } });
+  const canViewRevenue = (await getSirahWorkspaceAccess())?.role === "SUPER_ADMIN";
 
   return (
     <div className={s.page}>
@@ -116,7 +117,7 @@ export default async function TeacherSessionsPage({ searchParams }: { searchPara
               Start as host opens Zoom with a fresh host link each time; students wait in the waiting room until you admit them.
             </p>
             <p><a href="mailto:admin@tgaawakening.com?subject=Schedule%20a%20class">Request a class time</a> from the course administrator.</p>
-            {partner && <p><Link href="/seerah/classroom/teaching/revenue">Revenue and partnership</Link></p>}
+            {canViewRevenue && <p><Link href="/seerah/classroom/teaching/revenue">Revenue and partnership</Link></p>}
           </div>
         </section>
 

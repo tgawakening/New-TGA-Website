@@ -55,9 +55,9 @@ test("staff login issues only the scoped database session and clears an old full
   const record = await getSessionIdentity(req("/", session.value)); assert.equal(record?.role, "SIRAH_VIEWER");
 });
 test("only scoped read APIs accept team access; arbitrary batch/course filters cannot expose other applications", async () => {
-  // A SIRAH_VIEWER (Community Lead) is read-only apart from the "added to group" toggle.
+  // Community Leads retain scoped scholarship reads and group status access; student records are restricted.
   assert.deepEqual(await getSirahWorkspaceAccess(req("/")), { role: "COMMUNITY_LEAD", readOnly: true, canApproveScholarships: false, canCreateDiscountCodes: false, canManageEnrolments: false, canManageAccess: false, canMarkGroupAdded: true });
-  assert.equal((await enrolments(req("/api/admin/sirah"))).status, 200);
+  assert.equal((await enrolments(req("/api/admin/sirah"))).status, 403);
   const response = await scholarships(req(`/api/admin/sirah/scholarships?q=${prefix}&courseSlug=unrelated-course&scholarshipBatch=other`));
   assert.equal(response.status, 200); assert.equal(response.headers.get("cache-control"), "private, no-store");
   const result = await response.json(); assert.equal(result.rows.length, 1); assert.equal(result.rows[0].id, currentId); assert.equal(result.rows[0].scholarshipDetails.skillLearningPlan, "Learn design to support community classes");

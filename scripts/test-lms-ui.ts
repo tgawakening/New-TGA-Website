@@ -93,6 +93,8 @@ let crypto: typeof import("../lib/lms/field-crypto");
 let token: typeof import("../lib/zoom/token");
 let schedule: typeof import("../lib/lms/schedule");
 let actions: typeof import("../app/admin/sirah/(workspace)/classroom/live/actions");
+let contentActions: typeof import("../app/admin/sirah/(workspace)/classroom/content/actions");
+let ContentPage: typeof import("../app/admin/sirah/(workspace)/classroom/content/page").default;
 let AdminPage: typeof import("../app/admin/sirah/(workspace)/classroom/live/page").default;
 let SchedulePage: typeof import("../app/seerah/classroom/schedule/page").default;
 let ClassroomPage: typeof import("../app/seerah/classroom/page").default;
@@ -112,6 +114,8 @@ before(async () => {
   token = await import("../lib/zoom/token");
   schedule = await import("../lib/lms/schedule");
   actions = await import("../app/admin/sirah/(workspace)/classroom/live/actions");
+  contentActions = await import("../app/admin/sirah/(workspace)/classroom/content/actions");
+  ContentPage = (await import("../app/admin/sirah/(workspace)/classroom/content/page")).default;
   AdminPage = (await import("../app/admin/sirah/(workspace)/classroom/live/page")).default;
   SchedulePage = (await import("../app/seerah/classroom/schedule/page")).default;
   ClassroomPage = (await import("../app/seerah/classroom/page")).default;
@@ -266,14 +270,17 @@ describe("admin live sessions", () => {
     assert.ok(!other.includes("Week 3: Hijrah"));
   });
 
-  test("managers may manage sessions but get no Start link; community leads are sent away", async () => {
+  test("managers manage sessions; community leads see only creation controls", async () => {
     seedSession(new Date(Date.now() + 2 * 86_400_000));
     access = { role: "MANAGER" };
     const html = await render(AdminPage({ searchParams: Promise.resolve({}) }));
     assert.match(html, /Schedule session/);
     assert.ok(!html.includes("/start"), "start route admits only the super admin or the host");
+    assert.doesNotMatch(html, /Cancel session|Delete session|Delete recording/);
     access = { role: "COMMUNITY_LEAD" };
-    assert.equal((await outcome(() => AdminPage({ searchParams: Promise.resolve({}) }))).redirect, "/admin/sirah");
+    const leadHtml = await render(AdminPage({ searchParams: Promise.resolve({}) }));
+    assert.match(leadHtml, /Schedule session/);
+    assert.doesNotMatch(leadHtml, /Delete session|Delete recording|Attendance|Save changes/);
     access = null;
     assert.equal((await outcome(() => AdminPage({ searchParams: Promise.resolve({}) }))).redirect, "/admin/sirah/login");
   });
@@ -303,6 +310,10 @@ describe("admin live sessions", () => {
     assert.equal(row.durationMin, 60);
 
     calls = [];
+    const deniedCancel = await outcome(() => actions.cancelLiveSession(form({ id: String(row.id), cohortId: SIRAH_BATCH })));
+    assert.equal(deniedCancel.redirect, "/admin/sirah/overview");
+    assert.notEqual(row.status, "CANCELLED");
+    access = { role: "SUPER_ADMIN" };
     const cancelled = await outcome(() => actions.cancelLiveSession(form({ id: String(row.id), cohortId: SIRAH_BATCH })));
     assert.match(query(cancelled.redirect!).notice, /Session cancelled/);
     assert.equal(apiCalls()[0].method, "DELETE");
@@ -353,8 +364,21 @@ describe("admin live sessions", () => {
     await outcome(() => actions.saveStandaloneRecordingAction(form({ ...fields, id: String(item.id), title: "Class 1", publish: "" })));
     assert.equal(item.title, "Class 1");
     assert.equal(item.visibility, "HIDDEN");
+    assert.equal((await outcome(() => actions.deleteStandaloneRecordingAction(form({ id: String(item.id) })))).redirect, "/admin/sirah/overview");
+    assert.equal(table("lmsResource").length, 1);
+    access = { role: "SUPER_ADMIN" };
     await outcome(() => actions.deleteStandaloneRecordingAction(form({ id: String(item.id) })));
     assert.equal(table("lmsResource").length, 0);
+  });
+
+  test("only the Super Admin sees standalone recording deletion", async () => {
+    access = { role: "MANAGER" };
+    await outcome(() => actions.saveStandaloneRecordingAction(form({ title: "Orientation", url: "https://youtu.be/example" })));
+    const manager = await render(AdminPage({ searchParams: Promise.resolve({}) }));
+    assert.doesNotMatch(manager, /Delete recording|Delete session/);
+    access = { role: "SUPER_ADMIN" };
+    const admin = await render(AdminPage({ searchParams: Promise.resolve({}) }));
+    assert.match(admin, /Delete recording/);
   });
 
   test("a Bunny recording stores only its video ID, and the form offers protected and public sources", async () => {
@@ -467,14 +491,46 @@ describe("admin live sessions", () => {
     assert.deepEqual(table("lmsSession").map((item) => item.id), [other.id]);
   });
 
-  test("community leads cannot run the actions", async () => {
+  test("community leads can create sessions but cannot edit or delete", async () => {
     access = { role: "COMMUNITY_LEAD" };
-    const result = await outcome(() =>
-      actions.createLiveSession(form({ cohortId: SIRAH_BATCH, title: "x", startsLocal: `${future(5)}T19:00`, timeZone: "UTC", durationMin: "90", hostId: "host_1" })),
-    );
-    assert.equal(result.redirect, "/admin/sirah");
-    assert.equal(table("lmsSession").length, 0);
-    assert.equal(apiCalls().length, 0);
+    const created = await outcome(() => actions.createLiveSession(form({ cohortId: SIRAH_BATCH, title: "Lead session", startsLocal: `${future(5)}T19:00`, timeZone: "UTC", durationMin: "90", hostId: "host_1" })));
+    assert.match(query(created.redirect!).notice, /Session scheduled/);
+    const session = table("lmsSession")[0];
+    assert.equal(session.title, "Lead session");
+    assert.equal((await outcome(() => actions.updateLiveSession(form({ id: String(session.id) })))).redirect, "/admin/sirah");
+    assert.equal((await outcome(() => actions.deleteLiveSession(form({ id: String(session.id), cohortId: SIRAH_BATCH })))).redirect, "/admin/sirah");
+    assert.equal((await outcome(() => actions.deleteStandaloneRecordingAction(form({ id: "recording" })))).redirect, "/admin/sirah");
+    assert.equal(table("lmsSession").length, 1);
+  });
+
+  test("community leads can create resources and announcements but not modify existing items", async () => {
+    access = { role: "COMMUNITY_LEAD" };
+    const html = await render(ContentPage({ searchParams: Promise.resolve({}) }));
+    assert.match(html, /Add a resource/);
+    assert.match(html, /New announcement/);
+    assert.doesNotMatch(html, /Yes, remove|Save changes|Class tasks/);
+    const resource = await outcome(() => contentActions.addResource(form({ cohortId: SIRAH_BATCH, target: "cohort", title: "Reading", url: "https://example.test/reading" })));
+    assert.match(query(resource.redirect!).notice, /Resource added/);
+    assert.equal(table("lmsResource").length, 1);
+    const announcement = await outcome(() => contentActions.saveAnnouncement(form({ cohortId: SIRAH_BATCH, title: "Welcome", body: "Welcome to the course." })));
+    assert.match(query(announcement.redirect!).notice, /Draft saved/);
+    assert.equal(table("lmsAnnouncement").length, 1);
+    const id = String(table("lmsAnnouncement")[0].id);
+    assert.equal((await outcome(() => contentActions.saveAnnouncement(form({ id, cohortId: SIRAH_BATCH, title: "Changed", body: "Changed" })))).redirect, "/admin/sirah/overview");
+    assert.equal((await outcome(() => contentActions.removeAnnouncement(form({ id, cohortId: SIRAH_BATCH })))).redirect, "/admin/sirah/overview");
+    assert.equal((await outcome(() => contentActions.removeResource(form({ id: String(table("lmsResource")[0].id), cohortId: SIRAH_BATCH })))).redirect, "/admin/sirah/overview");
+    assert.equal(table("lmsAnnouncement")[0].title, "Welcome");
+    assert.equal(table("lmsResource").length, 1);
+  });
+
+  test("a forged resource removal cannot delete a recording for a manager", async () => {
+    table("lmsResource").push({ id: "recording", kind: "LINK", contentType: "video/x-external-recording", storageKey: null });
+    access = { role: "MANAGER" };
+    await assert.rejects(() => contentActions.removeResource(form({ id: "recording", cohortId: SIRAH_BATCH })), /Only the super admin/);
+    assert.equal(table("lmsResource").length, 1);
+    access = { role: "SUPER_ADMIN" };
+    await outcome(() => contentActions.removeResource(form({ id: "recording", cohortId: SIRAH_BATCH })));
+    assert.equal(table("lmsResource").length, 0);
   });
 
   test("session detail shows webhook-driven live state and attendance, matched and unmatched", async () => {

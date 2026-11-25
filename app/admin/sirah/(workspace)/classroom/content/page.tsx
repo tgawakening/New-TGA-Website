@@ -69,7 +69,7 @@ function ConfirmRemove({ action, id, cohortId, what }: { action: (form: FormData
   );
 }
 
-function ResourceRows({ resources, cohortId }: { resources: AdminResourceRow[]; cohortId: string }) {
+function ResourceRows({ resources, cohortId, canDeleteRecording }: { resources: AdminResourceRow[]; cohortId: string; canDeleteRecording: boolean }) {
   if (!resources.length) return <p className={styles.emptyLine}>No resources yet. Add the first one below.</p>;
   return (
     <ul className={styles.rows}>
@@ -107,7 +107,7 @@ function ResourceRows({ resources, cohortId }: { resources: AdminResourceRow[]; 
                   {published ? "Hide" : "Publish"}
                 </button>
               </form>
-              <ConfirmRemove action={removeResource} id={resource.id} cohortId={cohortId} what="this resource" />
+              {(canDeleteRecording || resource.contentType !== "video/x-external-recording") && <ConfirmRemove action={removeResource} id={resource.id} cohortId={cohortId} what="this resource" />}
             </span>
           </li>
         );
@@ -123,7 +123,7 @@ export default async function LmsContentAdminPage({
 }) {
   const access = await getSirahWorkspaceAccess();
   if (!access) redirect("/admin/sirah/login");
-  if (!(access.role === "SUPER_ADMIN" || access.role === "MANAGER")) redirect("/admin/sirah");
+  const canEditExisting = access.role !== "COMMUNITY_LEAD";
   const { cohort: requested, notice, error } = await searchParams;
   const themed = `${styles.screen} ${sirahFont.variable}`;
 
@@ -167,7 +167,7 @@ export default async function LmsContentAdminPage({
           </p>
         </div>
         <div className={styles.introActions}>
-          <Link href="/admin/sirah/classroom/tasks" className={styles.secondary}>Class tasks</Link>
+          {canEditExisting && <Link href="/admin/sirah/classroom/tasks" className={styles.secondary}>Class tasks</Link>}
           <a href="#new-resource" className={styles.primary}>
             Add resource
           </a>
@@ -217,7 +217,7 @@ export default async function LmsContentAdminPage({
                 Newest first. Students open files through a short-lived signed link after their enrolment is checked; the storage bucket stays private.
               </p>
             </div>
-            <ResourceRows resources={data.resources} cohortId={cohortId} />
+            {canEditExisting && <ResourceRows resources={data.resources} cohortId={cohortId} canDeleteRecording={access.role === "SUPER_ADMIN"} />}
 
             <form action={addResource} className={styles.inlineForm} id="new-resource">
               <input type="hidden" name="cohortId" value={cohortId} />
@@ -242,7 +242,7 @@ export default async function LmsContentAdminPage({
                   </button>
                 </div>
               </div>
-              <p className={styles.help}>Added hidden. Publish it from the list when it is ready.</p>
+              <p className={styles.help}>{canEditExisting ? "Added hidden. Publish it from the list when it is ready." : "Added hidden. A manager or super admin can publish it when it is ready."}</p>
             </form>
           </section>
 
@@ -283,7 +283,7 @@ export default async function LmsContentAdminPage({
               </div>
             </form>
 
-            {data.announcements.length ? (
+            {canEditExisting && (data.announcements.length ? (
               <ul className={`${styles.rows} ${styles.noticeRows}`}>
                 {data.announcements.map((item) => (
                   <li key={item.id} id={`announcement-${item.id}`} className={styles.notice}>
@@ -336,7 +336,7 @@ export default async function LmsContentAdminPage({
               </ul>
             ) : (
               <p className={styles.emptyLine}>No announcements for this cohort yet.</p>
-            )}
+            ))}
           </section>
         </>
       ) : null}

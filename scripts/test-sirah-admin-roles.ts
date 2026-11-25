@@ -29,6 +29,9 @@ let getSirahWorkspaceAccess: typeof import("../lib/auth/sirah-workspace").getSir
 let groupStatus: Handler;
 let enrolmentsGet: Handler;
 let enrolmentsPost: Handler;
+let totalsGet: Handler;
+let ledgerGet: Handler;
+let agreementGet: Handler;
 let discountPost: Handler;
 let customLinkPost: Handler;
 let scholarshipPost: Handler;
@@ -45,6 +48,9 @@ before(async () => {
   ({ getSirahWorkspaceAccess } = await import("../lib/auth/sirah-workspace"));
   ({ POST: groupStatus } = await import("../app/api/admin/sirah/group-status/route"));
   ({ GET: enrolmentsGet, POST: enrolmentsPost } = await import("../app/api/admin/sirah/route"));
+  ({ GET: totalsGet } = await import("../app/api/admin/sirah/totals/route"));
+  ({ GET: ledgerGet } = await import("../app/api/admin/sirah/ledger/route"));
+  ({ GET: agreementGet } = await import("../app/api/admin/sirah/agreement/route"));
   ({ POST: discountPost } = await import("../app/api/admin/sirah/discount/route"));
   ({ POST: customLinkPost } = await import("../app/api/admin/sirah/custom-link/route"));
   ({ POST: scholarshipPost } = await import("../app/api/admin/sirah/scholarships/route"));
@@ -149,7 +155,7 @@ test("the group toggle is strict and refuses students, anonymous callers and oth
   assert.equal((await groupStatus(req("/api/admin/sirah/group-status", { superAdmin: true }, { orderId: o.id, added: false }))).status, 200);
 });
 
-test("a Community Lead stays read-only on every other endpoint, but can read and export", async () => {
+test("a Community Lead cannot read or export student records", async () => {
   const lead = await sessionFor("SIRAH_VIEWER");
   const o = order({ paymentState: "AWAITING_REVIEW", enrolmentState: "PENDING", method: "BANK_TRANSFER", paidCount: 0, paidMinor: 0 });
   const snapshot = JSON.stringify(sirahOrderRow(o.id));
@@ -161,11 +167,23 @@ test("a Community Lead stays read-only on every other endpoint, but can read and
   assert.equal((await accessPost(req("/api/admin/sirah/access", lead, { action: "REVOKE", userId: lead.user.id }))).status, 401);
   assert.equal(JSON.stringify(sirahOrderRow(o.id)), snapshot, "no order field changed");
   assert.equal(table("sirahManualDiscount").length, 0);
-  // Read and CSV export remain available.
-  assert.equal((await enrolmentsGet(req("/api/admin/sirah", lead))).status, 200);
-  const csv = await enrolmentsGet(req("/api/admin/sirah?format=csv", lead));
-  assert.equal(csv.status, 200);
-  assert.match((await csv.text()).split("\r\n")[0], /,Added to group,Group added at,Group added by$/);
+  assert.equal((await enrolmentsGet(req("/api/admin/sirah", lead))).status, 403);
+  assert.equal((await enrolmentsGet(req("/api/admin/sirah?format=csv", lead))).status, 403);
+  assert.equal((await ledgerGet(req(`/api/admin/sirah/ledger?id=${o.id}`, lead))).status, 403);
+  assert.equal((await agreementGet(req(`/api/admin/sirah/agreement?id=${o.id}`, lead))).status, 403);
+});
+
+test("only the Super Admin can retrieve totals, including the CSV", async () => {
+  const manager = await sessionFor("SIRAH_REVIEWER");
+  const lead = await sessionFor("SIRAH_VIEWER");
+  for (const actor of [manager, lead]) {
+    assert.equal((await totalsGet(req("/api/admin/sirah/totals", actor))).status, 403);
+    assert.equal((await totalsGet(req("/api/admin/sirah/totals?format=csv", actor))).status, 403);
+  }
+  assert.equal((await totalsGet(req("/api/admin/sirah/totals", { superAdmin: true }))).status, 200);
+  assert.equal((await totalsGet(req("/api/admin/sirah/totals?format=csv", { superAdmin: true }))).status, 200);
+  assert.equal((await enrolmentsGet(req("/api/admin/sirah", manager))).status, 200);
+  assert.equal((await enrolmentsGet(req("/api/admin/sirah?format=csv", manager))).status, 200);
 });
 
 test("a Manager can approve / complete a payment; refunds stay Super Admin only", async () => {

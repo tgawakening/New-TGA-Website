@@ -167,10 +167,17 @@ export async function setResourceVisibility(id: string, visibility: LmsVisibilit
 }
 
 /** Deletes the row; returns the storage key so the caller can remove the object (best effort). */
-export async function deleteResource(id: string) {
-  const resource = await prisma.lmsResource.findUnique({ where: { id }, select: { storageKey: true } });
+export const EXTERNAL_RECORDING_CONTENT_TYPE = "video/x-external-recording";
+
+/** Recording links may be deleted only by the Super Admin. The conditional
+ * delete also protects against a concurrent change to the resource type. */
+export async function deleteResource(id: string, allowRecording = false) {
+  const resource = await prisma.lmsResource.findUnique({ where: { id }, select: { storageKey: true, contentType: true } });
   if (!resource) return null;
-  await prisma.lmsResource.deleteMany({ where: { id } });
+  if (!allowRecording && resource.contentType === EXTERNAL_RECORDING_CONTENT_TYPE)
+    throw new LmsContentError("Only the super admin can delete a recording.");
+  const result = await prisma.lmsResource.deleteMany({ where: { id, ...(allowRecording ? {} : { OR: [{ contentType: null }, { contentType: { not: EXTERNAL_RECORDING_CONTENT_TYPE } }] }) } });
+  if (!result.count) throw new LmsContentError("That resource changed or can no longer be removed.");
   return { storageKey: resource.storageKey };
 }
 

@@ -10,12 +10,12 @@ import {
 import { SirahError } from "@/services/sirah-registration.service";
 
 /** Read-only payment totals for the admin list filters, and the matching
- * per-payment CSV (?format=csv). Super Admin and Manager only. */
+ * per-payment CSV (?format=csv). Super Admin only. */
 export async function GET(request: Request) {
   try {
     const access = await sirahReadAccess(request);
-    if (access.role !== "SUPER_ADMIN" && access.role !== "MANAGER")
-      throw new SirahError("Payment totals are for admins and managers.", 403);
+    if (access.role !== "SUPER_ADMIN")
+      throw new SirahError("Payment totals are for the super admin only.", 403);
     const params = new URL(request.url).searchParams;
     if (params.get("format") === "csv") {
       const period = [params.get("from"), params.get("to")]

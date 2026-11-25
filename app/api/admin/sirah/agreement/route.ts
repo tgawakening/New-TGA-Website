@@ -4,7 +4,8 @@ import { SirahError } from "@/services/sirah-registration.service";
 
 export async function GET(request: Request) {
   try {
-    await sirahReadAccess(request);
+    const access = await sirahReadAccess(request);
+    if (access.role === "COMMUNITY_LEAD") throw new SirahError("Student records are not available for this role.", 403);
     const orderId = new URL(request.url).searchParams.get("id") || "";
     const file = await prisma.sirahAgreement.findUnique({ where: { orderId } });
     if (!file) throw new SirahError("Agreement not found.", 404);

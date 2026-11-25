@@ -494,7 +494,7 @@ function SessionLedger({
                         </button>
                       </div>
                     </form>
-                    <div className={styles.formFoot}>
+                    {canDelete && <div className={styles.formFoot}>
                       <CancelSessionButton
                         action={cancelLiveSession}
                         sessionId={session.id}
@@ -503,7 +503,7 @@ function SessionLedger({
                         when={listDate.format(session.startsAt)}
                         className={styles.ghostDanger}
                       />
-                    </div>
+                    </div>}
                   </>
                 ) : null}
               </div>
@@ -522,7 +522,6 @@ export default async function LiveSessionsAdminPage({
 }) {
   const access = await getSirahWorkspaceAccess();
   if (!access) redirect("/admin/sirah/login");
-  if (!(access.role === "SUPER_ADMIN" || access.role === "MANAGER")) redirect("/admin/sirah");
   const { cohort: requested, notice, error } = await searchParams;
   const zone = (await viewerTimeZone()) ?? SIRAH_DEFAULT_TIMEZONE;
   const themed = `${styles.screen} ${sirahFont.variable}`;
@@ -541,13 +540,25 @@ export default async function LiveSessionsAdminPage({
   }
 
   const [cohorts, hosts] = await Promise.all([listCohorts(), listActiveHosts()]);
-  const designatedPartner = await prisma.zoomHost.findFirst({ where: { active: true, revenuePartner: true }, select: { id: true } });
-  const revenueHosts = access.role === "SUPER_ADMIN" ? await prisma.zoomHost.findMany({ where: { active: true }, select: { id: true, email: true, revenuePartner: true }, orderBy: { email: "asc" } }) : [];
   const cohortId =
     cohorts.find((c) => c.batchCode === requested)?.batchCode ??
     cohorts.find((c) => c.batchCode === SIRAH_BATCH)?.batchCode ??
     cohorts[0]?.batchCode ??
     null;
+  // Community Leads can schedule, but do not receive attendance/student data
+  // or controls for existing sessions and recordings.
+  if (access.role === "COMMUNITY_LEAD") return (
+    <section data-theme="sirah-classroom" className={themed}>
+      <header className={styles.intro}><div><h2 className={styles.title}>Live sessions</h2><p className={styles.lede}>Schedule a new session for a cohort.</p></div></header>
+      {notice && <p className={styles.flash} role="status">{notice}</p>}
+      {error && <p className={styles.flashError} role="alert">{error}</p>}
+      {cohorts.length > 1 && <form method="get" className={styles.inlineForm} aria-label="Choose a cohort"><label className={styles.label}>Cohort <select name="cohort" defaultValue={cohortId ?? ""}>{cohorts.map(c => <option key={c.batchCode} value={c.batchCode}>{c.batchCode}</option>)}</select></label><button className={styles.secondary}>Show</button></form>}
+      {cohortId ? <section className={styles.card} id="new-session"><div className={styles.cardHead}><h3 className={styles.cardTitle}>New session</h3><p className={styles.cardLede}>Creates a scheduled Zoom meeting under the chosen host.</p></div>
+        {hosts.length === 0 ? <p className={styles.emptyLine}>Register a Zoom host first.</p> : <form action={createLiveSession} className={styles.form}><input type="hidden" name="cohortId" value={cohortId} /><p className={styles.help}>Cohort: {cohortId}</p><SessionFields idPrefix="new-session" hosts={hosts} zone={zone} /><label className={styles.check}><input className={styles.checkbox} type="checkbox" name="notifyStudents" defaultChecked /> Notify students about this new class</label><div className={styles.formFoot}><button type="submit" className={styles.primary}>Schedule session</button></div></form>}
+      </section> : <p className={styles.emptyLine}>No cohort exists yet.</p>}
+    </section>
+  );
+  const revenueHosts = access.role === "SUPER_ADMIN" ? await prisma.zoomHost.findMany({ where: { active: true }, select: { id: true, email: true, revenuePartner: true }, orderBy: { email: "asc" } }) : [];
   const now = new Date();
   const data = cohortId ? await adminSessionsForCohort(cohortId, now) : null;
   const attendance = data ? await attendanceForSessions([...data.upcoming, ...data.past], now) : new Map<string, SessionAttendance>();
@@ -565,8 +576,8 @@ export default async function LiveSessionsAdminPage({
 
   return (
     <section data-theme="sirah-classroom" className={themed}>
-      {designatedPartner && <p><Link href="/seerah/classroom/teaching/revenue" className={styles.secondary}>View course revenue</Link></p>}
-      {access.role === "SUPER_ADMIN" && <section id="revenue-partners" className={styles.card}><h3 className={styles.cardTitle}>Revenue partners</h3><p className={styles.cardLede}>Grant course financial access only to a designated partner teacher.</p>{revenueHosts.map(host => <form key={host.id} action={setRevenuePartner} className={styles.inlineForm}><input type="hidden" name="hostId" value={host.id} /><input type="hidden" name="enabled" value={host.revenuePartner ? "0" : "1"} /><span>{host.email} - {host.revenuePartner ? "Access granted" : "No revenue access"}</span> <button type="submit" className={styles.secondarySmall}>{host.revenuePartner ? "Revoke access" : "Grant access"}</button></form>)}</section>}
+      {access.role === "SUPER_ADMIN" && <p><Link href="/seerah/classroom/teaching/revenue" className={styles.secondary}>View course revenue</Link></p>}
+      {access.role === "SUPER_ADMIN" && <section id="revenue-partners" className={styles.card}><h3 className={styles.cardTitle}>Revenue partners</h3><p className={styles.cardLede}>Manage partner designation. Revenue totals are restricted to the super admin.</p>{revenueHosts.map(host => <form key={host.id} action={setRevenuePartner} className={styles.inlineForm}><input type="hidden" name="hostId" value={host.id} /><input type="hidden" name="enabled" value={host.revenuePartner ? "0" : "1"} /><span>{host.email} - {host.revenuePartner ? "Access granted" : "No revenue access"}</span> <button type="submit" className={styles.secondarySmall}>{host.revenuePartner ? "Revoke access" : "Grant access"}</button></form>)}</section>}
       <header className={styles.intro}>
         <div>
           <h2 className={styles.title}>Live sessions</h2>
@@ -637,7 +648,7 @@ export default async function LiveSessionsAdminPage({
               <h3 id="upcoming-title" className={styles.cardTitle}>
                 Upcoming
               </h3>
-              <p className={styles.cardLede}>Soonest first. Times are London time. Open one to edit, start or cancel it.</p>
+              <p className={styles.cardLede}>Soonest first. Times are London time. Open one for details and available actions.</p>
             </div>
             {data.upcoming.length === 0 ? (
               <div className={styles.empty}>
@@ -717,11 +728,11 @@ export default async function LiveSessionsAdminPage({
                 <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" defaultChecked={item.visibility === "PUBLISHED"} /> Publish to enrolled students</label>
                 <button className={styles.secondarySmall} type="submit">Save changes</button>
               </form>
-              <form action={deleteStandaloneRecordingAction} className={styles.inlineForm}>
+              {access.role === "SUPER_ADMIN" && <form action={deleteStandaloneRecordingAction} className={styles.inlineForm}>
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="cohortId" value={cohortId ?? ""} />
                 <button className={styles.ghostDanger} type="submit">Delete recording</button>
-              </form>
+              </form>}
             </details>
           ))}
         </section>
