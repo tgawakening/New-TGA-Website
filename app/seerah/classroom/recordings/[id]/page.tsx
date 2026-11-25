@@ -7,6 +7,9 @@ import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { classroomClock } from "@/components/indigo/classroom/clock";
 import { ClassroomHeader } from "@/components/indigo/classroom/parts";
 import { RecordingPlayer } from "@/components/indigo/classroom/recording-player";
+import { TaskLinks } from "@/components/sirah/tasks/task-links";
+import { studentTaskList } from "@/lib/lms/tasks";
+import { prisma } from "@/lib/prisma";
 import s from "@/components/indigo/classroom/classroom.module.css";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +28,10 @@ export default async function RecordingPage({ params }: { params: Promise<{ id: 
 
   const clock = classroomClock(user.studentProfile?.timezone);
   const decision = (await recordingsAvailable()) ? await resolveRecordingPlayback(user.id, id) : null;
+  const [tasks, parent] = decision?.ok && user.status === "ACTIVE"
+    ? await Promise.all([studentTaskList(user.id), prisma.recording.findUnique({ where: { id }, select: { sessionId: true } })])
+    : [[], null];
+  const recordingTasks = tasks.filter((task) => task.recordingId === id || (parent && task.sessionId === parent.sessionId)).map((task) => ({ id: task.id, title: task.title, submitted: task.submissions.length > 0 }));
   const back = { href: "/seerah/classroom/schedule", label: "Live classes" };
 
   return (
@@ -38,6 +45,7 @@ export default async function RecordingPage({ params }: { params: Promise<{ id: 
               {decision.title}
             </h1>
             <RecordingPlayer src={playPath(id)} kind={decision.kind} title={decision.title} />
+            <TaskLinks tasks={recordingTasks} />
             <p className={s.recordingMeta}>
               Recorded <time dateTime={decision.startsAt.toISOString()}>{clock.longDate.format(decision.startsAt)}</time> ({clock.zoneName}).
               For enrolled students only: please do not share or re-record it.

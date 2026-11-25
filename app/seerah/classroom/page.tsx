@@ -7,6 +7,7 @@ import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { studentPhase5 } from "@/lib/lms/student-phase5";
 import { studentExternalRecordings, studentStandaloneRecordings } from "@/lib/lms/external-recordings";
 import { recordingsAvailable, studentRecordings, watchPath } from "@/lib/lms/recordings";
+import { studentTaskList } from "@/lib/lms/tasks";
 import {
   getClassroomData,
   getCompletedLessonIds,
@@ -39,6 +40,7 @@ export default async function SirahClassroomPage() {
     phase5 ? studentExternalRecordings(user.id, now) : [],
     phase5 ? studentStandaloneRecordings(user.id, now) : [],
   ]);
+  const tasks = user.status === "ACTIVE" ? await studentTaskList(user.id, now) : [];
 
   return (
     <ClassroomOverview
@@ -52,6 +54,7 @@ export default async function SirahClassroomPage() {
       recordings={recordings.map((recording) => ({ sessionId: recording.sessionId, href: watchPath(recording.recordingId) }))}
       externalRecordings={external.flatMap((recording) => recording.sessionId && recording.url ? [{ id: recording.id, sessionId: recording.sessionId, title: recording.title, url: recording.url }] : [])}
       standaloneRecordings={standalone.flatMap((recording) => recording.url ? [{ id: recording.id, title: recording.title, description: recording.originalFilename }] : [])}
+      tasks={tasks.map((task) => ({ id: task.id, title: task.title, submitted: task.submissions.length > 0, sessionId: task.sessionId, recordingId: task.recordingId, externalRecordingId: task.externalRecordingId }))}
     />
   );
 }
