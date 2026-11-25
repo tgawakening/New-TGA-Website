@@ -1,0 +1,1 @@
+ALTER TABLE `ZoomHost` ADD COLUMN `revenuePartner` BOOLEAN NULL;

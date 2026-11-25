@@ -1,6 +1,11 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { hostsForIdentity } from "@/lib/lms/schedule";
+import { createSession, LmsSessionError } from "@/lib/lms/sessions";
+import { notifySessionScheduled } from "@/lib/lms/notifications";
+import { zonedLocalToUtc } from "@/lib/sirah/classroom";
 import { getSessionIdentity } from "@/lib/auth/session";
 import {
   createLinkResource,
@@ -107,4 +112,26 @@ export async function removeHostResource(form: FormData) {
   revalidatePath(page(sessionId));
   revalidatePath("/seerah/classroom");
   back(sessionId, { notice: "Resource removed." });
+}
+
+/** Hosts can schedule for cohorts in which they already have an assigned session. */
+export async function scheduleTeacherSession(form: FormData) {
+  const identity = await getSessionIdentity();
+  const hosts = await hostsForIdentity(identity);
+  const hostId = safe(text(form, "hostId"));
+  const cohortId = safe(text(form, "cohortId"));
+  const assigned = hosts.some(host => host.id === hostId) && await prisma.lmsSession.findFirst({ where: { zoomHostId: hostId, cohortId }, select: { id: true } });
+  if (!assigned) redirect("/seerah/classroom/teaching?error=Not+authorised+for+that+cohort#schedule");
+  const startsAt = zonedLocalToUtc(text(form, "startsLocal"), text(form, "timeZone"));
+  const durationMin = Number(text(form, "durationMin"));
+  if (!startsAt || !Number.isInteger(durationMin)) redirect("/seerah/classroom/teaching?error=Enter+a+valid+date+and+duration#schedule");
+  let id = "";
+  let error = "";
+  try { id = (await createSession({ hostId, cohortId, startsAt, durationMin, title: text(form, "title") })).id; }
+  catch (failure) { error = failure instanceof LmsSessionError ? failure.message : "The session could not be scheduled. Please contact the administrator."; }
+  if (error) redirect(`/seerah/classroom/teaching?error=${encodeURIComponent(error)}#schedule`);
+  if (form.get("notifyStudents") === "on") notifyLater(() => notifySessionScheduled(id), "lms-host");
+  revalidatePath("/seerah/classroom/teaching");
+  revalidatePath("/seerah/classroom/schedule");
+  redirect("/seerah/classroom/teaching?notice=Session+scheduled#upcoming");
 }

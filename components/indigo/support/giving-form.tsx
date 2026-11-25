@@ -164,7 +164,6 @@ export function GivingForm({ config, countries, accounts }: { config: MissionSup
           <legend>Choose your payment method</legend>
           <div>
             <label><input type="radio" name="mission-method" value="STRIPE" checked={paymentMethod === "STRIPE"} onChange={() => setPaymentMethod("STRIPE")} /><span><strong>Stripe / Card</strong><small>One-time / monthly</small></span></label>
-            <label><input type="radio" name="mission-method" value="PAYPAL" checked={paymentMethod === "PAYPAL"} onChange={() => { setPaymentMethod("PAYPAL"); setFrequency("ONE_TIME"); }} /><span><strong>PayPal</strong><small>One-time giving</small></span></label>
             {countryCode === "PK" && <label><input type="radio" name="mission-method" value="BANK_TRANSFER" checked={isManual} onChange={() => setPaymentMethod("BANK_TRANSFER")} /><span><strong>Bank / JazzCash</strong><small>PK only; admin review</small></span></label>}
           </div>
         </fieldset>

@@ -55,12 +55,6 @@ const methodLabel = (method: SirahMethod) =>
     BANK_TRANSFER: "Pay by bank transfer",
     JAZZCASH: "Pay with JazzCash",
   })[method];
-// Presentment currencies Stripe's PayPal payment method supports. The PayPal
-// hint must not appear for currencies it cannot charge in (e.g. PKR, INR).
-const STRIPE_PAYPAL_CURRENCIES = new Set([
-  "AUD", "CAD", "CHF", "CZK", "DKK", "EUR", "GBP",
-  "HKD", "NOK", "NZD", "PLN", "SEK", "SGD", "USD",
-]);
 const draftKey = "tga-sirah-registration-draft-v1";
 class ApiError extends Error {
   fields?: Record<string, string[]>;
@@ -500,12 +494,9 @@ export function SirahRegistrationForm({
       .then((result) => {
         if (!controller.signal.aborted) {
           setQuoteError("");
-          if (!selectedMethod || !result.methods?.includes(selectedMethod)) {
-            setSelectedMethod(
-              result.methods?.includes("STRIPE")
-                ? "STRIPE"
-                : result.methods?.[0] || "",
-            );
+          const availableMethods = (result.methods || []).filter((method: SirahMethod) => method !== "PAYPAL");
+          if (!selectedMethod || !availableMethods.includes(selectedMethod)) {
+            setSelectedMethod(availableMethods.includes("STRIPE") ? "STRIPE" : availableMethods[0] || "");
           }
           setQuote({
             country: billing,
@@ -518,7 +509,7 @@ export function SirahRegistrationForm({
             amountMinor: result.pricing.amountMinor,
             totalMinor: result.pricing.totalMinor,
             cardAvailable: Boolean(result.cardAvailable),
-            methods: result.methods || [],
+            methods: availableMethods,
             cohort: result.cohort,
             terms: result.terms,
             manualAccounts: result.manualAccounts || [],
@@ -627,7 +618,7 @@ export function SirahRegistrationForm({
             if (!initialPlan && ["MONTHLY", "ANNUAL"].includes(saved.plan))
               setPlan(saved.plan);
             if (
-              ["STRIPE", "PAYPAL", "BANK_TRANSFER", "JAZZCASH"].includes(
+              ["STRIPE", "BANK_TRANSFER", "JAZZCASH"].includes(
                 saved.selectedMethod,
               )
             )
@@ -2163,16 +2154,6 @@ export function SirahRegistrationForm({
                   setAccepted(false);
                 }}
               />
-              {quote?.country === billing &&
-                quote.plan === plan &&
-                quote.methods.includes("STRIPE") &&
-                !quote.methods.includes("PAYPAL") &&
-                STRIPE_PAYPAL_CURRENCIES.has(quote.currency) && (
-                  <p>
-                    Prefer PayPal? Choose Card and you can pay with PayPal on
-                    the payment page.
-                  </p>
-                )}
               {billing === "IN" &&
                 quote?.country === billing &&
                 quote.plan === plan &&

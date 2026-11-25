@@ -294,6 +294,7 @@ export async function startSirahCheckout(
         // Keep TGA as the seller; account defaults must not opt this existing
         // integration into Stripe's separate Managed Payments merchant model.
         ...{ managed_payments: { enabled: false } },
+        excluded_payment_method_types: ["paypal"],
         mode: order.plan === "ANNUAL" ? "payment" : "subscription",
         client_reference_id: order.id,
         success_url: `${returnUrl}&session_id={CHECKOUT_SESSION_ID}`,

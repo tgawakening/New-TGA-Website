@@ -13,6 +13,7 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 
 let state;
 let emails;
+let emailFailures = 0;
 let createdSessions;
 const duplicate = () => new Prisma.PrismaClientKnownRequestError('Duplicate event', { code: 'P2002', clientVersion: '6.19.2' });
 const matches = (item, where) => Object.entries(where).every(([key, value]) => value && typeof value === 'object' && 'in' in value ? value.in.includes(item[key]) : item[key] === value);
@@ -54,6 +55,7 @@ const fakeStripe = {
     async create(params, options) { createdSessions.push({ params, options }); return { id: 'cs_test_example', url: 'https://checkout.stripe.com/example', ...params }; },
     async retrieve() { return state.session; },
   } },
+  paymentIntents: { async retrieve(id) { return { id, latest_charge: { amount: 2500, currency: 'gbp', receipt_url: 'https://pay.stripe.com/receipts/test' } }; } },
   subscriptions: { async retrieve() { return state.subscription; } },
   invoicePayments: { async list() { return { data: [{ status: 'paid', payment: { payment_intent: 'pi_invoice' } }] }; } },
   billingPortal: { sessions: { async create(params) { return { url: 'https://billing.stripe.com/example', ...params }; } } },
@@ -64,7 +66,7 @@ class FakeStripe { constructor() { return fakeStripe; } }
 const originalLoad = Module._load;
 Module._load = function(request, parent, isMain) {
   if (request === '@/lib/prisma') return { prisma: store };
-  if (request === '@/lib/email') return { sendTransactionalEmail: async data => { emails.push(data); return { status: 'SENT' }; }, notifyAdmins: async () => ({ status: 'SENT' }) };
+  if (request === '@/lib/email') return { sendTransactionalEmail: async data => { if (emailFailures > 0) { emailFailures--; throw new Error('temporary email failure'); } emails.push(data); return { status: 'SENT' }; }, notifyAdmins: async () => ({ status: 'SENT' }) };
   if (request === 'server-only') return {};
   if (request === 'stripe') return FakeStripe;
   if (request.startsWith('@/')) request = path.join(root, request.slice(2));
@@ -81,7 +83,7 @@ const session = (extra = {}) => ({ id: 'cs_test_example', metadata: { paymentKin
 const invoice = (extra = {}) => ({ id: 'in_test', amount_paid: 2500, amount_due: 2500, currency: 'gbp', status: 'paid', hosted_invoice_url: 'https://invoice.stripe.com/test', customer: 'cus_test', parent: { subscription_details: { subscription: 'sub_test', metadata: { paymentKind: 'MISSION_SUPPORT', donationId: 'donation-1' } } }, ...extra });
 beforeEach(() => {
   state = { manual: new Map(), donations: new Map([['donation-1', structuredClone(baseDonation)]]), payments: new Map(), events: new Set(), session: session(), subscription: { id: 'sub_test', customer: 'cus_test', status: 'canceled', cancel_at_period_end: true }, charge: { amount_refunded: 2500, refunded: true } };
-  emails = []; createdSessions = [];
+  emails = []; emailFailures = 0; createdSessions = [];
   Object.assign(process.env, { STRIPE_SECRET_KEY: 'sk_test_local_only', STRIPE_WEBHOOK_SECRET: 'whsec_local_only', MISSION_SUPPORT_MANAGEMENT_SECRET: 'local-unit-test-secret-at-least-32-characters', NEXT_PUBLIC_APP_URL: 'http://localhost:3000', MISSION_SUPPORT_PAYMENTS_ENABLED: 'false', MISSION_SUPPORT_LIVE_APPROVED: 'false' });
 });
 
@@ -154,8 +156,20 @@ test('duplicate one-time webhooks create one receipt and one acknowledgment', as
   await service.handleMissionSupportStripeEvent(paid, fakeStripe);
   await service.handleMissionSupportStripeEvent(paid, fakeStripe);
   await service.handleMissionSupportStripeEvent(event('checkout.session.async_payment_succeeded', session(), 'evt_2'), fakeStripe);
-  assert.equal(state.payments.size, 1); assert.equal(emails.length, 1); assert.match(emails[0].text, /Sponsor Learning Access/);
+  assert.equal(state.payments.size, 1); assert.equal(emails.length, 1); assert.match(emails[0].text, /Sponsor Learning Access/); assert.match(emails[0].text, /https:\/\/pay.stripe.com\/receipts\/test/);
   assert.equal((await service.getMissionPaymentConfirmation('cs_test_example')).status, 'confirmed');
+});
+test('one-time receipt retries after email delivery fails without double counting payment', async () => {
+  const paid = event('checkout.session.completed', session());
+  emailFailures = 1;
+  await assert.rejects(service.handleMissionSupportStripeEvent(paid, fakeStripe), /temporary email failure/);
+  assert.equal(state.payments.size, 1);
+  assert.equal(emails.length, 0);
+  await service.handleMissionSupportStripeEvent(paid, fakeStripe);
+  assert.equal(state.payments.size, 1);
+  assert.equal(emails.length, 1);
+  assert.match(emails[0].text, /https:\/\/pay.stripe.com\/receipts\/test/);
+  assert.ok([...state.payments.values()][0].receiptSentAt);
 });
 test('monthly checkout completion alone does not count income', async () => {
   state.donations.get('donation-1').frequency = 'MONTHLY';
