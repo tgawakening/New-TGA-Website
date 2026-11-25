@@ -91,6 +91,7 @@ let AdminPage: typeof import("../app/admin/sirah/(workspace)/classroom/live/page
 let SchedulePage: typeof import("../app/seerah/classroom/schedule/page").default;
 let ClassroomPage: typeof import("../app/seerah/classroom/page").default;
 let TeachingPage: typeof import("../app/seerah/classroom/teaching/page").default;
+let RecordingLibrary: typeof import("../components/indigo/classroom/recording-library").RecordingLibrary;
 let SIRAH_BATCH: string;
 let SIRAH_SLUG: string;
 before(async () => {
@@ -107,6 +108,7 @@ before(async () => {
   SchedulePage = (await import("../app/seerah/classroom/schedule/page")).default;
   ClassroomPage = (await import("../app/seerah/classroom/page")).default;
   TeachingPage = (await import("../app/seerah/classroom/teaching/page")).default;
+  ({ RecordingLibrary } = await import("../components/indigo/classroom/recording-library"));
   ({ SIRAH_BATCH, SIRAH_SLUG } = await import("../lib/sirah/catalog"));
 });
 
@@ -427,6 +429,17 @@ describe("admin live sessions", () => {
 // ── Student ────────────────────────────────────────────────────────────────
 
 describe("student schedule", () => {
+  test("recording thumbnails use YouTube images and branded title cards for other sources", async () => {
+    const html = await render(React.createElement(RecordingLibrary, { items: [
+      { id: "youtube", title: "YouTube class", href: "https://youtu.be/abcdefghijk", external: true },
+      { id: "drive", title: "Drive class", href: "https://drive.google.com/file/d/file123/view", external: true },
+      { id: "zoom", title: "Recorded class", href: "/seerah/classroom/recordings/1", external: false },
+    ] }));
+    assert.match(html, /https:\/\/i\.ytimg\.com\/vi\/abcdefghijk\/hqdefault\.jpg/);
+    assert.equal((html.match(/class="fallbackTitle"/g) || []).length, 2);
+    assert.match(html, /class="fallbackTitle">Drive class/);
+    assert.match(html, /class="fallbackTitle">Recorded class/);
+  });
   test("next class has a live countdown and a dormant Join before the window; no Zoom link anywhere", async () => {
     const student = signIn(seedUser("student@example.test"));
     seedPaidOrder(student.id);
@@ -529,19 +542,38 @@ describe("student schedule", () => {
     assert.equal((await outcome(() => SchedulePage())).redirect, "/login");
   });
 
-  test("the classroom overview shows the Live classes section only when the cohort has sessions", async () => {
+  test("the classroom overview shows the real next class and chronicle", async () => {
     const student = signIn(seedUser("student@example.test"));
     seedPaidOrder(student.id);
-    // The section itself (id="live-classes"), not the words: the shared
-    // student top bar has a "Live classes" item on every classroom page.
     const before = await render(ClassroomPage());
-    assert.ok(!before.includes('id="live-classes"'), "unchanged until sessions exist");
+    assert.match(before, /No upcoming live session is scheduled/);
+    assert.doesNotMatch(before, /Your calendar/);
     const soon = seedSession(new Date(Date.now() + 10 * MIN), { title: "Week 5" });
     const html = await render(ClassroomPage());
-    assert.ok(html.includes('id="live-classes"'));
     assert.match(html, /Week 5/);
+    assert.doesNotMatch(html, /No upcoming live session is scheduled/);
     assert.ok(html.includes(`/api/sirah/lms/sessions/${soon.id}/join`));
     assert.ok(html.includes('href="/seerah/classroom/schedule"'));
+    assertNoZoomSecrets(html);
+  });
+
+  test("the chronicle shows published recordings and cohort sessions but excludes hidden and other-cohort records", async () => {
+    const student = signIn(seedUser("student@example.test"));
+    seedPaidOrder(student.id);
+    const past = seedSession(new Date(Date.now() - 2 * 86_400_000), { title: "Class 01" });
+    seedSession(new Date(Date.now() - 86_400_000), { title: "Class 02" });
+    seedSession(new Date(Date.now() - 86_400_000), { title: "Other cohort class", cohortId: "other-cohort" });
+    const base = { kind: "LINK", contentType: "video/x-external-recording", createdAt: new Date(), publishedAt: new Date(), cohortId: null, parentRecordingId: null };
+    table("lmsResource").push(
+      { ...base, id: "orientation", sessionId: null, title: "Orientation", url: "https://example.test/orientation", visibility: "PUBLISHED", originalFilename: "Welcome" },
+      { ...base, id: "visible", sessionId: past.id, title: "Class 01 recording", url: "https://example.test/recording", visibility: "PUBLISHED" },
+      { ...base, id: "hidden", sessionId: null, title: "Hidden recording", url: "https://example.test/hidden", visibility: "HIDDEN" },
+    );
+    const html = await render(ClassroomPage());
+    for (const title of ["Orientation", "Class 01", "Class 02", "Class 01 recording"]) assert.ok(html.includes(title), title);
+    assert.doesNotMatch(html, /Hidden recording|Other cohort class|Sessions appear here once the team publishes them|Your calendar/);
+    assert.match(html, /No upcoming live session is scheduled/);
+    assert.match(html, /recording available/);
     assertNoZoomSecrets(html);
   });
 

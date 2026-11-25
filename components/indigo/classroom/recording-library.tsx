@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import s from "./recording-library.module.css";
 import { RecordingPlayer } from "./recording-player";
+import { Rosette } from "@/components/indigo/ornaments";
 
 type Item = { id: string; title: string; date?: string; href: string; external: boolean; player?: { src: string; kind: "VIDEO" | "AUDIO" }; description?: string | null; resources?: { id: string; title: string; href: string }[] };
 
@@ -22,6 +23,26 @@ function embedFor(href: string) {
   return null;
 }
 
+function RecordingThumbnail({ title, thumbnail }: { title: string; thumbnail?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className={s.thumbnail} aria-hidden="true">
+      {thumbnail && !failed ? (
+        // The provider serves its own thumbnails; a broken image falls back to the branded card.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className={s.thumbnailImage} src={thumbnail} alt="" onError={() => setFailed(true)} />
+      ) : (
+        <span className={s.fallback}>
+          <Rosette className={s.rosette} />
+          <span className={s.fallbackLabel}>Sīrah · Beyond Chronology</span>
+          <span className={s.fallbackTitle}>{title}</span>
+        </span>
+      )}
+      <span className={s.play}>&#9654;</span>
+    </span>
+  );
+}
+
 export function RecordingLibrary({ items }: { items: Item[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState<Item | null>(null);
@@ -30,7 +51,7 @@ export function RecordingLibrary({ items }: { items: Item[] }) {
   return <>
     <div className={s.grid}>{items.map((item) => {
       const preview = item.external ? embedFor(item.href) : null;
-      const body = <><span className={s.thumbnail} style={preview?.thumbnail ? { backgroundImage: `url("${preview.thumbnail}")` } : undefined}><span aria-hidden="true">&#9654;</span></span><span className={s.content}><strong>{item.title}</strong>{item.date && <small>{item.date}</small>}{item.description && <small>{item.description}</small>}</span></>;
+      const body = <><RecordingThumbnail title={item.title} thumbnail={preview?.thumbnail} /><span className={s.content}><strong>{item.title}</strong>{item.date && <small>{item.date}</small>}{item.description && <small>{item.description}</small>}</span></>;
       return (item.player || (item.external && (preview || item.resources?.length))) ? <button key={item.id} type="button" className={s.card} onClick={() => { setSelected(item); dialog.current?.showModal(); }} aria-haspopup="dialog">{body}<span className={s.action}>Watch &#8594;</span></button> : item.external ? <a key={item.id} className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link key={item.id} className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
     })}</div>
     <dialog ref={dialog} className={s.dialog} onClose={() => setSelected(null)} aria-labelledby="recording-player-title">

@@ -3,10 +3,10 @@ import { courseProgress, groupByWeek, lessonStatus, toLessonView } from "@/lib/s
 import type { getClassroomData } from "@/services/sirah-classroom.service";
 import { classroomClock, STATUS_TEXT } from "./clock";
 import { ClassroomHeader, Dispatch, MaterialRows, ProgressBar, SectionHead } from "./parts";
-import { LiveClassesSection } from "./live-sessions";
+import { LiveSessionRows, NextLiveClass } from "./live-sessions";
 import type { StudentSessionView } from "@/lib/lms/schedule";
 import type { StudentAnnouncement, StudentResource } from "@/lib/lms/content";
-import { CalendarSection, CohortNotices, ResourceList } from "./phase5-sections";
+import { CohortNotices, ResourceList } from "./phase5-sections";
 import s from "./classroom.module.css";
 
 type Data = Awaited<ReturnType<typeof getClassroomData>>;
@@ -21,6 +21,9 @@ export function ClassroomOverview({
   now,
   live = null,
   phase5 = null,
+  recordings = [],
+  externalRecordings = [],
+  standaloneRecordings = [],
 }: {
   base: string;
   data: Data;
@@ -36,6 +39,9 @@ export function ClassroomOverview({
     calendar: { https: string; webcal: string } | null;
     inbox: { href: string; unread: number };
   } | null;
+  recordings?: { sessionId: string; href: string }[];
+  externalRecordings?: { id: string; sessionId: string; title: string; url: string }[];
+  standaloneRecordings?: { id: string; title: string; description: string | null }[];
 }) {
   const { lessons, courseMaterials, announcements } = data;
   const clock = classroomClock(timezone);
@@ -43,9 +49,16 @@ export function ClassroomOverview({
   // Everything a student sees goes through the view builder: the Zoom link
   // only exists inside the join window, material URLs only for the enrolled.
   const next = progress.next ? toLessonView(progress.next, progress.next.materials, { enrolled: true }, now) : null;
+  const nextLive = live?.next && (!next || live.next.startsAt <= next.scheduledAt) ? live.next : null;
   const pinned = announcements.filter((a) => a.pinned);
   const earlier = announcements.filter((a) => !a.pinned);
   const weeks = groupByWeek(lessons);
+  const liveSessions = live ? [...live.upcoming, ...live.past] : [];
+  const watchBySession = new Map(recordings.map((recording) => [recording.sessionId, recording.href]));
+  const externalBySession = new Map<string, { id: string; title: string; url: string }[]>();
+  for (const recording of externalRecordings) {
+    externalBySession.set(recording.sessionId, [...(externalBySession.get(recording.sessionId) ?? []), recording]);
+  }
   const percent = progress.totalSessions ? Math.round((progress.completed / progress.totalSessions) * 100) : null;
   const weeksLeft = progress.currentWeek ? Math.max(0, progress.totalWeeks - progress.currentWeek) : progress.totalWeeks;
   const herePct =
@@ -65,8 +78,10 @@ export function ClassroomOverview({
       <main className={s.wrap}>
         {/* Next gathering */}
         <section className={s.hero} aria-labelledby="next-title">
-          <p className={s.eyebrow}>{next?.status === "live" ? "Happening now" : "Your next gathering"}</p>
-          {next ? (
+          <p className={s.eyebrow}>{nextLive?.phase === "live" || (!nextLive && next?.status === "live") ? "Happening now" : "Your next gathering"}</p>
+          {nextLive ? (
+            <NextLiveClass session={nextLive} now={now} clock={clock} headingLevel={1} headingId="next-title" />
+          ) : next ? (
             <Dispatch lesson={next} now={now} clock={clock} label={next.status === "live" ? "Live class" : "Next live class"}>
               <h1 id="next-title" className={s.dTitle}>
                 <Link href={`${base}/${next.id}`}>{next.title}</Link>
@@ -80,18 +95,12 @@ export function ClassroomOverview({
           ) : (
             <div className={s.empty}>
               <h1 id="next-title">
-                {lessons.length ? "No upcoming session is scheduled" : "The first session is not scheduled yet"}
+                No upcoming live session is scheduled
               </h1>
               <p>When the team publishes it, its date, joining link and materials appear here.</p>
             </div>
           )}
         </section>
-
-        {live && (live.upcoming.length > 0 || live.past.length > 0) ? (
-          <LiveClassesSection schedule={live} now={now} clock={clock} scheduleHref={`${base}/schedule`} />
-        ) : null}
-
-        {phase5?.calendar ? <CalendarSection links={phase5.calendar} /> : null}
 
         {phase5 ? <CohortNotices announcements={phase5.announcements} clock={clock} /> : null}
 
@@ -190,11 +199,24 @@ export function ClassroomOverview({
         <section className={s.section} aria-labelledby="chronicle">
           <SectionHead id="chronicle">The chronicle</SectionHead>
           <p className={s.sectionLede}>
-            Every session, week by week. Open one for its notes, materials and recording. Times are your time ({clock.zoneName}).
+            Every session, week by week. Open one for its notes, materials and recording. Times are your time ({clock.zoneName}).{" "}
+            <Link href={`${base}/schedule`}>Full schedule and recordings</Link>
           </p>
-          {weeks.length === 0 ? (
+          {weeks.length === 0 && liveSessions.length === 0 && standaloneRecordings.length === 0 ? (
             <p className={s.emptyLine}>Sessions appear here once the team publishes them.</p>
           ) : (
+            <>
+            {liveSessions.length > 0 && <LiveSessionRows sessions={liveSessions} clock={clock} nextId={live?.next?.id} recordings={watchBySession} externalRecordings={externalBySession} />}
+            {standaloneRecordings.length > 0 && <ol className={s.chapters}>
+              {standaloneRecordings.map((recording) => <li key={recording.id}>
+                <div className={s.chap}>
+                  <span className={s.wkn}>Recording</span>
+                  <span className={s.ti}>{recording.title}{recording.description && <small>{recording.description}</small>}</span>
+                  <Link className={`${s.st} ${s.stNext}`} href={`${base}/schedule#recordings`}>View recordings</Link>
+                </div>
+              </li>)}
+            </ol>}
+            {weeks.length > 0 && (
             <ol className={s.chapters}>
               {weeks.flatMap((week) =>
                 week.lessons.map((lesson) => {
@@ -226,6 +248,8 @@ export function ClassroomOverview({
                 }),
               )}
             </ol>
+            )}
+            </>
           )}
         </section>
 

@@ -5,6 +5,8 @@ import { SIRAH_TITLE } from "@/lib/sirah/catalog";
 import { lmsSessionsAvailable, studentSchedule } from "@/lib/lms/schedule";
 import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { studentPhase5 } from "@/lib/lms/student-phase5";
+import { studentExternalRecordings, studentStandaloneRecordings } from "@/lib/lms/external-recordings";
+import { recordingsAvailable, studentRecordings, watchPath } from "@/lib/lms/recordings";
 import {
   getClassroomData,
   getCompletedLessonIds,
@@ -32,6 +34,11 @@ export default async function SirahClassroomPage() {
   const live = (await lmsSessionsAvailable()) ? await studentSchedule(user.id, now) : null;
   // Phase 5: the cohort's published resources and notices, calendar, inbox.
   const phase5 = await studentPhase5(user.id, now);
+  const [recordings, external, standalone] = await Promise.all([
+    live?.allowed && (await recordingsAvailable()) ? studentRecordings(user.id, now) : [],
+    phase5 ? studentExternalRecordings(user.id, now) : [],
+    phase5 ? studentStandaloneRecordings(user.id, now) : [],
+  ]);
 
   return (
     <ClassroomOverview
@@ -42,6 +49,9 @@ export default async function SirahClassroomPage() {
       now={now}
       live={live?.allowed ? live : null}
       phase5={phase5}
+      recordings={recordings.map((recording) => ({ sessionId: recording.sessionId, href: watchPath(recording.recordingId) }))}
+      externalRecordings={external.flatMap((recording) => recording.sessionId && recording.url ? [{ id: recording.id, sessionId: recording.sessionId, title: recording.title, url: recording.url }] : [])}
+      standaloneRecordings={standalone.flatMap((recording) => recording.url ? [{ id: recording.id, title: recording.title, description: recording.originalFilename }] : [])}
     />
   );
 }

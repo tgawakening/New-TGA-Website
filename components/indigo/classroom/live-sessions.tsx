@@ -42,11 +42,13 @@ export function NextLiveClass({
   now,
   clock,
   headingLevel = 2,
+  headingId,
 }: {
   session: StudentSessionView;
   now: Date;
   clock: ClassroomClock;
   headingLevel?: 1 | 2;
+  headingId?: string;
 }) {
   const live = session.phase === "live";
   const Heading = headingLevel === 1 ? "h1" : "h2";
@@ -59,7 +61,7 @@ export function NextLiveClass({
             {live ? "Live now" : "Next live class"}
           </span>
           <p className={s.smeta}>Live on Zoom · {minutes(session.durationMin)}</p>
-          <Heading className={s.dTitle}>{session.title}</Heading>
+          <Heading id={headingId} className={s.dTitle}>{session.title}</Heading>
           <p className={s.when}>
             <time dateTime={session.startsAt.toISOString()}>{clock.longDate.format(session.startsAt)}</time>{" "}
             <span className={s.tz}>your time ({clock.zoneName})</span>
@@ -132,7 +134,7 @@ export function LiveSessionRows({
                 {session.title}
                 <small>
                   <time dateTime={session.startsAt.toISOString()}>{clock.shortDate.format(session.startsAt)}</time>
-                  {session.phase === "past" ? (watch ? " · recording available" : " · recording coming later") : ""}
+                  {session.phase === "past" ? (watch || externalRecordings?.get(session.id)?.length ? " · recording available" : " · recording coming later") : ""}
                 </small>
               </span>
               {watch ? (
