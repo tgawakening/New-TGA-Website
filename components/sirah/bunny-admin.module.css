@@ -1,0 +1,53 @@
+/* Bunny upload, progress and preview inside the Sīrah admin recording forms. */
+.box {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.note {
+  margin: 0;
+  color: var(--color-ink-2);
+  font-size: 14px;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger, #b42318);
+  font-size: 14px;
+}
+
+.progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 14px;
+}
+
+.progress progress {
+  flex: 1 1 12rem;
+  height: 10px;
+  accent-color: var(--color-accent);
+}
+
+.previewRow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.player {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 48rem;
+}
+
+.player iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: #000;
+}

@@ -12,9 +12,21 @@ export async function externalRecordingsForSessions(sessionIds: string[], publis
   if (!sessionIds.length) return [];
   return prisma.lmsResource.findMany({
     where: { sessionId: { in: sessionIds }, kind: "LINK", contentType: EXTERNAL_RECORDING, ...(publishedOnly ? { visibility: "PUBLISHED" } : {}) },
-    select: { id: true, sessionId: true, title: true, url: true, visibility: true },
+    select: { id: true, sessionId: true, title: true, url: true, bunnyVideoId: true, visibility: true },
     orderBy: { createdAt: "asc" },
   });
+}
+
+export type RecordingSource = "bunny" | "link";
+
+/**
+ * A recording's source: a Bunny video keeps only its video ID (url empty);
+ * a public link keeps only its URL. Bunny IDs are checked against the library.
+ */
+async function recordingSource(input: { source: RecordingSource; url: string; bunnyVideoId: string }) {
+  const bunnyVideoId = input.source === "bunny" ? cleanBunnyVideoId(input.bunnyVideoId) : null;
+  const url = bunnyVideoId ? null : cleanHttpsUrl(input.url);
+  return { url, bunnyVideoId };
 }
 
 export async function studentExternalRecordings(userId: string, now = new Date()) {
@@ -24,13 +36,14 @@ export async function studentExternalRecordings(userId: string, now = new Date()
   return externalRecordingsForSessions(sessions.map((session) => session.id), true);
 }
 
-export async function addExternalRecording(input: { sessionId: string; title: string; url: string; published: boolean; actor: string }) {
+export async function addExternalRecording(input: { sessionId: string; title: string; source?: RecordingSource; url: string; bunnyVideoId?: string; published: boolean; actor: string }) {
   const title = cleanTitle(input.title);
-  const url = cleanHttpsUrl(input.url);
+  const { url, bunnyVideoId } = await recordingSource({ source: input.source ?? "link", url: input.url, bunnyVideoId: input.bunnyVideoId ?? "" });
   const session = await prisma.lmsSession.findUnique({ where: { id: input.sessionId }, select: { id: true, startsAt: true, durationMin: true, status: true } });
   if (!session || phaseOf(session) !== "past") throw new LmsContentError("External recordings can be added to past sessions only.");
+  if (bunnyVideoId) await verifyBunnyVideo(bunnyVideoId);
   return prisma.lmsResource.create({
-    data: { sessionId: session.id, title, url, kind: "LINK", contentType: EXTERNAL_RECORDING, uploadedBy: input.actor.slice(0, 320), visibility: input.published ? "PUBLISHED" : "HIDDEN", publishedAt: input.published ? new Date() : null },
+    data: { sessionId: session.id, title, url, bunnyVideoId, kind: "LINK", contentType: EXTERNAL_RECORDING, uploadedBy: input.actor.slice(0, 320), visibility: input.published ? "PUBLISHED" : "HIDDEN", publishedAt: input.published ? new Date() : null },
   });
 }
 
@@ -38,6 +51,22 @@ export async function setExternalRecordingVisibility(id: string, sessionId: stri
   const resource = await prisma.lmsResource.findFirst({ where: { id, sessionId, kind: "LINK", contentType: EXTERNAL_RECORDING } });
   if (!resource) throw new LmsContentError("That external recording no longer exists.");
   await prisma.lmsResource.update({ where: { id }, data: { visibility: published ? "PUBLISHED" : "HIDDEN", publishedAt: published ? (resource.publishedAt ?? new Date()) : null } });
+}
+
+/** Edit a session-linked recording's title and source (for example, convert a public link to a protected Bunny video). Visibility is unchanged. */
+export async function updateExternalRecording(input: { id: string; sessionId: string; title: string; source: RecordingSource; url: string; bunnyVideoId: string }) {
+  const title = cleanTitle(input.title);
+  const { url, bunnyVideoId } = await recordingSource(input);
+  const resource = await prisma.lmsResource.findFirst({ where: { id: input.id, sessionId: input.sessionId, kind: "LINK", contentType: EXTERNAL_RECORDING }, select: { id: true } });
+  if (!resource) throw new LmsContentError("That external recording no longer exists.");
+  if (bunnyVideoId) await verifyBunnyVideo(bunnyVideoId);
+  await prisma.lmsResource.update({ where: { id: resource.id }, data: { title, url, bunnyVideoId } });
+}
+
+/** Admin preview: the Bunny video of any recording (published or hidden). Callers must be staff. */
+export async function bunnyVideoForAdminPreview(resourceId: string) {
+  const resource = await prisma.lmsResource.findFirst({ where: { id: resourceId, kind: "LINK", contentType: EXTERNAL_RECORDING, bunnyVideoId: { not: null } }, select: { bunnyVideoId: true } });
+  return resource?.bunnyVideoId ?? null;
 }
 
 // Standalone links use the otherwise unused originalFilename field for their
@@ -60,13 +89,9 @@ export async function studentStandaloneRecordings(userId: string, now = new Date
   return recordings.map((recording) => ({ ...recording, resources: resources.filter((resource) => resource.parentRecordingId === recording.id).map((resource) => ({ id: resource.id, title: resource.title, href: resource.kind === "FILE" ? `/api/sirah/lms/resources/${encodeURIComponent(resource.id)}` : resource.url ?? "" })).filter((resource) => resource.href) }));
 }
 
-export type RecordingSource = "bunny" | "link";
-
 export async function saveStandaloneRecording(input: { id?: string; title: string; source: RecordingSource; url: string; bunnyVideoId: string; description: string; published: boolean; actor: string }) {
   const title = cleanTitle(input.title);
-  // A Bunny recording keeps only its video ID (url stays empty); a public link keeps only its URL.
-  const bunnyVideoId = input.source === "bunny" ? cleanBunnyVideoId(input.bunnyVideoId) : null;
-  const url = bunnyVideoId ? null : cleanHttpsUrl(input.url);
+  const { url, bunnyVideoId } = await recordingSource(input);
   const description = input.description.trim();
   if (description.length > 255) throw new LmsContentError("The description is longer than 255 characters.");
   const existing = input.id ? await prisma.lmsResource.findFirst({ where: { id: input.id, ...standaloneWhere } }) : null;

@@ -121,7 +121,8 @@ export function LiveSessionRows({
   clock: ClassroomClock;
   nextId?: string;
   recordings?: Map<string, string>;
-  externalRecordings?: Map<string, { id: string; title: string; url: string }[]>;
+  /** internal: a protected (Bunny) recording, linked to the in-site player rather than opened in a new tab. */
+  externalRecordings?: Map<string, { id: string; title: string; url: string; internal?: boolean }[]>;
   tasks?: Map<string, TaskLink[]>;
 }) {
   return (
@@ -155,7 +156,9 @@ export function LiveSessionRows({
             {session.phase === "past" && externalRecordings?.get(session.id)?.map((recording) => (
               <div key={recording.id} className={s.chap}>
                 <span className={s.ti}>{recording.title}</span>
-                <a className={`${s.st} ${s.stNext}`} href={recording.url} target="_blank" rel="noopener noreferrer">Watch →</a>
+                {recording.internal
+                  ? <a className={`${s.st} ${s.stNext}`} href={recording.url}>Watch →</a>
+                  : <a className={`${s.st} ${s.stNext}`} href={recording.url} target="_blank" rel="noopener noreferrer">Watch →</a>}
               </div>
             ))}
             <TaskLinks tasks={tasks?.get(session.id)} />

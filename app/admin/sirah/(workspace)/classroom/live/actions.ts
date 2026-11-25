@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { getCurrentAdmin } from "@/lib/auth/admin-session";
 import { getSessionIdentity } from "@/lib/auth/session";
 import { LmsContentError } from "@/lib/lms/content";
-import { addExternalRecording, deleteStandaloneRecording, saveStandaloneRecording, setExternalRecordingVisibility } from "@/lib/lms/external-recordings";
+import { addExternalRecording, bunnyVideoForAdminPreview, deleteStandaloneRecording, saveStandaloneRecording, setExternalRecordingVisibility, updateExternalRecording, type RecordingSource } from "@/lib/lms/external-recordings";
+import { BunnyConfigError, createBunnyUpload, signedBunnyEmbed, type BunnyUploadTicket } from "@/lib/lms/bunny";
 import { getSirahWorkspaceAccess } from "@/lib/auth/sirah-workspace";
 import { LmsFieldCryptoError } from "@/lib/lms/field-crypto";
 import { cancelSession, createSession, LmsSessionError, updateSession } from "@/lib/lms/sessions";
@@ -160,11 +161,53 @@ export async function saveExternalRecording(form: FormData) {
   const sessionId = text(form, "sessionId");
   const actor = access.role === "SUPER_ADMIN" ? (await getCurrentAdmin())?.email || "Super Admin" : (await getSessionIdentity())?.email || "Manager";
   try {
-    await addExternalRecording({ sessionId, title: text(form, "title"), url: text(form, "url"), published: form.get("publish") === "on", actor });
+    await addExternalRecording({ sessionId, title: text(form, "title"), source: sourceOf(form), url: text(form, "url"), bunnyVideoId: text(form, "bunnyVideoId"), published: form.get("publish") === "on", actor });
   } catch (failure) {
     back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: `live-${sessionId}` });
   }
   done("External recording saved.", cohort, `live-${sessionId}`);
+}
+
+/** Change a session-linked recording's title or source (e.g. public link -> protected Bunny). */
+export async function updateExternalRecordingAction(form: FormData) {
+  await requireSessionEditor();
+  const cohort = text(form, "cohortId");
+  const sessionId = text(form, "sessionId");
+  try {
+    await updateExternalRecording({ id: text(form, "resourceId"), sessionId, title: text(form, "title"), source: sourceOf(form), url: text(form, "url"), bunnyVideoId: text(form, "bunnyVideoId") });
+  } catch (failure) {
+    back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: `live-${sessionId}` });
+  }
+  done("External recording updated.", cohort, `live-${sessionId}`);
+}
+
+/** Missing or unknown source means a public link; the form always sends one. */
+const sourceOf = (form: FormData): RecordingSource => (text(form, "source") === "bunny" ? "bunny" : "link");
+
+/**
+ * Direct upload, step 1: create the video in Bunny and return a TUS
+ * authorization signed for that one video. The browser then uploads the file
+ * straight to Bunny; the API key stays on the server.
+ */
+export async function startBunnyUpload(title: string): Promise<{ ok: true; ticket: BunnyUploadTicket } | { ok: false; error: string }> {
+  await requireSessionEditor();
+  try {
+    return { ok: true, ticket: await createBunnyUpload(typeof title === "string" ? title.trim() : "") };
+  } catch (failure) {
+    return { ok: false, error: failure instanceof LmsContentError ? failure.message : "Could not start the upload. Please try again." };
+  }
+}
+
+/** Admin preview: a server-signed embed for any stored Bunny recording, hidden or published. */
+export async function adminBunnyPreview(resourceId: string): Promise<{ ok: true; src: string } | { ok: false; error: string }> {
+  await requireSessionEditor();
+  const videoId = typeof resourceId === "string" ? await bunnyVideoForAdminPreview(resourceId) : null;
+  if (!videoId) return { ok: false, error: "That recording has no Bunny video." };
+  try {
+    return { ok: true, src: signedBunnyEmbed(videoId).src };
+  } catch (failure) {
+    return { ok: false, error: failure instanceof BunnyConfigError ? "Bunny Stream is not configured on this server." : "Preview is unavailable right now." };
+  }
 }
 
 export async function changeExternalRecordingVisibility(form: FormData) {
@@ -185,7 +228,7 @@ export async function saveStandaloneRecordingAction(form: FormData) {
   const cohort = text(form, "cohortId");
   const actor = access.role === "SUPER_ADMIN" ? (await getCurrentAdmin())?.email || "Super Admin" : (await getSessionIdentity())?.email || "Manager";
   try {
-    await saveStandaloneRecording({ id: text(form, "id") || undefined, title: text(form, "title"), source: text(form, "source") === "bunny" ? "bunny" : "link", url: text(form, "url"), bunnyVideoId: text(form, "bunnyVideoId"), description: text(form, "description"), published: form.get("publish") === "on", actor });
+    await saveStandaloneRecording({ id: text(form, "id") || undefined, title: text(form, "title"), source: sourceOf(form), url: text(form, "url"), bunnyVideoId: text(form, "bunnyVideoId"), description: text(form, "description"), published: form.get("publish") === "on", actor });
   } catch (failure) {
     back({ error: failure instanceof LmsContentError ? failure.message : describe(failure), cohort, anchor: "manual-recordings" });
   }
