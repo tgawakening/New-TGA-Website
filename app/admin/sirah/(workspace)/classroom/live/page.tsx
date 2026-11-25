@@ -23,8 +23,8 @@ import {
 } from "@/lib/lms/schedule";
 import { ScheduleFields, SelectField } from "@/components/sirah/classroom-pickers";
 import { DeleteSessionButton } from "@/components/sirah/delete-session-button";
-import { RecordingSourceFields } from "@/components/sirah/recording-source-fields";
-import { bunnyConfigured } from "@/lib/lms/bunny";
+import { AdminBunnyPreview, RecordingSourceFields } from "@/components/sirah/recording-source-fields";
+import { bunnyConfigured, bunnyUploadConfigured } from "@/lib/lms/bunny";
 import { CancelSessionButton } from "@/components/sirah/cancel-session-button";
 import "@/app/seerah/classroom/tokens.css";
 import styles from "@/components/sirah/admin-classroom.module.css";
@@ -32,7 +32,7 @@ import { recordingsAvailable, recordingsForSessions, type RecordingAdminView } f
 import { lmsContentAvailable } from "@/lib/lms/content";
 import { externalRecordingsForSessions, standaloneRecordings } from "@/lib/lms/external-recordings";
 import { RECORDING_MAX_AUTO_ATTEMPTS } from "@/lib/lms/recording-policy";
-import { setRevenuePartner, cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, deleteLiveSession, deleteStandaloneRecordingAction, retryRecordingFile, saveExternalRecording, saveStandaloneRecordingAction, setRecordingPublished, updateLiveSession } from "./actions";
+import { setRevenuePartner, adminBunnyPreview, cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, deleteLiveSession, deleteStandaloneRecordingAction, retryRecordingFile, saveExternalRecording, saveStandaloneRecordingAction, setRecordingPublished, startBunnyUpload, updateExternalRecordingAction, updateLiveSession } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -323,8 +323,11 @@ function SessionLedger({
   canDelete,
   editable,
   zone,
+  bunny = { ready: false, uploadReady: false },
 }: {
   zone: string;
+  /** Whether Bunny playback (and direct upload) are configured on this server. */
+  bunny?: { ready: boolean; uploadReady: boolean };
   sessions: SessionView[];
   counts: Map<string, JoinCounts>;
   attendance: Map<string, SessionAttendance>;
@@ -439,23 +442,38 @@ function SessionLedger({
                   <div className={styles.subsection}>
                     <h4 className={styles.subTitle}>External recordings</h4>
                     {externalRecordings.filter((item) => item.sessionId === session.id).map((item) => (
-                      <div key={item.id} className={styles.inlineForm}>
-                        <span>{item.title} · {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</span>
-                        {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer">Open recording</a>}
-                        <form action={changeExternalRecordingVisibility}>
-                          <input type="hidden" name="resourceId" value={item.id} />
-                          <input type="hidden" name="sessionId" value={session.id} />
-                          <input type="hidden" name="cohortId" value={session.cohortId} />
-                          <input type="hidden" name="publish" value={item.visibility === "PUBLISHED" ? "0" : "1"} />
-                          <button className={styles.secondarySmall} type="submit">{item.visibility === "PUBLISHED" ? "Unpublish" : "Publish"}</button>
-                        </form>
+                      <div key={item.id}>
+                        <div className={styles.inlineForm}>
+                          <span>{item.title} · {item.bunnyVideoId ? "Bunny (protected)" : "Public link"} · {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</span>
+                          {item.bunnyVideoId
+                            ? <AdminBunnyPreview resourceId={item.id} title={item.title} preview={adminBunnyPreview} />
+                            : item.url && <a href={item.url} target="_blank" rel="noopener noreferrer">Open recording</a>}
+                          <form action={changeExternalRecordingVisibility}>
+                            <input type="hidden" name="resourceId" value={item.id} />
+                            <input type="hidden" name="sessionId" value={session.id} />
+                            <input type="hidden" name="cohortId" value={session.cohortId} />
+                            <input type="hidden" name="publish" value={item.visibility === "PUBLISHED" ? "0" : "1"} />
+                            <button className={styles.secondarySmall} type="submit">{item.visibility === "PUBLISHED" ? "Unpublish" : "Publish"}</button>
+                          </form>
+                        </div>
+                        <details>
+                          <summary>Edit recording</summary>
+                          <form action={updateExternalRecordingAction} className={styles.inlineForm}>
+                            <input type="hidden" name="resourceId" value={item.id} />
+                            <input type="hidden" name="sessionId" value={session.id} />
+                            <input type="hidden" name="cohortId" value={session.cohortId} />
+                            <label className={styles.label}>Recording label <input className={styles.input} name="title" defaultValue={item.title} maxLength={191} required /></label>
+                            <RecordingSourceFields bunnyReady={bunny.ready} uploadReady={bunny.uploadReady} startUpload={startBunnyUpload} defaultSource={item.bunnyVideoId ? "bunny" : "link"} defaultUrl={item.url ?? ""} defaultVideoId={item.bunnyVideoId ?? ""} />
+                            <button className={styles.secondarySmall} type="submit">Save changes</button>
+                          </form>
+                        </details>
                       </div>
                     ))}
                     <form action={saveExternalRecording} className={styles.inlineForm}>
                       <input type="hidden" name="sessionId" value={session.id} />
                       <input type="hidden" name="cohortId" value={session.cohortId} />
                       <label className={styles.label}>Recording label <input className={styles.input} name="title" maxLength={191} required /></label>
-                      <label className={styles.label}>Public link (shareable) <input className={styles.input} type="url" name="url" maxLength={1024} placeholder="https://" required /></label>
+                      <RecordingSourceFields bunnyReady={bunny.ready} uploadReady={bunny.uploadReady} startUpload={startBunnyUpload} defaultSource={bunny.ready ? "bunny" : "link"} />
                       <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" /> Publish to enrolled students</label>
                       <button className={styles.secondarySmall} type="submit">Save external recording</button>
                     </form>
@@ -540,6 +558,7 @@ export default async function LiveSessionsAdminPage({
   const externalRecordings = data && contentAvailable ? await externalRecordingsForSessions(data.past.map((session) => session.id)) : undefined;
   const standalone = contentAvailable ? await standaloneRecordings() : [];
   const bunnyReady = bunnyConfigured();
+  const uploadReady = bunnyUploadConfigured();
   // The start route admits the env super admin or the host's own account.
   const canStart = access.role === "SUPER_ADMIN";
   const nextUp = data?.upcoming.find((s) => s.phase !== "cancelled");
@@ -659,6 +678,7 @@ export default async function LiveSessionsAdminPage({
                 attendance={attendance}
                 recordings={recordings}
                 externalRecordings={externalRecordings}
+                bunny={{ ready: bunnyReady, uploadReady }}
                 zone={zone}
                 now={now}
                 canStart={false}
@@ -679,7 +699,7 @@ export default async function LiveSessionsAdminPage({
           <form action={saveStandaloneRecordingAction} className={styles.form}>
             <input type="hidden" name="cohortId" value={cohortId ?? ""} />
             <label className={styles.label}>Title<input className={styles.input} name="title" placeholder="Orientation, Class 1…" maxLength={191} required /></label>
-            <RecordingSourceFields bunnyReady={bunnyReady} defaultSource={bunnyReady ? "bunny" : "link"} />
+            <RecordingSourceFields bunnyReady={bunnyReady} uploadReady={uploadReady} startUpload={startBunnyUpload} defaultSource={bunnyReady ? "bunny" : "link"} />
             <label className={styles.label}>Description (optional)<input className={styles.input} name="description" maxLength={255} /></label>
             <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" /> Publish to enrolled students</label>
             <button className={styles.primary} type="submit">Save recording</button>
@@ -687,11 +707,12 @@ export default async function LiveSessionsAdminPage({
           {standalone.map((item) => (
             <details key={item.id} className={styles.subsection}>
               <summary>{item.title} · {item.bunnyVideoId ? "Bunny (protected)" : "Public link"} · {item.visibility === "PUBLISHED" ? "Published" : "Hidden"}</summary>
+              {item.bunnyVideoId && <AdminBunnyPreview resourceId={item.id} title={item.title} preview={adminBunnyPreview} />}
               <form action={saveStandaloneRecordingAction} className={styles.inlineForm}>
                 <input type="hidden" name="id" value={item.id} />
                 <input type="hidden" name="cohortId" value={cohortId ?? ""} />
                 <label className={styles.label}>Title<input className={styles.input} name="title" defaultValue={item.title} maxLength={191} required /></label>
-                <RecordingSourceFields bunnyReady={bunnyReady} defaultSource={item.bunnyVideoId ? "bunny" : "link"} defaultUrl={item.url ?? ""} defaultVideoId={item.bunnyVideoId ?? ""} />
+                <RecordingSourceFields bunnyReady={bunnyReady} uploadReady={uploadReady} startUpload={startBunnyUpload} defaultSource={item.bunnyVideoId ? "bunny" : "link"} defaultUrl={item.url ?? ""} defaultVideoId={item.bunnyVideoId ?? ""} />
                 <label className={styles.label}>Description (optional)<input className={styles.input} name="description" defaultValue={item.originalFilename ?? ""} maxLength={255} /></label>
                 <label className={styles.check}><input className={styles.checkbox} type="checkbox" name="publish" defaultChecked={item.visibility === "PUBLISHED"} /> Publish to enrolled students</label>
                 <button className={styles.secondarySmall} type="submit">Save changes</button>

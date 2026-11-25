@@ -42,6 +42,11 @@ export function bunnyConfigured() {
   return Boolean(libraryId() && env("BUNNY_STREAM_TOKEN_AUTH_KEY"));
 }
 
+/** Whether admins can upload files straight to the library (needs the API key too). */
+export function bunnyUploadConfigured() {
+  return bunnyConfigured() && Boolean(env("BUNNY_STREAM_API_KEY"));
+}
+
 /** Accepts a bare GUID or any Bunny URL containing one; returns the lowercase GUID. */
 export function cleanBunnyVideoId(value: unknown) {
   const raw = typeof value === "string" ? value.trim() : "";
@@ -92,6 +97,47 @@ export function signedBunnyEmbed(videoId: string, now = new Date()) {
 export function bunnyThumbnailUrl(videoId: string) {
   const host = env("BUNNY_STREAM_CDN_HOSTNAME")?.replace(/^https?:\/\//i, "").replace(/\/+$/, "");
   return host && /^[a-z0-9.-]+$/i.test(host) && EXACT_GUID.test(videoId) ? `https://${host}/${videoId}/thumbnail.jpg` : null;
+}
+
+/**
+ * How long a direct-upload authorization stays valid. It is scoped to the
+ * one video just created, and long enough for a multi-GB file on a slow
+ * connection to finish or resume.
+ */
+export const BUNNY_UPLOAD_AUTH_SECONDS = 12 * 60 * 60;
+export const BUNNY_TUS_ENDPOINT = "https://video.bunnycdn.com/tusupload";
+
+export type BunnyUploadTicket = { endpoint: string; libraryId: string; videoId: string; expires: number; signature: string };
+
+/**
+ * Creates an empty video in the library with the API key (server-side), then
+ * signs a TUS upload authorization for that video only:
+ * SHA256_HEX(libraryId + apiKey + expires + videoId). The browser uploads the
+ * file straight to Bunny with it; the API key never leaves the server, and the
+ * signature cannot be used for any other video or any other API call.
+ */
+export async function createBunnyUpload(title: string, now = new Date()): Promise<BunnyUploadTicket> {
+  const library = libraryId();
+  const apiKey = env("BUNNY_STREAM_API_KEY");
+  if (!library || !apiKey || !env("BUNNY_STREAM_TOKEN_AUTH_KEY")) throw new LmsContentError("Direct upload needs Bunny Stream to be configured on this server (library ID, API key and token key).");
+  let response: Response;
+  try {
+    response = await fetch(`https://video.bunnycdn.com/library/${library}/videos`, {
+      method: "POST",
+      headers: { AccessKey: apiKey, Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title.slice(0, 191) || "Recording" }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    throw new LmsContentError("Could not reach Bunny to start the upload. Please try again.");
+  }
+  const body = (await response.json().catch(() => null)) as { guid?: unknown } | null;
+  const videoId = response.ok && typeof body?.guid === "string" && EXACT_GUID.test(body.guid) ? body.guid.toLowerCase() : null;
+  if (!videoId) throw new LmsContentError("Bunny did not accept the new video. Please try again.");
+  const expires = Math.floor(now.getTime() / 1000) + BUNNY_UPLOAD_AUTH_SECONDS;
+  const signature = createHash("sha256").update(`${library}${apiKey}${expires}${videoId}`).digest("hex");
+  return { endpoint: BUNNY_TUS_ENDPOINT, libraryId: library, videoId, expires, signature };
 }
 
 /** The route that issues a fresh signed embed for one recording. */

@@ -42,7 +42,7 @@ export function ClassroomOverview({
     inbox: { href: string; unread: number };
   } | null;
   recordings?: { sessionId: string; href: string }[];
-  externalRecordings?: { id: string; sessionId: string; title: string; url: string }[];
+  externalRecordings?: { id: string; sessionId: string; title: string; url: string; internal?: boolean }[];
   standaloneRecordings?: { id: string; title: string; description: string | null }[];
   tasks?: (TaskLink & { sessionId: string | null; recordingId: string | null; externalRecordingId: string | null })[];
 }) {
@@ -59,7 +59,7 @@ export function ClassroomOverview({
   const liveSessions = live ? [...live.upcoming, ...live.past] : [];
   const sessionTasks = new Map(liveSessions.map((session) => [session.id, tasks.filter((task) => task.sessionId === session.id)]));
   const watchBySession = new Map(recordings.map((recording) => [recording.sessionId, recording.href]));
-  const externalBySession = new Map<string, { id: string; title: string; url: string }[]>();
+  const externalBySession = new Map<string, { id: string; title: string; url: string; internal?: boolean }[]>();
   for (const recording of externalRecordings) {
     externalBySession.set(recording.sessionId, [...(externalBySession.get(recording.sessionId) ?? []), recording]);
   }

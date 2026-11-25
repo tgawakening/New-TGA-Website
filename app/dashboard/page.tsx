@@ -107,7 +107,8 @@ export default async function DashboardPage() {
   const latestRecording = schedule?.allowed ? schedule.past.flatMap((session) => {
     const recording = recordings.find((item) => item.sessionId === session.id);
     if (recording) return [{ title: recording.title, href: watchPath(recording.recordingId), external: false }];
-    const link = external.find((item) => item.sessionId === session.id && item.url);
+    const link = external.find((item) => item.sessionId === session.id && (item.url || item.bunnyVideoId));
+    if (link?.bunnyVideoId) return [{ title: link.title, href: "/seerah/classroom/schedule#recordings", external: false }];
     return link?.url ? [{ title: link.title, href: link.url, external: true }] : [];
   })[0] ?? null : null;
   const inbox =

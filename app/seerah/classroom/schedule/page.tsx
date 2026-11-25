@@ -42,10 +42,12 @@ export default async function LiveSchedulePage() {
   const tasks = schedule?.allowed && user.status === "ACTIVE" ? await studentTaskList(user.id, now) : [];
   const linksFor = (key: "sessionId" | "recordingId" | "externalRecordingId", id: string) => tasks.filter((task) => task[key] === id).map((task) => ({ id: task.id, title: task.title, submitted: task.submissions.length > 0 }));
   const sessionTasks = new Map([...schedule?.upcoming ?? [], ...schedule?.past ?? []].map((session) => [session.id, linksFor("sessionId", session.id)]));
-  const externalBySession = new Map<string, { id: string; title: string; url: string }[]>();
+  const externalBySession = new Map<string, { id: string; title: string; url: string; internal?: boolean }[]>();
   for (const item of external) {
-    if (!item.sessionId || !item.url) continue;
-    externalBySession.set(item.sessionId, [...(externalBySession.get(item.sessionId) ?? []), { id: item.id, title: item.title, url: item.url }]);
+    if (!item.sessionId || !(item.url || item.bunnyVideoId)) continue;
+    // A Bunny recording plays in the Recordings lightbox on this page; a public link opens in a new tab.
+    const entry = item.bunnyVideoId ? { id: item.id, title: item.title, url: "#recordings", internal: true } : { id: item.id, title: item.title, url: item.url ?? "" };
+    externalBySession.set(item.sessionId, [...(externalBySession.get(item.sessionId) ?? []), entry]);
   }
 
   return (
@@ -99,7 +101,13 @@ export default async function LiveSchedulePage() {
               <p className={s.sectionLede}>Watch published classes at your own pace.</p>
               <RecordingLibrary items={[
                 ...recordings.map((r) => ({ id: `zoom-${r.recordingId}`, title: r.title, date: clock.shortDate.format(r.startsAt), href: watchPath(r.recordingId), player: { src: playPath(r.recordingId), kind: r.kind }, external: false, tasks: [...linksFor("sessionId", r.sessionId), ...linksFor("recordingId", r.recordingId)] })),
-                ...external.flatMap((r) => { const session = schedule.past.find((item) => item.id === r.sessionId); return session && r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(session.startsAt), href: r.url, external: true, tasks: [...linksFor("sessionId", session.id), ...linksFor("externalRecordingId", r.id)] }] : []; }),
+                ...external.flatMap((r) => {
+                  const session = schedule.past.find((item) => item.id === r.sessionId);
+                  if (!session) return [];
+                  const base = { id: r.id, title: r.title, date: clock.shortDate.format(session.startsAt), tasks: [...linksFor("sessionId", session.id), ...linksFor("externalRecordingId", r.id)] };
+                  if (r.bunnyVideoId) return [{ ...base, href: "", protectedEmbed: bunnyEmbedPath(r.id), thumbnail: bunnyThumbnailUrl(r.bunnyVideoId), external: false }];
+                  return r.url ? [{ ...base, href: r.url, external: true }] : [];
+                }),
                 ...standalone.flatMap((r) =>
                   r.bunnyVideoId
                     ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: "", protectedEmbed: bunnyEmbedPath(r.id), thumbnail: bunnyThumbnailUrl(r.bunnyVideoId), description: r.originalFilename, resources: r.resources, external: false, tasks: linksFor("externalRecordingId", r.id) }]

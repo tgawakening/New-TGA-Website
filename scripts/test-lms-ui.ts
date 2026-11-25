@@ -9,7 +9,7 @@
  * Every rendered page is checked for Zoom URLs, passcodes and ciphertext.
  */
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import test, { afterEach, before, beforeEach, describe, mock } from "node:test";
@@ -77,10 +77,13 @@ const FAKE_ENV = {
   ZOOM_DEFAULT_HOST_USER_ID: "host@example.test",
   ZOOM_WEBHOOK_SECRET_TOKEN: "whsec_test",
   LMS_FIELD_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
-  // Placeholder Bunny values; no API key, so no network check runs.
+  // Placeholder Bunny values; Bunny's API is answered by the fetch mock below.
   BUNNY_STREAM_LIBRARY_ID: "12345",
   BUNNY_STREAM_TOKEN_AUTH_KEY: "test-only-token-key",
+  BUNNY_STREAM_API_KEY: "test-only-api-key",
 };
+/** The one video that exists in the fake Bunny library (and that the fake creates). */
+const BUNNY_GUID = "1a2b3c4d-5e6f-4a8b-9c0d-1e2f3a4b5c6d";
 Object.assign(process.env, FAKE_ENV);
 
 let React: typeof import("react");
@@ -170,6 +173,10 @@ beforeEach(() => {
     const call = { method: (init.method || "GET").toUpperCase(), url: String(input), body: typeof init.body === "string" ? JSON.parse(init.body) : null };
     calls.push(call);
     if (call.url.startsWith("https://zoom.us/oauth")) return json({ access_token: "tok", expires_in: 3600, scope: "" });
+    if (call.url.startsWith("https://video.bunnycdn.com/library/12345/videos")) {
+      if (call.method === "POST") return json({ guid: BUNNY_GUID });
+      return call.url.endsWith(`/${BUNNY_GUID}`) ? json({ guid: BUNNY_GUID }) : json({}, 404);
+    }
     if (call.method === "POST") {
       meetingSeq += 1;
       return json({ id: 9_000_000 + meetingSeq, uuid: `u${meetingSeq}`, join_url: SECRET_JOIN, start_url: "https://zoom.us/s/1?zak=x", password: call.body?.password }, 201);
@@ -367,6 +374,67 @@ describe("admin live sessions", () => {
     const refused = await outcome(() => actions.saveStandaloneRecordingAction(form({ title: "Bad", source: "bunny", bunnyVideoId: "not-an-id", url: "" })));
     assert.match(decodeURIComponent(String(refused.redirect).replace(/\+/g, " ")), /not a Bunny video ID/);
     assert.equal(table("lmsResource").length, 1);
+    const unknown = await outcome(() => actions.saveStandaloneRecordingAction(form({ title: "Typo", source: "bunny", bunnyVideoId: "ffffffff-5e6f-4a8b-9c0d-1e2f3a4b5c6d", url: "" })));
+    assert.match(decodeURIComponent(String(unknown.redirect).replace(/\+/g, " ")), /No video with that ID is in the Bunny library/);
+    assert.equal(table("lmsResource").length, 1);
+  });
+
+  test("direct upload: the server creates the Bunny video and returns a TUS authorization for it only, never the API key", async () => {
+    access = { role: "MANAGER" };
+    const html = await render(AdminPage({ searchParams: Promise.resolve({}) }));
+    assert.match(html, /Upload a video file/);
+    assert.ok(!html.includes("test-only-api-key") && !html.includes("test-only-token-key"), "no Bunny key in the admin page");
+    const started = await actions.startBunnyUpload("Class 3");
+    assert.ok(started.ok);
+    const { ticket } = started as Extract<typeof started, { ok: true }>;
+    assert.equal(ticket.videoId, BUNNY_GUID);
+    assert.equal(ticket.libraryId, "12345");
+    assert.equal(ticket.endpoint, "https://video.bunnycdn.com/tusupload");
+    assert.equal(ticket.signature, createHash("sha256").update(`12345test-only-api-key${ticket.expires}${BUNNY_GUID}`).digest("hex"));
+    assert.ok(ticket.expires > Date.now() / 1000 && ticket.expires <= Date.now() / 1000 + 12 * 3600 + 5);
+    assert.ok(!JSON.stringify(started).includes("test-only-api-key"), "the API key never leaves the server");
+    const create = calls.find((call) => call.method === "POST" && call.url === "https://video.bunnycdn.com/library/12345/videos");
+    assert.deepEqual(create?.body, { title: "Class 3" });
+    access = { role: "COMMUNITY_LEAD" };
+    assert.equal((await outcome(() => actions.startBunnyUpload("x"))).redirect, "/admin/sirah");
+    access = null;
+    assert.equal((await outcome(() => actions.startBunnyUpload("x"))).redirect, "/admin/sirah/login");
+    delete process.env.BUNNY_STREAM_API_KEY;
+    access = { role: "MANAGER" };
+    const unconfigured = await actions.startBunnyUpload("x");
+    assert.equal(unconfigured.ok, false);
+    assert.doesNotMatch(await render(AdminPage({ searchParams: Promise.resolve({}) })), /Upload a video file/);
+  });
+
+  test("session-linked recordings accept Bunny, convert from a public link, and preview for staff only", async () => {
+    access = { role: "MANAGER" };
+    const past = seedSession(new Date(Date.now() - 2 * 86_400_000));
+    const base = { sessionId: past.id, cohortId: past.cohortId };
+    await outcome(() => actions.saveExternalRecording(form({ ...base, title: "Linked", source: "bunny", bunnyVideoId: BUNNY_GUID, url: "", publish: "on" })));
+    const linked = table("lmsResource")[0];
+    assert.equal(linked.bunnyVideoId, BUNNY_GUID);
+    assert.equal(linked.url, null);
+    assert.equal(linked.visibility, "PUBLISHED");
+    await outcome(() => actions.saveExternalRecording(form({ ...base, title: "Old link", url: "https://youtu.be/old" })));
+    const old = table("lmsResource")[1];
+    assert.equal(old.bunnyVideoId ?? null, null);
+    assert.equal(old.visibility, "HIDDEN");
+    await outcome(() => actions.updateExternalRecordingAction(form({ ...base, resourceId: String(old.id), title: "Converted", source: "bunny", bunnyVideoId: BUNNY_GUID, url: "" })));
+    assert.equal(old.title, "Converted");
+    assert.equal(old.bunnyVideoId, BUNNY_GUID);
+    assert.equal(old.url, null);
+    assert.equal(old.visibility, "HIDDEN", "editing the source does not change visibility");
+    const html = await render(AdminPage({ searchParams: Promise.resolve({ cohort: past.cohortId }) }));
+    assert.match(html, /Bunny \(protected\)/);
+    assert.match(html, /Preview video/);
+    assert.ok(!html.includes("iframe.mediadelivery.net") && !html.includes("token="), "no signed URL until a preview is requested");
+    const preview = await actions.adminBunnyPreview(String(old.id));
+    assert.ok(preview.ok && preview.src.startsWith(`https://iframe.mediadelivery.net/embed/12345/${BUNNY_GUID}?token=`), "hidden recordings can be previewed by staff");
+    assert.equal((await actions.adminBunnyPreview("missing")).ok, false);
+    access = { role: "COMMUNITY_LEAD" };
+    assert.equal((await outcome(() => actions.adminBunnyPreview(String(old.id)))).redirect, "/admin/sirah");
+    access = null;
+    assert.equal((await outcome(() => actions.adminBunnyPreview(String(old.id)))).redirect, "/admin/sirah/login");
   });
 
   test("the overlap guard's refusal is shown clearly on the page", async () => {
@@ -562,7 +630,7 @@ describe("student schedule", () => {
     seedPaidOrder(student.id);
     const past = seedSession(new Date(Date.now() - 2 * 86_400_000));
     const other = seedSession(new Date(Date.now() - 2 * 86_400_000), { cohortId: "other-cohort" });
-    const base = { kind: "LINK", contentType: "video/x-external-recording", createdAt: new Date(), publishedAt: new Date(), cohortId: null };
+    const base = { kind: "LINK", contentType: "video/x-external-recording", createdAt: new Date(), publishedAt: new Date(), cohortId: null, bunnyVideoId: null };
     table("lmsResource").push(
       { ...base, id: "visible", sessionId: past.id, title: "Visible recording", url: "https://youtu.be/visible", visibility: "PUBLISHED" },
       { ...base, id: "hidden", sessionId: past.id, title: "Hidden recording", url: "https://youtu.be/hidden", visibility: "HIDDEN" },
@@ -611,6 +679,25 @@ describe("student schedule", () => {
     for (const secret of ["test-only-token-key", "token=", "iframe.mediadelivery.net"]) assert.ok(!html.includes(secret), `page must not contain ${secret}`);
   });
 
+  test("a session-linked Bunny recording plays in the lightbox for its cohort only, with no key or signed URL in the page", async () => {
+    const past = seedSession(new Date(Date.now() - 2 * 86_400_000), { title: "Class with Bunny" });
+    const base = { kind: "LINK", contentType: "video/x-external-recording", createdAt: new Date(), publishedAt: new Date(), cohortId: null, parentRecordingId: null, url: null };
+    table("lmsResource").push(
+      { ...base, id: "bunny-visible", sessionId: past.id, title: "Protected session recording", bunnyVideoId: BUNNY_GUID, visibility: "PUBLISHED" },
+      { ...base, id: "bunny-hidden", sessionId: past.id, title: "Hidden protected recording", bunnyVideoId: BUNNY_GUID, visibility: "HIDDEN" },
+    );
+    const student = signIn(seedUser("linked-bunny@example.test"));
+    seedPaidOrder(student.id);
+    const html = await render(SchedulePage());
+    assert.match(html, /Protected session recording/);
+    assert.match(html, /<a class="st stNext" href="#recordings">Watch →<\/a>/);
+    assert.ok(!html.includes("Hidden protected recording"));
+    for (const secret of ["test-only-token-key", "test-only-api-key", "token=", "iframe.mediadelivery.net"]) assert.ok(!html.includes(secret), `page must not contain ${secret}`);
+    const other = signIn(seedUser("other-bunny@example.test"));
+    seedPaidOrder(other.id, "other-cohort");
+    assert.ok(!(await render(SchedulePage())).includes("Protected session recording"));
+  });
+
   test("students without an active, paid enrolment see the gated state and no sessions", async () => {
     seedSession(new Date(Date.now() + 10 * MIN), { title: "Secret class" });
     signIn(seedUser("unpaid@example.test"));
@@ -650,7 +737,7 @@ describe("student schedule", () => {
     const past = seedSession(new Date(Date.now() - 2 * 86_400_000), { title: "Class 01" });
     seedSession(new Date(Date.now() - 86_400_000), { title: "Class 02" });
     seedSession(new Date(Date.now() - 86_400_000), { title: "Other cohort class", cohortId: "other-cohort" });
-    const base = { kind: "LINK", contentType: "video/x-external-recording", createdAt: new Date(), publishedAt: new Date(), cohortId: null, parentRecordingId: null };
+    const base = { kind: "LINK", contentType: "video/x-external-recording", createdAt: new Date(), publishedAt: new Date(), cohortId: null, parentRecordingId: null, bunnyVideoId: null };
     table("lmsResource").push(
       { ...base, id: "orientation", sessionId: null, title: "Orientation", url: "https://example.test/orientation", visibility: "PUBLISHED", originalFilename: "Welcome" },
       { ...base, id: "visible", sessionId: past.id, title: "Class 01 recording", url: "https://example.test/recording", visibility: "PUBLISHED" },
