@@ -49,7 +49,7 @@ test("signs the embed with SHA256(key + videoId + expires) and a short expiry", 
   assert.equal(url.searchParams.get("expires"), String(expires));
   assert.equal(url.searchParams.get("token"), createHash("sha256").update(`test-only-token-key${GUID}${expires}`).digest("hex"));
   assert.equal(expiresAt.getTime(), expires * 1000);
-  assert.ok(bunny.BUNNY_EMBED_TOKEN_SECONDS <= 60 * 60, "embed links stay short-lived");
+  assert.ok(bunny.BUNNY_EMBED_TOKEN_SECONDS <= 4 * 60 * 60, "embed links still expire within one class sitting");
   assert.ok(!src.includes("test-only-token-key"), "the key itself never appears in the URL");
 });
 

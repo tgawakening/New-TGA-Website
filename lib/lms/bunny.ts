@@ -15,7 +15,7 @@ import { LmsContentError } from "./content";
  */
 
 /** How long a signed embed URL can be opened. A fresh one is issued each time the player opens. */
-export const BUNNY_EMBED_TOKEN_SECONDS = 30 * 60;
+export const BUNNY_EMBED_TOKEN_SECONDS = 14400;
 
 const GUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const EXACT_GUID = new RegExp(`^${GUID.source}$`, "i");
