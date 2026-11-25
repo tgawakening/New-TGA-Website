@@ -10,6 +10,7 @@ export default async function SirahAdminPage({
 }) {
   const access = await getSirahWorkspaceAccess();
   if (!access) redirect("/admin/sirah/login");
+  if (access.role === "COMMUNITY_LEAD") redirect("/admin/sirah/overview");
   const [{ order, group, payment, excluded, archived }, notifications] = await Promise.all([
     searchParams,
     access.readOnly ? Promise.resolve([]) : getAdminNotifications(),

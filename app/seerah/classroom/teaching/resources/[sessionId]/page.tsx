@@ -114,7 +114,7 @@ export default async function HostResourcesPage({
                         {published ? "Hide" : "Publish"}
                       </button>
                     </form>
-                    <details className={styles.confirm}>
+                    {resource.contentType !== "video/x-external-recording" && <details className={styles.confirm}>
                       <summary className={styles.ghostDanger}>Remove</summary>
                       <form action={removeHostResource} className={styles.confirmPanel}>
                         <input type="hidden" name="sessionId" value={session.id} />
@@ -124,7 +124,7 @@ export default async function HostResourcesPage({
                           Yes, remove
                         </button>
                       </form>
-                    </details>
+                    </details>}
                   </span>
                 </li>
               );

@@ -20,11 +20,17 @@ import { ZoomConfigError } from "@/lib/zoom/env";
 const PAGE = "/admin/sirah/classroom/live";
 
 /** Server actions are public POST endpoints: every one re-checks the role.
- * Super Admin and Manager may manage live sessions; Community Leads may not. */
+ * Super Admin and Manager may manage sessions; all workspace roles may create them. */
 async function requireSessionEditor() {
   const access = await getSirahWorkspaceAccess();
   if (!access) redirect("/admin/sirah/login");
   if (!(access.role === "SUPER_ADMIN" || access.role === "MANAGER")) redirect("/admin/sirah");
+  return access;
+}
+
+async function requireSessionCreator() {
+  const access = await getSirahWorkspaceAccess();
+  if (!access) redirect("/admin/sirah/login");
   return access;
 }
 
@@ -72,7 +78,7 @@ function readSchedule(form: FormData): { startsAt: Date; durationMin: number } |
 }
 
 export async function createLiveSession(form: FormData) {
-  await requireSessionEditor();
+  await requireSessionCreator();
   const cohort = text(form, "cohortId");
   const schedule = readSchedule(form);
   if (typeof schedule === "string") back({ error: schedule, cohort, anchor: "new-session" });
@@ -110,7 +116,9 @@ export async function updateLiveSession(form: FormData) {
 }
 
 export async function cancelLiveSession(form: FormData) {
-  await requireSessionEditor();
+  const access = await requireSessionEditor();
+  // Cancelling deletes the Zoom meeting, so it follows the session-delete gate.
+  if (access.role !== "SUPER_ADMIN") redirect("/admin/sirah/overview");
   const id = text(form, "id");
   const cohort = text(form, "cohortId");
   let error = "";
@@ -236,7 +244,8 @@ export async function saveStandaloneRecordingAction(form: FormData) {
 }
 
 export async function deleteStandaloneRecordingAction(form: FormData) {
-  await requireSessionEditor();
+  const access = await requireSessionEditor();
+  if (access.role !== "SUPER_ADMIN") redirect("/admin/sirah/overview");
   const cohort = text(form, "cohortId");
   try {
     await deleteStandaloneRecording(text(form, "id"));

@@ -13,15 +13,16 @@ export default async function SirahOverviewPage() {
   const access = await getSirahWorkspaceAccess();
   if (!access) redirect("/admin/sirah/login");
   const counts = await sirahOverviewCounts();
-  // Same gate as /api/admin/sirah/totals: super admin and manager only.
-  const canViewTotals = access.role === "SUPER_ADMIN" || access.role === "MANAGER";
+  // Match the server-side totals gate.
+  const canViewTotals = access.role === "SUPER_ADMIN";
+  const canViewStudents = access.role !== "COMMUNITY_LEAD";
   const groupTotal = counts.groupAdded + counts.groupNotAdded;
   const addedShare = groupTotal ? Math.round((counts.groupAdded / groupTotal) * 100) : 0;
   const tiles = [
-    { label: "Total registered", value: counts.total, hint: "All Sīrah registrations", href: "/admin/sirah" },
-    { label: "Paid", value: counts.paid, hint: "Verified payment received", href: "/admin/sirah?payment=PAID" },
+    { label: "Total registered", value: counts.total, hint: "All Sīrah registrations", href: canViewStudents ? "/admin/sirah" : null },
+    { label: "Paid", value: counts.paid, hint: "Verified payment received", href: canViewStudents ? "/admin/sirah?payment=PAID" : null },
     { label: "Pending", value: counts.pending, hint: "Registered, payment not yet complete", href: null },
-    { label: "Needs attention", value: counts.needsReview, hint: "Receipts to review, checks or failures", href: "/admin/sirah/payments" },
+    { label: "Needs attention", value: counts.needsReview, hint: "Receipts to review, checks or failures", href: canViewStudents ? "/admin/sirah/payments" : null },
   ];
   return (
     <>
@@ -77,9 +78,9 @@ export default async function SirahOverviewPage() {
         <div className={styles.groupCard}>
           <div className={styles.groupHead}>
             <h3>Course group (paid, active students)</h3>
-            <a className="ga-admin-outline-btn" href="/admin/sirah?group=NOT_ADDED&payment=PAID">
+            {canViewStudents && <a className="ga-admin-outline-btn" href="/admin/sirah?group=NOT_ADDED&payment=PAID">
               Show not yet added
-            </a>
+            </a>}
           </div>
           <div
             className={styles.meter}

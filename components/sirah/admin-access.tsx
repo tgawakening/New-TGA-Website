@@ -44,12 +44,12 @@ const ROLE_SUMMARY = [
   {
     role: "Manager",
     who: "SIRAH_REVIEWER",
-    can: "Approve payments, complete courses, discount codes, custom payment links, scholarships, course group.",
+    can: "Manage students, payments and reviews, scholarships, course group, live sessions, resources, notices, discount codes and custom links. Revenue totals, session cancellation/deletion and recording deletion are restricted to the Super Admin.",
   },
   {
     role: "Community Lead",
     who: "SIRAH_VIEWER",
-    can: "Read-only students and enrolments, CSV export, and the “added to group” toggle.",
+    can: "Create live sessions, resources and announcements; view Overview and scholarship reviews; update course-group status. No Students list or revenue totals.",
   },
 ];
 

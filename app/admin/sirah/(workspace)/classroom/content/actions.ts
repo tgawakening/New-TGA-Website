@@ -21,16 +21,18 @@ import { confirmUploadedResource, removeStoredObject, resourceUploadTicket, type
 
 const PAGE = "/admin/sirah/classroom/content";
 
-/** Server actions are public POST endpoints: every one re-checks the role.
- * Super Admin and Manager manage resources and announcements. */
-async function requireEditor() {
+/** Creation is available to workspace staff; editing existing items is
+ * restricted to the existing Manager and Super Admin roles. */
+async function requireCreator() {
   const access = await getSirahWorkspaceAccess();
   if (!access) redirect("/admin/sirah/login");
-  if (!(access.role === "SUPER_ADMIN" || access.role === "MANAGER")) redirect("/admin/sirah");
-  // Recorded on the row as uploadedBy / createdBy.
-  const actor =
-    access.role === "SUPER_ADMIN" ? (await getCurrentAdmin())?.email || "Super Admin" : (await getSessionIdentity())?.email || "Manager";
-  return { actor };
+  const actor = access.role === "SUPER_ADMIN" ? (await getCurrentAdmin())?.email || "Super Admin" : (await getSessionIdentity())?.email || "Team member";
+  return { actor, role: access.role };
+}
+async function requireEditor() {
+  const access = await requireCreator();
+  if (access.role === "COMMUNITY_LEAD") redirect("/admin/sirah/overview");
+  return access;
 }
 
 const text = (form: FormData, name: string) => {
@@ -65,7 +67,7 @@ function describe(error: unknown) {
 /** Step one of an upload, called from the browser: answers instead of redirecting. */
 export async function requestResourceUpload(input: { kind: string; filename: string; contentType: string; size: number }): Promise<UploadTicket> {
   const access = await getSirahWorkspaceAccess();
-  if (!access || !(access.role === "SUPER_ADMIN" || access.role === "MANAGER")) return { ok: false, error: "Only reviewers and admins can upload." };
+  if (!access) return { ok: false, error: "Workspace access is required to upload." };
   return resourceUploadTicket(input);
 }
 
@@ -77,7 +79,7 @@ function scopeFrom(form: FormData, cohort: string): ResourceScope {
 }
 
 export async function addResource(form: FormData) {
-  const { actor } = await requireEditor();
+  const { actor } = await requireCreator();
   const cohort = text(form, "cohortId");
   const scope = scopeFrom(form, cohort);
   let error = "";
@@ -115,9 +117,9 @@ export async function changeResourceVisibility(form: FormData) {
 }
 
 export async function removeResource(form: FormData) {
-  await requireEditor();
+  const access = await requireEditor();
   const cohort = text(form, "cohortId");
-  const removed = await deleteResource(text(form, "id"));
+  const removed = await deleteResource(text(form, "id"), access.role === "SUPER_ADMIN");
   // The row is gone, so no student can reach the file; the object goes too.
   await removeStoredObject(removed?.storageKey);
   done("Resource removed.", cohort, "resources");
@@ -126,9 +128,9 @@ export async function removeResource(form: FormData) {
 /* ---------- Announcements ---------- */
 
 export async function saveAnnouncement(form: FormData) {
-  const { actor } = await requireEditor();
-  const cohort = text(form, "cohortId");
   const id = text(form, "id");
+  const { actor } = id ? await requireEditor() : await requireCreator();
+  const cohort = text(form, "cohortId");
   let error = "";
   let createdId = "";
   let publishNow = false;

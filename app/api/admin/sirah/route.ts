@@ -24,6 +24,7 @@ const REFUND_ACTIONS = new Set(["REFUND", "QUOTE_ANNUAL_REFUND"]);
 export async function GET(request: Request) {
   try {
     const access = await sirahReadAccess(request);
+    if (access.role === "COMMUNITY_LEAD") throw new SirahError("Student records are not available for this role.", 403);
     const params = new URL(request.url).searchParams;
     // The excluded (test / junk) view is for the super admin and managers,
     // who can exclude / un-exclude. The archive (soft-deleted records

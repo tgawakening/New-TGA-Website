@@ -7,7 +7,8 @@ import { SirahError } from "@/services/sirah-registration.service";
 
 export async function GET(request: Request) {
   try {
-    await sirahReadAccess(request);
+    const access = await sirahReadAccess(request);
+    if (access.role === "COMMUNITY_LEAD") throw new SirahError("Student records are not available for this role.", 403);
     const id = new URL(request.url).searchParams.get("id") || "";
     const order = await prisma.sirahOrder.findUnique({ where: { id }, select: { currency: true, ledgerFeeMinor: true, ledgerFeeCurrency: true, settlements: { where: { status: "PENDING" }, select: { id: true, currency: true, amountMinor: true }, take: 1 }, ledgerPayments: { orderBy: { receivedAt: "desc" } }, agreement: { select: { filename: true } } } });
     if (!order) throw new SirahError("Registration not found.", 404);

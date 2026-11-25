@@ -8,31 +8,20 @@ const Module = require("node:module") as { _extensions: Record<string, (m: { exp
 Module._extensions[".css"] = (m) => { m.exports = new Proxy({}, { get: (_, key) => key === "__esModule" ? false : String(key) }); };
 const file = (p: string) => pathToFileURL(path.resolve(__dirname, p)).href;
 let role: string | null = null;
-let partner = false;
-let designated = false;
-let hasIdentity = false;
 let reads = 0;
 mock.module("server-only", { namedExports: {} });
 mock.module("next/navigation", { namedExports: { notFound: () => { throw new Error("NOT_FOUND"); } } });
-mock.module(file("../lib/auth/session.ts"), { namedExports: { getSessionIdentity: async () => hasIdentity ? { id: "u", email: "teacher@example.test" } : null } });
 mock.module(file("../lib/auth/sirah-workspace.ts"), { namedExports: { getSirahWorkspaceAccess: async () => role ? { role } : null } });
-mock.module(file("../lib/lms/schedule.ts"), { namedExports: { hostsForIdentity: async (identity: unknown) => identity ? [{ id: "host" }] : [] } });
-mock.module(file("../lib/prisma.ts"), { namedExports: { prisma: { zoomHost: { findFirst: async (args: { where: { id?: unknown } }) => (args.where.id ? partner : designated) ? { id: "host" } : null }, sirahOrder: { findMany: async () => { reads++; return []; } } } } });
+mock.module(file("../lib/prisma.ts"), { namedExports: { prisma: { sirahOrder: { findMany: async () => { reads++; return []; } } } } });
 mock.module(file("../services/sirah-payment-totals.service.ts"), { namedExports: { sirahPaymentTotals: async () => { reads++; return { currencies: [], truncated: false }; } } });
 
-test("revenue is read only after partner or administrator authorisation", async () => {
+test("only the Super Admin can read the revenue data", async () => {
   const { default: page } = await import("../app/seerah/classroom/teaching/revenue/page");
-  for (const scenario of [{ role: null, identity: false }, { role: null, identity: true }, { role: "COMMUNITY_LEAD", identity: true }]) {
-    role = scenario.role; hasIdentity = scenario.identity; partner = false; reads = 0;
+  for (const forbidden of [null, "MANAGER", "COMMUNITY_LEAD"]) {
+    role = forbidden; reads = 0;
     await assert.rejects(page(), /NOT_FOUND/);
     assert.equal(reads, 0);
   }
-  role = "SUPER_ADMIN"; hasIdentity = false; partner = false; designated = false; reads = 0;
-  await assert.rejects(page(), /NOT_FOUND/); assert.equal(reads, 0);
-  role = null; hasIdentity = true; partner = true; designated = true; reads = 0;
-  await page(); assert.equal(reads, 2);
-  role = null; hasIdentity = true; partner = false; designated = true; reads = 0;
-  await assert.rejects(page(), /NOT_FOUND/); assert.equal(reads, 0);
-  role = "SUPER_ADMIN"; hasIdentity = false; partner = false; designated = true; reads = 0;
+  role = "SUPER_ADMIN"; reads = 0;
   await page(); assert.equal(reads, 2);
 });
