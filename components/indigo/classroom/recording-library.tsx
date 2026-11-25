@@ -7,7 +7,9 @@ import { RecordingPlayer } from "./recording-player";
 import { Rosette } from "@/components/indigo/ornaments";
 import { TaskLinks, type TaskLink } from "@/components/sirah/tasks/task-links";
 
-type Item = { id: string; title: string; date?: string; href: string; external: boolean; player?: { src: string; kind: "VIDEO" | "AUDIO" }; description?: string | null; resources?: { id: string; title: string; href: string }[]; tasks?: TaskLink[] };
+// protectedEmbed: our API path that returns a freshly signed Bunny embed URL for an enrolled student.
+type Item = { id: string; title: string; date?: string; href: string; external: boolean; player?: { src: string; kind: "VIDEO" | "AUDIO" }; protectedEmbed?: string; thumbnail?: string | null; description?: string | null; resources?: { id: string; title: string; href: string }[]; tasks?: TaskLink[] };
+type ProtectedState = { id: string; src?: string; error?: string } | null;
 
 function embedFor(href: string) {
   try {
@@ -47,18 +49,33 @@ function RecordingThumbnail({ title, thumbnail }: { title: string; thumbnail?: s
 export function RecordingLibrary({ items }: { items: Item[] }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState<Item | null>(null);
+  const [secured, setSecured] = useState<ProtectedState>(null);
   if (!items.length) return <p className={s.empty}>Recordings will appear here once published.</p>;
   const embed = selected?.external ? embedFor(selected.href) : null;
+  const open = (item: Item) => {
+    setSelected(item);
+    setSecured(item.protectedEmbed ? { id: item.id } : null);
+    dialog.current?.showModal();
+    if (!item.protectedEmbed) return;
+    // A new short-lived signed URL on every open; nothing signed is in the page HTML.
+    fetch(item.protectedEmbed, { cache: "no-store", credentials: "same-origin" })
+      .then(async (response) => {
+        const body = (await response.json().catch(() => ({}))) as { src?: string; error?: string };
+        const src = response.ok && typeof body.src === "string" && body.src.startsWith("https://iframe.mediadelivery.net/") ? body.src : undefined;
+        setSecured((current) => current?.id === item.id ? (src ? { id: item.id, src } : { id: item.id, error: body.error ?? "This recording cannot be played right now." }) : current);
+      })
+      .catch(() => setSecured((current) => current?.id === item.id ? { id: item.id, error: "This recording cannot be played right now." } : current));
+  };
   return <>
     <div className={s.grid}>{items.map((item) => {
       const preview = item.external ? embedFor(item.href) : null;
-      const body = <><RecordingThumbnail title={item.title} thumbnail={preview?.thumbnail} /><span className={s.content}><strong>{item.title}</strong>{item.date && <small>{item.date}</small>}{item.description && <small>{item.description}</small>}</span></>;
-      const card = (item.player || (item.external && (preview || item.resources?.length))) ? <button type="button" className={s.card} onClick={() => { setSelected(item); dialog.current?.showModal(); }} aria-haspopup="dialog">{body}<span className={s.action}>Watch &#8594;</span></button> : item.external ? <a className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
+      const body = <><RecordingThumbnail title={item.title} thumbnail={item.thumbnail ?? preview?.thumbnail} /><span className={s.content}><strong>{item.title}</strong>{item.date && <small>{item.date}</small>}{item.description && <small>{item.description}</small>}</span></>;
+      const card = (item.protectedEmbed || item.player || (item.external && (preview || item.resources?.length))) ? <button type="button" className={s.card} onClick={() => open(item)} aria-haspopup="dialog">{body}<span className={s.action}>Watch &#8594;</span></button> : item.external ? <a className={s.card} href={item.href} target="_blank" rel="noopener noreferrer">{body}<span className={s.action}>Open &#8599;</span></a> : <Link className={s.card} href={item.href}>{body}<span className={s.action}>Watch &#8594;</span></Link>;
       return <div key={item.id}>{card}<TaskLinks tasks={item.tasks} /></div>;
     })}</div>
-    <dialog ref={dialog} className={s.dialog} onClose={() => setSelected(null)} aria-labelledby="recording-player-title">
+    <dialog ref={dialog} className={s.dialog} onClose={() => { setSelected(null); setSecured(null); }} aria-labelledby="recording-player-title">
       {selected && <><header className={s.dialogHeader}><h2 id="recording-player-title">{selected.title}</h2><form method="dialog"><button className={s.close} aria-label="Close recording">Close &#215;</button></form></header>
-        {selected.player ? <div className={s.player}><RecordingPlayer src={selected.player.src} kind={selected.player.kind} title={selected.title} /></div> : embed ? <div className={s.player}><iframe src={embed.src} title={`Recording: ${selected.title}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /></div> : <p className={s.dialogContent}><a href={selected.href} target="_blank" rel="noopener noreferrer">Open recording &#8599;</a></p>}
+        {selected.protectedEmbed ? (secured?.src ? <div className={s.player}><iframe src={secured.src} title={`Recording: ${selected.title}`} allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /></div> : <p className={s.dialogContent} role="status">{secured?.error ?? "Loading recording…"}</p>) : selected.player ? <div className={s.player}><RecordingPlayer src={selected.player.src} kind={selected.player.kind} title={selected.title} /></div> : embed ? <div className={s.player}><iframe src={embed.src} title={`Recording: ${selected.title}`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" /></div> : <p className={s.dialogContent}><a href={selected.href} target="_blank" rel="noopener noreferrer">Open recording &#8599;</a></p>}
         {(embed || selected.player) && <p className={s.dialogContent}><a href={selected.href} target={selected.external ? "_blank" : undefined} rel={selected.external ? "noopener noreferrer" : undefined}>Open recording separately &#8599;</a></p>}
         {selected.resources?.length ? <div className={s.dialogContent}><strong>Tasks and resources</strong><ul>{selected.resources.map((resource) => <li key={resource.id}><a href={resource.href} target="_blank" rel="noopener noreferrer">{resource.title}</a></li>)}</ul></div> : null}
       </>}

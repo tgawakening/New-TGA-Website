@@ -53,7 +53,7 @@ export default async function SirahClassroomPage() {
       phase5={phase5}
       recordings={recordings.map((recording) => ({ sessionId: recording.sessionId, href: watchPath(recording.recordingId) }))}
       externalRecordings={external.flatMap((recording) => recording.sessionId && recording.url ? [{ id: recording.id, sessionId: recording.sessionId, title: recording.title, url: recording.url }] : [])}
-      standaloneRecordings={standalone.flatMap((recording) => recording.url ? [{ id: recording.id, title: recording.title, description: recording.originalFilename }] : [])}
+      standaloneRecordings={standalone.flatMap((recording) => recording.url || recording.bunnyVideoId ? [{ id: recording.id, title: recording.title, description: recording.originalFilename }] : [])}
       tasks={tasks.map((task) => ({ id: task.id, title: task.title, submitted: task.submissions.length > 0, sessionId: task.sessionId, recordingId: task.recordingId, externalRecordingId: task.externalRecordingId }))}
     />
   );

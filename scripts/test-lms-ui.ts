@@ -77,6 +77,9 @@ const FAKE_ENV = {
   ZOOM_DEFAULT_HOST_USER_ID: "host@example.test",
   ZOOM_WEBHOOK_SECRET_TOKEN: "whsec_test",
   LMS_FIELD_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
+  // Placeholder Bunny values; no API key, so no network check runs.
+  BUNNY_STREAM_LIBRARY_ID: "12345",
+  BUNNY_STREAM_TOKEN_AUTH_KEY: "test-only-token-key",
 };
 Object.assign(process.env, FAKE_ENV);
 
@@ -347,6 +350,25 @@ describe("admin live sessions", () => {
     assert.equal(table("lmsResource").length, 0);
   });
 
+  test("a Bunny recording stores only its video ID, and the form offers protected and public sources", async () => {
+    access = { role: "MANAGER" };
+    const html = await render(AdminPage({ searchParams: Promise.resolve({}) }));
+    assert.match(html, /Bunny video \(protected\)/);
+    assert.match(html, /Public link \(shareable\)/);
+    assert.match(html, /<input type="radio" name="source" checked="" value="bunny"\/>/);
+    const guid = "1a2b3c4d-5e6f-4a8b-9c0d-1e2f3a4b5c6d";
+    await outcome(() => actions.saveStandaloneRecordingAction(form({ title: "Class 2", source: "bunny", bunnyVideoId: `https://iframe.mediadelivery.net/embed/12345/${guid}`, url: "", publish: "on" })));
+    const item = table("lmsResource")[0];
+    assert.equal(item.bunnyVideoId, guid);
+    assert.equal(item.url, null);
+    await outcome(() => actions.saveStandaloneRecordingAction(form({ id: String(item.id), title: "Class 2", source: "link", url: "https://youtu.be/example", bunnyVideoId: "", publish: "on" })));
+    assert.equal(item.bunnyVideoId, null);
+    assert.equal(item.url, "https://youtu.be/example");
+    const refused = await outcome(() => actions.saveStandaloneRecordingAction(form({ title: "Bad", source: "bunny", bunnyVideoId: "not-an-id", url: "" })));
+    assert.match(decodeURIComponent(String(refused.redirect).replace(/\+/g, " ")), /not a Bunny video ID/);
+    assert.equal(table("lmsResource").length, 1);
+  });
+
   test("the overlap guard's refusal is shown clearly on the page", async () => {
     access = { role: "SUPER_ADMIN" };
     const day = future(5);
@@ -573,6 +595,20 @@ describe("student schedule", () => {
     signIn(seedUser("unpaid@example.test"));
     item.visibility = "PUBLISHED";
     assert.ok(!(await render(SchedulePage())).includes("https://youtu.be/orientation"));
+  });
+
+  test("a Bunny recording is listed for enrolled students without any signed URL or key in the page", async () => {
+    access = { role: "MANAGER" };
+    const guid = "1a2b3c4d-5e6f-4a8b-9c0d-1e2f3a4b5c6d";
+    const input = new FormData();
+    for (const [key, value] of Object.entries({ title: "Protected class", source: "bunny", bunnyVideoId: guid, url: "", publish: "on" })) input.set(key, value);
+    await outcome(() => actions.saveStandaloneRecordingAction(input));
+    const student = signIn(seedUser("bunny@example.test"));
+    seedPaidOrder(student.id, SIRAH_BATCH);
+    const html = await render(SchedulePage());
+    assert.match(html, /Protected class/);
+    assert.match(html, /href="#recordings"/);
+    for (const secret of ["test-only-token-key", "token=", "iframe.mediadelivery.net"]) assert.ok(!html.includes(secret), `page must not contain ${secret}`);
   });
 
   test("students without an active, paid enrolment see the gated state and no sessions", async () => {

@@ -8,6 +8,7 @@ import { viewerTimeZone } from "@/lib/time/viewer-zone.server";
 import { studentPhase5 } from "@/lib/lms/student-phase5";
 import { studentExternalRecordings, studentStandaloneRecordings } from "@/lib/lms/external-recordings";
 import { recordingsAvailable, studentRecordings, watchPath, playPath, type StudentRecording } from "@/lib/lms/recordings";
+import { bunnyEmbedPath, bunnyThumbnailUrl } from "@/lib/lms/bunny";
 import { getSirahStudentAccess } from "@/services/sirah-classroom.service";
 import { studentTaskList } from "@/lib/lms/tasks";
 import { classroomClock } from "@/components/indigo/classroom/clock";
@@ -99,7 +100,10 @@ export default async function LiveSchedulePage() {
               <RecordingLibrary items={[
                 ...recordings.map((r) => ({ id: `zoom-${r.recordingId}`, title: r.title, date: clock.shortDate.format(r.startsAt), href: watchPath(r.recordingId), player: { src: playPath(r.recordingId), kind: r.kind }, external: false, tasks: [...linksFor("sessionId", r.sessionId), ...linksFor("recordingId", r.recordingId)] })),
                 ...external.flatMap((r) => { const session = schedule.past.find((item) => item.id === r.sessionId); return session && r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(session.startsAt), href: r.url, external: true, tasks: [...linksFor("sessionId", session.id), ...linksFor("externalRecordingId", r.id)] }] : []; }),
-                ...standalone.flatMap((r) => r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: r.url, description: r.originalFilename, resources: r.resources, external: true, tasks: linksFor("externalRecordingId", r.id) }] : []),
+                ...standalone.flatMap((r) =>
+                  r.bunnyVideoId
+                    ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: "", protectedEmbed: bunnyEmbedPath(r.id), thumbnail: bunnyThumbnailUrl(r.bunnyVideoId), description: r.originalFilename, resources: r.resources, external: false, tasks: linksFor("externalRecordingId", r.id) }]
+                    : r.url ? [{ id: r.id, title: r.title, date: clock.shortDate.format(r.createdAt), href: r.url, description: r.originalFilename, resources: r.resources, external: true, tasks: linksFor("externalRecordingId", r.id) }] : []),
               ]} />
             </section>
 
@@ -115,11 +119,13 @@ export default async function LiveSchedulePage() {
               )}
               {standalone.length > 0 && (
                 <ol className={s.chapters}>
-                  {standalone.map((item) => item.url && (
+                  {standalone.map((item) => (item.url || item.bunnyVideoId) && (
                     <li key={item.id}>
                       <div className={s.chap}>
                         <span className={s.ti}>{item.title}{item.originalFilename && <small>{item.originalFilename}</small>}</span>
-                        <a className={`${s.st} ${s.stNext}`} href={item.url} target="_blank" rel="noopener noreferrer">Watch →</a>
+                        {item.bunnyVideoId
+                          ? <a className={`${s.st} ${s.stNext}`} href="#recordings">Watch →</a>
+                          : <a className={`${s.st} ${s.stNext}`} href={item.url ?? ""} target="_blank" rel="noopener noreferrer">Watch →</a>}
                       </div>
                     </li>
                   ))}
