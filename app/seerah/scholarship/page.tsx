@@ -1,10 +1,8 @@
-import type { Metadata, Viewport } from "next";
-import { INDIGO_THEME_COLOR } from "@/components/indigo/indigo-root";
-import FeeWaiverPage from "../free-warrior/page";
-export const metadata: Metadata = {
-  title: "Batch 4 Sīrah Scholarships | The Global Awakening",
-  description: "Apply for one of ten Sīrah | Beyond Chronology Batch 4 scholarships. Selection considers learning, commitment, service and community contribution.",
-};
-export const dynamic = "force-dynamic";
-export const viewport: Viewport = { themeColor: INDIGO_THEME_COLOR };
-export default FeeWaiverPage;
+import type { Metadata } from "next";
+import { IndigoRoot } from "@/components/indigo/indigo-root";
+import { ScholarshipApplicationForm } from "@/components/sirah/scholarship-application-form";
+import "./scholarship-application.css";
+export const metadata: Metadata = { title: "Scholarship application | The Global Awakening", description: "Apply for a scholarship or reduced fee for the Sirah course." };
+export default function ScholarshipApplicationPage() {
+  return <IndigoRoot><main className="scholarship-application"><a href="/seerah">Back to the course</a><h1>Scholarship and reduced-fee application</h1><p>Apply for a full scholarship, a reduced fee, or a payment plan. Our team will review your application and contact you.</p><p className="scholarship-notice"><strong>Do not submit or pay any amount until your application has been approved.</strong></p><ScholarshipApplicationForm /></main></IndigoRoot>;
+}

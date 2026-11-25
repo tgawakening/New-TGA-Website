@@ -9,6 +9,7 @@ export async function POST(request: Request) {
     const actor = await sirahExclusionActor(request);
     const body = await request.json();
     if (typeof body.id !== "string" || body.id.length > 191) throw new SirahError("Invalid registration.");
-    return privateJson(await createBalanceLink(body.id, actor));
+    if (body.amount !== undefined && (typeof body.amount !== "string" || body.amount.length > 20)) throw new SirahError("Invalid payment amount.");
+    return privateJson(await createBalanceLink(body.id, actor, undefined, body.amount || undefined));
   } catch (error) { return sirahResponseError(error); }
 }

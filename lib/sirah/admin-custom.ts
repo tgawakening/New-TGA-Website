@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { SCHOLARSHIP_ORDER_VERSION } from "./scholarship-application";
 import { SIRAH_TITLE } from "./catalog";
 
 /**
@@ -87,6 +88,7 @@ export function studentPriceChangeRefusal(order: {
   discount?: unknown;
   pricingVersion?: string | null;
 }) {
+  if (order.pricingVersion === SCHOLARSHIP_ORDER_VERSION) return "Your approved fee is managed by the TGA team. Please use the payment link they provide.";
   return isAdminCustomOrder(order) ? ADMIN_CUSTOM_LOCKED_MESSAGE : null;
 }
 

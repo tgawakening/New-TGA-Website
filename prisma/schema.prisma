@@ -476,6 +476,7 @@ model SirahOrder {
   agreement              SirahAgreement?
   ledgerPayments         SirahLedgerPayment[]
   settlements            SirahSettlement[]
+  scholarshipApplications SirahScholarshipApplication[]
   discount               Json?
   id                     String              @id @default(cuid())
   userId                 String
@@ -1196,4 +1197,36 @@ model SirahSettlement {
   order           SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
   @@index([orderId, status])
+}
+
+model SirahScholarshipApplication {
+  id                   String   @id @default(cuid())
+  fullName             String   @db.VarChar(120)
+  email                String   @db.VarChar(254)
+  phone                String   @db.VarChar(32)
+  countryCode          String   @db.VarChar(2)
+  courseSlug           String   @db.VarChar(191)
+  batchCode            String   @db.VarChar(191)
+  arrangementType      String   @db.VarChar(24)
+  requestedAmountMinor Int?
+  currency             String   @db.VarChar(3)
+  reason               String   @db.Text
+  documentName         String?  @db.VarChar(191)
+  documentData         Bytes?   @db.LongBlob
+  status               String   @default("PENDING") @db.VarChar(16)
+  reviewedBy           String?  @db.VarChar(320)
+  reviewedAt           DateTime? @db.DateTime(3)
+  reviewNotes          String?  @db.Text
+  approvedFeeMinor     Int?
+  approvedMonthlyMinor Int?
+  orderId              String?
+  notificationState    String?  @db.VarChar(16)
+  createdBy            String?  @db.VarChar(320)
+  createdAt            DateTime @default(now()) @db.DateTime(3)
+  updatedAt            DateTime @updatedAt @db.DateTime(3)
+  order                SirahOrder? @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([email, batchCode])
+  @@index([orderId])
 }
