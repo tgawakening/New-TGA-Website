@@ -440,9 +440,10 @@ function SeerahRegisterContent() {
           form.paymentPlanType,
         )
       : [PaymentMethod.STRIPE];
-    return methods.includes(form.paymentMethod)
-      ? methods
-      : [form.paymentMethod, ...methods];
+    const available = methods.filter((method) => method !== PaymentMethod.PAYPAL);
+    return form.paymentMethod !== PaymentMethod.PAYPAL && !available.includes(form.paymentMethod)
+      ? [form.paymentMethod, ...available]
+      : available;
   }, [form.paymentMethod, form.paymentPlanType, pricing]);
 
   const fetchPricing = useCallback(
@@ -474,10 +475,10 @@ function SeerahRegisterContent() {
         }
 
         setPricing(data.pricing);
-        const methodsForPlan = getPaymentMethodsForPlan(
+        const methodsForPlan: PaymentMethod[] = getPaymentMethodsForPlan(
           data.pricing.allowedPaymentMethodsByPlan,
           form.paymentPlanType,
-        );
+        ).filter((method) => method !== PaymentMethod.PAYPAL);
         if (!methodsForPlan.includes(form.paymentMethod)) {
           setForm((prev) => ({
             ...prev,

@@ -220,3 +220,19 @@ export async function deleteLiveSession(form: FormData) {
   }
   done("Session deleted.", cohort);
 }
+
+/** Revenue access is granted explicitly by the super admin only. */
+export async function setRevenuePartner(form: FormData) {
+  const access = await getSirahWorkspaceAccess();
+  if (!access || access.role !== "SUPER_ADMIN") redirect("/admin/sirah");
+  const hostId = safe(text(form, "hostId"));
+  const enable = text(form, "enabled") === "1";
+  const admin = await getCurrentAdmin();
+  const host = hostId ? await prisma.zoomHost.findFirst({ where: { id: hostId, active: true }, select: { id: true, email: true, revenuePartner: true } }) : null;
+  if (!host) back({ error: "That active host no longer exists.", anchor: "revenue-partners" });
+  await prisma.$transaction(async tx => {
+    await tx.zoomHost.update({ where: { id: host.id }, data: { revenuePartner: enable } });
+    await tx.sirahAccessAudit.create({ data: { actor: admin?.email || "Super Admin", action: enable ? "REVENUE_PARTNER_GRANTED" : "REVENUE_PARTNER_REVOKED", targetEmail: host.email, fromStatus: host.revenuePartner ? "ENABLED" : "DISABLED", toStatus: enable ? "ENABLED" : "DISABLED" } });
+  });
+  done(enable ? "Revenue access granted." : "Revenue access revoked.", "", "revenue-partners");
+}

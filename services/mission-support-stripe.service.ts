@@ -67,12 +67,13 @@ export async function startMissionStripeCheckout(input: { fullName: string; emai
   return { checkoutUrl: session.url };
 }
 
-async function sendAcknowledgment(donation: MissionSupportDonation, amount: number, receiptUrl?: string | null) {
+async function sendAcknowledgment(donation: MissionSupportDonation, amount: number, receiptUrl?: string | null, idempotencyKey?: string) {
   const formatted = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount / 100);
   const purpose = missionPurposeLabel(donation.purpose);
   const managementUrl = donation.frequency === "MONTHLY" ? `${baseUrl()}/support-our-mission?manage=${createMissionManagementToken(donation.id)}` : null;
   const lines = [`Assalamu alaikum ${donation.fullName},`, `Thank you for supporting The Global Awakening. Your payment of ${formatted} has been confirmed.`, `Funding purpose: ${purpose}`, `Frequency: ${donation.frequency === "MONTHLY" ? "Monthly" : "One-time"}`, `Reference: ${donation.paymentReference}`, "This is a payment acknowledgment, not a tax or Gift Aid receipt.", ...(receiptUrl ? [`Payment receipt: ${receiptUrl}`] : []), ...(managementUrl ? [`Manage or cancel monthly support: ${managementUrl}`] : [])];
-  await sendTransactionalEmail({ to: donation.email, subject: "Your TGA contribution is confirmed", emailType: "MISSION_SUPPORT_CONFIRMED", text: lines.join("\n\n"), html: lines.map(line => `<p>${escape(line)}</p>`).join("") });
+  const sent = await sendTransactionalEmail({ to: donation.email, subject: "Your TGA contribution is confirmed", emailType: "MISSION_SUPPORT_CONFIRMED", idempotencyKey, text: lines.join("\n\n"), html: lines.map(line => `<p>${escape(line)}</p>`).join("") });
+  if (sent.status !== "SENT") throw new Error("Contribution acknowledgment was not sent.");
   await notifyAdmins({ subject: `Mission support confirmed: ${donation.paymentReference}`, emailType: "ADMIN_MISSION_SUPPORT_CONFIRMED", text: `${formatted} · ${purpose} · ${donation.frequency} · ${donation.paymentReference}`, html: `<p>${escape(formatted)} · ${escape(purpose)} · ${escape(donation.frequency)} · ${escape(donation.paymentReference || donation.id)}</p>` });
 }
 
@@ -94,11 +95,26 @@ async function recordPayment(event: Stripe.Event, donation: MissionSupportDonati
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" && await prisma.missionSupportWebhookEvent.findUnique({ where: { id: event.id } })) return;
     throw error;
   }
-  if (newlyPaid) {
+  if (newlyPaid && donation.frequency !== "ONE_TIME") {
     // The payment remains confirmed if an email provider is unavailable. Email failures are logged separately.
     const results = await Promise.allSettled([sendAcknowledgment(donation, payment.amount, payment.receiptUrl)]);
     if (results[0].status === "rejected") console.error("Mission support acknowledgment delivery failed", donation.id);
   }
+}
+
+/** A non-2xx webhook response asks Stripe to retry if receipt retrieval or email fails. */
+async function deliverOneTimeReceipt(stripe: Stripe, donation: MissionSupportDonation, session: Stripe.Checkout.Session) {
+  const payment = await prisma.missionSupportPayment.findUnique({ where: { providerReference: session.id } });
+  if (!payment || payment.donationId !== donation.id || !["SUCCEEDED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(payment.status)) throw new Error("Confirmed contribution not found.");
+  if (payment.receiptSentAt) return;
+  const intentId = idOf(session.payment_intent);
+  if (!intentId || payment.providerPaymentId !== intentId) throw new Error("Contribution payment reference missing.");
+  const intent = await stripe.paymentIntents.retrieve(intentId, { expand: ["latest_charge"] });
+  const charge = typeof intent.latest_charge === "string" ? await stripe.charges.retrieve(intent.latest_charge) : intent.latest_charge;
+  if (!charge?.receipt_url || charge.amount !== payment.amount || charge.currency.toUpperCase() !== payment.currency.toUpperCase()) throw new Error("Contribution receipt is not available yet.");
+  await prisma.missionSupportPayment.update({ where: { id: payment.id }, data: { receiptUrl: charge.receipt_url } });
+  await sendAcknowledgment(donation, payment.amount, charge.receipt_url, `mission-receipt-${payment.id}`);
+  await prisma.missionSupportPayment.update({ where: { id: payment.id }, data: { receiptSentAt: new Date() } });
 }
 
 /** Re-read all provider refunds while holding the payment row lock, so retries and
@@ -131,7 +147,10 @@ export async function handleMissionSupportStripeEvent(event: Stripe.Event, strip
       const subscriptionId = idOf(session.subscription);
       const customerId = idOf(session.customer);
       await prisma.missionSupportDonation.update({ where: { id: donation.id }, data: { providerOrderId: session.id, providerCustomerId: customerId, providerSubscriptionId: subscriptionId } });
-      if (donation.frequency === "ONE_TIME" && paidSessionMatches(session, donation)) await recordPayment(event, donation, { reference: session.id, paymentId: idOf(session.payment_intent), amount: session.amount_total!, currency: session.currency!, success: true });
+      if (donation.frequency === "ONE_TIME" && paidSessionMatches(session, donation)) {
+        await recordPayment(event, donation, { reference: session.id, paymentId: idOf(session.payment_intent), amount: session.amount_total!, currency: session.currency!, success: true });
+        await deliverOneTimeReceipt(stripe, donation, session);
+      }
     } else if (["checkout.session.expired", "checkout.session.async_payment_failed"].includes(event.type)) {
       await prisma.missionSupportDonation.updateMany({ where: { id: donation.id, status: { in: ["INITIATED", "PENDING"] } }, data: { status: "FAILED" } });
     }

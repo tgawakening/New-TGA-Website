@@ -34,7 +34,7 @@ export function PaymentMethods({
     >
       <legend>Payment method</legend>
       <div className={styles.methodTabs}>
-        {methods.map((method) => (
+        {methods.filter((method) => method !== "PAYPAL").map((method) => (
           <label
             key={method}
             className={styles.methodTab}
@@ -65,10 +65,6 @@ export function PaymentMethods({
                   <rect x="6" y="2" width="12" height="20" rx="2" />
                   <path d="M10 18h4m-5-8 2 2 4-4" />
                 </>
-              ) : method === "PAYPAL" ? (
-                <>
-                  <path d="m6 21 3-18h6c7 0 6 10-1 10H9m2-6h4" />
-                </>
               ) : (
                 <>
                   <rect x="2" y="5" width="20" height="14" rx="2" />
@@ -83,7 +79,7 @@ export function PaymentMethods({
           </label>
         ))}
       </div>
-      {!methods.length && (
+      {!methods.some((method) => method !== "PAYPAL") && (
         <small>
           No verified payment method is available for this selection.
         </small>

@@ -61,6 +61,7 @@ mock.module(file("../lib/auth/session.ts"), {
     clearSessionCookie: async () => {},
   },
 });
+mock.module(file("../lib/auth/admin-session.ts"), { namedExports: { getCurrentAdmin: async () => access?.role === "SUPER_ADMIN" ? { email: "admin@example.test" } : null } });
 mock.module(file("../lib/auth/sirah-workspace.ts"), {
   namedExports: {
     getSirahWorkspaceAccess: async () =>
@@ -587,6 +588,34 @@ describe("teacher portal", () => {
 
     identity = null;
     assert.equal((await outcome(() => TeachingPage())).redirect, "/login");
+  });
+
+  test("only super admins can designate a revenue partner", async () => {
+    const form = new FormData(); form.set("hostId", "host_1"); form.set("enabled", "1");
+    access = { role: "MANAGER" };
+    assert.equal((await outcome(() => actions.setRevenuePartner(form))).redirect, "/admin/sirah");
+    assert.notEqual(table("zoomHost")[0].revenuePartner, true);
+    access = { role: "SUPER_ADMIN" };
+    assert.match((await outcome(() => actions.setRevenuePartner(form))).redirect || "", /Revenue\+access\+granted/);
+    assert.equal(table("zoomHost")[0].revenuePartner, true);
+    assert.equal(table("sirahAccessAudit")[0].action, "REVENUE_PARTNER_GRANTED");
+    form.set("enabled", "0");
+    await outcome(() => actions.setRevenuePartner(form));
+    assert.equal(table("zoomHost")[0].revenuePartner, false);
+  });
+
+  test("teachers can schedule only with their host and assigned cohort", async () => {
+    const { scheduleTeacherSession } = await import("../app/seerah/classroom/teaching/actions");
+    signIn(seedUser("teacher@example.test"));
+    seedSession(new Date(Date.now() + 86_400_000));
+    const form = new FormData();
+    form.set("hostId", "host_1"); form.set("cohortId", "other-cohort"); form.set("title", "New class");
+    form.set("timeZone", "UTC"); form.set("startsLocal", new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16)); form.set("durationMin", "60");
+    assert.match((await outcome(() => scheduleTeacherSession(form))).redirect || "", /Not\+authorised/);
+    assert.equal(apiCalls().length, 0);
+    form.set("cohortId", SIRAH_BATCH);
+    assert.match((await outcome(() => scheduleTeacherSession(form))).redirect || "", /Session\+scheduled/);
+    assert.equal(apiCalls().filter(call => call.method === "POST").length, 1);
   });
 
   test("hostsForIdentity uses the start route's rule", async () => {

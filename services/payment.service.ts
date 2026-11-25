@@ -602,7 +602,8 @@ export async function createStripeCheckout({
   const isSubscriptionCheckout = isSubscriptionPayment(registration);
   const checkoutAmount = getRegistrationChargeAmount(registration);
   const session = await stripe.checkout.sessions.create({
-    mode: isSubscriptionCheckout ? "subscription" : "payment",
+    excluded_payment_method_types: ["paypal"],
+        mode: isSubscriptionCheckout ? "subscription" : "payment",
     success_url: successUrl,
     cancel_url: cancelUrl,
     client_reference_id: registration.id,

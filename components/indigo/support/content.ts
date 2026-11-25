@@ -35,7 +35,7 @@ export const impactCopy = {
 export const faqs: [string, string][] = [
   ["What does my contribution support?", "Scholarships, worldwide learning access and related educational costs. Your preference guides allocation; if funds are redirected, TGA will notify you by email. Specific restrictions must be agreed in writing before payment."],
   ["Is my contribution one-time or monthly?", "You choose in the form. Monthly support renews through Stripe until cancelled; use the secure management link in your acknowledgment or contact TGA for help."],
-  ["Is the payment process secure?", "Online payment details are entered securely on Stripe or PayPal. TGA does not store your card details. Manual transfers are confirmed only after admin verification."],
+  ["Is the payment process secure?", "Online payment details are entered securely on Stripe. TGA does not store your card details. Manual transfers are confirmed only after admin verification."],
   ["How do I contact TGA about a donation?", "Email " + missionContactEmail + " with your payment reference. The team can help with funding questions, cancellation or refund requests under the applicable contribution terms."],
   ["Is Gift Aid available?", "Gift Aid is not offered. TGA operates as GLOBAL AWAKENING CIC, a Community Interest Company; this page does not claim registered-charity status."],
 ];
