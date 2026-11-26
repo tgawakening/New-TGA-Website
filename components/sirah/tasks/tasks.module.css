@@ -16,3 +16,25 @@
 .studentForm .answer { font-weight: 400; }
 .taskLinks { display: flex; flex-wrap: wrap; gap: .45rem; padding: .6rem 1rem; }
 .taskLinks a { color: #a1f0df; font-size: .9rem; font-weight: 600; }
+
+/* Student task cards and submission workspace. */
+.taskLinks { display: grid; gap: .65rem; padding: .75rem 1rem; }
+.taskLinks .taskLink { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .8rem; padding: .9rem 1rem; border: 1px solid #425374; border-radius: .8rem; background: #1c2943; color: #f4f7ff; text-decoration: none; }
+.taskLinks .taskLink:hover { border-color: #74d6c1; background: #253653; }
+.taskTitle { flex: 1 1 12rem; font-size: 1rem; font-weight: 650; overflow-wrap: anywhere; }
+.statusSubmitted, .statusPending { display: inline-flex; align-items: center; width: fit-content; padding: .3rem .65rem; border: 1px solid; border-radius: 999px; font-size: .8rem; font-weight: 700; line-height: 1.3; }
+.statusSubmitted { border-color: #438d7d; background: #193e39; color: #b4f2dc; }
+.statusPending { border-color: #697895; background: #303d58; color: #e1e8f5; }
+.taskOpen { color: #a1f0df; font-size: .875rem; font-weight: 700; }
+.taskPage { max-width: 840px; margin-inline: auto; }
+.taskCard, .studentForm { padding: clamp(1.2rem, 3vw, 2rem); border: 1px solid #425374; border-radius: 1rem; background: #1c2943; color: #f4f7ff; }
+.taskCard h1 { margin: .4rem 0 1.5rem; }
+.taskCard h2, .studentForm h2 { margin: 0; font-size: 1.1rem; }
+.taskCard h2 { padding-top: 1.25rem; border-top: 1px solid #425374; }
+.submissionStatus { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; margin-top: 1.5rem; color: #d0daea; font-size: .875rem; }
+.studentForm { gap: 1.2rem; margin-top: .75rem; }
+.studentForm label { gap: .5rem; }
+.studentForm :is(input, .answer) { border-color: #72819c; background: #101b30; color: #fff; }
+.studentForm :is(input, .answer):focus-visible, .taskLink:focus-visible { outline: 3px solid #75dec7; outline-offset: 2px; }
+.studentForm button { min-height: 3rem; }
+.backLink a { color: #a1f0df; }

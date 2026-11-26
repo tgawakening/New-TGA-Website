@@ -23,6 +23,7 @@ export function PersonalDiscount({ country, plan, method, applied, disabled, onA
   if (!personalDiscountAvailable(country, plan, method)) return null;
   return <div className={styles.notice}>
     <label>Discount code<input name="couponCode" autoComplete="off" maxLength={64} value={code} onChange={event => setCode(event.target.value)} /></label>
+    <small>Enter your code, then tap Apply code.</small>
     <button type="button" disabled={disabled || !(manual || card) || !code.trim() || applied} onClick={() => onApply(code.trim().toUpperCase())}>{applied ? "Discount applied" : "Apply code"}</button>
     <small>{applied
       ? plan === "ANNUAL" ? "Your discounted price is shown above." : "Your discounted monthly fee is shown above."

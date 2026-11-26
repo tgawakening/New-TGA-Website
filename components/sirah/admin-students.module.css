@@ -834,3 +834,16 @@
     transition: none;
   }
 }
+
+/* Registration detail dialog */
+.modal :global(.ga-admin-modal-head) { align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #dbe4ef; }
+.modal :global(.ga-admin-modal-section) { margin-top: 1rem; padding: 1.15rem; border: 1px solid #dbe4ef; border-radius: 16px; background: #fff; }
+.modal :global(.ga-admin-modal-section h4) { margin-bottom: 1rem; font-size: 1.05rem; }
+.modal :global(.ga-admin-modal-grid) { gap: 0 1.25rem; }
+.modal :global(.ga-admin-modal-grid) > p, .modal :global(.ga-admin-modal-grid) > .groupDetail { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .5rem; padding: .6rem 0; border-bottom: 1px solid #edf2f7; line-height: 1.45; }
+.modal :global(.ga-admin-modal-grid) strong { color: #526477; }
+.modal :global(.ga-admin-actions-inline) { display: flex; flex-wrap: wrap; gap: .6rem; }
+.modal .form fieldset { margin-top: 1rem; padding: 1rem; border: 1px solid #dbe4ef; border-radius: 12px; background: #f7fafd; }
+.modal .form fieldset p { margin: 0; line-height: 1.5; }
+.modal .records { background: #fff; }
+@media (max-width: 600px) { .modal :global(.ga-admin-modal-section) { padding: .9rem; } }

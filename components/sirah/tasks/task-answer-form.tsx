@@ -12,8 +12,8 @@ export function TaskAnswerForm({ taskId, initialAnswer, initialLink, initialSubm
   return <>
     {state.error && <p role="alert">{state.error}</p>}
     {state.submittedAt && <p role="status">Your answer was submitted.</p>}
-    <p>{submittedAt ? <>Status: Submitted · <time dateTime={submittedAt}>{new Date(submittedAt).toUTCString()}</time></> : "Status: Not submitted"}</p>
-    <form action={action} className={t.studentForm} aria-busy={pending}><input type="hidden" name="taskId" value={taskId} />
+    <div className={t.submissionStatus}><span className={submittedAt ? t.statusSubmitted : t.statusPending}>{submittedAt ? "Submitted" : "Not submitted"}</span>{submittedAt && <time dateTime={submittedAt}>{new Date(submittedAt).toUTCString()}</time>}</div>
+    <form action={action} className={t.studentForm} aria-busy={pending}><h2>Your submission</h2><input type="hidden" name="taskId" value={taskId} />
       <label>Your answer<textarea className={t.answer} name="answer" required maxLength={50000} value={answer} onChange={e => setAnswer(e.target.value)} /></label>
       <label>Link (optional)<input type="url" name="link" maxLength={1024} placeholder="https://..." value={link} onChange={e => setLink(e.target.value)} /></label>
       <button type="submit" className={s.btnTeal} disabled={pending}>{pending ? "Submitting…" : submittedAt ? "Update submission" : "Submit answer"}</button>
