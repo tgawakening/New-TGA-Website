@@ -5,8 +5,8 @@ import { DirectUpload } from "./uploads/direct-upload";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 import { AdminPaymentPlan, type PaymentPlan } from "./admin-payment-plan";
 
-type Ledger = { paymentPlan: PaymentPlan | null; settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
-export function AdminLedger({ id, canEdit, onFeeSaved }: { id: string; canEdit: boolean; onFeeSaved?: (fee: { ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null }) => void }) {
+type Ledger = { paymentPlan: PaymentPlan | null; settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; periodId: string | null; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
+export function AdminLedger({ id, canEdit, onFeeSaved, onPlanSaved }: { id: string; canEdit: boolean; onFeeSaved?: (fee: { ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null }) => void; onPlanSaved?: () => void }) {
   const [data, setData] = useState<Ledger | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -52,7 +52,7 @@ export function AdminLedger({ id, canEdit, onFeeSaved }: { id: string; canEdit: 
       {currencyMismatch && <p role="alert">The course fee or ledger entries have a different or unknown currency. Reconcile them before relying on the balance or generating a new link.</p>}
       {!data.paymentPlan && <p>Outstanding: {data.ledgerFeeMinor === null ? "Set the course fee first" : currencyMismatch ? "Unavailable: currencies differ" : formatSirahMoney(Math.max(0, data.ledgerFeeMinor - received), data.currency)}</p>}
       </div><p className={styles.hint}>Existing payment records are separate; enter previously received payments here once.</p>
-      <AdminPaymentPlan id={id} currency={data.currency} plan={data.paymentPlan} canEdit={canEdit} reload={load} />
+      <AdminPaymentPlan id={id} currency={data.currency} plan={data.paymentPlan} unlinkedPayments={data.ledgerPayments.filter(payment => !payment.periodId)} canEdit={canEdit} reload={load} onSaved={onPlanSaved} />
       {canEdit && <>
         {!data.paymentPlan && <>
         <div className={styles.linkSection}><label>Link amount ({data.currency}; leave blank for the full balance) <input type="number" min="0" step="any" value={linkAmount} onChange={event => setLinkAmount(event.target.value)} /></label>{" "}

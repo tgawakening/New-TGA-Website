@@ -12,6 +12,7 @@ import { readDirectUpload, verifyDirectUpload } from "@/lib/sirah/direct-upload"
 import { validateSirahReceipt } from "./sirah-receipts.service";
 import { auditSirah, createSirahOrderRecord, ensureSirahCourse, SirahError } from "./sirah-registration.service";
 import { confirmSirahPaymentInTransaction, serializable } from "./sirah-confirmation.service";
+import { savePaymentPlan } from "./sirah-payment-plan.service";
 
 export const adminPaidRegistrationSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -73,10 +74,11 @@ export async function createAdminPaidRegistration(input: z.infer<typeof adminPai
       phoneCountry: phone.phoneCountry, phoneE164: phone.phoneE164, countryCode: input.country, countryName, marketCode: price.market,
       plan: input.plan, method: input.method, currency: price.currency, amountMinor,
       totalMinor: input.plan === "MONTHLY" ? amountMinor * SIRAH_MONTHS : amountMinor,
-      pricingVersion: "admin-paid-registration-v1", ledgerFeeMinor: amountMinor, ledgerFeeCurrency: price.currency,
+      pricingVersion: "admin-paid-registration-v1", ledgerFeeMinor: input.plan === "ANNUAL" ? amountMinor : null, ledgerFeeCurrency: input.plan === "ANNUAL" ? price.currency : null,
     });
     if (receipt) await tx.sirahReceipt.create({ data: { orderId: order.id, revision: 1, ...receipt } });
     await tx.sirahLedgerPayment.create({ data: { orderId: order.id, amountMinor, currency: price.currency, method: input.method, receivedAt, note: input.note || null, createdBy: actor } });
+    if (input.plan === "MONTHLY") await savePaymentPlan(tx, order.id, price.currency, { monthly: input.amount, arrearsPart: "0", billingDay: receivedAt.getUTCDate(), firstDue: input.paymentDate, openingArrears: "0", changeAt: "" });
     await auditSirah(tx, order.id, actor, "ADMIN_PAID_REGISTRATION_CREATED", { method: input.method, paymentDate: input.paymentDate, amountMinor, currency: price.currency, note: input.note || null, receipt: !!receipt });
     await confirmSirahPaymentInTransaction(tx, { orderId: order.id, eventId: `admin-paid:${randomUUID()}`, provider: input.method, amountMinor, currency: price.currency, actor, note: input.note, receivedAt, suppressNotices: true });
     return { id: order.id, reference: order.reference, newAccount };

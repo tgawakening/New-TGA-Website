@@ -72,6 +72,12 @@ test("each supported payment method records its real provider and active course 
     assert.equal(table("sirahOrder")[0].method, method);
     assert.equal(table("sirahLedgerPayment")[0].method, method);
     assert.equal(table("sirahPaymentEvent")[0].provider, method);
+    assert.equal(table("sirahOrder")[0].ledgerFeeMinor, null);
+    assert.equal(table("sirahPaymentPlan").length, 1);
+    assert.equal(table("sirahPaymentPlan")[0].monthlyMinor, 1200000);
+    assert.equal(table("sirahPaymentPlan")[0].billingDay, 20);
+    assert.equal((table("sirahPaymentPlan")[0].firstDueAt as Date).toISOString().slice(0, 10), "2026-01-20");
+    assert.equal(table("sirahLedgerPayment")[0].periodId, table("sirahPaymentPeriod")[0].id);
     assert.equal(confirmation.canAccessSirah(table("sirahOrder")[0] as Parameters<typeof confirmation.canAccessSirah>[0]), true);
   }
 });

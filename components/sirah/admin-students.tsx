@@ -186,7 +186,8 @@ function Status({ value }: { value: string }) {
 /** Payment status pill. A PAID order with a verified partial refund reads
  * "Partially refunded" (not the green "Completed"); display only. */
 function PaymentStatus({ order }: { order: Student }) {
-  return <><Status value={sirahDisplayPaymentState(order)} />{sirahPendingRefundMinor(order) > 0 && <> <Status value="REFUND_PENDING" /></>}</>;
+  const state = sirahDisplayPaymentState(order);
+  return <>{order.hasMonthlyPlan && state === "PAID" ? <span className="ga-admin-status is-done">Payment received</span> : <Status value={state} />}{sirahPendingRefundMinor(order) > 0 && <> <Status value="REFUND_PENDING" /></>}</>;
 }
 
 /** Short inline labels for the row's one primary action (the menu keeps the
@@ -1143,7 +1144,7 @@ export function SirahAdminStudents({
                       <strong className={styles.method}>
                         {student.method ? label(student.method) : "No method selected"}
                       </strong>
-                      <p className={styles.plan}>{label(student.plan)}</p>
+                      <p className={styles.plan}>{student.hasMonthlyPlan ? "Monthly plan" : "No monthly plan"}</p>
                       <PaymentStatus order={student} />
                     </div>
                     <div className={`${styles.cAccess} ${styles.pillCell}`}>
@@ -1414,7 +1415,7 @@ export function SirahAdminStudents({
                   <Status value={selected.enrolmentState} />
                 </p>
                 <p>
-                  <strong>Plan:</strong> {label(selected.plan)} ·{" "}
+                  <strong>Plan:</strong> {selected.hasMonthlyPlan ? "Monthly plan" : "No monthly plan"} ·{" "}
                   {selected.method
                     ? label(selected.method)
                     : "No method selected"}
@@ -1683,7 +1684,12 @@ export function SirahAdminStudents({
             </section>
 
             <div className={`ga-admin-modal-section ${styles.records}`}>
-              <AdminLedger key={selected.id} id={selected.id} canEdit={canManageEnrolments} onFeeSaved={(fee) => {
+              <AdminLedger key={selected.id} id={selected.id} canEdit={canManageEnrolments} onPlanSaved={() => {
+                const id = selected.id;
+                setSelected((current) => current?.id === id ? { ...current, hasMonthlyPlan: true } : current);
+                setData((current) => current ? { ...current, rows: current.rows.map((row) => row.id === id ? { ...row, hasMonthlyPlan: true } : row) } : current);
+                setReload((current) => current + 1);
+              }} onFeeSaved={(fee) => {
                 const id = selected.id;
                 setSelected((current) => current?.id === id ? { ...current, ...fee } : current);
                 setData((current) => current ? { ...current, rows: current.rows.map((row) => row.id === id ? { ...row, ...fee } : row) } : current);

@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         const mismatch = await tx.sirahLedgerPayment.findFirst({ where: { orderId: order.id, currency: { not: order.currency } }, select: { id: true } });
         if (mismatch) throw new SirahError("Ledger currencies differ; reconcile them before setting a plan.", 409);
         const saved = await savePaymentPlan(tx, order.id, order.currency, body);
-        await auditSirah(tx, order.id, actor, "PAYMENT_PLAN_SAVED", { currency: order.currency, billingDay: saved.billingDay, firstDueAt: saved.firstDueAt, monthlyMinor: saved.monthlyMinor, arrearsPartMinor: saved.arrearsPartMinor, openingArrearsMinor: saved.openingArrearsMinor, changeAt: saved.changeAt, nextMonthlyMinor: saved.nextMonthlyMinor, nextArrearsMinor: saved.nextArrearsMinor });
+        await auditSirah(tx, order.id, actor, "PAYMENT_PLAN_SAVED", { currency: order.currency, billingDay: saved.billingDay, firstDueAt: saved.firstDueAt, monthlyMinor: saved.monthlyMinor, arrearsPartMinor: saved.arrearsPartMinor, openingArrearsMinor: saved.openingArrearsMinor, changeAt: saved.changeAt, nextMonthlyMinor: saved.nextMonthlyMinor, nextArrearsMinor: saved.nextArrearsMinor, reconciliation: saved.reconciliation });
       });
       return privateJson({ ok: true });
     }

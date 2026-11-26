@@ -13,6 +13,7 @@ test("saving edits freezes current terms and keeps earlier ledger history separa
       update: async ({ data }: { data: Record<string, unknown> }) => { plan = { ...plan!, ...data }; return plan; },
     },
     sirahPaymentPeriod: { create: async ({ data }: { data: Record<string, unknown> }) => { const period = { id: `p${periods.length}`, ...data }; periods.push(period); return period; } },
+    sirahLedgerPayment: { findMany: async () => [] },
   } as unknown as Prisma.TransactionClient;
   const local = new Date(Date.now() + 5 * 60 * 60 * 1000);
   const firstDue = `${local.getUTCFullYear()}-${String(local.getUTCMonth() + 1).padStart(2, "0")}-01`;

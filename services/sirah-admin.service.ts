@@ -281,6 +281,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
       );
       return {
         ...row,
+        hasMonthlyPlan: planIds.has(row.id),
         deleteRefusal,
         // Archive view: when the maintenance job will delete it for good.
         purgeAt: row.archivedAt ? sirahArchivePurgeAt(row.archivedAt) : null,

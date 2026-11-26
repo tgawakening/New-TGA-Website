@@ -82,6 +82,8 @@ function attach(row: Row, shape?: Row) {
     if (relationTable[key] && `${key}Id` in row) {
       const related = table(relationTable[key]).find((r) => r.id === row[`${key}Id`]);
       out[key] = related ? { ...related } : null;
+    } else if (key === "periods" && "orderId" in row) {
+      out[key] = table("sirahPaymentPeriod").filter((period) => period.planId === row.id).map((period) => ({ ...period, payments: table("sirahLedgerPayment").filter((payment) => payment.periodId === period.id).map((payment) => ({ ...payment })) }));
     } else if (!(key in row)) {
       const child = key === "audits" ? "sirahAudit" : key === "events" ? "sirahPaymentEvent" : key === "notifications" ? "sirahNotification" : key === "receipts" ? "sirahReceipt" : "";
       out[key] = child ? table(child).filter((r) => r.orderId === row.id).map((r) => ({ ...r })) : [];

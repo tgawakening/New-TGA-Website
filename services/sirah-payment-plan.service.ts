@@ -7,21 +7,54 @@ import { SirahError } from "./sirah-registration.service";
 
 const include = { periods: { include: { payments: { select: { amountMinor: true } } } } } as const;
 
-export async function planSnapshot(tx: Prisma.TransactionClient, orderId: string) {
+export async function planSnapshot(tx: Prisma.TransactionClient, orderId: string, now?: Date) {
   const plan = await tx.sirahPaymentPlan.findUnique({ where: { orderId }, include });
   if (!plan) return null;
-  const periods = paymentPlanPeriods(plan, plan.periods);
+  const periods = paymentPlanPeriods(plan, plan.periods, now);
   return { ...plan, periods, remainingArrearsMinor: remainingArrears(plan.openingArrearsMinor, periods), outstandingMinor: totalPlanOutstanding(plan.openingArrearsMinor, periods) };
 }
 
 /** Persist calculated periods before changing terms or allocating a payment. Call with the order row locked. */
-export async function freezePeriods(tx: Prisma.TransactionClient, orderId: string) {
-  const snapshot = await planSnapshot(tx, orderId);
+export async function freezePeriods(tx: Prisma.TransactionClient, orderId: string, now?: Date) {
+  const snapshot = await planSnapshot(tx, orderId, now);
   if (!snapshot) return null;
   for (const period of snapshot.periods) if (!period.id) {
     await tx.sirahPaymentPeriod.create({ data: { planId: snapshot.id, periodMonth: period.periodMonth, dueAt: period.dueAt, amountMinor: period.amountMinor, arrearsPartMinor: period.arrearsPartMinor } });
   }
-  return planSnapshot(tx, orderId);
+  return planSnapshot(tx, orderId, now);
+}
+
+/** Link whole existing ledger rows to the earliest open periods without changing money. */
+export async function reconcilePlanPayments(tx: Prisma.TransactionClient, orderId: string, currency: string) {
+  const plan = await tx.sirahPaymentPlan.findUnique({ where: { orderId }, select: { firstDueAt: true, billingDay: true } });
+  if (!plan) throw new SirahError("Set a monthly plan first.", 409);
+  const payments = await tx.sirahLedgerPayment.findMany({ where: { orderId, periodId: null }, orderBy: [{ receivedAt: "asc" }, { id: "asc" }], select: { id: true, currency: true, amountMinor: true } });
+  if (payments.some(payment => payment.currency !== currency)) throw new SirahError("Ledger currencies differ; reconcile them before setting a plan.", 409);
+  const through = new Date(Math.max(Date.now(), plan.firstDueAt.getTime() + 12 * 60 * 60 * 1000));
+  let snapshot = await freezePeriods(tx, orderId, through);
+  if (!snapshot) throw new SirahError("Monthly plan not found.", 409);
+  let linkedCount = 0, unlinkedCount = 0;
+  for (const payment of payments) {
+    let period = snapshot.periods.find(item => item.amountMinor > item.paidMinor);
+    if (!period) {
+      // Look ahead without creating empty periods. A plan with no future due
+      // leaves the payment for review rather than blocking plan creation.
+      const limit = monthlyDueDate(plan.firstDueAt.getUTCFullYear(), plan.firstDueAt.getUTCMonth() + 600, plan.billingDay);
+      const projection = await planSnapshot(tx, orderId, new Date(limit.getTime() + 12 * 60 * 60 * 1000));
+      period = projection?.periods.find(item => item.amountMinor > item.paidMinor);
+      if (!period || payment.amountMinor <= 0 || payment.amountMinor > period.amountMinor - period.paidMinor) { unlinkedCount++; continue; }
+      snapshot = await freezePeriods(tx, orderId, new Date(period.dueAt.getTime() + 12 * 60 * 60 * 1000));
+      if (!snapshot) throw new SirahError("Monthly plan not found.", 409);
+      period = snapshot.periods.find(item => item.amountMinor > item.paidMinor);
+    }
+    if (!period?.id) throw new SirahError("The payment period could not be created. Please retry.", 409);
+    if (payment.amountMinor <= 0 || payment.amountMinor > period.amountMinor - period.paidMinor) { unlinkedCount++; continue; }
+    const updated = await tx.sirahLedgerPayment.updateMany({ where: { id: payment.id, orderId, periodId: null }, data: { periodId: period.id } });
+    if (updated.count !== 1) throw new SirahError("A payment changed during reconciliation. Please retry.", 409);
+    period.paidMinor += payment.amountMinor;
+    linkedCount++;
+  }
+  return { linkedCount, unlinkedCount };
 }
 
 function amount(value: unknown, currency: string, label: string) {
@@ -54,6 +87,9 @@ export async function savePaymentPlan(tx: Prisma.TransactionClient, orderId: str
   if (changeAt && (!nextMonthlyMinor || nextArrearsMinor! > nextMonthlyMinor)) throw new SirahError("Check the second monthly amount and arrears portion.");
   if (changeAt && changeAt < firstDueAt) throw new SirahError("The change date cannot precede the first due date.");
   const terms = { billingDay, monthlyMinor, arrearsPartMinor, changeAt, nextMonthlyMinor, nextArrearsMinor };
-  if (existing) return tx.sirahPaymentPlan.update({ where: { orderId }, data: terms });
-  return tx.sirahPaymentPlan.create({ data: { ...terms, orderId, firstDueAt, openingArrearsMinor } });
+  const saved = existing
+    ? await tx.sirahPaymentPlan.update({ where: { orderId }, data: terms })
+    : await tx.sirahPaymentPlan.create({ data: { ...terms, orderId, firstDueAt, openingArrearsMinor } });
+  const reconciliation = await reconcilePlanPayments(tx, orderId, currency);
+  return { ...saved, reconciliation };
 }

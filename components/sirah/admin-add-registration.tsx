@@ -43,7 +43,7 @@ export function AdminAddRegistration({ onClose, onCreated, onExisting }: { onClo
   return <dialog ref={dialog} className="ga-admin-donation-dialog" aria-labelledby="add-registration-title" onClose={onClose} onCancel={event => { if (busy) event.preventDefault(); }}>
     <section className={`ga-admin-modal ${styles.modal}`}>
       <div className="ga-admin-modal-head"><div><p className="ga-admin-kicker">Students</p><h3 id="add-registration-title">Add a paid registration</h3></div><button type="button" className="ga-admin-notification-close" disabled={busy} onClick={() => dialog.current?.close()}>Close</button></div>
-      <p>Record a payment already received. The course fee and received payment will both use the amount entered below.</p>
+      <p>{plan === "MONTHLY" ? "The amount is the monthly fee and the first month's received payment." : "Record a payment already received. The course fee and received payment will both use the amount entered below."}</p>
       <p>For a new account, the student can use Forgot password to set a password.</p>
       <form className={styles.form} onSubmit={event => void submit(event)}>
         <div className={styles.grid}>
@@ -54,7 +54,7 @@ export function AdminAddRegistration({ onClose, onCreated, onExisting }: { onClo
           <label>Course<input value="Sirah | Beyond Chronology" readOnly /></label>
           <label>Cohort<select name="cohort" required defaultValue=""><option value="" disabled>Select cohort</option>{cohorts.map(cohort => <option key={cohort} value={cohort}>{cohort}</option>)}</select></label>
           <label>Payment plan<select name="plan" value={plan} onChange={event => setPlan(event.target.value as "MONTHLY" | "ANNUAL")}><option value="MONTHLY">Monthly</option><option value="ANNUAL">Full course</option></select></label>
-          <label>Course fee / amount received ({currency})<input name="amount" type="number" min="0.001" step="any" required /></label>
+          <label>{plan === "MONTHLY" ? "Monthly amount / first payment" : "Course fee / amount received"} ({currency})<input name="amount" type="number" min="0.001" step="any" required /></label>
           <label>Payment method<select name="method" required defaultValue=""><option value="" disabled>Select method</option><option value="BANK_TRANSFER">Bank transfer</option><option value="JAZZCASH">JazzCash</option><option value="EASYPAISA">easypaisa</option><option value="STRIPE">Stripe</option><option value="CASH">Cash</option><option value="OTHER">Other</option></select></label>
           <label>Payment date<input name="paymentDate" type="date" required max={pakistanCalendarDate(new Date())} /></label>
         </div>
