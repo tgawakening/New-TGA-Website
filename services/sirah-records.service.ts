@@ -112,11 +112,13 @@ async function archiveOne(id: string, actor: string, note?: string): Promise<Res
     if (!order) throw new SirahError("Registration not found.", 404);
     if (order.archivedAt)
       return { id, reference: order.reference, ok: true, reason: "Already archived." };
-    const [paymentEvents, receipts] = await Promise.all([
+    const [paymentEvents, receipts, ledgerPayments, paymentPlans] = await Promise.all([
       tx.sirahPaymentEvent.count({ where: { orderId: id } }),
       tx.sirahReceipt.count({ where: { orderId: id } }),
+      tx.sirahLedgerPayment.count({ where: { orderId: id } }),
+      tx.sirahPaymentPlan.count({ where: { orderId: id } }),
     ]);
-    const refusal = sirahDeletionRefusal(order, { paymentEvents, receipts });
+    const refusal = sirahDeletionRefusal(order, { paymentEvents, receipts, ledgerPayments, paymentPlans });
     if (refusal)
       throw new SirahError(`${refusal} It cannot be deleted. Exclude it instead.`, 409);
     // Guarded on the exact state checked above. The revision bump makes any
@@ -197,11 +199,13 @@ export async function purgeExpiredArchivedSirahOrders(now = new Date()) {
           include: { user: { select: { email: true, fullName: true } } },
         });
         if (!order) return "No longer archived past retention.";
-        const [paymentEvents, receipts] = await Promise.all([
+        const [paymentEvents, receipts, ledgerPayments, paymentPlans] = await Promise.all([
           tx.sirahPaymentEvent.count({ where: { orderId: id } }),
           tx.sirahReceipt.count({ where: { orderId: id } }),
+          tx.sirahLedgerPayment.count({ where: { orderId: id } }),
+          tx.sirahPaymentPlan.count({ where: { orderId: id } }),
         ]);
-        const refusal = sirahDeletionRefusal(order, { paymentEvents, receipts });
+        const refusal = sirahDeletionRefusal(order, { paymentEvents, receipts, ledgerPayments, paymentPlans });
         if (refusal) return refusal;
         const { user, ...row } = order;
         await tx.sirahRecordDeletion.create({

@@ -258,6 +258,13 @@ export async function listSirahAdmin(search: URLSearchParams) {
       },
     }),
   ]);
+  const ids = rows.map(row => row.id);
+  const [ledgerOrders, planOrders] = ids.length ? await Promise.all([
+    prisma.sirahLedgerPayment.findMany({ where: { orderId: { in: ids } }, select: { orderId: true }, distinct: ["orderId"] }),
+    prisma.sirahPaymentPlan.findMany({ where: { orderId: { in: ids } }, select: { orderId: true } }),
+  ]) : [[], []];
+  const ledgerIds = new Set(ledgerOrders.map(entry => entry.orderId));
+  const planIds = new Set(planOrders.map(entry => entry.orderId));
   return {
     courseTitle: SIRAH_TITLE,
     total,
@@ -270,7 +277,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
       // Whether a super admin may delete it permanently (payment-free junk only).
       const deleteRefusal = sirahDeletionRefusal(
         { ...row, registrationId, providerOrderId, providerSubscriptionId },
-        { paymentEvents: row.events.length, receipts: row.receipts.length },
+        { paymentEvents: row.events.length, receipts: row.receipts.length, ledgerPayments: Number(ledgerIds.has(row.id)), paymentPlans: Number(planIds.has(row.id)) },
       );
       return {
         ...row,

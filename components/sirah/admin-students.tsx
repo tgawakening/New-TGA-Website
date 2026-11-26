@@ -15,6 +15,7 @@ import {
 } from "@/lib/sirah/refund-display";
 import { AdminLedger } from "./admin-ledger";
 import { AdminAddRegistration } from "./admin-add-registration";
+import { AdminOverduePlans } from "./admin-overdue-plans";
 import { displayAgreedFee } from "@/lib/sirah/admin-agreed-fee";
 import { RowMenu, type RowMenuItem } from "./admin-row-menu";
 import styles from "./admin-students.module.css";
@@ -734,6 +735,7 @@ export function SirahAdminStudents({
           </div>
           <div className="ga-admin-actions ga-admin-actions-inline">
             {view === "students" && canManageEnrolments && <button type="button" className="ga-admin-primary-btn" onClick={() => setAddRegistrationOpen(true)}>Add registration</button>}
+            {view === "students" && <AdminOverduePlans open={(row) => void openAddedRegistration(row)} />}
             {!readOnly && (
               <AdminNotificationBell
                 initialNotifications={initialNotifications}

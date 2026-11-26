@@ -51,8 +51,9 @@ export function sirahDeletionRefusal(
     providerOrderId?: string | null;
     providerSubscriptionId?: string | null;
   },
-  related: { paymentEvents: number; receipts: number },
+  related: { paymentEvents: number; receipts: number; ledgerPayments?: number; paymentPlans?: number },
 ): string | null {
+  if (related.ledgerPayments || related.paymentPlans) return "It has a ledger payment or monthly plan.";
   if (related.paymentEvents > 0 || order.paidCount > 0 || order.paidMinor > 0)
     return "It has a recorded payment.";
   if (order.refundedMinor > 0) return "It has a recorded refund.";

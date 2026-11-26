@@ -88,6 +88,18 @@ function req(path: string, as: As, body?: unknown) {
   return new Request(base + path, { method: body === undefined ? "GET" : "POST", headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
 const act = (as: As, body: unknown) => recordsPost(req("/api/admin/sirah/records", as, body));
+
+test("records with a ledger payment or monthly plan cannot be archived", async () => {
+  const withPayment = order();
+  table("sirahLedgerPayment").push({ id: randomUUID(), orderId: withPayment.id, amountMinor: 100, currency: "GBP" });
+  const withPlan = order();
+  table("sirahPaymentPlan").push({ id: randomUUID(), orderId: withPlan.id });
+  for (const row of [withPayment, withPlan]) {
+    const response = await act({ superAdmin: true }, { action: "ARCHIVE", orderId: row.id });
+    assert.equal(response.status, 409);
+    assert.equal(row.archivedAt, null);
+  }
+});
 const bulk = (as: As, body: unknown) => bulkExclusionPost(req("/api/admin/sirah/records/exclusion", as, body));
 const row = (id: string) => table("sirahOrder").find((r) => r.id === id);
 const listIds = async (params = "") => (await listSirahAdmin(new URLSearchParams(params))).rows.map((r) => r.id);

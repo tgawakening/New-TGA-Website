@@ -471,6 +471,7 @@ model SirahManualDiscount {
 }
 
 model SirahOrder {
+  paymentPlan            SirahPaymentPlan?
   ledgerFeeMinor         Int?
   ledgerFeeCurrency      String?             @db.VarChar(3)
   agreement              SirahAgreement?
@@ -1175,6 +1176,8 @@ model LmsTaskAttachment {
 }
 
 model SirahLedgerPayment {
+  periodId    String?
+  period      SirahPaymentPeriod? @relation(fields: [periodId], references: [id], onDelete: Restrict)
   id          String   @id @default(cuid())
   orderId     String
   amountMinor Int
@@ -1187,6 +1190,37 @@ model SirahLedgerPayment {
   order       SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
   @@index([orderId, receivedAt])
+  @@index([periodId])
+}
+
+model SirahPaymentPlan {
+  id                  String   @id @default(cuid())
+  orderId             String   @unique
+  billingDay          Int
+  firstDueAt          DateTime @db.DateTime(3)
+  monthlyMinor        Int
+  arrearsPartMinor    Int
+  changeAt            DateTime? @db.DateTime(3)
+  nextMonthlyMinor    Int?
+  nextArrearsMinor    Int?
+  openingArrearsMinor Int
+  createdAt           DateTime @default(now()) @db.DateTime(3)
+  updatedAt           DateTime @updatedAt @db.DateTime(3)
+  order               SirahOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  periods             SirahPaymentPeriod[]
+}
+
+model SirahPaymentPeriod {
+  id                String @id @default(cuid())
+  planId            String
+  periodMonth       String @db.VarChar(7)
+  dueAt             DateTime @db.DateTime(3)
+  amountMinor       Int
+  arrearsPartMinor  Int
+  plan              SirahPaymentPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  payments          SirahLedgerPayment[]
+
+  @@unique([planId, periodMonth])
 }
 
 model SirahAgreement {
