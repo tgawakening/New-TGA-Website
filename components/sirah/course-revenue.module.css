@@ -1,0 +1,9 @@
+.report { display: grid; gap: 1rem; }
+.summary { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.card { padding: 1.1rem; border: 1px solid #d7e1ed; border-radius: 14px; background: #fff; color: #173659; }
+.card h3, .card h4 { margin: 0 0 .75rem; }
+.card p { line-height: 1.5; }
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; }
+.table th, .table td { padding: .55rem .65rem; border-bottom: 1px solid #e1e9f2; vertical-align: top; }
+.muted { color: #526477; font-size: .875rem; line-height: 1.5; }

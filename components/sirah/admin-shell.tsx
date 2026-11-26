@@ -58,6 +58,7 @@ export function SirahAdminShell({
         { href: "/admin/sirah/overview", label: "Overview", icon: ICONS.overview, show: true },
         { href: "/admin/sirah", label: "Students", icon: ICONS.students, show: access.role !== "COMMUNITY_LEAD" },
         { href: "/admin/sirah/payments", label: "Payments and reviews", icon: ICONS.payments, show: access.role !== "COMMUNITY_LEAD" },
+        { href: "/admin/sirah/payments-by-course", label: "Payments by course", icon: ICONS.payments, show: access.role === "SUPER_ADMIN" },
         { href: "/admin/sirah/scholarships", label: "Scholarship reviews", icon: ICONS.scholarships, show: true, sub: true },
         { href: "/admin/sirah/classroom", label: "Classroom", icon: ICONS.classroom, show: access.canManageEnrolments },
         { href: "/admin/sirah/classroom/live", label: "Live sessions", icon: ICONS.classroom, show: true, sub: access.canManageEnrolments },
