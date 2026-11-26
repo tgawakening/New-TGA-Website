@@ -3,6 +3,7 @@ import test from "node:test";
 import { Workbook } from "exceljs";
 import { formattedAmounts, outstandingNow } from "../components/sirah/course-revenue-display";
 import { courseRevenueWorkbook } from "../components/sirah/course-revenue-workbook";
+import { estimateMoney, validRate } from "../components/sirah/course-revenue-calculation";
 
 test("outstanding combines existing groups by currency and hides zero amounts", () => {
   const combined = outstandingNow([{ currency: "PKR", amountMinor: 15000 }, { currency: "GBP", amountMinor: 0 }], [{ currency: "PKR", amountMinor: 5000 }, { currency: "USD", amountMinor: 100 }]);
@@ -27,4 +28,17 @@ test("Excel export is a real one-sheet workbook with course and totals values", 
   assert.equal(sheet.getCell("C2").value, "PKR 20");
   assert.equal(sheet.getCell("D2").value, "—");
   assert.equal(sheet.getCell("A3").value, "Total across programs");
+});
+
+test("manual estimates use each currency's actual minor-unit scale and identify missing rates", () => {
+  const values = [{ currency: "GBP", amountMinor: 1000 }, { currency: "PKR", amountMinor: 20000 }, { currency: "KWD", amountMinor: 1234 }, { currency: "USD", amountMinor: 0 }];
+  assert.deepEqual(estimateMoney(values, "GBP", { PKR: "0.01", KWD: "2" }), { total: 14.468, included: true, missing: [] });
+  assert.deepEqual(estimateMoney(values, "GBP", { PKR: "" }), { total: 10, included: true, missing: ["PKR", "KWD"] });
+  assert.deepEqual(estimateMoney([{ currency: "PKR", amountMinor: 200 }], "GBP", {}), { total: 0, included: false, missing: ["PKR"] });
+});
+
+test("manual rates reject blank, invalid, negative, zero and infinite values", () => {
+  for (const value of ["", " ", "0", "-1", "NaN", "Infinity", "1e999", "1,5"]) assert.equal(validRate(value), null);
+  assert.equal(validRate(" .25 "), .25);
+  assert.equal(validRate("12.5"), 12.5);
 });
