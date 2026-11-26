@@ -14,6 +14,7 @@ import {
   sirahPendingRefundMinor,
 } from "@/lib/sirah/refund-display";
 import { AdminLedger } from "./admin-ledger";
+import { displayAgreedFee } from "@/lib/sirah/admin-agreed-fee";
 import { RowMenu, type RowMenuItem } from "./admin-row-menu";
 import styles from "./admin-students.module.css";
 
@@ -1020,7 +1021,7 @@ export function SirahAdminStudents({
               <div className={`${styles.tableGrid} ${styles.head}`} aria-hidden="true">
                 <span className={styles.cOrder}>Order</span>
                 <span className={styles.cCustomer}>Customer</span>
-                <span className={styles.cAmount}>Amount</span>
+                <span className={styles.cAmount}>Agreed fee</span>
                 <span className={styles.cPayment}>Payment</span>
                 <span className={styles.cAccess}>Course access</span>
                 <span className={styles.cGroup}>Group</span>
@@ -1094,9 +1095,9 @@ export function SirahAdminStudents({
                       <p>{student.phoneE164}</p>
                     </div>
                     <div className={styles.cAmount}>
-                      <span className={styles.cellLabel}>Amount</span>
+                      <span className={styles.cellLabel}>Agreed fee</span>
                       <strong className={styles.amount}>
-                        {formatSirahMoney(student.amountMinor, student.currency)}
+                        {displayAgreedFee(student)}
                       </strong>
                       <p>{student.countryName}</p>
                       {student.customLink && (
@@ -1342,6 +1343,7 @@ export function SirahAdminStudents({
               <div>
                 <p className="ga-admin-kicker">Registration details</p>
                 <h3 id="sirah-student-title">{selected.user.fullName}</h3>
+                <p className={styles.agreedFee}>Current agreed fee: <strong>{displayAgreedFee(selected)}</strong></p>
               </div>
               <button
                 type="button"
@@ -1393,10 +1395,6 @@ export function SirahAdminStudents({
                     : "No method selected"}
                 </p>
                 <p>
-                  <strong>Expected:</strong>{" "}
-                  {formatSirahMoney(selected.amountMinor, selected.currency)}
-                </p>
-                <p>
                   <strong>Paid:</strong>{" "}
                   {formatSirahMoney(selected.paidMinor, selected.currency)} (
                   {selected.paidCount})
@@ -1444,7 +1442,7 @@ export function SirahAdminStudents({
                         selected.customLink.catalogAmountMinor,
                         selected.customLink.catalogCurrency,
                       )}{" "}
-                      · <strong>Custom price:</strong>{" "}
+                      · <strong>Original custom link price:</strong>{" "}
                       {formatSirahMoney(
                         selected.customLink.amountMinor,
                         selected.currency,
@@ -1660,7 +1658,12 @@ export function SirahAdminStudents({
             </section>
 
             <div className={`ga-admin-modal-section ${styles.records}`}>
-              <AdminLedger key={selected.id} id={selected.id} canEdit={canManageEnrolments} />
+              <AdminLedger key={selected.id} id={selected.id} canEdit={canManageEnrolments} onFeeSaved={(fee) => {
+                const id = selected.id;
+                setSelected((current) => current?.id === id ? { ...current, ...fee } : current);
+                setData((current) => current ? { ...current, rows: current.rows.map((row) => row.id === id ? { ...row, ...fee } : row) } : current);
+                setReload((current) => current + 1);
+              }} />
               <details>
                 <summary>Receipt evidence ({selected.receipts.length})</summary>
                 {selected.receipts.map((receipt) => (

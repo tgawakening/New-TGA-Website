@@ -170,9 +170,9 @@ test("only the super admin can archive (delete), restore or see the archive view
   const data = await (await enrolmentsGet(req("/api/admin/sirah?archived=only", { session: managerSession }))).json();
   assert.equal(data.archivedView, false);
   assert.deepEqual(data.rows, []);
-  // A community lead asking for the excluded view also gets the normal list.
-  const leadView = await (await enrolmentsGet(req("/api/admin/sirah?excluded=only", { session: leadSession }))).json();
-  assert.equal(leadView.excludedView, false);
+  // Community leads cannot access student records, including the excluded view.
+  const leadView = await enrolmentsGet(req("/api/admin/sirah?excluded=only", { session: leadSession }));
+  assert.equal(leadView.status, 403);
 });
 
 test("a manager can exclude and un-exclude one record, and sees the excluded view", async () => {

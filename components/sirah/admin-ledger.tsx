@@ -4,7 +4,7 @@ import styles from "./admin-ledger.module.css";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 
 type Ledger = { settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
-export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
+export function AdminLedger({ id, canEdit, onFeeSaved }: { id: string; canEdit: boolean; onFeeSaved?: (fee: { ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null }) => void }) {
   const [data, setData] = useState<Ledger | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -15,6 +15,7 @@ export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Unable to load balance.");
     setData(result);
+    return result as Ledger;
   }, [id]);
   useEffect(() => { void load().catch((e) => setError(e.message)); }, [load]);
   async function submit(event: FormEvent<HTMLFormElement>, action: string) {
@@ -25,7 +26,8 @@ export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
       const response = await fetch(action === "agreement" ? "/api/admin/sirah/agreement" : "/api/admin/sirah/ledger", action === "agreement" ? { method: "POST", body: values } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action, amount: values.get("amount"), method: values.get("method"), date: values.get("date"), note: values.get("note") }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to save.");
-      form.reset(); await load();
+      form.reset(); const updated = await load();
+      if (action === "fee") onFeeSaved?.({ ledgerFeeMinor: updated.ledgerFeeMinor, ledgerFeeCurrency: updated.ledgerFeeCurrency });
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to save."); } finally { setBusy(false); }
   }
   async function generateLink() {

@@ -60,6 +60,14 @@
   overflow-wrap: anywhere;
 }
 
+.agreedFee {
+  margin: 0.5rem 0 0;
+  color: #526477;
+  font-size: 0.9rem;
+}
+
+.agreedFee strong { color: #173659; }
+
 .form,
 .records {
   display: grid;
@@ -674,7 +682,7 @@
   font-weight: 700;
   line-height: 1.4;
   font-variant-numeric: tabular-nums lining-nums;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 /* Payment: method and plan, then the status chip. */

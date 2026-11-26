@@ -200,6 +200,8 @@ export async function listSirahAdmin(search: URLSearchParams) {
         method: true,
         currency: true,
         amountMinor: true,
+        ledgerFeeMinor: true,
+        ledgerFeeCurrency: true,
         paidMinor: true,
         refundedMinor: true,
         pricingVersion: true,
