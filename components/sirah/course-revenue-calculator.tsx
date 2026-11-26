@@ -16,7 +16,7 @@ function Estimate({ values, target, rates }: { values: MoneyGroup[]; target: str
   </div>;
 }
 
-export function CourseRevenueCalculator({ currencies, rows, totals }: { currencies: string[]; rows: CalculatorRow[]; totals: { received: MoneyGroup[]; outstanding: MoneyGroup[] } }) {
+export function CourseRevenueCalculator({ currencies, rows, totals }: { currencies: string[]; rows: CalculatorRow[]; totals: { received: MoneyGroup[]; net: MoneyGroup[]; outstanding: MoneyGroup[] } }) {
   const [target, setTarget] = useState(currencies.includes("GBP") ? "GBP" : currencies[0] ?? "");
   const [saved, setSaved] = useState<SavedRates>({});
   useEffect(() => {
@@ -53,9 +53,9 @@ export function CourseRevenueCalculator({ currencies, rows, totals }: { currenci
         {otherCurrencies.map(currency => <label className={styles.field} key={currency}>1 {currency} = <span className={styles.rateInput}><input type="text" inputMode="decimal" placeholder="Enter rate" value={rates[currency] ?? ""} onChange={event => changeRate(currency, event.target.value)} aria-invalid={!!rates[currency] && validRate(rates[currency]) === null} /><span>{target}</span></span>{rates[currency] && validRate(rates[currency]) === null ? <small>Enter a number greater than zero.</small> : <small>Enter a manual rate</small>}</label>)}
       </div>
       <div className={styles.estimateIntro}><div><h4>Estimated in {target} from the rates you entered</h4><p>Manual rates make these figures approximate. Amounts without a valid rate are left out.</p></div><p className={styles.rateList}>{usedRates.length ? usedRates.map(currency => `1 ${currency} = ${rates[currency]} ${target}`).join(" · ") : "No exchange rates entered"}</p></div>
-      <div className={styles.tableWrap}><table className={`${styles.table} ${styles.estimateTable}`}><thead><tr><th scope="col">Program</th><th scope="col">Received</th><th scope="col">Outstanding now</th></tr></thead><tbody>
-        {rows.map(row => <tr key={row.id}><th scope="row">{row.title}</th><td data-label="Received"><Estimate values={row.received} target={target} rates={rates} /></td><td data-label="Outstanding now"><Estimate values={row.outstanding} target={target} rates={rates} /></td></tr>)}
-        <tr className={styles.estimateTotal}><th scope="row">Total across programs</th><td data-label="Received"><Estimate values={totals.received} target={target} rates={rates} /></td><td data-label="Outstanding now"><Estimate values={totals.outstanding} target={target} rates={rates} /></td></tr>
+      <div className={styles.tableWrap}><table className={`${styles.table} ${styles.estimateTable}`}><thead><tr><th scope="col">Program</th><th scope="col">Received gross</th><th scope="col">Received net</th><th scope="col">Outstanding now</th></tr></thead><tbody>
+        {rows.map(row => <tr key={row.id}><th scope="row">{row.title}</th><td data-label="Received gross"><Estimate values={row.received} target={target} rates={rates} /></td><td data-label="Received net"><Estimate values={row.net} target={target} rates={rates} /></td><td data-label="Outstanding now"><Estimate values={row.outstanding} target={target} rates={rates} /></td></tr>)}
+        <tr className={styles.estimateTotal}><th scope="row">Total across programs</th><td data-label="Received gross"><Estimate values={totals.received} target={target} rates={rates} /></td><td data-label="Received net"><Estimate values={totals.net} target={target} rates={rates} /></td><td data-label="Outstanding now"><Estimate values={totals.outstanding} target={target} rates={rates} /></td></tr>
       </tbody></table></div>
     </>}
   </section>;

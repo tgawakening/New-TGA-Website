@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { aggregateCourseRevenue } from "../services/course-revenue.service";
+import { reportPeriod } from "../lib/sirah/course-revenue-period";
 
 test("verified payments, unresolved ledger entries and next plan dues remain distinct by currency and program", () => {
   const course = { id: "course", slug: "seerah-course", title: "Sīrah" };
@@ -41,4 +42,26 @@ test("pending orders with plans are counted once and cancelled plans are not for
   assert.deepEqual(report.totals.pending, []);
   assert.deepEqual(report.totals.upcoming, [{ currency: "PKR", amountMinor: 1000 }]);
   assert.equal(report.programs.find(p => p.id === "c:sirah")?.pendingCount, 1);
+});
+
+test("monthly receipts use Karachi payment dates and refunds use verification dates", () => {
+  const course = { id: "c", slug: "seerah-course", title: "Sīrah" };
+  const now = new Date("2026-12-15T00:00:00Z");
+  const order = { reference: "R", course, currency: "GBP", amountMinor: 1000, paymentState: "PAID", enrolmentState: "ACTIVE", paymentPlan: null,
+    events: [
+      { id: "first", kind: "FIRST", provider: "STRIPE", amountMinor: 1000, currency: "GBP", createdAt: new Date("2026-10-31T19:00:00Z") },
+      { id: "renewal", kind: "RENEWAL", provider: "STRIPE", amountMinor: 500, currency: "GBP", createdAt: new Date("2026-11-30T19:00:00Z") },
+      { id: "refund-a", kind: "REFUND", provider: "STRIPE", amountMinor: 300, currency: "GBP", createdAt: new Date("2026-11-29T00:00:00Z") },
+      { id: "refund-unknown", kind: "REFUND", provider: "STRIPE", amountMinor: 50, currency: "GBP", createdAt: new Date("2026-11-10T00:00:00Z") },
+    ], audits: [{ detail: { refundId: "refund-a" }, createdAt: new Date("2026-11-30T19:01:00Z") }], ledgerPayments: [] };
+  const november = aggregateCourseRevenue([course], [], [order], now, reportPeriod("2026-11", now));
+  assert.deepEqual(november.totals.received, [{ currency: "GBP", amountMinor: 1000 }]);
+  assert.deepEqual(november.totals.refunds, []);
+  assert.equal(november.totals.undatedRefunds, 1);
+  const december = aggregateCourseRevenue([course], [], [order], now, reportPeriod("2026-12", now));
+  assert.deepEqual(december.totals.received, [{ currency: "GBP", amountMinor: 500 }]);
+  assert.deepEqual(december.totals.refunds, [{ currency: "GBP", amountMinor: 300 }]);
+  const all = aggregateCourseRevenue([course], [], [order], now);
+  assert.deepEqual(all.totals.received, [{ currency: "GBP", amountMinor: 1500 }]);
+  assert.deepEqual(all.totals.refunds, [{ currency: "GBP", amountMinor: 350 }]);
 });

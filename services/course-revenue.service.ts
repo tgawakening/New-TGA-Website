@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { addMoney, moneyGroups, planNextDueTotals, revenueProgram, type CourseIdentity } from "@/lib/sirah/course-revenue";
 import type { PlanTerms, StoredPeriod } from "@/lib/sirah/payment-plan";
+import { inRevenuePeriod, reportPeriod, type RevenuePeriod } from "@/lib/sirah/course-revenue-period";
 
 type Payment = { id: string; amount: number; currency: string; provider: string; status: string; paidAt: Date | null; createdAt: Date; rawPayloadJson: unknown };
 type Legacy = { id: string; paymentReference: string | null; pricingSnapshot: unknown; course: CourseIdentity; status: string; finalAmount: number; selectedCurrency: string; payment: Payment | null };
-type Event = { id: string; provider: string; amountMinor: number; currency: string; createdAt: Date };
+type Event = { id: string; provider: string; amountMinor: number; currency: string; createdAt: Date; kind?: string };
 type Ledger = { id: string; method: string; amountMinor: number; currency: string; receivedAt: Date };
-type Order = { reference: string; course: CourseIdentity; currency: string; amountMinor: number; paymentState: string; enrolmentState: string; events: Event[]; ledgerPayments: Ledger[]; paymentPlan: (PlanTerms & { periods: StoredPeriod[] }) | null };
-type Bucket = { id: string; title: string; received: Map<string, number>; methods: Map<string, number>; pending: Map<string, number>; due: Map<string, number>; upcoming: Map<string, number>; ambiguous: Map<string, number>; pendingCount: number; review: { id: string; reference: string; amountMinor: number; currency: string; method: string; receivedAt: Date }[]; latest: Date | null };
+type Order = { reference: string; course: CourseIdentity; currency: string; amountMinor: number; paymentState: string; enrolmentState: string; events: Event[]; audits?: { detail: unknown; createdAt: Date }[]; ledgerPayments: Ledger[]; paymentPlan: (PlanTerms & { periods: StoredPeriod[] }) | null };
+type Bucket = { id: string; title: string; received: Map<string, number>; refunds: Map<string, number>; undatedRefunds: number; methods: Map<string, number>; pending: Map<string, number>; due: Map<string, number>; upcoming: Map<string, number>; ambiguous: Map<string, number>; pendingCount: number; review: { id: string; reference: string; amountMinor: number; currency: string; method: string; receivedAt: Date }[]; latest: Date | null };
 const method = (value: string) => value === "BANK" ? "BANK_TRANSFER" : value;
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -26,15 +27,16 @@ function legacySettlementProven(registration: Legacy, payment: Payment) {
   }
   return true; // Staff-confirmed manual methods.
 }
-export function aggregateCourseRevenue(courses: CourseIdentity[], registrations: Legacy[], orders: Order[], now = new Date()) {
+export function aggregateCourseRevenue(courses: CourseIdentity[], registrations: Legacy[], orders: Order[], now = new Date(), period: RevenuePeriod = reportPeriod("all", now)) {
   const buckets = new Map<string, Bucket>();
   function bucket(course: CourseIdentity, source: "legacy" | "sirah") {
     const identity = revenueProgram(course, source);
     let b = buckets.get(identity.id);
-    if (!b) { b = { ...identity, received: new Map(), methods: new Map(), pending: new Map(), due: new Map(), upcoming: new Map(), ambiguous: new Map(), pendingCount: 0, review: [], latest: null }; buckets.set(identity.id, b); }
+    if (!b) { b = { ...identity, received: new Map(), refunds: new Map(), undatedRefunds: 0, methods: new Map(), pending: new Map(), due: new Map(), upcoming: new Map(), ambiguous: new Map(), pendingCount: 0, review: [], latest: null }; buckets.set(identity.id, b); }
     return b;
   }
   function received(b: Bucket, currency: string, provider: string, amount: number, at: Date | null) {
+    if (!inRevenuePeriod(at, period)) return;
     addMoney(b.received, currency, amount); addMoney(b.methods, `${currency}\0${method(provider)}`, amount);
     if (at && (!b.latest || at > b.latest)) b.latest = at;
   }
@@ -46,20 +48,30 @@ export function aggregateCourseRevenue(courses: CourseIdentity[], registrations:
     const b = bucket(r.course, "legacy");
     const verified = r.payment && ["SUCCEEDED", "CONFIRMED"].includes(r.payment.status);
     if (r.payment && verified && legacySettlementProven(r, r.payment)) received(b, r.payment.currency, r.payment.provider, r.payment.amount, r.payment.paidAt);
-    else if (r.payment && verified) { b.review.push({ id: r.payment.id, reference: r.paymentReference ?? r.id, amountMinor: r.payment.amount, currency: r.payment.currency, method: r.payment.provider, receivedAt: r.payment.paidAt ?? r.payment.createdAt }); addMoney(b.ambiguous, r.payment.currency, r.payment.amount); }
+    else if (r.payment && verified) { const at = r.payment.paidAt ?? r.payment.createdAt; if (inRevenuePeriod(at, period)) { b.review.push({ id: r.payment.id, reference: r.paymentReference ?? r.id, amountMinor: r.payment.amount, currency: r.payment.currency, method: r.payment.provider, receivedAt: at }); addMoney(b.ambiguous, r.payment.currency, r.payment.amount); } }
     else if (["PENDING_PAYMENT", "MANUAL_REVIEW"].includes(r.status)) { b.pendingCount++; addMoney(b.pending, r.selectedCurrency, r.finalAmount); }
   }
   for (const order of orders) {
     const b = bucket(order.course, "sirah");
-    for (const event of order.events) received(b, event.currency, event.provider, event.amountMinor, event.createdAt);
+    const receivedEvents = order.events.filter(event => event.kind !== "REFUND");
+    for (const event of receivedEvents) {
+      const matches = order.ledgerPayments.filter(entry => couldMatch(entry, event));
+      const recordedAt = event.id.startsWith("admin-paid:") && matches.length === 1 && receivedEvents.filter(other => couldMatch(matches[0], other)).length === 1 ? matches[0].receivedAt : event.createdAt;
+      received(b, event.currency, event.provider, event.amountMinor, recordedAt);
+    }
+    for (const event of order.events.filter(item => item.kind === "REFUND")) {
+      const audit = order.audits?.find(item => item.detail && typeof item.detail === "object" && !Array.isArray(item.detail) && (item.detail as { refundId?: unknown }).refundId === event.id);
+      if (period.key !== "all" && !audit) { b.undatedRefunds++; continue; }
+      if (inRevenuePeriod(audit?.createdAt ?? event.createdAt, period)) addMoney(b.refunds, event.currency, event.amountMinor);
+    }
     for (const entry of order.ledgerPayments) {
-      const matches = order.events.filter(event => couldMatch(entry, event));
+      const matches = receivedEvents.filter(event => couldMatch(entry, event));
       // Staff-created paid registrations write both records atomically; a
       // unique match is a known duplicate, not additional revenue.
       if (matches.length === 1 && matches[0].id.startsWith("admin-paid:") && order.ledgerPayments.filter(other => couldMatch(other, matches[0])).length === 1) continue;
       // The legacy ledger has no link proving whether other entries on this
       // order are the same money as an event. Keep them visible for review.
-      if (order.events.length) { b.review.push({ id: entry.id, reference: order.reference, amountMinor: entry.amountMinor, currency: entry.currency, method: entry.method, receivedAt: entry.receivedAt }); addMoney(b.ambiguous, entry.currency, entry.amountMinor); continue; }
+      if (receivedEvents.length) { if (inRevenuePeriod(entry.receivedAt, period)) { b.review.push({ id: entry.id, reference: order.reference, amountMinor: entry.amountMinor, currency: entry.currency, method: entry.method, receivedAt: entry.receivedAt }); addMoney(b.ambiguous, entry.currency, entry.amountMinor); } continue; }
       received(b, entry.currency, entry.method, entry.amountMinor, entry.receivedAt);
     }
     const pending = ["UNPAID", "PROCESSING", "AWAITING_REVIEW"].includes(order.paymentState) && !["CANCELLED", "COMPLETED"].includes(order.enrolmentState);
@@ -69,22 +81,22 @@ export function aggregateCourseRevenue(courses: CourseIdentity[], registrations:
       addMoney(b.due, order.currency, plan.dueMinor); addMoney(b.upcoming, order.currency, plan.upcomingMinor);
     }
   }
-  const all = { received: new Map<string, number>(), pending: new Map<string, number>(), due: new Map<string, number>(), upcoming: new Map<string, number>(), ambiguous: new Map<string, number>() };
+  const all = { received: new Map<string, number>(), refunds: new Map<string, number>(), pending: new Map<string, number>(), due: new Map<string, number>(), upcoming: new Map<string, number>(), ambiguous: new Map<string, number>() };
   const programs = [...buckets.values()].sort((a, b) => a.title.localeCompare(b.title)).map(b => {
-    for (const key of ["received", "pending", "due", "upcoming", "ambiguous"] as const) for (const [currency, amount] of b[key]) addMoney(all[key], currency, amount);
-    return { id: b.id, title: b.title, received: moneyGroups(b.received), pending: moneyGroups(b.pending), due: moneyGroups(b.due), upcoming: moneyGroups(b.upcoming), ambiguous: moneyGroups(b.ambiguous), pendingCount: b.pendingCount, review: b.review, latest: b.latest, methods: [...b.methods].sort(([a], [c]) => a.localeCompare(c)).map(([key, amountMinor]) => { const [currency, method] = key.split("\0"); return { currency, method, amountMinor }; }) };
+    for (const key of ["received", "refunds", "pending", "due", "upcoming", "ambiguous"] as const) for (const [currency, amount] of b[key]) addMoney(all[key], currency, amount);
+    return { id: b.id, title: b.title, received: moneyGroups(b.received), refunds: moneyGroups(b.refunds), undatedRefunds: b.undatedRefunds, pending: moneyGroups(b.pending), due: moneyGroups(b.due), upcoming: moneyGroups(b.upcoming), ambiguous: moneyGroups(b.ambiguous), pendingCount: b.pendingCount, review: b.review, latest: b.latest, methods: [...b.methods].sort(([a], [c]) => a.localeCompare(c)).map(([key, amountMinor]) => { const [currency, method] = key.split("\0"); return { currency, method, amountMinor }; }) };
   });
   const pendingUpcoming = new Map<string, number>();
   for (const map of [all.pending, all.due, all.upcoming]) for (const [currency, amount] of map) addMoney(pendingUpcoming, currency, amount);
-  return { programs, totals: { received: moneyGroups(all.received), pending: moneyGroups(all.pending), due: moneyGroups(all.due), upcoming: moneyGroups(all.upcoming), pendingUpcoming: moneyGroups(pendingUpcoming), ambiguous: moneyGroups(all.ambiguous) } };
+  return { programs, totals: { received: moneyGroups(all.received), refunds: moneyGroups(all.refunds), undatedRefunds: programs.reduce((sum, p) => sum + p.undatedRefunds, 0), pending: moneyGroups(all.pending), due: moneyGroups(all.due), upcoming: moneyGroups(all.upcoming), pendingUpcoming: moneyGroups(pendingUpcoming), ambiguous: moneyGroups(all.ambiguous) } };
 }
 
-export async function courseRevenueReport() {
+export async function courseRevenueReport(period?: RevenuePeriod) {
   // Do not call the main admin dashboard loader: it performs payment maintenance writes.
   const [courses, registrations, orders] = await Promise.all([
     prisma.course.findMany({ select: { id: true, slug: true, title: true } }),
     prisma.registration.findMany({ where: { sirahOrder: null }, select: { id: true, paymentReference: true, pricingSnapshot: true, course: { select: { id: true, slug: true, title: true } }, status: true, finalAmount: true, selectedCurrency: true, payment: { select: { id: true, amount: true, currency: true, provider: true, status: true, paidAt: true, createdAt: true, rawPayloadJson: true } } } }),
-    prisma.sirahOrder.findMany({ where: { excludedAt: null, archivedAt: null }, select: { reference: true, course: { select: { id: true, slug: true, title: true } }, currency: true, amountMinor: true, paymentState: true, enrolmentState: true, events: { where: { kind: { in: ["FIRST", "RENEWAL"] } }, select: { id: true, provider: true, amountMinor: true, currency: true, createdAt: true } }, ledgerPayments: { select: { id: true, method: true, amountMinor: true, currency: true, receivedAt: true } }, paymentPlan: { include: { periods: { include: { payments: { select: { amountMinor: true } } } } } } } }),
+    prisma.sirahOrder.findMany({ where: { excludedAt: null, archivedAt: null }, select: { reference: true, course: { select: { id: true, slug: true, title: true } }, currency: true, amountMinor: true, paymentState: true, enrolmentState: true, events: { where: { kind: { in: ["FIRST", "RENEWAL", "REFUND"] } }, select: { id: true, provider: true, amountMinor: true, currency: true, createdAt: true, kind: true } }, audits: { where: { action: "REFUND_VERIFIED" }, select: { detail: true, createdAt: true } }, ledgerPayments: { select: { id: true, method: true, amountMinor: true, currency: true, receivedAt: true } }, paymentPlan: { include: { periods: { include: { payments: { select: { amountMinor: true } } } } } } } }),
   ]);
-  return aggregateCourseRevenue(courses, registrations, orders);
+  return aggregateCourseRevenue(courses, registrations, orders, new Date(), period);
 }

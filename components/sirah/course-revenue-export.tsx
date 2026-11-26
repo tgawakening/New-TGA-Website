@@ -3,9 +3,9 @@
 import { useState } from "react";
 import styles from "./course-revenue.module.css";
 
-export type ExportRow = { title: string; received: string[]; outstanding: string[]; upcoming: string[] };
+export type ExportRow = { title: string; received: string[]; net: string[]; outstanding: string[]; upcoming: string[] };
 
-export function CourseRevenueExport({ rows }: { rows: ExportRow[] }) {
+export function CourseRevenueExport({ rows, periodKey, periodLabel, undatedRefunds }: { rows: ExportRow[]; periodKey: string; periodLabel: string; undatedRefunds: number }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
 
@@ -14,13 +14,13 @@ export function CourseRevenueExport({ rows }: { rows: ExportRow[] }) {
     setError(false);
     try {
       const { courseRevenueWorkbook } = await import("./course-revenue-workbook");
-      const workbook = courseRevenueWorkbook(rows);
+      const workbook = courseRevenueWorkbook(rows, periodLabel, undatedRefunds);
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "payments-by-course.xlsx";
+      link.download = `payments-by-course-${periodKey === "all" ? "all-time" : periodKey}.xlsx`;
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {

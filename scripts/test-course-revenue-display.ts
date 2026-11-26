@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Workbook } from "exceljs";
-import { formattedAmounts, outstandingNow } from "../components/sirah/course-revenue-display";
+import { formattedAmounts, formattedNetAmounts, netReceived, outstandingNow } from "../components/sirah/course-revenue-display";
 import { courseRevenueWorkbook } from "../components/sirah/course-revenue-workbook";
 import { estimateMoney, validRate } from "../components/sirah/course-revenue-calculation";
 
@@ -16,18 +16,27 @@ test("outstanding combines existing groups by currency and hides zero amounts", 
 
 test("Excel export is a real one-sheet workbook with course and totals values", async () => {
   const workbook = courseRevenueWorkbook([
-    { title: "Course", received: ["PKR 150", "GBP 4"], outstanding: ["PKR 20"], upcoming: [] },
-    { title: "Total across programs", received: ["PKR 150", "GBP 4"], outstanding: ["PKR 20"], upcoming: [] },
-  ]);
+    { title: "Course", received: ["PKR 150", "GBP 4"], net: ["PKR 140"], outstanding: ["PKR 20"], upcoming: [] },
+    { title: "Total across programs", received: ["PKR 150", "GBP 4"], net: ["PKR 140"], outstanding: ["PKR 20"], upcoming: [] },
+  ], "November 2026", 1);
   const bytes = await workbook.xlsx.writeBuffer();
   const reopened = new Workbook();
   await reopened.xlsx.load(bytes);
   assert.equal(reopened.worksheets.length, 1);
   const sheet = reopened.worksheets[0];
-  assert.equal(sheet.getCell("B2").value, "PKR 150\nGBP 4");
-  assert.equal(sheet.getCell("C2").value, "PKR 20");
-  assert.equal(sheet.getCell("D2").value, "—");
-  assert.equal(sheet.getCell("A3").value, "Total across programs");
+  assert.match(String(sheet.getCell("A1").value), /November 2026/);
+  assert.equal(sheet.getCell("B3").value, "PKR 150\nGBP 4");
+  assert.equal(sheet.getCell("C3").value, "PKR 140");
+  assert.equal(sheet.getCell("D3").value, "PKR 20");
+  assert.equal(sheet.getCell("E3").value, "—");
+  assert.equal(sheet.getCell("A4").value, "Total across programs");
+  assert.match(String(sheet.getCell("A7").value), /no reliable verification date/);
+});
+
+test("net can be negative when refunds exceed receipts in a month", () => {
+  const net = netReceived([{ currency: "GBP", amountMinor: 100 }], [{ currency: "GBP", amountMinor: 300 }]);
+  assert.deepEqual(net, [{ currency: "GBP", amountMinor: -200 }]);
+  assert.deepEqual(formattedNetAmounts(net), ["GBP -2.00"]);
 });
 
 test("manual estimates use each currency's actual minor-unit scale and identify missing rates", () => {
