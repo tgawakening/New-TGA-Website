@@ -30,3 +30,11 @@ test("agreement tickets require an admin, anonymous registration needs a UUID sc
   const scope = "71ca2ef7-e3c4-4f26-a5c3-f8d4e11076a1";
   assert.equal(await owner(request, "registration", scope), scope);
 });
+test("staff receipt uploads require manager or super-admin access and a form scope", async () => {
+  const scope = "71ca2ef7-e3c4-4f26-a5c3-f8d4e11076a1";
+  admin = false;
+  await assert.rejects(() => owner(request, "admin-registration", scope));
+  admin = true;
+  await assert.rejects(() => owner(request, "admin-registration", "invalid"));
+  assert.equal(await owner(request, "admin-registration", scope), "reviewer:staff");
+});

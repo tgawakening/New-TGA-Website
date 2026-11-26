@@ -61,7 +61,7 @@ export function addMonthsClamped(date: Date, months: number) {
 export type VerifiedSirahPayment = {
   eventId: string;
   orderId: string;
-  provider: SirahMethod;
+  provider: SirahMethod | "EASYPAISA" | "CASH" | "OTHER";
   amountMinor: number;
   currency: string;
   actor: string;
@@ -70,9 +70,10 @@ export type VerifiedSirahPayment = {
   expectedRevision?: number;
   allowCancelledTransfer?: boolean;
   allowUnsubmittedManual?: boolean;
+  receivedAt?: Date;
+  suppressNotices?: boolean;
 };
-export async function confirmSirahPayment(input: VerifiedSirahPayment) {
-  const result = await serializable(async (tx) => {
+export async function confirmSirahPaymentInTransaction(tx: Prisma.TransactionClient, input: VerifiedSirahPayment) {
     const seen = await tx.sirahPaymentEvent.findUnique({
       where: { id: input.eventId },
     });
@@ -137,6 +138,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
         amountMinor: input.amountMinor,
         currency: input.currency,
         kind: order.paidCount ? "RENEWAL" : "FIRST",
+        ...(input.receivedAt ? { createdAt: input.receivedAt } : {}),
       },
     });
     const now = new Date();
@@ -174,7 +176,8 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
           : addMonthsClamped(start, order.paidCount + 1)
         : null;
     let registrationId = order.registrationId;
-    if (!registrationId) {
+    const legacyProvider = input.provider === "CASH" || input.provider === "OTHER" ? null : input.provider;
+    if (!registrationId && legacyProvider) {
       const registration = await tx.registration.create({
         data: {
           userId: order.userId,
@@ -185,7 +188,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
           baseAmount: order.discount ? (order.discount as { originalAmountMinor: number }).originalAmountMinor : order.amountMinor,
           couponDiscountAmount: order.discount ? (order.discount as { originalAmountMinor: number }).originalAmountMinor - order.amountMinor : 0,
           finalAmount: order.amountMinor,
-          paymentMethod: input.provider,
+          paymentMethod: legacyProvider,
           paymentReference: order.reference,
           status: terminal ? "PAID" : "ACTIVE",
           pricingSnapshot: jsonValue({
@@ -207,12 +210,12 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
       await tx.payment.create({
         data: {
           registrationId,
-          provider: input.provider,
+          provider: legacyProvider,
           providerPaymentId: input.eventId,
           amount: order.amountMinor,
           currency: order.currency,
           status: "CONFIRMED",
-          paidAt: now,
+          paidAt: input.receivedAt || now,
         },
       });
       const existing = await tx.enrollment.findUnique({
@@ -318,7 +321,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
       note: input.note || null,
       terminal,
     });
-    await queueSirahNotice(
+    if (!input.suppressNotices) await queueSirahNotice(
       tx,
       order.id,
       terminal
@@ -329,7 +332,7 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
       input.eventId,
       input.note,
     );
-    if (!terminal && !getGroupInvitation(order.countryCode))
+    if (!input.suppressNotices && !terminal && !getGroupInvitation(order.countryCode))
       await queueSirahNotice(
         tx,
         order.id,
@@ -337,7 +340,9 @@ export async function confirmSirahPayment(input: VerifiedSirahPayment) {
         `paid:${order.id}`,
       );
     return { duplicate: false };
-  });
+}
+export async function confirmSirahPayment(input: VerifiedSirahPayment) {
+  const result = await serializable((tx) => confirmSirahPaymentInTransaction(tx, input));
   await dispatchSirahNotifications(input.orderId).catch(() => {});
   // The classroom welcome follows a first confirmation. Outside the payment
   // transaction and best effort: the sweep queues any welcome missed here.
