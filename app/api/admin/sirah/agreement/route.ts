@@ -1,8 +1,8 @@
 import { taskAdminRole } from "@/lib/lms/task-admin-access";
 import { prisma } from "@/lib/prisma";
 import { checkSirahOrigin, privateJson, sirahExclusionActor, sirahReadAccess, sirahResponseError } from "@/lib/sirah/http";
-import { verifyDirectUpload, readDirectUpload } from "@/lib/sirah/direct-upload";
-import { presignPrivateAttachment, DOCUMENT_URL_SECONDS } from "@/lib/sirah/spaces";
+import { verifyDirectUpload, readDirectUpload, presignPrivateAttachment } from "@/lib/sirah/direct-upload";
+import { DOCUMENT_URL_SECONDS } from "@/lib/sirah/spaces";
 import { SirahError } from "@/services/sirah-registration.service";
 
 export async function GET(request: Request) {

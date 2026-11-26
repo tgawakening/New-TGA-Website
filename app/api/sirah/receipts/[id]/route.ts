@@ -1,5 +1,6 @@
 import { taskAdminRole } from "@/lib/lms/task-admin-access";
-import { presignPrivateAttachment, DOCUMENT_URL_SECONDS } from "@/lib/sirah/spaces";
+import { presignPrivateAttachment } from "@/lib/sirah/direct-upload";
+import { DOCUMENT_URL_SECONDS } from "@/lib/sirah/spaces";
 import { readSirahReceipt } from "@/services/sirah-receipts.service";
 import { sirahResponseError } from "@/lib/sirah/http";
 import { SirahError } from "@/services/sirah-registration.service";

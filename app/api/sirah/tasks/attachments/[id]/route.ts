@@ -2,7 +2,8 @@ import { getSessionIdentity } from "@/lib/auth/session";
 import { taskAdminRole } from "@/lib/lms/task-admin-access";
 import { studentTaskDetail } from "@/lib/lms/tasks";
 import { prisma } from "@/lib/prisma";
-import { DOCUMENT_URL_SECONDS, presignPrivateAttachment } from "@/lib/sirah/spaces";
+import { presignPrivateAttachment } from "@/lib/sirah/direct-upload";
+import { DOCUMENT_URL_SECONDS } from "@/lib/sirah/spaces";
 import { sirahResponseError } from "@/lib/sirah/http";
 import { SirahError } from "@/services/sirah-registration.service";
 

@@ -3,7 +3,7 @@ import type { Readable } from "node:stream";
 import { GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { contentDisposition, createSpacesClient } from "@/lib/sirah/spaces";
+import { contentDisposition, createSpacesClient, type SpacesConfig } from "@/lib/sirah/spaces";
 import { RECORDING_STREAM_ONLY, RECORDING_UPLOAD_PART_BYTES, RECORDING_UPLOAD_QUEUE_SIZE } from "./recording-policy";
 
 /**
@@ -38,6 +38,19 @@ export function missingRecordingStorageEnv(env: NodeJS.ProcessEnv = process.env)
   return RECORDING_STORAGE_ENV_NAMES.filter((name) => !env[name]?.trim());
 }
 
+/** Shared configuration for private files stored in the recordings bucket. */
+export function recordingSpacesConfig(env: NodeJS.ProcessEnv = process.env): SpacesConfig {
+  const missing = missingRecordingStorageEnv(env);
+  if (missing.length) throw new RecordingStorageConfigError(missing);
+  return {
+    endpoint: env.SPACES_ENDPOINT!.trim(),
+    region: env.SPACES_REGION!.trim(),
+    bucket: env.SPACES_BUCKET!.trim(),
+    key: env.SPACES_ACCESS_KEY!.trim(),
+    secret: env.SPACES_SECRET_KEY!.trim(),
+  };
+}
+
 /** What the recordings code needs from storage. Tests swap in a fake via recordingStorageRuntime. */
 export type RecordingStore = {
   /** The stored object's size, or null when it is not there. */
@@ -49,15 +62,9 @@ export type RecordingStore = {
 };
 
 function s3Store(env: NodeJS.ProcessEnv): RecordingStore {
-  const value = (name: RecordingStorageEnvName) => env[name]!.trim();
-  const bucket = value("SPACES_BUCKET");
-  const client = createSpacesClient({
-    endpoint: value("SPACES_ENDPOINT"),
-    region: value("SPACES_REGION"),
-    bucket,
-    key: value("SPACES_ACCESS_KEY"),
-    secret: value("SPACES_SECRET_KEY"),
-  });
+  const config = recordingSpacesConfig(env);
+  const bucket = config.bucket;
+  const client = createSpacesClient(config);
   return {
     async head(key) {
       try {

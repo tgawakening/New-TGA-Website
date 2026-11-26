@@ -132,17 +132,6 @@ export const presignDownload: FileSigner = async ({ key, contentType, filename, 
   );
 };
 
-/** Sensitive user-supplied files are always downloaded, never rendered inline. */
-export const presignPrivateAttachment: FileSigner = async ({ key, filename, expiresIn }) => {
-  const client = connection();
-  return getSignedUrl(client.client, new GetObjectCommand({
-    Bucket: client.bucket, Key: key,
-    ResponseContentType: "application/octet-stream",
-    ResponseContentDisposition: contentDisposition(filename || "file", false),
-    ResponseCacheControl: "private, max-age=0, no-store",
-  }), { expiresIn });
-};
-
 /** The stored object's real size and type, or null if it is not there. */
 export async function headObject(key: string) {
   const client = connection();
