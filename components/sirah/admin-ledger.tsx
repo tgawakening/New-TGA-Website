@@ -3,8 +3,9 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import styles from "./admin-ledger.module.css";
 import { DirectUpload } from "./uploads/direct-upload";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
+import { AdminPaymentPlan, type PaymentPlan } from "./admin-payment-plan";
 
-type Ledger = { settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
+type Ledger = { paymentPlan: PaymentPlan | null; settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
 export function AdminLedger({ id, canEdit, onFeeSaved }: { id: string; canEdit: boolean; onFeeSaved?: (fee: { ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null }) => void }) {
   const [data, setData] = useState<Ledger | null>(null);
   const [error, setError] = useState("");
@@ -24,7 +25,7 @@ export function AdminLedger({ id, canEdit, onFeeSaved }: { id: string; canEdit: 
     const form = event.currentTarget, values = new FormData(form);
     setBusy(true); setError("");
     try {
-      const response = await fetch(action === "agreement" ? "/api/admin/sirah/agreement" : "/api/admin/sirah/ledger", action === "agreement" ? { method: "POST", body: values } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action, amount: values.get("amount"), method: values.get("method"), date: values.get("date"), note: values.get("note") }) });
+      const response = await fetch(action === "agreement" ? "/api/admin/sirah/agreement" : "/api/admin/sirah/ledger", action === "agreement" ? { method: "POST", body: values } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action, amount: values.get("amount"), method: values.get("method"), date: values.get("date"), note: values.get("note"), periodMonth: values.get("periodMonth") }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to save.");
       form.reset(); const updated = await load();
@@ -46,23 +47,27 @@ export function AdminLedger({ id, canEdit, onFeeSaved }: { id: string; canEdit: 
     <h4>Payments &amp; balance</h4>
     {error && <p role="alert">{error}</p>}
     {!data ? <p>Loading balance?</p> : <>
-      <div className={styles.summary}><p>Course fee: {data.ledgerFeeMinor === null ? "Not set" : data.ledgerFeeCurrency ? formatSirahMoney(data.ledgerFeeMinor, data.ledgerFeeCurrency) : "Currency not recorded; set the fee again"}</p>
+      <div className={styles.summary}>{!data.paymentPlan && <p>Course fee: {data.ledgerFeeMinor === null ? "Not set" : data.ledgerFeeCurrency ? formatSirahMoney(data.ledgerFeeMinor, data.ledgerFeeCurrency) : "Currency not recorded; set the fee again"}</p>}
       <p>Total received (ledger, {data.currency}): {formatSirahMoney(received, data.currency)}</p>
       {currencyMismatch && <p role="alert">The course fee or ledger entries have a different or unknown currency. Reconcile them before relying on the balance or generating a new link.</p>}
-      <p>Outstanding: {data.ledgerFeeMinor === null ? "Set the course fee first" : currencyMismatch ? "Unavailable: currencies differ" : formatSirahMoney(Math.max(0, data.ledgerFeeMinor - received), data.currency)}</p>
+      {!data.paymentPlan && <p>Outstanding: {data.ledgerFeeMinor === null ? "Set the course fee first" : currencyMismatch ? "Unavailable: currencies differ" : formatSirahMoney(Math.max(0, data.ledgerFeeMinor - received), data.currency)}</p>}
       </div><p className={styles.hint}>Existing payment records are separate; enter previously received payments here once.</p>
+      <AdminPaymentPlan id={id} currency={data.currency} plan={data.paymentPlan} canEdit={canEdit} reload={load} />
       {canEdit && <>
+        {!data.paymentPlan && <>
         <div className={styles.linkSection}><label>Link amount ({data.currency}; leave blank for the full balance) <input type="number" min="0" step="any" value={linkAmount} onChange={event => setLinkAmount(event.target.value)} /></label>{" "}
         <button type="button" disabled={busy || (!data.settlements.length && (currencyMismatch || data.ledgerFeeMinor === null || data.ledgerFeeMinor <= received))} onClick={() => void generateLink()}>Generate balance payment link</button>
         </div>{link && <p>Card link for {formatSirahMoney(link.amountMinor, link.currency)} (expires {new Date(link.expiresAt).toLocaleString()}): <a href={link.url} target="_blank" rel="noreferrer">Open payment link</a> <button type="button" onClick={() => void navigator.clipboard.writeText(link.url)}>Copy link</button></p>}
         <p>While a balance link is open, fee and manual payment changes are locked. Generate the link again to retrieve or reconcile it. An existing link keeps its original amount.</p>
         <form className={styles.feeForm} onSubmit={(event) => void submit(event, "fee")}><label>Course fee ({data.currency}) <input name="amount" type="number" min="0" step="any" defaultValue={data.ledgerFeeMinor === null || data.ledgerFeeCurrency !== data.currency ? "" : minorToDecimal(data.ledgerFeeMinor, data.currency)} required /></label> <button disabled={busy}>Save fee</button></form>
+        </>}
         <form className={styles.paymentForm} onSubmit={(event) => void submit(event, "payment")}>
           <h5>Record received payment</h5>
+          {data.paymentPlan && <label>Payment period<select name="periodMonth" defaultValue={data.paymentPlan.periods.filter(period => period.status !== "PAID").at(-1)?.periodMonth ?? ""} required><option value="" disabled>Choose period</option>{data.paymentPlan.periods.filter(period => period.status !== "PAID").map(period => <option key={period.periodMonth} value={period.periodMonth}>{period.periodMonth} — {period.status.toLowerCase()}</option>)}</select></label>}
           <label>Amount ({data.currency}) <input name="amount" type="number" min="0" step="any" required /></label>{" "}
           <label>Method <select name="method" required><option value="JAZZCASH">JazzCash</option><option value="BANK">Bank</option><option value="CASH">Cash</option><option value="STRIPE">Stripe</option><option value="OTHER">Other</option></select></label>{" "}
           <label>Date <input name="date" type="date" required /></label>{" "}
-          <label>Note <input name="note" maxLength={1000} /></label>{" "}<button disabled={busy}>Record payment</button>
+          <label>Note <input name="note" maxLength={1000} /></label>{" "}<button disabled={busy || (!!data.paymentPlan && !data.paymentPlan.periods.some(period => period.status !== "PAID"))}>Record payment</button>
         </form>
         {!data.agreement && <form className={styles.agreementForm} onSubmit={(event) => void submit(event, "agreement")}><h5>Signed agreement</h5><input type="hidden" name="id" value={id} /><DirectUpload purpose="agreement" scope={id} required /> <button disabled={busy}>Upload PDF</button></form>}
       </>}

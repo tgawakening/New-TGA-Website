@@ -19,3 +19,6 @@
 .agreementForm h5 { flex-basis: 100%; }
 .agreementForm input[type="file"] { flex: 1 1 220px; }
 .ledger ul { display: grid; gap: .4rem; padding-left: 1.25rem; }
+.plan { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #d7e1ed; }
+.plan h5 { margin-bottom: .75rem; }
+.planHint { grid-column: 1 / -1; }

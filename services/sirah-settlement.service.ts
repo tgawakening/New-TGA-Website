@@ -28,6 +28,8 @@ export async function createBalanceLink(orderId: string, actor: string, stripe =
     await lockLedgerOrder(tx, orderId);
     const prior = await tx.sirahSettlement.findFirst({ where: { orderId, status: "PENDING" } });
     if (prior) return prior;
+    if (await tx.sirahPaymentPlan.findUnique({ where: { orderId }, select: { id: true } }))
+      throw new SirahError("Balance payment links are unavailable for monthly plans. Record payments against a period instead.", 409);
     const order = await tx.sirahOrder.findUniqueOrThrow({ where: { id: orderId }, select: { currency: true, ledgerFeeMinor: true, ledgerFeeCurrency: true } });
     if (order.ledgerFeeMinor === null) throw new SirahError("Set the course fee before creating a balance link.", 409);
     if (order.ledgerFeeCurrency !== order.currency) throw new SirahError("The fee currency does not match the registration currency. Reconcile the fee before issuing a link.", 409);
