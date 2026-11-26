@@ -1,9 +1,31 @@
 .report { display: grid; gap: 1rem; }
-.summary { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
-.card { padding: 1.1rem; border: 1px solid #d7e1ed; border-radius: 14px; background: #fff; color: #173659; }
-.card h3, .card h4 { margin: 0 0 .75rem; }
-.card p { line-height: 1.5; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.header h2, .header p { margin-top: 0; }
+.export { display: grid; gap: .4rem; justify-items: end; color: #a02e33; font-size: .85rem; }
+.download { border: 0; border-radius: 10px; padding: .75rem 1.1rem; background: #163d65; color: white; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.download:disabled { opacity: .7; cursor: wait; }
+.download:focus-visible { outline: 3px solid #78a9db; outline-offset: 3px; }
+.summary { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.card { padding: 1.1rem; border: 1px solid #d7e1ed; border-radius: 14px; background: #f8fbff; color: #173659; }
+.card h4 { margin: 0 0 .75rem; }
+.card small { display: block; margin-top: .6rem; color: #526477; }
 .tableWrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; }
-.table th, .table td { padding: .55rem .65rem; border-bottom: 1px solid #e1e9f2; vertical-align: top; }
-.muted { color: #526477; font-size: .875rem; line-height: 1.5; }
+.table th, .table td { padding: .75rem; border-bottom: 1px solid #e1e9f2; vertical-align: top; }
+.table thead th { color: #526477; font-size: .82rem; }
+.table th small { display: block; margin-top: .3rem; font-weight: 400; }
+.breakdown { min-width: 680px; }
+.breakdown tbody th { width: 28%; color: #173659; }
+.amounts { display: grid; gap: .3rem; line-height: 1.4; white-space: nowrap; }
+.empty, .muted { color: #526477; }
+.muted { font-size: .875rem; line-height: 1.5; }
+.review, .details { font-size: .9rem; }
+.review { margin-top: .75rem; color: #526477; }
+.review summary, .details summary { cursor: pointer; font-weight: 600; }
+.program { margin-top: 1.5rem; }
+.program h4 { margin-bottom: .25rem; }
+@media (max-width: 600px) {
+  .header { flex-direction: column; }
+  .export { justify-items: start; }
+  .summary { grid-template-columns: 1fr; }
+}
