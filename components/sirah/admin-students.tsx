@@ -14,6 +14,7 @@ import {
   sirahPendingRefundMinor,
 } from "@/lib/sirah/refund-display";
 import { AdminLedger } from "./admin-ledger";
+import { AdminAddRegistration } from "./admin-add-registration";
 import { displayAgreedFee } from "@/lib/sirah/admin-agreed-fee";
 import { RowMenu, type RowMenuItem } from "./admin-row-menu";
 import styles from "./admin-students.module.css";
@@ -257,6 +258,7 @@ export function SirahAdminStudents({
   const [reload, setReload] = useState(0);
   const [refreshBell, setRefreshBell] = useState(0);
   const [selected, setSelected] = useState<Student | null>(null);
+  const [addRegistrationOpen, setAddRegistrationOpen] = useState(false);
   const [detailStale, setDetailStale] = useState(false);
   const selectedId = selected?.id;
   // Reviewers get the full enrolment action set except refunds, which stay
@@ -435,6 +437,25 @@ export function SirahAdminStudents({
     setDetailStale(false);
     setAction(nextAction);
     setSelected(student);
+  }
+
+  async function openAddedRegistration(record: { id: string; reference: string; archived?: boolean; excluded?: boolean }, newAccount = false) {
+    setAddRegistrationOpen(false);
+    if (newAccount) setRecordMessage("Account created. The student can use Forgot password to set a password.");
+    setQ(record.reference);
+    setPage(1);
+    setRecordsView(record.archived ? "ARCHIVED" : record.excluded ? "EXCLUDED" : "");
+    setReload((value) => value + 1);
+    try {
+      const query = new URLSearchParams({ q: record.reference, ...(record.archived ? { archived: "only" } : record.excluded ? { excluded: "only" } : {}) });
+      const snapshot = await readSnapshot(query.toString());
+      const student = snapshot.rows.find((row) => row.id === record.id);
+      if (!student) throw new Error(record.archived ? "This archived registration can only be opened by the super admin." : "Registration not found in the current view.");
+      open(student);
+      if (newAccount) setMessage("Account created. The student can use Forgot password to set a password.");
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : "Could not open the registration.");
+    }
   }
 
   async function act(event: FormEvent<HTMLFormElement>, student: Student) {
@@ -712,6 +733,7 @@ export function SirahAdminStudents({
             )}
           </div>
           <div className="ga-admin-actions ga-admin-actions-inline">
+            {view === "students" && canManageEnrolments && <button type="button" className="ga-admin-primary-btn" onClick={() => setAddRegistrationOpen(true)}>Add registration</button>}
             {!readOnly && (
               <AdminNotificationBell
                 initialNotifications={initialNotifications}
@@ -1324,6 +1346,7 @@ export function SirahAdminStudents({
           </section>
         </dialog>
       )}
+      {addRegistrationOpen && <AdminAddRegistration onClose={() => setAddRegistrationOpen(false)} onCreated={(record) => void openAddedRegistration(record, record.newAccount)} onExisting={(record) => void openAddedRegistration(record)} />}
       {selectedId && selected && (
         <dialog
           ref={dialog}

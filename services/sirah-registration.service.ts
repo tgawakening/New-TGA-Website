@@ -65,6 +65,24 @@ export async function auditSirah(
     data: { orderId, actor, action, detail: jsonValue(detail) },
   });
 }
+
+/** Shared order creation for student and staff registration flows. */
+export function createSirahOrderRecord(
+  tx: Prisma.TransactionClient,
+  data: Omit<Prisma.SirahOrderUncheckedCreateInput, "reference">,
+) {
+  return tx.sirahOrder.create({
+    data: { ...data, reference: `SIRAH-${randomUUID().toUpperCase()}` },
+  });
+}
+
+export function ensureSirahCourse(tx: Prisma.TransactionClient) {
+  return tx.course.upsert({
+    where: { slug: SIRAH_SLUG },
+    create: { slug: SIRAH_SLUG, title: SIRAH_TITLE, basePrice: 2999, currency: "GBP", isActive: true },
+    update: { title: SIRAH_TITLE },
+  });
+}
 export async function registerSirah(
   input: z.infer<typeof sirahRegistrationSchema>,
   signedInUserId?: string,
@@ -169,17 +187,7 @@ export async function registerSirah(
       userId = user.id;
     }
     // Stable course record. Updating the title does not reprice any existing registration.
-    const course = await tx.course.upsert({
-      where: { slug: SIRAH_SLUG },
-      create: {
-        slug: SIRAH_SLUG,
-        title: SIRAH_TITLE,
-        basePrice: 2999,
-        currency: "GBP",
-        isActive: true,
-      },
-      update: { title: SIRAH_TITLE },
-    });
+    const course = await ensureSirahCourse(tx);
     const previous = await tx.sirahOrder.findUnique({
       where: {
         userId_courseId_batchCode: {
@@ -206,12 +214,10 @@ export async function registerSirah(
       }
       return { userId: userId!, orderId: previous.id, existing: true };
     }
-    const order = await tx.sirahOrder.create({
-      data: {
+    const order = await createSirahOrderRecord(tx, {
         userId: userId!,
         courseId: course.id,
         batchCode: SIRAH_BATCH,
-        reference: `SIRAH-${randomUUID().toUpperCase()}`,
         requestKey: input.requestKey,
         phoneCountry: phone.phoneCountry,
         phoneE164: phone.phoneE164,
@@ -233,7 +239,6 @@ export async function registerSirah(
         ...(payment?.manual
           ? { paymentState: "AWAITING_REVIEW", revision: 1 }
           : {}),
-      },
     });
     await auditSirah(tx, order.id, `student:${userId}`, "REGISTERED", {
       country: input.countryCode,

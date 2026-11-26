@@ -15,6 +15,9 @@ export async function directUploadOwner(request: Request, purpose: UploadPurpose
       const user = await sirahUser(scope); await ownedSirahOrder(scope, user.id); owner = user.id;
     } else if (purpose === "task") {
       const user = await getSessionIdentity(request); if (!user || !await studentTaskDetail(user.id, scope)) throw new SirahError("This task is not available.", 403); owner = user.id;
+    } else if (purpose === "admin-registration") {
+      if (!/^[0-9a-f-]{36}$/i.test(scope) || !await taskAdminRole()) throw new SirahError("Admin access is required.", 403);
+      owner = await sirahExclusionActor(request);
     } else {
       if (!await taskAdminRole()) throw new SirahError("Admin access is required.", 403);
       owner = await sirahExclusionActor(request);
