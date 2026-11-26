@@ -552,6 +552,7 @@ model SirahOrder {
 }
 
 model SirahReceipt {
+  storageKey String? @unique @db.VarChar(191)
   id        String     @id @default(cuid())
   orderId   String
   revision  Int
@@ -1154,9 +1155,23 @@ model LmsTaskSubmission {
 
   task    LmsTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
   student User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attachments LmsTaskAttachment[]
 
   @@unique([taskId, studentId])
   @@index([studentId])
+}
+
+model LmsTaskAttachment {
+  id           String @id @default(cuid())
+  submissionId String
+  storageKey   String @unique @db.VarChar(191)
+  filename     String @db.VarChar(191)
+  contentType  String @db.VarChar(191)
+  sizeBytes    Int
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+  submission   LmsTaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
 }
 
 model SirahLedgerPayment {
@@ -1175,6 +1190,7 @@ model SirahLedgerPayment {
 }
 
 model SirahAgreement {
+  storageKey String? @unique @db.VarChar(191)
   id        String   @id @default(cuid())
   orderId   String   @unique
   filename  String

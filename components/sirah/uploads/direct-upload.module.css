@@ -1,0 +1,8 @@
+.root { display: grid; gap: .6rem; min-width: 0; font-size: .9rem; }
+.choose { display: inline-flex; width: fit-content; padding: .6rem .85rem; border: 1px solid currentColor; border-radius: .6rem; cursor: pointer; font-weight: 650; }
+.choose input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.choose:focus-within { outline: 3px solid #55c7aa; outline-offset: 2px; }
+.item { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; padding: .7rem; border: 1px solid #8898ad; border-radius: .6rem; }
+.filename { flex: 1 1 10rem; overflow-wrap: anywhere; }
+.item progress { flex: 1 1 8rem; max-width: 16rem; }
+.item button { font: inherit; cursor: pointer; padding: .35rem .65rem; }

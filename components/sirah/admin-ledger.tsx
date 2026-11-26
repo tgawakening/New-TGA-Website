@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import styles from "./admin-ledger.module.css";
+import { DirectUpload } from "./uploads/direct-upload";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 
 type Ledger = { settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
@@ -61,7 +62,7 @@ export function AdminLedger({ id, canEdit }: { id: string; canEdit: boolean }) {
           <label>Date <input name="date" type="date" required /></label>{" "}
           <label>Note <input name="note" maxLength={1000} /></label>{" "}<button disabled={busy}>Record payment</button>
         </form>
-        {!data.agreement && <form className={styles.agreementForm} onSubmit={(event) => void submit(event, "agreement")}><h5>Signed agreement</h5><input type="hidden" name="id" value={id} /><input type="file" name="file" accept="application/pdf,.pdf" required /> <button disabled={busy}>Upload PDF</button></form>}
+        {!data.agreement && <form className={styles.agreementForm} onSubmit={(event) => void submit(event, "agreement")}><h5>Signed agreement</h5><input type="hidden" name="id" value={id} /><DirectUpload purpose="agreement" scope={id} required /> <button disabled={busy}>Upload PDF</button></form>}
       </>}
       {data.agreement && <p><a href={`/api/admin/sirah/agreement?id=${encodeURIComponent(id)}`}>Download agreement: {data.agreement.filename}</a></p>}
       {data.ledgerPayments.length > 0 && <ul>{data.ledgerPayments.map((payment) => <li key={payment.id}>{payment.receivedAt.slice(0, 10)} ? {formatSirahMoney(payment.amountMinor, payment.currency)} ? {payment.method}{payment.note && ` ? ${payment.note}`}</li>)}</ul>}

@@ -19,7 +19,7 @@ export default async function StudentTask({ params }: { params: Promise<{ id: st
   return <div className={s.page}><ClassroomHeader home="/seerah/classroom" week={null} percent={null} back={{ href: "/seerah/classroom/schedule#recordings", label: "Classes" }} student={{ active: "live" }} />
     <main className={s.wrap}><section className={`${s.section} ${t.taskPage}`}><div className={t.taskCard}><p className={s.eyebrow}>Class task</p><h1>{task.title}</h1>
       <h2>Instructions</h2><TaskBody body={task.body} /></div>
-      <TaskAnswerForm taskId={task.id} initialAnswer={submission?.answer || ""} initialLink={submission?.link || ""} initialSubmittedAt={submission?.submittedAt.toISOString() || null} />
+      <TaskAnswerForm taskId={task.id} initialAnswer={submission?.answer || ""} initialLink={submission?.link || ""} initialSubmittedAt={submission?.submittedAt.toISOString() || null} attachments={submission?.attachments || []} />
       <p className={t.backLink}><Link href="/seerah/classroom/schedule#recordings">Back to classes and recordings</Link></p>
     </section></main></div>;
 }
