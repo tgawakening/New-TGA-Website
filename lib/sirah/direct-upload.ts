@@ -8,6 +8,18 @@ import { uploadFileProblem, uploadFileType, type UploadPurpose } from "./direct-
 import { SirahError } from "@/services/sirah-registration.service";
 
 type Claim = { key: string; uploadId: string; purpose: UploadPurpose; scope: string; owner: string; filename: string; type: string; size: number; exp: number };
+type StorageError = { name?: string; Code?: string; code?: string; $metadata?: { httpStatusCode?: number } };
+function missingStorageObject(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const e = error as StorageError;
+  return [e.name, e.Code, e.code].some(code => code === "NoSuchUpload" || code === "NoSuchKey" || code === "NotFound") || e.$metadata?.httpStatusCode === 404;
+}
+function logVerificationError(stage: string, error: unknown) {
+  const e = error && typeof error === "object" ? error as StorageError : {};
+  const code = [e.name, e.Code, e.code].find(value => typeof value === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(value));
+  // Never log object keys, filenames, upload tokens, request bodies, or credentials.
+  console.error("[direct-upload] verification failed", { stage, code: code ?? "unknown", status: e.$metadata?.httpStatusCode });
+}
 function secret() { const key = process.env.SIRAH_UPLOAD_TOKEN_SECRET?.trim(); if (!key || key.length < 32) throw new SirahError("File uploads are not configured.", 503); return key; }
 function storage() {
   try {
@@ -45,17 +57,45 @@ export async function verifyDirectUpload(token: string, purpose: UploadPurpose, 
   const claim = decode(token);
   if (claim.purpose !== purpose || claim.scope !== scope || claim.owner !== owner || uploadFileProblem(purpose, claim.filename, claim.size) || uploadFileType(claim.filename) !== claim.type || !/^uploads\/[0-9a-f-]{36}\/[\w.-]{1,100}$/.test(claim.key)) throw new SirahError("Upload is not valid for this form.");
   const { client, bucket } = storage();
+  async function head() {
+    try { return await client.send(new HeadObjectCommand({ Bucket: bucket, Key: claim.key })); }
+    catch (error) {
+      if (missingStorageObject(error)) return null;
+      logVerificationError("head", error);
+      throw new SirahError("Upload could not be verified. Please retry.");
+    }
+  }
+  function verifyHead(object: { ContentLength?: number; ContentType?: string }) {
+    if (object.ContentLength !== claim.size || object.ContentType !== claim.type) {
+      console.error("[direct-upload] verification failed", { stage: "metadata", sizeMatches: object.ContentLength === claim.size, typeMatches: object.ContentType === claim.type });
+      throw new SirahError("Upload could not be verified. Please retry.");
+    }
+  }
+  // Completion already happens before the UI shows Uploaded. Subsequent form
+  // submission verifies the finished object directly, without listing parts
+  // for an upload ID that Spaces has already removed.
+  const existing = await head();
+  if (existing) { verifyHead(existing); return claim; }
   try {
     const parts = await client.send(new ListPartsCommand({ Bucket: bucket, Key: claim.key, UploadId: claim.uploadId }));
     if (parts.Parts?.length !== 1 || parts.Parts[0].PartNumber !== 1 || parts.Parts[0].Size !== claim.size || !parts.Parts[0].ETag) throw new SirahError("Upload did not finish. Please retry.");
     await client.send(new CompleteMultipartUploadCommand({ Bucket: bucket, Key: claim.key, UploadId: claim.uploadId, MultipartUpload: { Parts: [{ PartNumber: 1, ETag: parts.Parts[0].ETag }] } }));
   } catch (error) {
     if (error instanceof SirahError) throw error;
-    if ((error as { name?: string }).name !== "NoSuchUpload") throw new SirahError("Upload could not be verified. Please retry.");
+    if (!missingStorageObject(error)) {
+      logVerificationError("multipart", error);
+      throw new SirahError("Upload could not be verified. Please retry.");
+    }
   }
-  const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: claim.key }));
-  if (head.ContentLength !== claim.size || head.ContentType !== claim.type) throw new SirahError("Upload could not be verified. Please retry.");
-  return claim;
+  // A concurrent completion or delayed visibility can briefly return 404.
+  // Never accept a missing object, or one with different size/type.
+  for (const delay of [0, 100, 250, 500]) {
+    if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+    const object = await head();
+    if (object) { verifyHead(object); return claim; }
+  }
+  console.error("[direct-upload] verification failed", { stage: "head-after-completion", code: "not-found" });
+  throw new SirahError("Upload could not be verified. Please retry.");
 }
 export async function readDirectUpload(key: string) {
   const { client, bucket } = storage();
