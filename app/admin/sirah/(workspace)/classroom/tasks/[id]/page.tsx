@@ -17,7 +17,7 @@ export default async function AdminTaskDetail({ params, searchParams }: { params
   if (!(await taskAdminRole())) redirect("/admin/sirah");
   if (!(await tasksAvailable())) notFound();
   const { id } = await params;
-  const task = await prisma.lmsTask.findUnique({ where: { id }, include: { session: { select: { title: true } }, recording: { select: { session: { select: { title: true } } } }, externalRecording: { select: { title: true } }, submissions: { include: { student: { select: { fullName: true, email: true } } }, orderBy: { submittedAt: "desc" } } } });
+  const task = await prisma.lmsTask.findUnique({ where: { id }, include: { session: { select: { title: true } }, recording: { select: { session: { select: { title: true } } } }, externalRecording: { select: { title: true } }, submissions: { include: { student: { select: { fullName: true, email: true } }, attachments: { select: { id: true, filename: true } } }, orderBy: { submittedAt: "desc" } } } });
   if (!task) notFound();
   const { notice, error } = await searchParams;
   return <section className={`${styles.screen} ${sirahFont.variable}`} data-theme="sirah-classroom">
@@ -32,7 +32,7 @@ export default async function AdminTaskDetail({ params, searchParams }: { params
     <section className={styles.card}><h3 className={styles.cardTitle}>Submissions ({task.submissions.length})</h3>
       {task.submissions.length ? <ul className={styles.rows}>{task.submissions.map(submission => <li key={submission.id} className={styles.row}><div>
         <strong>{submission.student.fullName}</strong> · {submission.student.email}<p>Submitted <time dateTime={submission.submittedAt.toISOString()}>{submission.submittedAt.toUTCString()}</time></p>
-        <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{submission.answer}</p>{submission.link && <p><a href={submission.link} target="_blank" rel="noopener noreferrer">Open submitted link</a></p>}
+        <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{submission.answer}</p>{submission.link && <p><a href={submission.link} target="_blank" rel="noopener noreferrer">Open submitted link</a></p>}{submission.attachments.length > 0 && <ul>{submission.attachments.map(file => <li key={file.id}><a href={`/api/sirah/tasks/attachments/${encodeURIComponent(file.id)}`}>{file.filename}</a></li>)}</ul>}
       </div></li>)}</ul> : <p>No submissions yet.</p>}
     </section>
   </section>;

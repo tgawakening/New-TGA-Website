@@ -11,6 +11,7 @@ export type SirahValidatedReceipt = {
   filename: string;
   mime: string;
   sha256: string;
+  storageKey?: string | null;
 };
 export type SirahInitialPayment = {
   acceptedTermsVersion: string;

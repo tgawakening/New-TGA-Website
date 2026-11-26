@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { sirahPaymentRegistrationSchema } from "@/lib/sirah/registration-payment";
 import { readSirahMultipart } from "@/lib/sirah/multipart";
+import { readDirectUpload, verifyDirectUpload } from "@/lib/sirah/direct-upload";
 import { validateSirahReceipt } from "@/services/sirah-receipts.service";
 import type { SirahInitialPayment } from "@/services/sirah-manual-submission.service";
 import {
@@ -94,22 +95,19 @@ export async function POST(request: Request) {
       },
     };
     if (parsed.data.manualPayment) {
+      const token = form?.get("receiptToken");
       const file = form?.get("receipt");
-      if (!(file instanceof File) || !file.size)
-        return NextResponse.json(
-          {
-            error: "Upload your payment receipt.",
-            fields: { receipt: ["A payment receipt is required."] },
-          },
-          { status: 400 },
-        );
-      payment.manual = {
-        receipt: await validateSirahReceipt(
-          new Uint8Array(await file.arrayBuffer()),
-          file.name,
-        ),
-        details: parsed.data.manualPayment,
-      };
+      let receipt;
+      if (typeof token === "string" && token) {
+        const uploaded = await verifyDirectUpload(token, "registration", parsed.data.requestKey, parsed.data.requestKey);
+        const checked = await validateSirahReceipt(await readDirectUpload(uploaded.key), uploaded.filename);
+        receipt = { ...checked, data: Buffer.alloc(0), storageKey: uploaded.key };
+      } else if (file instanceof File && file.size) {
+        receipt = await validateSirahReceipt(new Uint8Array(await file.arrayBuffer()), file.name);
+      } else {
+        return NextResponse.json({ error: "Upload your payment receipt.", fields: { receipt: ["A payment receipt is required."] } }, { status: 400 });
+      }
+      payment.manual = { receipt, details: parsed.data.manualPayment };
     }
     const user = await getCurrentUser();
     if (user && user.status !== "ACTIVE")

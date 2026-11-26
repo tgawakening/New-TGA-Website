@@ -72,7 +72,7 @@ export async function submitSirahEvidence(
   orderId: string,
   userId: string,
   input: z.infer<typeof sirahEvidenceSchema>,
-  file: { data: Uint8Array; name: string } | null,
+  file: { data: Uint8Array; name: string } | import("./sirah-manual-submission.service").SirahValidatedReceipt | null,
   acceptedTermsVersion: string,
   accessConsents: SirahAccessConsents = {},
 ) {
@@ -103,7 +103,7 @@ export async function submitSirahEvidence(
       "Choose a receipt file, or select the WhatsApp submission route.",
     );
   const receipt = file
-    ? await validateSirahReceipt(file.data, file.name)
+    ? ("name" in file ? await validateSirahReceipt(file.data, file.name) : file)
     : null;
   const claimedAmount = input.amount
     ? decimalToMinor(input.amount, order.currency)

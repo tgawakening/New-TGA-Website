@@ -65,11 +65,11 @@ export async function studentTaskDetail(studentId: string, taskId: string, now =
   if (!access.allowed || !access.cohortId || !(await tasksAvailable())) return null;
   return prisma.lmsTask.findFirst({
     where: { id: taskId, ...visibleWhere(access.cohortId, now) },
-    select: { id: true, title: true, body: true, submissions: { where: { studentId }, select: { answer: true, link: true, submittedAt: true } } },
+    select: { id: true, title: true, body: true, submissions: { where: { studentId }, select: { answer: true, link: true, submittedAt: true, attachments: { select: { id: true, filename: true } } } } },
   });
 }
 
-export async function submitTask(studentId: string, taskId: string, answer: string, link: string) {
+export async function submitTask(studentId: string, taskId: string, answer: string, link: string, attachments: { key: string; filename: string; type: string; size: number }[] = []) {
   const input = validateAnswer(answer, link);
   const access = await sirahStudentCohortAccess(studentId);
   if (!idPattern.test(taskId) || !access.allowed || !access.cohortId || !(await tasksAvailable())) throw new Error("This task is not available.");
@@ -79,10 +79,15 @@ export async function submitTask(studentId: string, taskId: string, answer: stri
     await tx.$queryRaw`SELECT id FROM LmsTask WHERE id = ${taskId} FOR UPDATE`;
     const task = await tx.lmsTask.findFirst({ where: { id: taskId, ...visibleWhere(cohortId, new Date()) }, select: { id: true } });
     if (!task) throw new Error("This task is not available.");
-    await tx.lmsTaskSubmission.upsert({
+    const submission = await tx.lmsTaskSubmission.upsert({
       where: { taskId_studentId: { taskId, studentId } },
       create: { taskId, studentId, ...input },
       update: { ...input, submittedAt: new Date() },
     });
+    if (attachments.length) {
+      const existing = await tx.lmsTaskAttachment.count({ where: { submissionId: submission.id } });
+      if (existing + attachments.length > 5) throw new Error("A submission can have up to 5 files.");
+      await tx.lmsTaskAttachment.createMany({ data: attachments.map(file => ({ submissionId: submission.id, storageKey: file.key, filename: file.filename, contentType: file.type, sizeBytes: file.size })) });
+    }
   });
 }

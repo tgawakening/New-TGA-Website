@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { SIRAH_RECEIPT_ACCEPT, sirahReceiptSelectionError } from "@/lib/sirah/receipt-upload";
+import { DirectUpload } from "./uploads/direct-upload";
 import { useRegistrationStyles } from "./registration-styles";
 
 /** Shared by initial submission and a saved registration's receipt correction. */
@@ -8,13 +8,17 @@ export function ManualPaymentFields({
   payerName = "",
   amount,
   errors = {},
+  orderId,
+  onScope,
 }: {
   payerName?: string;
   amount: string;
   errors?: Record<string, string[]>;
+  orderId?: string;
+  onScope?: (scope: string) => void;
 }) {
   const styles = useRegistrationStyles();
-  const [receiptError, setReceiptError] = useState("");
+  const [scope] = useState(() => orderId || crypto.randomUUID());
   const error = (key: string) =>
     errors[key]?.[0] ? (
       <small className={styles.fieldError} role="alert">
@@ -23,29 +27,12 @@ export function ManualPaymentFields({
     ) : null;
   return (
     <div className={styles.manualFields}>
-      <label>
-        Payment receipt (JPG, PNG, WebP or PDF)
-        <input
-          type="file"
-          name="receipt"
-          accept={SIRAH_RECEIPT_ACCEPT}
-          required
-          onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            const problem = file ? sirahReceiptSelectionError(file) : "";
-            setReceiptError(problem);
-            if (problem) event.currentTarget.value = "";
-          }}
-        />
-        <small>Images up to 20 MB are resized automatically. PDFs: up to 4 MB. Keep the amount and transaction reference readable.</small>
-        {receiptError ? (
-          <small className={styles.fieldError} role="alert">
-            {receiptError}
-          </small>
-        ) : (
-          error("receipt")
-        )}
-      </label>
+      <div>
+        <span>Payment receipt (JPG, PNG, WebP or PDF)</span>
+        {scope && <DirectUpload purpose={orderId ? "evidence" : "registration"} scope={scope} name="receiptToken" required={Boolean(orderId)} onScope={onScope} />}
+        <small>Keep the amount and transaction reference readable.</small>
+        {error("receipt")}
+      </div>
       <div className={styles.grid}>
         <label>
           Sender name

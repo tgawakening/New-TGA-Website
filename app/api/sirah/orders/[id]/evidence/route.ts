@@ -7,6 +7,8 @@ import {
 import { submitSirahEvidence } from "@/services/sirah-receipts.service";
 import { SirahError } from "@/services/sirah-registration.service";
 import { sirahRequiredEvidenceSchema } from "@/lib/sirah/registration-payment";
+import { readDirectUpload, verifyDirectUpload } from "@/lib/sirah/direct-upload";
+import { validateSirahReceipt } from "@/services/sirah-receipts.service";
 import { readSirahMultipart } from "@/lib/sirah/multipart";
 export const runtime = "nodejs";
 export async function POST(
@@ -23,12 +25,16 @@ export async function POST(
     const parsed = sirahRequiredEvidenceSchema.safeParse(input);
     if (!parsed.success)
       throw new SirahError("Please check the payment-submission fields.");
+    const token = body.get("receiptToken");
     const file = body.get("receipt");
-    const content =
-      file instanceof File && file.size
-        ? { data: new Uint8Array(await file.arrayBuffer()), name: file.name }
-        : null;
-    if (!content) throw new SirahError("A payment receipt is required.");
+    let content;
+    if (typeof token === "string" && token) {
+      const uploaded = await verifyDirectUpload(token, "evidence", (await params).id, user.id);
+      const checked = await validateSirahReceipt(await readDirectUpload(uploaded.key), uploaded.filename);
+      content = { ...checked, data: Buffer.alloc(0), storageKey: uploaded.key };
+    } else if (file instanceof File && file.size) {
+      content = { data: new Uint8Array(await file.arrayBuffer()), name: file.name };
+    } else throw new SirahError("A payment receipt is required.");
     return privateJson(
       await submitSirahEvidence(
         (await params).id,

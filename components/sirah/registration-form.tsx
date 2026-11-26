@@ -1,5 +1,4 @@
 "use client";
-import { prepareSirahReceipt } from "@/lib/sirah/receipt-upload";
 import { confirmDialog, promptDialog } from "@/components/confirm-dialog";
 import { RenewalCycle } from "./renewal-cycle";
 import { PersonalDiscount, personalDiscountAvailable } from "./personal-discount";
@@ -874,8 +873,8 @@ export function SirahRegistrationForm({
       setFields(manualResult.error.flatten().fieldErrors);
       return;
     }
-    const receipt = data.get("receipt");
-    if (manual && (!(receipt instanceof File) || !receipt.size)) {
+    const receipt = data.get("receiptToken");
+    if (manual && (typeof receipt !== "string" || !receipt)) {
       setFields({ receipt: ["Upload your payment receipt."] });
       return;
     }
@@ -922,10 +921,10 @@ export function SirahRegistrationForm({
           : {}),
       };
       let body: string | FormData = JSON.stringify(details);
-      if (manual && receipt instanceof File) {
+      if (manual && typeof receipt === "string") {
         const multipart = new FormData();
         multipart.set("details", JSON.stringify(details));
-        multipart.set("receipt", await prepareSirahReceipt(receipt));
+        multipart.set("receiptToken", receipt);
         body = multipart;
       }
       const result = await api("/api/sirah/orders", { method: "POST", body });
@@ -1223,9 +1222,8 @@ export function SirahRegistrationForm({
         "digitalContentConsented",
         String(accessConsents.digitalContentConsented === true),
       );
-      const receipt = data.get("receipt");
-      if (!(receipt instanceof File) || !receipt.size) throw new Error("Upload your payment receipt.");
-      data.set("receipt", await prepareSirahReceipt(receipt));
+      const receipt = data.get("receiptToken");
+      if (typeof receipt !== "string" || !receipt) throw new Error("Upload your payment receipt.");
       const result = await api(`/api/sirah/orders/${order.id}/evidence`, {
         method: "POST",
         body: data,
@@ -1475,8 +1473,8 @@ export function SirahRegistrationForm({
         setFields(sender.error.flatten().fieldErrors);
         return false;
       }
-      const receipt = data.get("receipt");
-      if (!(receipt instanceof File) || !receipt.size) {
+      const receipt = data.get("receiptToken");
+      if (typeof receipt !== "string" || !receipt) {
         setFields({ receipt: ["Upload your payment receipt."] });
         return false;
       }
@@ -2220,6 +2218,7 @@ export function SirahRegistrationForm({
                         </div>
                       ))}
                     <ManualPaymentFields
+                      onScope={(scope) => { requestKey.current = scope; }}
                       payerName={name}
                       amount={minorToDecimal(quote.amountMinor, quote.currency)}
                       errors={shownFields}
@@ -2790,6 +2789,7 @@ export function SirahRegistrationForm({
                           </a>
                           <form onSubmit={submitEvidence} className={styles.form}>
                             <ManualPaymentFields
+                              orderId={order.id}
                               payerName={user?.fullName || name}
                               amount={minorToDecimal(
                                 order.amountMinor,
@@ -2875,9 +2875,9 @@ export function SirahRegistrationForm({
               <h3>Your private receipts</h3>
               {order.receipts.map((receipt) => (
                 <p key={receipt.id}>
-                  <a href={`/api/sirah/receipts/${receipt.id}`}>
+                  <span>
                     {receipt.filename} · evidence version {receipt.revision}
-                  </a>
+                  </span>
                 </p>
               ))}
             </div>
