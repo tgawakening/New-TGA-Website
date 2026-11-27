@@ -6,6 +6,7 @@ import {
   sirahDeletionRefusal,
 } from "@/lib/sirah/admin-records";
 import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
+import { ADMIN_RECEIPT_UPLOADED } from "@/lib/sirah/direct-upload-policy";
 import "server-only";
 import { calculateSirahAnnualUnusedMonths } from "@/lib/sirah/annual-refund";
 import { quoteSirahAnnualRefund } from "./sirah-refunds.service";
@@ -259,12 +260,19 @@ export async function listSirahAdmin(search: URLSearchParams) {
     }),
   ]);
   const ids = rows.map(row => row.id);
-  const [ledgerOrders, planOrders] = ids.length ? await Promise.all([
+  const [ledgerOrders, planOrders, receiptUploads] = ids.length ? await Promise.all([
     prisma.sirahLedgerPayment.findMany({ where: { orderId: { in: ids } }, select: { orderId: true }, distinct: ["orderId"] }),
     prisma.sirahPaymentPlan.findMany({ where: { orderId: { in: ids } }, select: { orderId: true } }),
-  ]) : [[], []];
+    // Receipts staff attached on the student's behalf (audit trail, not a column).
+    prisma.sirahAudit.findMany({ where: { orderId: { in: ids }, action: ADMIN_RECEIPT_UPLOADED }, select: { actor: true, detail: true, createdAt: true } }),
+  ]) : [[], [], []];
   const ledgerIds = new Set(ledgerOrders.map(entry => entry.orderId));
   const planIds = new Set(planOrders.map(entry => entry.orderId));
+  const adminUploads = new Map<string, { actor: string; at: Date }>();
+  for (const entry of receiptUploads) {
+    const receiptId = (entry.detail as { receiptId?: unknown } | null)?.receiptId;
+    if (typeof receiptId === "string") adminUploads.set(receiptId, { actor: entry.actor, at: entry.createdAt });
+  }
   return {
     courseTitle: SIRAH_TITLE,
     total,
@@ -281,6 +289,7 @@ export async function listSirahAdmin(search: URLSearchParams) {
       );
       return {
         ...row,
+        receipts: row.receipts.map(receipt => ({ ...receipt, adminUpload: adminUploads.get(receipt.id) ?? null })),
         hasMonthlyPlan: planIds.has(row.id),
         deleteRefusal,
         // Archive view: when the maintenance job will delete it for good.
