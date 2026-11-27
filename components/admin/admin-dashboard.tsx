@@ -744,6 +744,7 @@ export default function AdminDashboard({ data, adminEmail, initialNotifications,
                         <strong>{row.paymentLabel}</strong>
                         {row.paymentDetail ? <p>{row.paymentDetail}</p> : null}
                         <p>{prettify(row.paymentStatus)}</p>
+                        {row.hasPaymentReceipt && <p><a href={`/api/admin/payments/receipt?id=${encodeURIComponent(row.id)}`} target="_blank" rel="noreferrer">View payment receipt</a></p>}
                         {row.subscriptionStatus ? <p>Subscription: {prettify(row.subscriptionStatus)}</p> : null}
                       </div>
                       <div>

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/session";
 import { manualPaymentSubmitSchema } from "@/lib/validations/payment";
+import { readDirectUpload, verifyDirectUpload } from "@/lib/sirah/direct-upload";
+import { validateSirahReceipt } from "@/services/sirah-receipts.service";
 import { submitManualPayment } from "@/services/payment.service";
 
 export async function POST(request: Request) {
@@ -13,9 +15,11 @@ export async function POST(request: Request) {
     const json = await request.json();
     const parsed = manualPaymentSubmitSchema.safeParse(json);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid payload.", details: parsed.error.flatten() }, { status: 400 });
+      return NextResponse.json({ error: parsed.error.flatten().fieldErrors.receiptToken?.[0] || "Invalid payload.", details: parsed.error.flatten() }, { status: 400 });
     }
 
+    const uploaded = await verifyDirectUpload(parsed.data.receiptToken, "legacy-evidence", parsed.data.registrationId, user.id);
+    await validateSirahReceipt(await readDirectUpload(uploaded.key), uploaded.filename);
     const result = await submitManualPayment({
       registrationId: parsed.data.registrationId,
       userId: user.id,
@@ -24,7 +28,7 @@ export async function POST(request: Request) {
       senderNumber: parsed.data.senderNumber,
       referenceKey: parsed.data.referenceKey,
       notes: parsed.data.notes,
-      screenshotUrl: parsed.data.screenshotUrl,
+      screenshotUrl: uploaded.key,
     });
 
     return NextResponse.json({

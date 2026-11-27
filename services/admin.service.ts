@@ -85,6 +85,7 @@ export type AdminDashboardSnapshot = {
     paymentLabel: string;
     paymentDetail: string | null;
     paymentStatus: string;
+    hasPaymentReceipt: boolean;
     registrationStatus: string;
     enrollmentStatus: string;
     enrollmentActivatedAt: string | null;
@@ -568,6 +569,7 @@ export async function getAdminDashboardSnapshot(): Promise<AdminDashboardSnapsho
       paymentLabel: paymentPresentation.paymentLabel,
       paymentDetail: paymentPresentation.paymentDetail,
       paymentStatus: row.payment?.status ?? "INITIATED",
+      hasPaymentReceipt: Boolean(row.payment?.manualSubmission?.screenshotUrl?.startsWith("uploads/")),
       registrationStatus: row.status,
       enrollmentStatus: row.enrollment?.status ?? "PENDING",
       enrollmentActivatedAt: row.enrollment?.activatedAt?.toISOString() ?? null,

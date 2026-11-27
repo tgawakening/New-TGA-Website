@@ -18,11 +18,11 @@ export function DirectUpload({ purpose, scope, name = "uploadToken", multiple = 
       const list = current.current;
       if (list.some(item => item.status !== "done") || (required && !list.some(item => item.status === "done"))) {
         event.preventDefault(); event.stopImmediatePropagation();
-        setMessage(list.some(item => item.status === "uploading") ? "Wait for the upload to finish." : "Complete or remove each upload before continuing.");
+        setMessage(list.some(item => item.status === "uploading") ? "Wait for the upload to finish." : required && list.length === 0 && ["registration", "evidence", "legacy-evidence"].includes(purpose) ? "Please attach your payment receipt to continue." : "Complete or remove each upload before continuing.");
       }
     };
     form.addEventListener("submit", guard, true); return () => form.removeEventListener("submit", guard, true);
-  }, [required]);
+  }, [required, purpose]);
   function update(id: string, patch: Partial<Item>) { setItems(list => list.map(item => item.id === id ? { ...item, ...patch } : item)); }
   async function start(item: Item) {
     const attempt = crypto.randomUUID();
