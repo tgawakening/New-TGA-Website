@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useState, type CSSProperties } from "react";
-import { consultationDestinations } from "@/components/seerah/consultation-config";
 import { saveResidence, useResidenceSelection } from "@/lib/sirah/use-residence";
 import { Footer } from "../footer";
 import { Experience } from "../motion/experience";
@@ -10,7 +9,6 @@ import { Nav } from "../nav";
 import { liveLinks, type SiteLinks } from "../site-links";
 import { SiteLinksProvider } from "../site-links-context";
 import { Eyebrow, SectionHeading } from "../section-heading";
-import { AskAction, ConsultationProvider } from "./consultation";
 import { activeCampaign, copy, courseConfig, learningOutcomes, sectionLinks } from "./content";
 import { Fees } from "./fees";
 import { SeerahHero } from "./hero";
@@ -68,10 +66,9 @@ export function SeerahPage({
   site = liveLinks,
 }: SeerahPageProps) {
   const { country, hasResidence } = useResidenceSelection(visitorCountry);
-  // Explicit Pakistan/Overseas choice, used only while residence is unknown.
-  const [regionChoice, setRegionChoice] = useState("");
-  const needsCountryChoice = !hasResidence && regionChoice !== "PK";
-  const heroCountry = needsCountryChoice ? undefined : hasResidence ? country : "PK";
+  // Without a known residence, registration asks for the billing country.
+  const needsCountryChoice = !hasResidence;
+  const heroCountry = hasResidence ? country : undefined;
   const [orientation, setOrientation] = useState(initialCampaign === "orientation");
   useEffect(() => {
     const update = () => setOrientation(activeCampaign() === "orientation");
@@ -84,11 +81,6 @@ export function SeerahPage({
 
   return (
     <SiteLinksProvider value={site}>
-    <ConsultationProvider
-      country={hasResidence ? country : undefined}
-      regionChoice={regionChoice}
-      onRegionChange={setRegionChoice}
-    >
       <div className={s.page} data-experience="">
         <span data-progress="" aria-hidden="true" />
         <a href="#overview" className={s.skip}>
@@ -142,11 +134,6 @@ export function SeerahPage({
                       </li>
                     ))}
                   </ul>
-                  {consultationDestinations.orientation ? (
-                    <a className={s.textLink} href={consultationDestinations.orientation} target="_blank" rel="noopener noreferrer">
-                      Orientation details ↗
-                    </a>
-                  ) : null}
                 </div>
               </div>
             </aside>
@@ -273,7 +260,6 @@ export function SeerahPage({
                 <p className={s.body}>
                   Have another question? <a href="mailto:admin@tgaawakening.com">Contact the team ↗</a>
                 </p>
-                <AskAction placement="faq" />
               </div>
               <div className={s.faqs} data-reveal="">
                 {orientation ? (
@@ -317,7 +303,6 @@ export function SeerahPage({
                 </h2>
                 <div className={s.closingActions}>
                   <RegisterButton placement="closing" country={heroCountry} requireBillingCountry={needsCountryChoice} />
-                  <AskAction placement="closing" />
                 </div>
               </div>
             </div>
@@ -332,7 +317,6 @@ export function SeerahPage({
         </div>
         <Experience />
       </div>
-    </ConsultationProvider>
     </SiteLinksProvider>
   );
 }

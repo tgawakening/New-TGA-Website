@@ -12,7 +12,7 @@ const recordedLessons = [
 ];
 
 const liveWorkflow = [
-  "Weekly live link shared in dashboard and WhatsApp group",
+  "Weekly live link shared in your dashboard and classroom",
   "Session reminders sent before class",
   "Replay uploaded after the class recording is processed",
 ];

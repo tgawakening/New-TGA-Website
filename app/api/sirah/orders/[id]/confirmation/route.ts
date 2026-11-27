@@ -1,6 +1,4 @@
-import { prisma } from "@/lib/prisma";
 import { sirahUser, sirahResponseError, privateJson } from "@/lib/sirah/http";
-import { getGroupInvitation, PAYMENT_SUPPORT_URL } from "@/lib/sirah/config";
 import { canAccessSirah } from "@/services/sirah-confirmation.service";
 import {
   ownedSirahOrder,
@@ -19,20 +17,13 @@ export async function GET(
         "Course invitation is available after verified payment and enrolment approval.",
         403,
       );
-    const groupUrl = getGroupInvitation(order.countryCode);
-    if (!groupUrl)
-      await prisma.sirahOrder.update({
-        where: { id: order.id },
-        data: { invitationState: "PENDING" },
-      });
+    // Course updates are in the classroom; there is no WhatsApp group invitation.
     return privateJson({
       courseTitle: SIRAH_TITLE,
       reference: order.reference,
-      groupUrl,
-      contactUrl: groupUrl ? null : PAYMENT_SUPPORT_URL,
-      message: groupUrl
-        ? "Join your course WhatsApp group for class updates."
-        : "Your enrolment is confirmed. Your course group invitation will follow.",
+      classroomUrl: "/seerah/classroom",
+      message:
+        "Your enrolment is confirmed. Your live classes, recordings and course updates are in your classroom.",
     });
   } catch (error) {
     return sirahResponseError(error);

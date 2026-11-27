@@ -543,7 +543,7 @@ export default function StudentDashboard({ user, nextLiveClass = null, latestRec
           ? `${lmsCourseName}: your recorded lessons and next live session.`
           : user.currentSirahOnly
             ? "Open your Sīrah Beyond Chronology registration above for verified payment status, private evidence and your course invitation."
-            : "Recorded lessons, weekly live links, and batch support appear here after activation."}
+            : "Recorded lessons and weekly live links appear here after activation."}
       </p>
       {classroomOpen ? (
         <ul className={s.list}>
@@ -596,9 +596,6 @@ export default function StudentDashboard({ user, nextLiveClass = null, latestRec
             Complete Payment First
           </Link>
         )}
-        <Link href="/seerah/register" className={s.btnGhost} target="_blank">
-          Join Batch Community
-        </Link>
       </div>
     </article>
   );

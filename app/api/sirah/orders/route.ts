@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     if (registerLimited) return registerLimited;
     if (!(await sirahSchemaAvailable()))
       throw new SirahError(
-        "Registration setup is being completed. Please enquire on WhatsApp while registration is unavailable.",
+        "Registration setup is being completed. Please email admin@tgaawakening.com while registration is unavailable.",
         503,
       );
     const multipart = request.headers

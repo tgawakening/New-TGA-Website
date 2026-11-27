@@ -501,13 +501,6 @@ export async function recordSirahRefund(
         "CONFIRMED",
         `reconciled:${refundId}`,
       );
-      if (!getGroupInvitation(order.countryCode))
-        await queueSirahNotice(
-          tx,
-          orderId,
-          "INVITATION_PENDING",
-          `paid:${orderId}`,
-        );
     }
     await auditSirah(tx, orderId, actor, "REFUND_VERIFIED", {
       refundId,

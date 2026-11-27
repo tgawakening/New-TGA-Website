@@ -31,7 +31,6 @@ import {
   type SirahMethod,
 } from "@/lib/sirah/catalog";
 import { sirahRegistrationSchema } from "@/lib/sirah/validation";
-import { ConsultationAction } from "@/components/seerah/consultation-action";
 import { PasswordFields } from "./password-fields";
 import { AnnualPriceSummary } from "./annual-price-summary";
 import { PaymentMethods } from "./payment-methods";
@@ -411,8 +410,7 @@ export function SirahRegistrationForm({
   }, [order?.id, order?.terms?.version, billing, plan, selectedMethod]);
   const [invitation, setInvitation] = useState<{
     message: string;
-    groupUrl: string | null;
-    contactUrl?: string | null;
+    classroomUrl?: string | null;
   } | null>(null);
   const initialPreferences = useRef({
     initialCountry,
@@ -1771,11 +1769,9 @@ export function SirahRegistrationForm({
             Registration setup is being completed. You can enquire with the team
             while registration is unavailable.
           </p>
-          <ConsultationAction
-            className={styles.primary}
-            placement="registration-unavailable"
-            countryOverride={billing || undefined}
-          />
+          <a className={styles.primary} href="mailto:admin@tgaawakening.com">
+            Email the team
+          </a>
         </div>
       ) : signedOutOrderLink ? (
         <div className={styles.notice}>
@@ -2384,23 +2380,9 @@ export function SirahRegistrationForm({
               <div className={styles.notice} role="status">
                 <h3>Payment confirmed.</h3>
                 <p>{invitation.message}</p>
-                {invitation.groupUrl && (
-                  <a
-                    className={styles.primary}
-                    href={invitation.groupUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Join the Course Group
-                  </a>
-                )}
-                {!invitation.groupUrl && invitation.contactUrl && (
-                  <a
-                    href={invitation.contactUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Contact the course team ↗
+                {invitation.classroomUrl && (
+                  <a className={styles.primary} href={invitation.classroomUrl}>
+                    Open the classroom
                   </a>
                 )}
               </div>

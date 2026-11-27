@@ -70,7 +70,6 @@ export function ProjectsPage({ site = liveLinks }: { site?: SiteLinks }) {
 
       <Nav
         site={site}
-        support={{ href: links.whatsapp, label: "Join Community" }}
         enrol={{ href: links.registration, label: "Register now" }}
       />
 
@@ -95,7 +94,7 @@ export function ProjectsPage({ site = liveLinks }: { site?: SiteLinks }) {
                 ))}
               </ul>
               <div className={s.actions} data-rise="" style={i(4)}>
-                <Button href={links.whatsapp}>Join our WhatsApp community ↗</Button>
+                <Button href={links.registration} arrow>Register now</Button>
                 <VideoButton which="orientation" label="Watch orientation session" />
               </div>
             </div>
@@ -139,9 +138,6 @@ export function ProjectsPage({ site = liveLinks }: { site?: SiteLinks }) {
                 <div className={s.launchActions}>
                   <Button href={links.registration} arrow block>
                     Register with {offer.code}
-                  </Button>
-                  <Button href={links.whatsapp} variant="ghost" block>
-                    Join Community ↗
                   </Button>
                 </div>
               </div>
@@ -188,15 +184,12 @@ export function ProjectsPage({ site = liveLinks }: { site?: SiteLinks }) {
                 {closing.title}
               </h2>
               <p className={s.body}>
-                Use code <b>{offer.code}</b> for the early bird launch offer. Join the community for updates or register now
-                to secure your place.
+                Use code <b>{offer.code}</b> for the early bird launch offer. Register now to secure your
+                place.
               </p>
               <div className={`${s.actions} ${s.center}`}>
                 <Button href={links.registration} arrow>
                   Enroll now
-                </Button>
-                <Button href={links.whatsapp} variant="ghost">
-                  Join our community ↗
                 </Button>
               </div>
             </Card>

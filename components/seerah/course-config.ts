@@ -370,8 +370,3 @@ export function activeCampaign(now = Date.now()) {
     : "enrolment";
 }
 
-// Compatibility exports for existing callers; public destinations have one source.
-export {
-  consultationDestinations as publicCourseGroups,
-  consultationForCountry as publicCourseGroup,
-} from "./consultation-config";
