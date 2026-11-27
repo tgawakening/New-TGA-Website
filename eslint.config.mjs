@@ -10,6 +10,7 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".claude/**",
     ".hallmark/**",
+    ".monthly-plan-verification/**",
     ".next/**",
     "out/**",
     "build/**",
