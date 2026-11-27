@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import { Eyebrow } from "../section-heading";
-import { AskAction } from "./consultation";
 import { copy, courseConfig, pillars } from "./content";
 import { RegisterButton } from "./register";
 import s from "./seerah.module.css";
@@ -83,7 +82,6 @@ export function SeerahHero({
           </p>
           <div className={s.heroActions} data-rise="" style={i(3)}>
             <RegisterButton placement="hero" country={heroCountry} requireBillingCountry={needsCountryChoice} />
-            <AskAction placement="hero" />
           </div>
           <ul className={s.essentials} data-rise="" style={i(4)} aria-label="Course essentials">
             {courseConfig.essentials.map((e) => (

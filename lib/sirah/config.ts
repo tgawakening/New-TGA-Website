@@ -2,35 +2,14 @@ import "server-only";
 import { currencyScale, type SirahMethod, type SirahPlan } from "./catalog";
 export { PAYMENT_SUPPORT_URL } from "./support";
 
-export function courseGroupAudience(country: string) {
-  const pakistan = process.env.SIRAH_PAKISTAN_COUNTRY_CODE || "PK";
-  return country.toUpperCase() === pakistan.toUpperCase()
-    ? "PAKISTAN"
-    : "INTERNATIONAL";
-}
-export function getGroupInvitation(country: string) {
-  const suppliedAudience = process.env.SIRAH_SUPPLIED_GROUP_AUDIENCE;
-  const value =
-    courseGroupAudience(country) === "PAKISTAN"
-      ? process.env.SIRAH_PAKISTAN_GROUP_URL ||
-        (suppliedAudience === "PAKISTAN"
-          ? process.env.SIRAH_SUPPLIED_GROUP_URL || ""
-          : "")
-      : process.env.SIRAH_INTERNATIONAL_GROUP_URL ||
-        (suppliedAudience === "INTERNATIONAL"
-          ? process.env.SIRAH_SUPPLIED_GROUP_URL || ""
-          : "");
-  if (!value) return null;
-  try {
-    const url = new URL(value.trim().replace(/,$/, ""));
-    return url.protocol === "https:" &&
-      url.hostname === "chat.whatsapp.com" &&
-      /^\/[a-zA-Z0-9]+$/.test(url.pathname)
-      ? url.href
-      : null;
-  } catch {
-    return null;
-  }
+/**
+ * WhatsApp course-group invitations are retired: no invitation link is shown
+ * on the site or sent by email. Always null, so the email dispatcher also holds
+ * back any invitation that was queued before this change.
+ */
+export function getGroupInvitation(country: string): string | null {
+  void country;
+  return null;
 }
 export type SirahTerms = {
   version: string;

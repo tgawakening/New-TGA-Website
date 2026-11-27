@@ -179,7 +179,7 @@ export function Dispatch({
               </>
             ) : lesson.inJoinWindow ? (
               <p className={s.joinHint}>
-                The joining link is on its way. Check the course group if it does not appear in a few minutes.
+                The joining link is on its way. Refresh in a few minutes if it does not appear.
               </p>
             ) : (
               <span className={s.bjDormant}>Join opens {SIRAH_JOIN_WINDOW_MINUTES} min before</span>

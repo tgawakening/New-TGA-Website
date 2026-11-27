@@ -8,7 +8,6 @@ export { genMuminPrograms as programmes } from "@/components/gen-mumin/programs"
 
 export const links = {
   registration: "https://genmumin.com/registration",
-  whatsapp: "https://chat.whatsapp.com/EX6fgdY6b4T9XRwpGNkfoU",
 };
 
 /* The two films, by YouTube id (live: heroVideoEmbed, introVideoEmbed). */

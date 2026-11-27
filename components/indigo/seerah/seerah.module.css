@@ -172,14 +172,7 @@
   font-weight: 600;
 }
 
-/* ---------- Consultation ("Ask about the course") ---------- */
-.ask {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-}
-
-.region select,
+/* ---------- Country select ---------- */
 .countrySelect select {
   min-height: 44px;
   padding: 0 2.25rem 0 0.875rem;
@@ -195,7 +188,6 @@
   appearance: none;
 }
 
-.region select option,
 .countrySelect select option {
   background: var(--surf);
   color: var(--sand);
@@ -1426,14 +1418,6 @@
   padding-top: var(--sp-2);
 }
 
-.planActions .ask {
-  display: grid;
-}
-
-.planActions .ask > * {
-  width: 100%;
-}
-
 .terms {
   margin-top: var(--sp-4);
   font-size: var(--fs-xs);
@@ -1517,10 +1501,6 @@
 .faqGrid {
   display: grid;
   gap: var(--sp-8);
-}
-
-.faqGrid .ask {
-  margin-top: var(--sp-5);
 }
 
 .faqs {

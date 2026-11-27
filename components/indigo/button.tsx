@@ -31,8 +31,15 @@ export function Button(props: LinkButton | NativeButton) {
   if ("href" in rest && typeof rest.href === "string") {
     const { href, ...linkRest } = rest as LinkButton;
     const external = /^https?:\/\//.test(href);
+    // Email and phone links open the visitor's own app, not a new tab.
+    if (/^(mailto|tel):/.test(href))
+      return (
+        <a href={href} className={cls} onClick={linkRest.onClick}>
+          {content}
+        </a>
+      );
     return external ? (
-      // onClick is forwarded so outbound links (WhatsApp) can still be tracked.
+      // onClick is forwarded so outbound links can still be tracked.
       <a href={href} className={cls} target="_blank" rel="noopener noreferrer" onClick={linkRest.onClick}>
         {content}
       </a>

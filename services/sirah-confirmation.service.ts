@@ -332,13 +332,6 @@ export async function confirmSirahPaymentInTransaction(tx: Prisma.TransactionCli
       input.eventId,
       input.note,
     );
-    if (!input.suppressNotices && !terminal && !getGroupInvitation(order.countryCode))
-      await queueSirahNotice(
-        tx,
-        order.id,
-        "INVITATION_PENDING",
-        `paid:${order.id}`,
-      );
     return { duplicate: false };
 }
 export async function confirmSirahPayment(input: VerifiedSirahPayment) {

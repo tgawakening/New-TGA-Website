@@ -164,21 +164,23 @@ test("campaign artwork and both self-contained portrait web videos are available
   }
 });
 
-test("public Sīrah consultations use approved regional groups and require a choice without a country", () => {
-  const { consultationDestinations, consultationForCountry } = fixture().load(
-    "consultation-config",
-  );
-  assert.equal(
-    consultationForCountry("PK"),
-    "https://chat.whatsapp.com/Hhs5PieBzen7YvYnkLF9Fo",
-  );
-  for (const country of ["GB", "SA", "JP"])
-    assert.equal(
-      consultationForCountry(country),
-      "https://chat.whatsapp.com/Ghr9XgXpncIIFYuWcs45oI",
-    );
-  assert.equal(consultationForCountry(), null);
-  assert.equal(consultationDestinations.orientation, null);
+test("no WhatsApp group or community invite link appears anywhere on the site", () => {
+  const root = path.resolve(scriptDirectory, "..");
+  // The email dispatcher matches this prefix only to hold back invitations queued before removal.
+  const allowed = new Set([path.join("services", "sirah-notifications.service.ts")]);
+  const found = [];
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(path.join(root, directory), { withFileTypes: true })) {
+      const relative = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(relative);
+      else if (/\.(tsx?|mjs|cjs|js|json|css|html)$/.test(entry.name) && !allowed.has(relative)) {
+        if (fs.readFileSync(path.join(root, relative), "utf8").includes("chat.whatsapp.com")) found.push(relative);
+      }
+    }
+  };
+  for (const directory of ["app", "components", "lib", "services", "public"])
+    if (fs.existsSync(path.join(root, directory))) walk(directory);
+  assert.deepEqual(found, []);
 });
 
 

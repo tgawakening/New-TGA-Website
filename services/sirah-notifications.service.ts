@@ -132,12 +132,8 @@ export async function queueSirahNotice(
     rows.push(
       `Please replace your evidence from ${app}/seerah/register?order=${order.id}`,
     );
-  if (paid && ["CONFIRMED", "INVITATION"].includes(kind))
-    rows.push(
-      group
-        ? `Course group invitation: ${group}`
-        : "Your course group invitation will follow.",
-    );
+  if (paid && ["CONFIRMED", "INVITATION"].includes(kind) && group)
+    rows.push(`Course group invitation: ${group}`);
   const admins = (process.env.ADMIN_NOTIFICATION_EMAIL || "")
     .split(",")
     .map((v) => v.trim())

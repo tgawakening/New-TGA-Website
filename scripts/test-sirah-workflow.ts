@@ -376,11 +376,12 @@ test("manual upload is awaiting review; two admins cannot confirm the same submi
     }),
     1,
   );
+  // WhatsApp group invitations are retired: no follow-up notice is queued.
   assert.equal(
     await prisma.sirahNotification.count({
       where: { orderId: order.id, kind: "INVITATION_PENDING" },
     }),
-    1,
+    0,
   );
 });
 test("the admin bell reports Sīrah enrolment and completed admin actions once per event", async () => {
@@ -836,28 +837,29 @@ test("a successful PayPal subscription approval without settlement does not gran
     0,
   );
 });
-test("missing regional invitations do not block paid enrolment and are queued once configured", async () => {
+test("WhatsApp group invitations are retired: none is offered, queued or emailed even when a group URL is set", async () => {
   const { order, userId } = await manualOrder();
   const submitted = await evidence(order, userId);
-  await approve(submitted);
-  assert.equal(getGroupInvitation("PK"), null);
-  assert.equal(getGroupInvitation("GB"), null);
   process.env.SIRAH_SUPPLIED_GROUP_AUDIENCE = "PAKISTAN";
   process.env.SIRAH_SUPPLIED_GROUP_URL =
     "https://chat.whatsapp.com/SyntheticSuppliedTestInvite";
-  assert.match(getGroupInvitation("PK")!, /SyntheticSuppliedTestInvite/);
+  process.env.SIRAH_INTERNATIONAL_GROUP_URL =
+    "https://chat.whatsapp.com/SyntheticPaidInternational";
+  await approve(submitted);
+  assert.equal(getGroupInvitation("PK"), null);
   assert.equal(getGroupInvitation("GB"), null);
   await queuePendingInvitations();
   await queuePendingInvitations();
   assert.equal(
     await prisma.sirahNotification.count({
-      where: {
-        orderId: order.id,
-        kind: "INVITATION",
-        toEmail: { contains: "sirah-" },
-      },
+      where: { orderId: order.id, kind: { in: ["INVITATION", "INVITATION_PENDING"] } },
     }),
-    1,
+    0,
+  );
+  const notices = await prisma.sirahNotification.findMany({ where: { orderId: order.id } });
+  assert.equal(
+    notices.filter((notice) => JSON.stringify(notice.payload).includes("chat.whatsapp.com")).length,
+    0,
   );
 });
 test("failed email delivery is persisted and retried without duplicating successful notices or reversing enrolment", async () => {
@@ -1303,7 +1305,7 @@ test("historical pending-order updates preserve the original quote and reject ch
   );
 });
 
-test("a queued invitation is not delivered to a student after their payment is refunded", async () => {
+test("no group invitation is delivered to a student, including after their payment is refunded", async () => {
   const { order, userId } = await manualOrder();
   process.env.SIRAH_SUPPLIED_GROUP_AUDIENCE = "PAKISTAN";
   process.env.SIRAH_SUPPLIED_GROUP_URL =
@@ -1338,20 +1340,9 @@ test("a queued invitation is not delivered to a student after their payment is r
     requests.filter(
       (r) =>
         r.to.includes(user.email) &&
-        r.text.includes("Course group invitation:"),
+        (r.text.includes("Course group invitation:") || r.text.includes("chat.whatsapp.com")),
     ).length,
     0,
-  );
-  assert.equal(
-    await prisma.sirahNotification.count({
-      where: {
-        orderId: order.id,
-        toEmail: user.email,
-        kind: "CONFIRMED",
-        state: "HELD_ACCESS",
-      },
-    }),
-    1,
   );
 });
 
@@ -1372,18 +1363,11 @@ test("rollout readiness detects an unmigrated schema without changing existing r
   assert.equal(await sirahSchemaAvailable(), true);
 });
 
-test("paid international invitations stay separate from public groups and use the stored country after first monthly or full upfront settlement", async () => {
-  const { courseGroupAudience } = await import("../lib/sirah/config");
+test("paid international students get no group invitation after first monthly or full upfront settlement", async () => {
   process.env.SIRAH_INTERNATIONAL_GROUP_URL =
     "https://chat.whatsapp.com/SyntheticPaidInternational";
-  assert.equal(courseGroupAudience("PK"), "PAKISTAN");
-  for (const code of ["GB", "US", "IN", "AE", "DE"])
-    assert.equal(courseGroupAudience(code), "INTERNATIONAL");
-  assert.equal(
-    getGroupInvitation("PK"),
-    null,
-    "a public Pakistan enquiry group is not a paid course destination",
-  );
+  for (const code of ["PK", "GB", "US", "IN", "AE", "DE"])
+    assert.equal(getGroupInvitation(code), null);
   for (const plan of ["MONTHLY", "ANNUAL"] as const) {
     const result = await stripeOrder(plan);
     const order = await prisma.sirahOrder.findUniqueOrThrow({
@@ -1406,10 +1390,7 @@ test("paid international invitations stay separate from public groups and use th
     });
     assert.equal(paid.paidCount, 1);
     assert.equal(canAccessSirah(paid), true);
-    assert.equal(
-      getGroupInvitation(paid.countryCode),
-      "https://chat.whatsapp.com/SyntheticPaidInternational",
-    );
+    assert.equal(getGroupInvitation(paid.countryCode), null);
     assert.equal(
       JSON.stringify(await publicSirahOrder(order.id, result.userId)).includes(
         "SyntheticPaidInternational",

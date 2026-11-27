@@ -27,7 +27,7 @@ export function JoinControl({ session }: { session: StudentSessionView }) {
       </a>
     );
   if (session.window === "open")
-    return <p className={s.joinHint}>The class is being set up. Refresh in a minute, or check the course group.</p>;
+    return <p className={s.joinHint}>The class is being set up. Refresh in a minute.</p>;
   // Past the scheduled end and Zoom does not report it live.
   if (session.window === "ended") return <span className={s.bjDormant}>The join window has closed</span>;
   return (

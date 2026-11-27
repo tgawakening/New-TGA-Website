@@ -5,7 +5,7 @@ import { trackSeerah } from "@/components/seerah/analytics";
 import { formatFee } from "@/components/seerah/regional-fees";
 import { Card } from "../card";
 import { SectionHeading } from "../section-heading";
-import { AskAction } from "./consultation";
+import { Button } from "../button";
 import { copy, courseConfig, type FeePlan } from "./content";
 import { RegisterButton } from "./register";
 import s from "./seerah.module.css";
@@ -111,11 +111,10 @@ function Plan({
       )}
       {annual && plan ? <p className={s.planCurrency}>Charge currency: {plan.currency}</p> : null}
       {available === false ? (
-        <p className={s.notice}>Payment is currently unavailable for this plan. Enquire on WhatsApp for assistance.</p>
+        <p className={s.notice}>Payment is currently unavailable for this plan. Email admin@tgaawakening.com for assistance.</p>
       ) : null}
       <div className={s.planActions}>
         <RegisterButton placement={placement} country={country} plan={annual ? "ANNUAL" : "MONTHLY"} block />
-        <AskAction placement={placement} variant="soft" />
       </div>
     </Card>
   );
@@ -214,7 +213,11 @@ export function Fees({
             <h3>Questions before you register?</h3>
             <p>Speak with the Sīrah team about the course and your regional payment options.</p>
           </div>
-          <AskAction placement="course-enquiries" />
+          <div>
+            <Button href="mailto:admin@tgaawakening.com" variant="ghost">
+              Email the Sīrah team
+            </Button>
+          </div>
         </div>
       </div>
     </section>
