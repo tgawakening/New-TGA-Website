@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { aggregateCourseRevenue } from "../services/course-revenue.service";
 import { reportPeriod } from "../lib/sirah/course-revenue-period";
+import { formattedAmounts } from "../components/sirah/course-revenue-display";
 
 test("verified payments, unresolved ledger entries and next plan dues remain distinct by currency and program", () => {
   const course = { id: "course", slug: "seerah-course", title: "Sīrah" };
@@ -15,7 +16,7 @@ test("verified payments, unresolved ledger entries and next plan dues remain dis
   const report = aggregateCourseRevenue([course], legacy, [order, unlinked, pending], new Date("2026-03-15T00:00:00Z"));
   assert.deepEqual(report.totals.received, [{ currency: "GBP", amountMinor: 200 }, { currency: "PKR", amountMinor: 1700 }]);
   assert.deepEqual(report.totals.ambiguous, [{ currency: "PKR", amountMinor: 2000 }]);
-  assert.deepEqual(report.totals.pending, [{ currency: "GBP", amountMinor: 500 }, { currency: "PKR", amountMinor: 300 }]);
+  assert.deepEqual(report.totals.pending, [{ currency: "GBP", amountMinor: 500 }, { currency: "PKR", amountMinor: 30000 }]);
   assert.deepEqual(report.totals.due, [{ currency: "PKR", amountMinor: 1000 }]);
   assert.deepEqual(report.totals.upcoming, [{ currency: "PKR", amountMinor: 1000 }]);
   assert.equal(report.programs.find(p => p.id === "course:sirah")?.review[0].reference, "R1");
@@ -78,4 +79,28 @@ test("removing a ledger-only payment updates received and net on the next report
   assert.deepEqual(before.totals.received, [{ currency: "PKR", amountMinor: 300000 }]);
   assert.deepEqual(after.totals.received, [{ currency: "PKR", amountMinor: 150000 }]);
   assert.deepEqual(after.totals.refunds, []);
+});
+
+test("legacy amounts use pence for GBP and whole units for PKR throughout the report", () => {
+  const course = { id: "c", slug: "seerah-course", title: "Sirah" };
+  const at = new Date("2026-11-25T00:00:00Z");
+  const base = { paymentReference: null, pricingSnapshot: {}, course, status: "ACTIVE", finalAmount: 2000, selectedCurrency: "PKR" };
+  const payment = { id: "jazzcash", amount: 2000, currency: "PKR", provider: "JAZZCASH", status: "CONFIRMED", paidAt: at, createdAt: at, rawPayloadJson: {} };
+  const registrations = [
+    { ...base, id: "paid", payment },
+    { ...base, id: "pounds", selectedCurrency: "GBP", payment: { ...payment, id: "stripe", amount: 1094, currency: "GBP", provider: "STRIPE", rawPayloadJson: { payment_status: "paid" } } },
+    { ...base, id: "review", payment: { ...payment, id: "uncertain", provider: "STRIPE", rawPayloadJson: {} } },
+    { ...base, id: "pending", status: "PENDING_PAYMENT", payment: null },
+  ];
+  const order = { reference: "new", course, currency: "PKR", amountMinor: 1500, paymentState: "PAID", enrolmentState: "ACTIVE", events: [{ id: "event", provider: "JAZZCASH", amountMinor: 1500, currency: "PKR", createdAt: at }], ledgerPayments: [], paymentPlan: null };
+  const report = aggregateCourseRevenue([course], registrations, [order], at);
+  const legacy = report.programs.find(row => row.id === "c:legacy")!;
+  const sirah = report.programs.find(row => row.id === "c:sirah")!;
+  assert.deepEqual(legacy.received, [{ currency: "GBP", amountMinor: 1094 }, { currency: "PKR", amountMinor: 200000 }]);
+  assert.deepEqual(formattedAmounts(legacy.received).map(text => text.replace(/\s+/g, " ")), ["GBP 10.94", "PKR 2,000.00"]);
+  assert.deepEqual(legacy.pending, [{ currency: "PKR", amountMinor: 200000 }]);
+  assert.deepEqual(legacy.ambiguous, [{ currency: "PKR", amountMinor: 200000 }]);
+  assert.equal(legacy.review[0].amountMinor, 200000);
+  assert.deepEqual(sirah.received, [{ currency: "PKR", amountMinor: 1500 }]);
+  assert.deepEqual(report.totals.received, [{ currency: "GBP", amountMinor: 1094 }, { currency: "PKR", amountMinor: 201500 }]);
 });
