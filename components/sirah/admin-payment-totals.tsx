@@ -8,6 +8,7 @@ import {
 } from "@/lib/sirah/payment-totals";
 import styles from "./admin-payment-totals.module.css";
 
+const signedMoney = (amount: number, currency: string) => amount < 0 ? `-${formatSirahMoney(-amount, currency)}` : formatSirahMoney(amount, currency);
 const count = (value: number) => value.toLocaleString("en-GB");
 const day = (value: string) =>
   new Date(`${value}T00:00:00Z`).toLocaleDateString("en-GB", {
@@ -144,10 +145,10 @@ export function SirahPaymentTotalsPanel({
                       <div className={styles.cardHead}>
                         <span className={styles.code}>{currency.currency}</span>
                         <span className={styles.big}>
-                          {formatSirahMoney(currency.receivedMinor, currency.currency)}
+                          {signedMoney(currency.netMinor, currency.currency)}
                         </span>
                         <span className={styles.sub}>
-                          {count(currency.payments)}{" "}
+                          {refunds && <>Refunded: {formatSirahMoney(currency.refundedMinor, currency.currency)} - </>}{count(currency.payments)}{" "}
                           {currency.payments === 1 ? "payment" : "payments"} received
                         </span>
                       </div>
@@ -169,7 +170,7 @@ export function SirahPaymentTotalsPanel({
                               <th scope="row">{sirahMethodLabel(row.method)}</th>
                               <td className={styles.num}>{count(row.payments)}</td>
                               <td className={styles.num}>
-                                {formatSirahMoney(row.receivedMinor, currency.currency)}
+                                {signedMoney(row.receivedMinor - row.refundedMinor, currency.currency)}
                               </td>
                               {refunds && (
                                 <td className={styles.num}>
@@ -186,7 +187,7 @@ export function SirahPaymentTotalsPanel({
                             <th scope="row">Total {currency.currency}</th>
                             <td className={styles.num}>{count(currency.payments)}</td>
                             <td className={styles.num}>
-                              {formatSirahMoney(currency.receivedMinor, currency.currency)}
+                              {signedMoney(currency.netMinor, currency.currency)}
                             </td>
                             {refunds && (
                               <td className={styles.num}>
@@ -194,17 +195,7 @@ export function SirahPaymentTotalsPanel({
                               </td>
                             )}
                           </tr>
-                          {refunds && (
-                            <tr>
-                              <th scope="row">Net after refunds</th>
-                              <td />
-                              <td className={styles.num} colSpan={2}>
-                                {currency.netMinor < 0
-                                  ? `−${formatSirahMoney(-currency.netMinor, currency.currency)}`
-                                  : formatSirahMoney(currency.netMinor, currency.currency)}
-                              </td>
-                            </tr>
-                          )}
+
                         </tfoot>
                       </table>
                     </article>
