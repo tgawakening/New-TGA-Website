@@ -65,3 +65,17 @@ test("monthly receipts use Karachi payment dates and refunds use verification da
   assert.deepEqual(all.totals.received, [{ currency: "GBP", amountMinor: 1500 }]);
   assert.deepEqual(all.totals.refunds, [{ currency: "GBP", amountMinor: 350 }]);
 });
+
+test("removing a ledger-only payment updates received and net on the next report", () => {
+  const course = { id: "c", slug: "seerah-course", title: "Sirah" };
+  const at = new Date("2026-11-25T00:00:00Z");
+  const order = { reference: "R", course, currency: "PKR", amountMinor: 300000, paymentState: "PAID", enrolmentState: "ACTIVE", events: [], paymentPlan: null, ledgerPayments: [
+    { id: "one", method: "CASH", amountMinor: 150000, currency: "PKR", receivedAt: at },
+    { id: "two", method: "CASH", amountMinor: 150000, currency: "PKR", receivedAt: at },
+  ] };
+  const before = aggregateCourseRevenue([course], [], [order], at);
+  const after = aggregateCourseRevenue([course], [], [{ ...order, ledgerPayments: order.ledgerPayments.slice(0, 1) }], at);
+  assert.deepEqual(before.totals.received, [{ currency: "PKR", amountMinor: 300000 }]);
+  assert.deepEqual(after.totals.received, [{ currency: "PKR", amountMinor: 150000 }]);
+  assert.deepEqual(after.totals.refunds, []);
+});

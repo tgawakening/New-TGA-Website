@@ -1684,7 +1684,14 @@ export function SirahAdminStudents({
             </section>
 
             <div className={`ga-admin-modal-section ${styles.records}`}>
-              <AdminLedger key={selected.id} id={selected.id} canEdit={canManageEnrolments} onPlanSaved={() => {
+              <AdminLedger key={selected.id} id={selected.id} canEdit={canManageEnrolments} canRemovePayment={canManageRecords} onPaymentRemoved={() => {
+                const { id, reference } = selected;
+                setReload((current) => current + 1);
+                void readSnapshot(new URLSearchParams({ q: reference }).toString()).then((detail) => {
+                  const fresh = detail.rows.find((entry) => entry.id === id);
+                  if (fresh) setSelected((current) => current?.id === id ? fresh : current);
+                }).catch(() => {});
+              }} onPlanSaved={() => {
                 const id = selected.id;
                 setSelected((current) => current?.id === id ? { ...current, hasMonthlyPlan: true } : current);
                 setData((current) => current ? { ...current, rows: current.rows.map((row) => row.id === id ? { ...row, hasMonthlyPlan: true } : row) } : current);

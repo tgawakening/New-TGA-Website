@@ -39,7 +39,8 @@ mock.module(file("../lib/sirah/direct-upload.ts"), { namedExports: { readDirectU
 mock.module(file("../services/sirah-receipts.service.ts"), { namedExports: { validateSirahReceipt: async () => { throw new Error("unexpected receipt"); } } });
 let create: typeof import("../services/sirah-admin-paid-registration.service").createAdminPaidRegistration;
 let snapshot: typeof import("../services/sirah-payment-plan.service").planSnapshot;
-before(async () => { ({ createAdminPaidRegistration: create } = await import("../services/sirah-admin-paid-registration.service")); ({ planSnapshot: snapshot } = await import("../services/sirah-payment-plan.service")); });
+let savePlan: typeof import("../services/sirah-payment-plan.service").savePaymentPlan;
+before(async () => { ({ createAdminPaidRegistration: create } = await import("../services/sirah-admin-paid-registration.service")); ({ planSnapshot: snapshot, savePaymentPlan: savePlan } = await import("../services/sirah-payment-plan.service")); });
 beforeEach(() => { order = {}; plan = null; payments = []; periods = []; });
 const localDate = new Date(Date.now() - 40 * 86400000).toISOString().slice(0, 10);
 const base = { fullName: "Test Student", email: "student@example.test", phone: "03001234567", country: "PK", cohort: "beyond-chronology-2026", amount: "1500", method: "CASH" as const, paymentDate: localDate, scope: "00000000-0000-4000-8000-000000000000" };
@@ -58,4 +59,42 @@ test("monthly add-registration makes a plan and links its received payment to mo
 test("one-off add-registration keeps the original fee and unlinked payment", async () => {
   await create({ ...base, plan: "ANNUAL" }, "admin:test");
   assert.equal(order.ledgerFeeMinor, 150000); assert.equal(order.ledgerFeeCurrency, "PKR"); assert.equal(plan, null); assert.equal(payments[0].periodId, null);
+});
+
+test("duplicate and oversized payments leave the new plan and first period intact", async () => {
+  const firstDue = new Date().toISOString().slice(0, 7) + "-01";
+  payments = [
+    { id: "real", orderId: "order", periodId: null, amountMinor: 150000, currency: "PKR", receivedAt: new Date(firstDue), method: "CASH" },
+    { id: "duplicate", orderId: "order", periodId: null, amountMinor: 150000, currency: "PKR", receivedAt: new Date(firstDue), method: "CASH" },
+    { id: "oversized", orderId: "order", periodId: null, amountMinor: 200000, currency: "PKR", receivedAt: new Date(firstDue), method: "CASH" },
+  ];
+  const saved = await savePlan(tx as unknown as Prisma.TransactionClient, "order", "PKR", { monthly: "1500", arrearsPart: "0", billingDay: 1, firstDue, openingArrears: "0" });
+  assert.ok(plan); assert.equal(periods.length, 1);
+  assert.equal(payments[0].periodId, periods[0].id);
+  assert.equal(payments[1].periodId, null); assert.equal(payments[2].periodId, null);
+  assert.deepEqual(saved.reconciliation, { linkedCount: 1, unlinkedCount: 2 });
+  assert.equal((await snapshot(tx as unknown as Prisma.TransactionClient, "order"))?.periods[0].status, "PAID");
+});
+
+test("removing a linked payment makes its period due again", async () => {
+  const firstDue = new Date().toISOString().slice(0, 7) + "-01";
+  payments = [{ id: "payment", orderId: "order", periodId: null, amountMinor: 150000, currency: "PKR", receivedAt: new Date(firstDue), method: "CASH" }];
+  await savePlan(tx as unknown as Prisma.TransactionClient, "order", "PKR", { monthly: "1500", arrearsPart: "0", billingDay: 1, firstDue, openingArrears: "0" });
+  assert.equal((await snapshot(tx as unknown as Prisma.TransactionClient, "order"))?.outstandingMinor, 0);
+  payments.splice(0, 1);
+  const updated = await snapshot(tx as unknown as Prisma.TransactionClient, "order");
+  assert.equal(updated?.outstandingMinor, 150000);
+  assert.notEqual(updated?.periods[0].status, "PAID");
+  assert.equal(updated?.periods[0].paidMinor, 0);
+});
+
+test("an oversized payment does not prevent a later fitting payment from covering a period", async () => {
+  const firstDue = new Date().toISOString().slice(0, 7) + "-01";
+  payments = [
+    { id: "large", orderId: "order", periodId: null, amountMinor: 200000, currency: "PKR", receivedAt: new Date(firstDue), method: "CASH" },
+    { id: "fit", orderId: "order", periodId: null, amountMinor: 150000, currency: "PKR", receivedAt: new Date(firstDue), method: "CASH" },
+  ];
+  const saved = await savePlan(tx as unknown as Prisma.TransactionClient, "order", "PKR", { monthly: "1500", arrearsPart: "0", billingDay: 1, firstDue, openingArrears: "0" });
+  assert.equal(payments[0].periodId, null); assert.equal(payments[1].periodId, periods[0].id);
+  assert.deepEqual(saved.reconciliation, { linkedCount: 1, unlinkedCount: 1 });
 });

@@ -31,24 +31,14 @@ export async function reconcilePlanPayments(tx: Prisma.TransactionClient, orderI
   const payments = await tx.sirahLedgerPayment.findMany({ where: { orderId, periodId: null }, orderBy: [{ receivedAt: "asc" }, { id: "asc" }], select: { id: true, currency: true, amountMinor: true } });
   if (payments.some(payment => payment.currency !== currency)) throw new SirahError("Ledger currencies differ; reconcile them before setting a plan.", 409);
   const through = new Date(Math.max(Date.now(), plan.firstDueAt.getTime() + 12 * 60 * 60 * 1000));
-  let snapshot = await freezePeriods(tx, orderId, through);
+  const snapshot = await freezePeriods(tx, orderId, through);
   if (!snapshot) throw new SirahError("Monthly plan not found.", 409);
   let linkedCount = 0, unlinkedCount = 0;
   for (const payment of payments) {
-    let period = snapshot.periods.find(item => item.amountMinor > item.paidMinor);
-    if (!period) {
-      // Look ahead without creating empty periods. A plan with no future due
-      // leaves the payment for review rather than blocking plan creation.
-      const limit = monthlyDueDate(plan.firstDueAt.getUTCFullYear(), plan.firstDueAt.getUTCMonth() + 600, plan.billingDay);
-      const projection = await planSnapshot(tx, orderId, new Date(limit.getTime() + 12 * 60 * 60 * 1000));
-      period = projection?.periods.find(item => item.amountMinor > item.paidMinor);
-      if (!period || payment.amountMinor <= 0 || payment.amountMinor > period.amountMinor - period.paidMinor) { unlinkedCount++; continue; }
-      snapshot = await freezePeriods(tx, orderId, new Date(period.dueAt.getTime() + 12 * 60 * 60 * 1000));
-      if (!snapshot) throw new SirahError("Monthly plan not found.", 409);
-      period = snapshot.periods.find(item => item.amountMinor > item.paidMinor);
-    }
-    if (!period?.id) throw new SirahError("The payment period could not be created. Please retry.", 409);
-    if (payment.amountMinor <= 0 || payment.amountMinor > period.amountMinor - period.paidMinor) { unlinkedCount++; continue; }
+    const period = snapshot.periods.find(item => item.amountMinor > item.paidMinor);
+    // Do not prepay future months with duplicate or oversized ledger rows.
+    if (!period || payment.amountMinor <= 0 || payment.amountMinor > period.amountMinor - period.paidMinor) { unlinkedCount++; continue; }
+    if (!period.id) throw new SirahError("The payment period could not be created. Please retry.", 409);
     const updated = await tx.sirahLedgerPayment.updateMany({ where: { id: payment.id, orderId, periodId: null }, data: { periodId: period.id } });
     if (updated.count !== 1) throw new SirahError("A payment changed during reconciliation. Please retry.", 409);
     period.paidMinor += payment.amountMinor;

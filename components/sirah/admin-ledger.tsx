@@ -6,7 +6,7 @@ import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
 import { AdminPaymentPlan, type PaymentPlan } from "./admin-payment-plan";
 
 type Ledger = { paymentPlan: PaymentPlan | null; settlements: { id: string; currency: string; amountMinor: number }[]; currency: string; ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null; agreement: { filename: string } | null; ledgerPayments: { id: string; periodId: string | null; amountMinor: number; currency: string; method: string; receivedAt: string; note: string | null }[] };
-export function AdminLedger({ id, canEdit, onFeeSaved, onPlanSaved }: { id: string; canEdit: boolean; onFeeSaved?: (fee: { ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null }) => void; onPlanSaved?: () => void }) {
+export function AdminLedger({ id, canEdit, canRemovePayment, onFeeSaved, onPlanSaved, onPaymentRemoved }: { id: string; canEdit: boolean; canRemovePayment: boolean; onPaymentRemoved?: () => void; onFeeSaved?: (fee: { ledgerFeeMinor: number | null; ledgerFeeCurrency: string | null }) => void; onPlanSaved?: () => void }) {
   const [data, setData] = useState<Ledger | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -31,6 +31,16 @@ export function AdminLedger({ id, canEdit, onFeeSaved, onPlanSaved }: { id: stri
       form.reset(); const updated = await load();
       if (action === "fee") onFeeSaved?.({ ledgerFeeMinor: updated.ledgerFeeMinor, ledgerFeeCurrency: updated.ledgerFeeCurrency });
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to save."); } finally { setBusy(false); }
+  }
+  async function removePayment(payment: Ledger["ledgerPayments"][number]) {
+    if (!window.confirm(`Remove the ${formatSirahMoney(payment.amountMinor, payment.currency)} ${payment.method} ledger payment dated ${payment.receivedAt.slice(0, 10)}? This cannot be undone.`)) return;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/admin/sirah/ledger", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "removePayment", paymentId: payment.id }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to remove payment.");
+      await load(); onPaymentRemoved?.();
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to remove payment."); } finally { setBusy(false); }
   }
   async function generateLink() {
     setBusy(true); setError(""); setLink(null);
@@ -72,7 +82,7 @@ export function AdminLedger({ id, canEdit, onFeeSaved, onPlanSaved }: { id: stri
         {!data.agreement && <form className={styles.agreementForm} onSubmit={(event) => void submit(event, "agreement")}><h5>Signed agreement</h5><input type="hidden" name="id" value={id} /><DirectUpload purpose="agreement" scope={id} required /> <button disabled={busy}>Upload PDF</button></form>}
       </>}
       {data.agreement && <p><a href={`/api/admin/sirah/agreement?id=${encodeURIComponent(id)}`}>Download agreement: {data.agreement.filename}</a></p>}
-      {data.ledgerPayments.length > 0 && <ul>{data.ledgerPayments.map((payment) => <li key={payment.id}>{payment.receivedAt.slice(0, 10)} ? {formatSirahMoney(payment.amountMinor, payment.currency)} ? {payment.method}{payment.note && ` ? ${payment.note}`}</li>)}</ul>}
+      {data.ledgerPayments.length > 0 && <ul>{data.ledgerPayments.map((payment) => <li key={payment.id}>{payment.receivedAt.slice(0, 10)} ? {formatSirahMoney(payment.amountMinor, payment.currency)} ? {payment.method}{payment.note && ` ? ${payment.note}`}{canRemovePayment && <> <button type="button" disabled={busy} onClick={() => void removePayment(payment)}>Remove payment</button></>}</li>)}</ul>}
     </>}
   </section>;
 }

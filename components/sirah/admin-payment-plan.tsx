@@ -14,7 +14,7 @@ export function AdminPaymentPlan({ id, currency, plan, unlinkedPayments, canEdit
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/admin/sirah/ledger", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "plan", ...Object.fromEntries(form.entries()) }) });
-      const result = await response.json(); if (!response.ok) throw new Error(result.error || "Unable to save plan.");
+      const result = await response.json(); if (!response.ok) throw new Error(result.error || "Unable to save plan. Please try again.");
       await reload(); onSaved?.(); setOpen(false);
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to save plan."); } finally { setBusy(false); }
   }
@@ -37,7 +37,7 @@ export function AdminPaymentPlan({ id, currency, plan, unlinkedPayments, canEdit
     {open && <form className={styles.paymentForm} onSubmit={event => void save(event)}>
       <h5>{plan ? "Edit future plan terms" : "Set monthly plan"}</h5>
       <p className={styles.planHint}>Changes apply from the next period; existing period amounts stay unchanged. Arrears are the balance already owed at plan start.</p>
-      <p className={styles.planHint}>Unassigned ledger payments are linked to the earliest open periods in payment-date order when they fit. Payments that do not fit are left unlinked for manual reconciliation.</p>
+      <p className={styles.planHint}>Unassigned ledger payments are linked to the earliest current or past open periods in payment-date order when they fit. Payments that do not fit are left unlinked for manual reconciliation.</p>
       <label>Monthly amount ({currency})<input name="monthly" type="number" min="0" step="any" required defaultValue={value(plan?.monthlyMinor)} /></label>
       <label>Arrears portion per month<input name="arrearsPart" type="number" min="0" step="any" required defaultValue={value(plan?.arrearsPartMinor) || "0"} /></label>
       <label>Billing day (1–31)<input name="billingDay" type="number" min="1" max="31" required defaultValue={plan?.billingDay ?? 1} /></label>
@@ -45,7 +45,7 @@ export function AdminPaymentPlan({ id, currency, plan, unlinkedPayments, canEdit
       <label>Optional change date<input name="changeAt" type="date" defaultValue={plan?.changeAt?.slice(0, 10) ?? ""} /></label>
       <label>Second monthly amount<input name="nextMonthly" type="number" min="0" step="any" defaultValue={value(plan?.nextMonthlyMinor)} /></label>
       <label>Second arrears portion<input name="nextArrears" type="number" min="0" step="any" defaultValue={value(plan?.nextArrearsMinor) || "0"} /></label>
-      {error && <p role="alert">{error}</p>}<button disabled={busy}>Save plan</button>
+      {error && <p role="alert">Could not save the monthly plan: {error}</p>}<button disabled={busy}>Save plan</button>
     </form>}
   </div>;
 }

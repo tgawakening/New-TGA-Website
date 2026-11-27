@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { decimalToMinor } from "@/lib/sirah/catalog";
-import { checkSirahOrigin, privateJson, sirahExclusionActor, sirahReadAccess, sirahResponseError } from "@/lib/sirah/http";
+import { checkSirahOrigin, privateJson, sirahAdmin, sirahExclusionActor, sirahReadAccess, sirahResponseError } from "@/lib/sirah/http";
 import { serializable } from "@/services/sirah-confirmation.service";
 import { assertLedgerUnlocked, lockLedgerOrder } from "@/services/sirah-settlement.service";
 import { auditSirah, SirahError } from "@/services/sirah-registration.service";
@@ -21,11 +21,24 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
-    const actor = await sirahExclusionActor(request);
     const body = await request.json();
+    const actor = body.action === "removePayment" ? await sirahAdmin(request) : await sirahExclusionActor(request);
     if (typeof body.id !== "string") throw new SirahError("Invalid registration.");
     const order = await prisma.sirahOrder.findUnique({ where: { id: body.id }, select: { id: true, currency: true } });
     if (!order) throw new SirahError("Registration not found.", 404);
+    if (body.action === "removePayment") {
+      if (typeof body.paymentId !== "string" || !body.paymentId) throw new SirahError("Choose a payment to remove.");
+      await serializable(async tx => {
+        await lockLedgerOrder(tx, order.id);
+        await assertLedgerUnlocked(tx, order.id);
+        const payment = await tx.sirahLedgerPayment.findFirst({ where: { id: body.paymentId, orderId: order.id } });
+        if (!payment) throw new SirahError("Payment not found for this registration.", 404);
+        await auditSirah(tx, order.id, actor, "LEDGER_PAYMENT_REMOVED", { paymentId: payment.id, amountMinor: payment.amountMinor, currency: payment.currency, method: payment.method, receivedAt: payment.receivedAt, note: payment.note, periodId: payment.periodId, createdBy: payment.createdBy });
+        const removed = await tx.sirahLedgerPayment.deleteMany({ where: { id: payment.id, orderId: order.id } });
+        if (removed.count !== 1) throw new SirahError("The payment changed. Please refresh and retry.", 409);
+      });
+      return privateJson({ ok: true });
+    }
     if (body.action === "plan") {
       await serializable(async tx => {
         await lockLedgerOrder(tx, order.id);
