@@ -12,6 +12,7 @@ import { cancelSession, createSession, LmsSessionError, updateSession } from "@/
 import { notifySessionScheduled, notifySessionTimeChanged } from "@/lib/lms/notifications";
 import { notifyLater } from "@/lib/lms/notify-later";
 import { prisma } from "@/lib/prisma";
+import { recordTeacherAdvance, setHostSharePercent, TeacherRevenueError } from "@/services/teacher-advances.service";
 import { RecordingActionError, retryRecordingAsset, setRecordingVisibility } from "@/lib/lms/recordings";
 import { zonedLocalToUtc } from "@/lib/sirah/classroom";
 import { ZoomApiError } from "@/lib/zoom/client";
@@ -287,4 +288,33 @@ export async function setRevenuePartner(form: FormData) {
     await tx.sirahAccessAudit.create({ data: { actor: admin?.email || "Super Admin", action: enable ? "REVENUE_PARTNER_GRANTED" : "REVENUE_PARTNER_REVOKED", targetEmail: host.email, fromStatus: host.revenuePartner ? "ENABLED" : "DISABLED", toStatus: enable ? "ENABLED" : "DISABLED" } });
   });
   done(enable ? "Revenue access granted." : "Revenue access revoked.", "", "revenue-partners");
+}
+
+/** A host's agreed share: set it, or leave it empty to use the course default. Super admin only; audited. */
+export async function setRevenueSharePercent(form: FormData) {
+  const access = await getSirahWorkspaceAccess();
+  if (!access || access.role !== "SUPER_ADMIN") redirect("/admin/sirah");
+  const hostId = safe(text(form, "hostId"));
+  const admin = await getCurrentAdmin();
+  let result: { changed: boolean; value: string | null };
+  try { result = await setHostSharePercent(hostId, text(form, "share"), admin?.email || "Super Admin"); }
+  catch (failure) { back({ error: failure instanceof TeacherRevenueError ? failure.message : describe(failure), anchor: "revenue-partners" }); }
+  revalidatePath("/seerah/classroom/teaching/revenue");
+  done(!result.changed ? "Share unchanged." : result.value === null ? "Share cleared; the course default applies." : `Share set to ${Number(result.value)}%.`, "", "revenue-partners");
+}
+
+/** Record an advance, or reduce one. Super admin only; each entry is kept with who and when. */
+export async function recordTeacherAdvanceAction(form: FormData) {
+  const access = await getSirahWorkspaceAccess();
+  if (!access || access.role !== "SUPER_ADMIN") redirect("/admin/sirah");
+  const hostId = safe(text(form, "hostId"));
+  const admin = await getCurrentAdmin();
+  const kind = text(form, "kind") === "REDUCTION" ? "REDUCTION" : "ADVANCE";
+  try {
+    await recordTeacherAdvance(hostId, { kind, amount: text(form, "amount"), currency: text(form, "currency"), reason: text(form, "reason"), date: text(form, "date") }, admin?.email || "Super Admin");
+  } catch (failure) {
+    back({ error: failure instanceof TeacherRevenueError ? failure.message : describe(failure), anchor: "revenue-partners" });
+  }
+  revalidatePath("/seerah/classroom/teaching/revenue");
+  done(kind === "ADVANCE" ? "Advance recorded." : "Advance reduced.", "", "revenue-partners");
 }

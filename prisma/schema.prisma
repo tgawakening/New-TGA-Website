@@ -812,12 +812,30 @@ model ZoomHost {
   email      String       @db.VarChar(320)
   licensed   Boolean      @default(false)
   revenuePartner Boolean?
+  /// Agreed share of course money received after refunds; null = course default.
+  revenueSharePercent Decimal? @db.Decimal(5, 2)
   active     Boolean      @default(true)
   createdAt  DateTime     @default(now()) @db.DateTime(3)
   updatedAt  DateTime     @updatedAt @db.DateTime(3)
   sessions   LmsSession[]
+  advances   TeacherAdvance[]
 
   @@index([active])
+}
+
+/// Append-only: + advance given, − advance reduced or recovered. Never edited or deleted.
+model TeacherAdvance {
+  id          String   @id @default(cuid())
+  zoomHostId  String
+  amountMinor Int
+  currency    String   @db.VarChar(3)
+  reason      String   @db.VarChar(500)
+  occurredOn  DateTime @db.Date
+  createdBy   String   @db.VarChar(320)
+  createdAt   DateTime @default(now()) @db.DateTime(3)
+  host        ZoomHost @relation(fields: [zoomHostId], references: [id], onDelete: Restrict)
+
+  @@index([zoomHostId, currency])
 }
 
 enum LmsSessionStatus {

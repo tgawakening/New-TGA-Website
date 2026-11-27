@@ -32,7 +32,10 @@ import { recordingsAvailable, recordingsForSessions, type RecordingAdminView } f
 import { lmsContentAvailable } from "@/lib/lms/content";
 import { externalRecordingsForSessions, standaloneRecordings } from "@/lib/lms/external-recordings";
 import { RECORDING_MAX_AUTO_ATTEMPTS } from "@/lib/lms/recording-policy";
-import { setRevenuePartner, adminBunnyPreview, cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, deleteLiveSession, deleteStandaloneRecordingAction, retryRecordingFile, saveExternalRecording, saveStandaloneRecordingAction, setRecordingPublished, startBunnyUpload, updateExternalRecordingAction, updateLiveSession } from "./actions";
+import { AdminTeacherRevenue } from "@/components/sirah/admin-teacher-revenue";
+import { teacherAdvanceHistory, teacherRevenueSchemaAvailable } from "@/services/teacher-advances.service";
+import { pakistanCalendarDate } from "@/lib/sirah/cohort-dates";
+import { setRevenuePartner, setRevenueSharePercent, recordTeacherAdvanceAction, adminBunnyPreview, cancelLiveSession, changeExternalRecordingVisibility, createLiveSession, deleteLiveSession, deleteStandaloneRecordingAction, retryRecordingFile, saveExternalRecording, saveStandaloneRecordingAction, setRecordingPublished, startBunnyUpload, updateExternalRecordingAction, updateLiveSession } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -558,7 +561,13 @@ export default async function LiveSessionsAdminPage({
       </section> : <p className={styles.emptyLine}>No cohort exists yet.</p>}
     </section>
   );
-  const revenueHosts = access.role === "SUPER_ADMIN" ? await prisma.zoomHost.findMany({ where: { active: true }, select: { id: true, email: true, revenuePartner: true }, orderBy: { email: "asc" } }) : [];
+  // Shares and advances need the teacher-advances migration; before it, only the partner switch shows.
+  const revenueSchema = access.role === "SUPER_ADMIN" && (await teacherRevenueSchemaAvailable());
+  const revenueHostRows = access.role !== "SUPER_ADMIN" ? [] : revenueSchema
+    ? await prisma.zoomHost.findMany({ where: { active: true }, select: { id: true, email: true, revenuePartner: true, revenueSharePercent: true }, orderBy: { email: "asc" } })
+    : (await prisma.zoomHost.findMany({ where: { active: true }, select: { id: true, email: true, revenuePartner: true }, orderBy: { email: "asc" } })).map(host => ({ ...host, revenueSharePercent: null }));
+  const advanceRows = await teacherAdvanceHistory(revenueHostRows.map(host => host.id));
+  const revenueHosts = revenueHostRows.map(host => ({ ...host, advances: advanceRows.filter(entry => entry.zoomHostId === host.id) }));
   const now = new Date();
   const data = cohortId ? await adminSessionsForCohort(cohortId, now) : null;
   const attendance = data ? await attendanceForSessions([...data.upcoming, ...data.past], now) : new Map<string, SessionAttendance>();
@@ -576,8 +585,8 @@ export default async function LiveSessionsAdminPage({
 
   return (
     <section data-theme="sirah-classroom" className={themed}>
-      {access.role === "SUPER_ADMIN" && <p><Link href="/seerah/classroom/teaching/revenue" className={styles.secondary}>View course revenue</Link></p>}
-      {access.role === "SUPER_ADMIN" && <section id="revenue-partners" className={styles.card}><h3 className={styles.cardTitle}>Revenue partners</h3><p className={styles.cardLede}>Manage partner designation. Revenue totals are restricted to the super admin.</p>{revenueHosts.map(host => <form key={host.id} action={setRevenuePartner} className={styles.inlineForm}><input type="hidden" name="hostId" value={host.id} /><input type="hidden" name="enabled" value={host.revenuePartner ? "0" : "1"} /><span>{host.email} - {host.revenuePartner ? "Access granted" : "No revenue access"}</span> <button type="submit" className={styles.secondarySmall}>{host.revenuePartner ? "Revoke access" : "Grant access"}</button></form>)}</section>}
+      {access.role === "SUPER_ADMIN" && <p><Link href="/seerah/classroom/teaching/revenue" className={styles.secondary}>View teacher earnings</Link></p>}
+      {access.role === "SUPER_ADMIN" && <AdminTeacherRevenue hosts={revenueHosts} schemaReady={revenueSchema} today={pakistanCalendarDate(new Date())} setPartner={setRevenuePartner} setShare={setRevenueSharePercent} recordAdvance={recordTeacherAdvanceAction} />}
       <header className={styles.intro}>
         <div>
           <h2 className={styles.title}>Live sessions</h2>

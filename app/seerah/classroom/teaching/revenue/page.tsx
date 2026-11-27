@@ -34,7 +34,7 @@ function monthOptions(now: Date) {
   return months;
 }
 
-export default async function TeacherEarningsPage({ searchParams }: { searchParams?: Promise<{ period?: string }> } = {}) {
+export default async function TeacherEarningsPage({ searchParams }: { searchParams?: Promise<{ period?: string; host?: string }> } = {}) {
   const identity = await getSessionIdentity();
   const access = await teacherEarningsAccess(identity);
   if (!access.allowed) {
@@ -42,9 +42,13 @@ export default async function TeacherEarningsPage({ searchParams }: { searchPara
     notFound();
   }
   const now = new Date();
-  const requested = (await searchParams)?.period;
-  const period = reportPeriod(requested ?? "all", now);
-  const earnings = await sirahTeacherEarnings(period);
+  const query = (await searchParams) ?? {};
+  const period = reportPeriod(query.period ?? "all", now);
+  // A teacher sees only their own partner host; the Super Admin can choose any partner.
+  const host = access.hosts.find(item => item.id === query.host) ?? access.hosts[0] ?? null;
+  const earnings = await sirahTeacherEarnings(period, host);
+  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const stamp = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Karachi" });
   const months = monthOptions(now);
 
   return (
@@ -56,10 +60,18 @@ export default async function TeacherEarningsPage({ searchParams }: { searchPara
             <p className={t.eyebrow}>Teaching · Earnings</p>
             <h1 id="earnings-title" className={t.title}>My earnings</h1>
             <p className={t.lede}>
-              Your agreed share ({earnings.percent}%) of what {earnings.title ?? "the course"} received after refunds. Each currency is shown on its own, never converted.
+              {host && access.viewer === "SUPER_ADMIN" ? `${host.email}'s` : "Your"} agreed share ({earnings.percent}%{host?.customShare ? "" : ", the course default"}) of what {earnings.title ?? "the course"} received after refunds, less any outstanding advance. Each currency is shown on its own, never converted.
             </p>
           </div>
           <form method="get" className={t.periodForm}>
+            {access.hosts.length > 1 ? (
+              <label className={t.field}>
+                Teacher
+                <select name="host" defaultValue={host?.id}>
+                  {access.hosts.map(item => <option key={item.id} value={item.id}>{item.email}</option>)}
+                </select>
+              </label>
+            ) : host ? <input type="hidden" name="host" value={host.id} /> : null}
             <label className={t.field}>
               Period
               <select name="period" defaultValue={period.key}>
@@ -88,7 +100,9 @@ export default async function TeacherEarningsPage({ searchParams }: { searchPara
                     <div className={t.line}><dt>Received</dt><dd>{money(row.receivedMinor, row.currency)}</dd></div>
                     <div className={t.line}><dt>Refunds</dt><dd className={row.refundedMinor ? t.negative : ""}>{row.refundedMinor ? `− ${money(row.refundedMinor, row.currency)}` : money(0, row.currency)}</dd></div>
                     <div className={t.line}><dt>Received after refunds</dt><dd>{money(row.netMinor, row.currency)}</dd></div>
-                    <div className={`${t.line} ${t.total}`}><dt>Your share ({earnings.percent}%)</dt><dd className={row.shareMinor < 0 ? t.negative : ""}>{money(row.shareMinor, row.currency)}</dd></div>
+                    <div className={t.line}><dt>Your share ({earnings.percent}%)</dt><dd className={row.shareMinor < 0 ? t.negative : ""}>{money(row.shareMinor, row.currency)}</dd></div>
+                    <div className={t.line}><dt>Outstanding advances</dt><dd className={row.advanceMinor > 0 ? t.negative : ""}>{row.advanceMinor > 0 ? `− ${money(row.advanceMinor, row.currency)}` : money(0, row.currency)}</dd></div>
+                    <div className={`${t.line} ${t.total}`}><dt>Net payable to you</dt><dd className={row.payableMinor < 0 ? t.negative : ""}>{row.payableMinor < 0 ? `− ${money(-row.payableMinor, row.currency)}` : money(row.payableMinor, row.currency)}</dd></div>
                   </dl>
                 </article>
               ))}
@@ -98,11 +112,39 @@ export default async function TeacherEarningsPage({ searchParams }: { searchPara
           )}
         </section>
 
+        <section className={t.section} aria-labelledby="advances">
+          <div className={t.sectionHead}>
+            <h2 id="advances" className={t.sectionTitle}>Advances</h2>
+            <span className={t.sectionMeta}>All time · deducted from your share</span>
+          </div>
+          {earnings.history.length ? (
+            <ul className={t.rows}>
+              {earnings.history.map(entry => (
+                <li key={entry.id} className={t.row}>
+                  <span className={`${t.chip} ${entry.amountMinor > 0 ? t.chipLive : t.chipDone}`}>{entry.amountMinor > 0 ? "Advance" : "Reduced"}</span>
+                  <span className={t.rowMain}>
+                    <span className={t.rowTitle}>{entry.reason}</span>
+                    <span className={t.rowMeta}>
+                      <span>{date.format(entry.occurredOn)}</span>
+                      <span>Recorded by {entry.createdBy}, {stamp.format(entry.createdAt)}</span>
+                    </span>
+                  </span>
+                  <span className={t.rowActions}>
+                    <strong className={entry.amountMinor > 0 ? t.negative : ""}>{entry.amountMinor > 0 ? `− ${money(entry.amountMinor, entry.currency)}` : `+ ${money(-entry.amountMinor, entry.currency)}`}</strong>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={t.empty}>No advances recorded.</p>
+          )}
+        </section>
+
         <section className={t.section} aria-labelledby="notes">
           <h2 id="notes" className={c.srOnly}>Notes</h2>
           <div className={t.grid}>
             <p className={t.note}>
-              Your share is shown before any advance is deducted. Advances and your net payable amount will appear here once advance recording is switched on.
+              Net payable is your share for the period shown, less every advance still outstanding. When an advance is recovered, the course team records a reduction and it appears above.
             </p>
             {earnings.inReview.some(item => item.amountMinor) ? (
               <p className={t.note}>
@@ -116,7 +158,7 @@ export default async function TeacherEarningsPage({ searchParams }: { searchPara
             ) : null}
             {access.viewer === "SUPER_ADMIN" ? (
               <p className={t.small}>
-                You are viewing as Super Admin. Teachers see this page once you mark them as a revenue partner on <Link href="/admin/sirah/classroom/live#revenue-partners">Live classes</Link>.
+                You are viewing as Super Admin. Teachers see this page once you mark them as a revenue partner on <Link href="/admin/sirah/classroom/live#revenue-partners">Live classes</Link>, where you also set each teacher&apos;s share and record advances.{access.hosts.length ? "" : " No teacher is marked as a revenue partner yet, so the course default share is shown with no advances."}
               </p>
             ) : null}
           </div>
