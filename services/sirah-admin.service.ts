@@ -623,6 +623,18 @@ export async function actOnSirahOrder(
       ? decimalToMinor(input.verifiedAmount, currency)
       : order.amountMinor;
     const eventId = `manual:${method}:${createHash("sha256").update(reference).digest("hex")}`;
+    // One bank transfer reference may credit one registration, once. Explain
+    // a collision in staff terms before the transactional guard (which still
+    // enforces it in confirmSirahPaymentInTransaction) rejects it.
+    const seen = await prisma.sirahPaymentEvent.findUnique({
+      where: { id: eventId },
+      select: { orderId: true, amountMinor: true, currency: true, order: { select: { reference: true } } },
+    });
+    if (seen && (seen.orderId !== order.id || seen.amountMinor !== amount || seen.currency !== currency))
+      throw new SirahError(
+        `${source === "admin-entered transfer reference" ? "The transaction reference you entered" : "The student's submitted transaction reference"} ("${reference}") has already been used to verify ${formatSirahMoney(seen.amountMinor, seen.currency)} on ${seen.orderId === order.id ? "this registration" : `registration ${seen.order.reference}`}, so it cannot verify this payment as well. Check the bank statement: if this is a separate transfer, enter its own reference under "Transfer transaction reference" and approve again; if it is the same transfer, do not approve. Reconcile it with that registration instead.`,
+        422,
+      );
     return confirmSirahPayment({
       orderId: order.id,
       eventId,

@@ -83,7 +83,9 @@ export async function confirmSirahPaymentInTransaction(tx: Prisma.TransactionCli
         seen.amountMinor !== input.amountMinor ||
         seen.currency !== input.currency
       )
-        throw new SirahError("Payment event identity mismatch.");
+        throw new SirahError(
+          "This payment reference is already recorded against a different registration or amount (payment event identity mismatch). Use the transfer's own reference, or reconcile it with the registration it already credited.",
+        );
       return { duplicate: true };
     }
     const order = await tx.sirahOrder.findUniqueOrThrow({

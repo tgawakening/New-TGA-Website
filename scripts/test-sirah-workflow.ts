@@ -3964,8 +3964,11 @@ test("automatically reused receipt references still prevent one bank payment cre
  const a=await manualOrder();const first=await evidence(a.order,a.userId);
  const b=await manualOrder();const second=await evidence(b.order,b.userId);
  await actOnSirahOrder({orderId:first.id,revision:first.revision,action:"APPROVE",verifiedTransfer:true},"admin:a");
- await assert.rejects(actOnSirahOrder({orderId:second.id,revision:second.revision,action:"APPROVE",verifiedTransfer:true},"admin:b"),/identity mismatch/);
+ await assert.rejects(actOnSirahOrder({orderId:second.id,revision:second.revision,action:"APPROVE",verifiedTransfer:true},"admin:b"),(error:unknown)=>(error as {status?:number}).status===422&&/already been used to verify .* on registration /.test(String((error as Error).message)));
  assert.equal((await prisma.sirahOrder.findUniqueOrThrow({where:{id:second.id}})).paidCount,0);
+ // Staff who verify a separate transfer enter its own reference; that credits the second registration once.
+ await actOnSirahOrder({orderId:second.id,revision:second.revision,action:"APPROVE",verifiedTransfer:true,transactionReference:"SEPARATE-TRANSFER-REF"},"admin:b");
+ assert.equal((await prisma.sirahOrder.findUniqueOrThrow({where:{id:second.id}})).paidCount,1);
 });
 
 test("country and manual/Stripe/PayPal filters constrain totals, rows and CSV together",async()=>{

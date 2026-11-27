@@ -511,6 +511,26 @@ export function SirahAdminStudents({
         }),
       });
       const result = await response.json();
+      if (response.status === 409) {
+        // Genuinely stale: the record changed after this dialog loaded (a
+        // student submission, a staff receipt, another admin). Reload it so
+        // the retry carries the current revision.
+        setReload((key) => key + 1);
+        const fresh = await readSnapshot(
+          new URLSearchParams({ q: student.reference }).toString(),
+        )
+          .then((detail) => detail.rows.find((entry) => entry.id === student.id) ?? null)
+          .catch(() => null);
+        if (fresh) setSelected((current) => (current?.id === student.id ? fresh : current));
+        else setDetailStale(true);
+        throw Error(
+          `${result.error || "This registration changed since you opened it."} Nothing was recorded. ${
+            fresh
+              ? "The registration has been reloaded with its latest details. Please check them and retry."
+              : "Please reload the page and retry."
+          }`,
+        );
+      }
       if (!response.ok) throw Error(result.error || "Action failed.");
       setRefreshBell((key) => key + 1);
       setMessage(
