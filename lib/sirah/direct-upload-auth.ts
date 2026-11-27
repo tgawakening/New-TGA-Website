@@ -13,6 +13,11 @@ export async function directUploadOwner(request: Request, purpose: UploadPurpose
       owner = scope;
     } else if (purpose === "evidence") {
       const user = await sirahUser(scope); await ownedSirahOrder(scope, user.id); owner = user.id;
+    } else if (purpose === "legacy-evidence") {
+      const user = await sirahUser();
+      const registration = await prisma.registration.findFirst({ where: { id: scope, userId: user.id }, select: { id: true } });
+      if (!registration) throw new SirahError("Registration not found.", 404);
+      owner = user.id;
     } else if (purpose === "task") {
       const user = await getSessionIdentity(request); if (!user || !await studentTaskDetail(user.id, scope)) throw new SirahError("This task is not available.", 403); owner = user.id;
     } else if (purpose === "admin-registration") {

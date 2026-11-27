@@ -12,6 +12,7 @@ import {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { DirectUpload } from "@/components/sirah/uploads/direct-upload";
 import { Header } from "@/components/home/sections/header";
 import {
   COURSE_DURATION_MONTHS,
@@ -514,6 +515,12 @@ function SeerahRegisterContent() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const isManual = form.paymentMethod === PaymentMethod.BANK_TRANSFER || form.paymentMethod === PaymentMethod.JAZZCASH;
+    const receiptToken = new FormData(event.currentTarget).get("receiptToken");
+    if (isManual && (typeof receiptToken !== "string" || !receiptToken)) {
+      setError("Please attach your payment receipt to continue.");
+      return;
+    }
     if (!pricing) {
       setError("Pricing is still loading. Please wait.");
       return;
@@ -652,6 +659,7 @@ function SeerahRegisterContent() {
         body: JSON.stringify({
           registrationId,
           method: form.paymentMethod,
+          receiptToken,
           senderName: form.manualSenderName || form.fullName,
           referenceKey: form.manualReferenceKey,
           notes: form.manualNotes
@@ -1453,7 +1461,7 @@ function SeerahRegisterContent() {
                       }}
                     >
                       Use your platform reference in the payment note. After
-                      payment, send your screenshot to WhatsApp support on{" "}
+                      payment, attach your receipt below. For help, contact WhatsApp support on{" "}
                       <a
                         href={supportWhatsappHref}
                         target="_blank"
@@ -1701,6 +1709,10 @@ function SeerahRegisterContent() {
                       .
                     </div>
 
+                    <div>
+                      <strong>Payment receipt (required)</strong>
+                      {resumeRegistrationId && <DirectUpload purpose="legacy-evidence" scope={resumeRegistrationId} name="receiptToken" required />}
+                    </div>
                     <label style={{ fontSize: "0.72rem", fontWeight: 700 }}>
                       Sender Name*
                       <input

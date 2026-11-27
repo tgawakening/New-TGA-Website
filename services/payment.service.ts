@@ -1528,7 +1528,7 @@ export async function submitManualPayment({
   senderNumber?: string;
   referenceKey: string;
   notes?: string;
-  screenshotUrl?: string;
+  screenshotUrl: string;
 }) {
   const registration = await loadRegistrationForUser(registrationId, userId);
   const payment = registration.payment;

@@ -875,7 +875,7 @@ export function SirahRegistrationForm({
     }
     const receipt = data.get("receiptToken");
     if (manual && (typeof receipt !== "string" || !receipt)) {
-      setFields({ receipt: ["Upload your payment receipt."] });
+      setFields({ receipt: ["Please attach your payment receipt to continue."] });
       return;
     }
     requestKey.current ||= crypto.randomUUID();
@@ -1223,7 +1223,7 @@ export function SirahRegistrationForm({
         String(accessConsents.digitalContentConsented === true),
       );
       const receipt = data.get("receiptToken");
-      if (typeof receipt !== "string" || !receipt) throw new Error("Upload your payment receipt.");
+      if (typeof receipt !== "string" || !receipt) throw new Error("Please attach your payment receipt to continue.");
       const result = await api(`/api/sirah/orders/${order.id}/evidence`, {
         method: "POST",
         body: data,
@@ -1475,7 +1475,7 @@ export function SirahRegistrationForm({
       }
       const receipt = data.get("receiptToken");
       if (typeof receipt !== "string" || !receipt) {
-        setFields({ receipt: ["Upload your payment receipt."] });
+        setFields({ receipt: ["Please attach your payment receipt to continue."] });
         return false;
       }
     }

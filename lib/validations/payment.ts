@@ -17,7 +17,7 @@ export const manualPaymentSubmitSchema = z.object({
     .or(z.literal("")),
   referenceKey: z.string().trim().min(4, "Reference key is required."),
   notes: z.string().trim().max(500).optional(),
-  screenshotUrl: z.string().url().optional(),
+  receiptToken: z.string({ error: "Please attach your payment receipt to continue." }).trim().min(1, "Please attach your payment receipt to continue.").max(8192),
 });
 
 export const adminConfirmSchema = z.object({
