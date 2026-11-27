@@ -866,6 +866,48 @@ describe("teacher portal", () => {
     assert.equal(table("zoomHost")[0].revenuePartner, false);
   });
 
+  test("only super admins set a teacher's share; it is validated, cleared back to the default and audited", async () => {
+    // As after the migration: the column exists and is NULL until a share is set.
+    table("zoomHost")[0].revenueSharePercent = null;
+    const form = new FormData(); form.set("hostId", "host_1"); form.set("share", "60");
+    access = { role: "MANAGER" };
+    assert.equal((await outcome(() => actions.setRevenueSharePercent(form))).redirect, "/admin/sirah");
+    assert.equal(table("zoomHost")[0].revenueSharePercent ?? null, null);
+    access = { role: "SUPER_ADMIN" };
+    assert.match((await outcome(() => actions.setRevenueSharePercent(form))).redirect || "", /Share\+set\+to\+60/);
+    assert.equal(table("zoomHost")[0].revenueSharePercent, "60.00");
+    const set = table("sirahAccessAudit").find(row => row.action === "REVENUE_SHARE_SET")!;
+    assert.deepEqual([set.actor, set.fromStatus, set.toStatus], ["admin@example.test", "DEFAULT", "60.00"]);
+    form.set("share", "101");
+    assert.match((await outcome(() => actions.setRevenueSharePercent(form))).redirect || "", /error=Enter\+a\+share/);
+    assert.equal(table("zoomHost")[0].revenueSharePercent, "60.00");
+    form.set("share", "");
+    assert.match((await outcome(() => actions.setRevenueSharePercent(form))).redirect || "", /course\+default/);
+    assert.equal(table("zoomHost")[0].revenueSharePercent, null);
+    assert.ok(table("sirahAccessAudit").some(row => row.action === "REVENUE_SHARE_CLEARED" && row.fromStatus === "60.00"));
+  });
+
+  test("only super admins record advances; entries are append-only and a reduction cannot exceed what is outstanding", async () => {
+    const entry = (fields: Record<string, string>) => { const form = new FormData(); form.set("hostId", "host_1"); for (const [k, v] of Object.entries({ kind: "ADVANCE", amount: "300", currency: "gbp", reason: "Advance against teaching", date: "2026-11-01", ...fields })) form.set(k, v); return form; };
+    access = { role: "MANAGER" };
+    assert.equal((await outcome(() => actions.recordTeacherAdvanceAction(entry({})))).redirect, "/admin/sirah");
+    assert.equal(table("teacherAdvance").length, 0);
+    access = { role: "SUPER_ADMIN" };
+    assert.match((await outcome(() => actions.recordTeacherAdvanceAction(entry({})))).redirect || "", /Advance\+recorded/);
+    assert.deepEqual(
+      [table("teacherAdvance")[0].amountMinor, table("teacherAdvance")[0].currency, table("teacherAdvance")[0].createdBy, (table("teacherAdvance")[0].occurredOn as Date).toISOString().slice(0, 10)],
+      [30000, "GBP", "admin@example.test", "2026-11-01"],
+    );
+    // More than outstanding, a currency with nothing outstanding, a future date and a missing reason are all refused.
+    assert.match((await outcome(() => actions.recordTeacherAdvanceAction(entry({ kind: "REDUCTION", amount: "300.01" })))).redirect || "", /error=A\+reduction\+cannot/);
+    assert.match((await outcome(() => actions.recordTeacherAdvanceAction(entry({ kind: "REDUCTION", currency: "USD", amount: "1" })))).redirect || "", /error=There\+is\+no\+outstanding/);
+    assert.match((await outcome(() => actions.recordTeacherAdvanceAction(entry({ date: "2999-01-01" })))).redirect || "", /error=Choose\+a\+valid\+date/);
+    assert.match((await outcome(() => actions.recordTeacherAdvanceAction(entry({ reason: " " })))).redirect || "", /error=Enter\+a\+reason/);
+    assert.equal(table("teacherAdvance").length, 1);
+    assert.match((await outcome(() => actions.recordTeacherAdvanceAction(entry({ kind: "REDUCTION", amount: "100", reason: "Recovered from November" })))).redirect || "", /Advance\+reduced/);
+    assert.deepEqual(table("teacherAdvance").map(row => row.amountMinor), [30000, -10000]);
+  });
+
   test("teachers can schedule only with their host and assigned cohort", async () => {
     const { scheduleTeacherSession } = await import("../app/seerah/classroom/teaching/actions");
     signIn(seedUser("teacher@example.test"));
