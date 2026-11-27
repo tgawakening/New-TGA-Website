@@ -38,7 +38,9 @@ export type DashboardNextLiveClass = {
 
 type DashboardProps = {
   nextLiveClass?: DashboardNextLiveClass | null;
-  latestRecording?: { title: string; href: string; external: boolean } | null;
+  latestRecording?: DashboardRecording | null;
+  /** The student's own cohort recordings, newest first (empty: none yet or no classroom access). */
+  recentRecordings?: DashboardRecording[];
   resourceCount?: number | null;
   serverNow: string;
   /** The classroom inbox for the top bar's bell (null: not enrolled in a cohort). */
@@ -97,12 +99,7 @@ type DashboardProps = {
   };
 };
 
-const seerahLessons = [
-  { title: "Introduction to Prophetic Strategy", type: "Recorded", access: "Available now" },
-  { title: "Makkan Period Leadership", type: "Recorded", access: "Available now" },
-  { title: "Diplomacy and Treaty Building", type: "Recorded", access: "Available now" },
-  { title: "Weekly Live Reflection Circle", type: "Live", access: "Sunday 10:00 AM PKT" },
-];
+type DashboardRecording = { title: string; href: string; external: boolean };
 
 function formatMoney(amount: number, currency: string) {
   const normalizedCurrency = currency.toUpperCase();
@@ -119,7 +116,7 @@ function formatMoney(amount: number, currency: string) {
   }
 }
 
-export default function StudentDashboard({ user, nextLiveClass = null, latestRecording = null, resourceCount = null, serverNow, inbox = null }: DashboardProps) {
+export default function StudentDashboard({ user, nextLiveClass = null, latestRecording = null, recentRecordings = [], resourceCount = null, serverNow, inbox = null }: DashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -164,6 +161,13 @@ export default function StudentDashboard({ user, nextLiveClass = null, latestRec
   const latestRegistration = user.registrations.find((item) => item.course.slug === "seerah-course");
   const latestSubscription = user.subscriptions[0];
   const hasActiveLmsAccess = seerahEnrollment?.status === "ACTIVE";
+  // Classroom links lead to existing pages that admit only enrolled students,
+  // so they are live only for an enrolled student (display rule only; each
+  // page keeps its own gate).
+  const classroomOpen = sirahOrders.some((order) => sirahOrderStatus(order).kind === "ACTIVE") || hasActiveLmsAccess;
+  // The only course on this dashboard (slug "seerah-course"). Not the stored
+  // course title: legacy rows can still carry an older course name.
+  const lmsCourseName = "Sīrah | Beyond Chronology";
   const latestPaymentPlanLabel = latestRegistration ? paymentPlanTypeLabels[latestRegistration.paymentPlanType] : "N/A";
   const hasPendingPayment = Boolean(
     latestRegistration &&
@@ -529,33 +533,63 @@ export default function StudentDashboard({ user, nextLiveClass = null, latestRec
   const overviewCard = sirahOnly ? sirahOverviewCard : legacyOverviewCard;
   const paymentCard = sirahOnly ? sirahPaymentCard : legacyPaymentCard;
 
+  // Reads the student's own cohort data (recordings and next live class from
+  // the classroom schedule); nothing here is placeholder course content.
   const lmsCard = (
     <article className={s.card}>
       <h2 className={s.cardTitle}>My LMS</h2>
       <p className={s.muted}>
-        {user.currentSirahOnly
-          ? "Open your Sīrah Beyond Chronology registration above for verified payment status, private evidence and your course invitation."
-          : "Recorded lessons, weekly live links, and batch support appear here after activation."}
+        {classroomOpen
+          ? `${lmsCourseName}: your recorded lessons and next live session.`
+          : user.currentSirahOnly
+            ? "Open your Sīrah Beyond Chronology registration above for verified payment status, private evidence and your course invitation."
+            : "Recorded lessons, weekly live links, and batch support appear here after activation."}
       </p>
-      <ul className={s.list}>
-        {(user.currentSirahOnly ? [] : seerahLessons).map((lesson) => (
-          <li key={lesson.title} className={s.item}>
-            <div>
-              <strong>{lesson.title}</strong>
-              <p>{lesson.type}</p>
-            </div>
-            <span className={s.itemValue}>{hasActiveLmsAccess ? lesson.access : "Locked"}</span>
-          </li>
-        ))}
-      </ul>
+      {classroomOpen ? (
+        <ul className={s.list}>
+          {recentRecordings.map((recording) => (
+            <li key={recording.href + recording.title} className={s.item}>
+              <div>
+                <strong>{recording.title}</strong>
+                <p>Recorded</p>
+              </div>
+              <a
+                href={recording.href}
+                className={s.itemValue}
+                {...(recording.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              >
+                Watch
+              </a>
+            </li>
+          ))}
+          {nextLiveClass ? (
+            <li className={s.item}>
+              <div>
+                <strong>{nextLiveClass.title}</strong>
+                <p>Live</p>
+              </div>
+              <span className={s.itemValue}>
+                {nextLiveClass.live ? "Happening now" : <LocalTime iso={nextLiveClass.startsAt} fallback={nextLiveClass.when} fallbackZone={nextLiveClass.zone} />}
+              </span>
+            </li>
+          ) : null}
+          {!recentRecordings.length && !nextLiveClass ? (
+            <li className={s.item}>
+              <div>
+                <p>Recordings and live sessions appear here once your class schedule is published.</p>
+              </div>
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
       <div className={`${s.actions} ${s.cardActions}`}>
-        {user.currentSirahOnly ? (
+        {classroomOpen ? (
+          <Link href="/seerah/classroom" className={s.btn}>
+            Open Sīrah classroom
+          </Link>
+        ) : user.currentSirahOnly ? (
           <Link href="/seerah/register" className={s.btn}>
             Manage your Sīrah registration
-          </Link>
-        ) : hasActiveLmsAccess ? (
-          <Link href="/seerah/lms" className={s.btn}>
-            Open Seerah LMS
           </Link>
         ) : (
           <Link href="/seerah/register" className={s.btnGhost}>
@@ -676,10 +710,6 @@ export default function StudentDashboard({ user, nextLiveClass = null, latestRec
     </article>
   );
 
-  // Classroom links lead to existing pages that admit only enrolled students,
-  // so they are live only for an enrolled student (display rule only; each
-  // page keeps its own gate).
-  const classroomOpen = sirahOrders.some((order) => sirahOrderStatus(order).kind === "ACTIVE") || hasActiveLmsAccess;
   const lockedHint = "Live classes and resources open once your enrolment is confirmed.";
 
   const firstName = fullName.trim().split(/\s+/)[0] || fullName;
