@@ -26,6 +26,8 @@ test("task upload tickets require a signed-in student with access", async () => 
 test("agreement tickets require an admin, anonymous registration needs a UUID scope", async () => {
   admin = false; await assert.rejects(() => owner(request, "agreement", "order-a"));
   admin = true; assert.equal(await owner(request, "agreement", "order-a"), "reviewer:staff");
+  admin = false; await assert.rejects(() => owner(request, "admin-evidence", "order-a"));
+  admin = true; assert.equal(await owner(request, "admin-evidence", "order-a"), "reviewer:staff");
   await assert.rejects(() => owner(request, "registration", "not-a-uuid"));
   const scope = "71ca2ef7-e3c4-4f26-a5c3-f8d4e11076a1";
   assert.equal(await owner(request, "registration", scope), scope);

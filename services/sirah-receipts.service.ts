@@ -24,9 +24,11 @@ import {
   dispatchSirahNotifications,
 } from "./sirah-notifications.service";
 import { MAX_SIRAH_RECEIPT_BYTES } from "@/lib/sirah/registration-payment";
+import { readDirectUpload, verifyDirectUpload } from "@/lib/sirah/direct-upload";
+import { ADMIN_EVIDENCE_TYPES, ADMIN_RECEIPT_UPLOADED, UPLOAD_MAX_BYTES } from "@/lib/sirah/direct-upload-policy";
 export { MAX_SIRAH_RECEIPT_BYTES };
-export async function validateSirahReceipt(data: Uint8Array, filename: string) {
-  if (!data.byteLength || data.byteLength > MAX_SIRAH_RECEIPT_BYTES)
+export async function validateSirahReceipt(data: Uint8Array, filename: string, maxBytes = MAX_SIRAH_RECEIPT_BYTES) {
+  if (!data.byteLength || data.byteLength > maxBytes)
     throw new SirahError("Upload a JPG, PNG, WebP or PDF up to 4 MB.");
   const type = await fileTypeFromBuffer(data);
   if (
@@ -68,6 +70,80 @@ export async function validateSirahReceipt(data: Uint8Array, filename: string) {
     sha256: createHash("sha256").update(data).digest("hex"),
   };
 }
+/** A receipt staff received outside the site (WhatsApp, email): PNG, JPG or PDF up to 5 MB. */
+export async function validateAdminSirahReceipt(data: Uint8Array, filename: string) {
+  const maxBytes = UPLOAD_MAX_BYTES["admin-evidence"];
+  if (!data.byteLength || data.byteLength > maxBytes)
+    throw new SirahError(`Upload a PNG, JPG or PDF up to ${maxBytes / 1024 / 1024} MB.`);
+  const receipt = await validateSirahReceipt(data, filename, maxBytes);
+  if (!ADMIN_EVIDENCE_TYPES.includes(receipt.mime))
+    throw new SirahError("The file contents must be a PNG, JPG or PDF.");
+  return receipt;
+}
+
+/**
+ * Staff attach a receipt the student sent outside the site. Stored exactly as
+ * a student receipt (same table, same private storage, same protected link);
+ * evidence only: payment and enrolment state are not changed. The order's
+ * revision moves to the receipt's revision so receipt versions stay unique
+ * and any open stale form reloads before acting.
+ */
+export async function attachAdminSirahReceipt(
+  orderId: string,
+  token: string,
+  actor: string,
+  note?: string,
+) {
+  const uploaded = await verifyDirectUpload(token, "admin-evidence", orderId, actor);
+  const validated = await validateAdminSirahReceipt(
+    await readDirectUpload(uploaded.key),
+    uploaded.filename,
+  );
+  return serializable(async (tx) => {
+    const order = await tx.sirahOrder.findUnique({
+      where: { id: orderId },
+      select: {
+        revision: true,
+        archivedAt: true,
+        receipts: { select: { revision: true }, orderBy: { revision: "desc" }, take: 1 },
+      },
+    });
+    if (!order) throw new SirahError("Registration not found.", 404);
+    if (order.archivedAt) throw new SirahError("Restore this registration before attaching a receipt.", 409);
+    if (await tx.sirahReceipt.findUnique({ where: { storageKey: uploaded.key }, select: { id: true } }))
+      throw new SirahError("This receipt is already attached.", 409);
+    const revision = Math.max(order.revision, order.receipts[0]?.revision ?? 0) + 1;
+    const updated = await tx.sirahOrder.updateMany({
+      where: { id: orderId, revision: order.revision },
+      data: { revision },
+    });
+    if (updated.count !== 1)
+      throw new SirahError("This registration has just changed. Reload and try again.", 409);
+    const receipt = await tx.sirahReceipt.create({
+      data: {
+        orderId,
+        revision,
+        filename: validated.filename,
+        mime: validated.mime,
+        sha256: validated.sha256,
+        storageKey: uploaded.key,
+        data: new Uint8Array(0),
+      },
+      select: { id: true },
+    });
+    await auditSirah(tx, orderId, actor, ADMIN_RECEIPT_UPLOADED, {
+      receiptId: receipt.id,
+      revision,
+      filename: validated.filename,
+      mime: validated.mime,
+      sizeBytes: validated.data.byteLength,
+      receiptHash: validated.sha256,
+      note: note?.trim() || null,
+    });
+    return { id: receipt.id, revision };
+  });
+}
+
 export async function submitSirahEvidence(
   orderId: string,
   userId: string,

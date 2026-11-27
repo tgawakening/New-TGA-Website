@@ -14,6 +14,7 @@ import {
   sirahPendingRefundMinor,
 } from "@/lib/sirah/refund-display";
 import { AdminLedger } from "./admin-ledger";
+import { AdminReceiptUpload } from "./admin-receipt-upload";
 import { AdminAddRegistration } from "./admin-add-registration";
 import { AdminOverduePlans } from "./admin-overdue-plans";
 import { displayAgreedFee } from "@/lib/sirah/admin-agreed-fee";
@@ -1713,8 +1714,21 @@ export function SirahAdminStudents({
                     >
                       Receipt v{receipt.revision}: {receipt.filename}
                     </a>
+                    {receipt.adminUpload ? (
+                      <> · Uploaded by staff ({receipt.adminUpload.actor}, {date(receipt.adminUpload.at)})</>
+                    ) : null}
                   </p>
                 ))}
+                {canManageEnrolments && !selected.archivedAt && (
+                  <AdminReceiptUpload key={selected.id} id={selected.id} onUploaded={() => {
+                    const { id, reference } = selected;
+                    setReload((current) => current + 1);
+                    void readSnapshot(new URLSearchParams({ q: reference }).toString()).then((detail) => {
+                      const fresh = detail.rows.find((entry) => entry.id === id);
+                      if (fresh) setSelected((current) => current?.id === id ? fresh : current);
+                    }).catch(() => {});
+                  }} />
+                )}
               </details>
               <details>
                 <summary>Payment history ({selected.events.length})</summary>

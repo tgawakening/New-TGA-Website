@@ -64,7 +64,7 @@ export function DirectUpload({ purpose, scope, name = "uploadToken", multiple = 
     for (const item of added) if (!item.error) void start(item);
   }
   return <div ref={root} className={styles.root}>
-    <label className={styles.choose}>{multiple ? "Add files" : "Choose file"}<input type="file" accept={purpose === "agreement" ? ".pdf" : purpose === "task" ? ".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.doc,.docx" : ".jpg,.jpeg,.png,.webp,.pdf"} multiple={multiple} onChange={event => { choose(event.currentTarget.files); event.currentTarget.value = ""; }} /></label>
+    <label className={styles.choose}>{multiple ? "Add files" : "Choose file"}<input type="file" accept={purpose === "agreement" ? ".pdf" : purpose === "admin-evidence" ? ".jpg,.jpeg,.png,.pdf" : purpose === "task" ? ".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf,.doc,.docx" : ".jpg,.jpeg,.png,.webp,.pdf"} multiple={multiple} onChange={event => { choose(event.currentTarget.files); event.currentTarget.value = ""; }} /></label>
     <small>Maximum {UPLOAD_MAX_BYTES[purpose] / 1024 / 1024} MB per file{multiple ? "; up to 5 files" : ""}.</small>
     {items.map(item => <div key={item.id} className={styles.item}>
       <span className={styles.filename}>{item.file.name}</span>
