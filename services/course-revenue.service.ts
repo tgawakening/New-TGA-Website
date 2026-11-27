@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { SIRAH_SLUG } from "@/lib/sirah/catalog";
+import { currencyScale, SIRAH_SLUG } from "@/lib/sirah/catalog";
 import { addMoney, moneyGroups, planNextDueTotals, revenueProgram, type CourseIdentity } from "@/lib/sirah/course-revenue";
 import type { PlanTerms, StoredPeriod } from "@/lib/sirah/payment-plan";
 import { inRevenuePeriod, reportPeriod, type RevenuePeriod } from "@/lib/sirah/course-revenue-period";
@@ -17,6 +17,12 @@ const DAY = 24 * 60 * 60 * 1000;
 /** Conservative comparison: candidates are reviewed separately, never silently doubled. */
 function couldMatch(entry: Ledger, event: Event) {
   return entry.currency === event.currency && entry.amountMinor === event.amountMinor && method(entry.method) === method(event.provider) && Math.abs(entry.receivedAt.getTime() - event.createdAt.getTime()) < 2 * DAY;
+}
+// Legacy GBP values are pence; other legacy currency values are whole units.
+function legacyMinor(amount: number, currency: string) {
+  const result = currency === "GBP" ? amount : amount * 10 ** currencyScale(currency);
+  if (!Number.isSafeInteger(result)) throw new Error("Invalid legacy payment amount.");
+  return result;
 }
 function legacySettlementProven(registration: Legacy, payment: Payment) {
   const payload = payment.rawPayloadJson && typeof payment.rawPayloadJson === "object" && !Array.isArray(payment.rawPayloadJson) ? payment.rawPayloadJson as Record<string, unknown> : {};
@@ -47,9 +53,9 @@ export function aggregateCourseRevenue(courses: CourseIdentity[], registrations:
   for (const r of registrations) {
     const b = bucket(r.course, "legacy");
     const verified = r.payment && ["SUCCEEDED", "CONFIRMED"].includes(r.payment.status);
-    if (r.payment && verified && legacySettlementProven(r, r.payment)) received(b, r.payment.currency, r.payment.provider, r.payment.amount, r.payment.paidAt);
-    else if (r.payment && verified) { const at = r.payment.paidAt ?? r.payment.createdAt; if (inRevenuePeriod(at, period)) { b.review.push({ id: r.payment.id, reference: r.paymentReference ?? r.id, amountMinor: r.payment.amount, currency: r.payment.currency, method: r.payment.provider, receivedAt: at }); addMoney(b.ambiguous, r.payment.currency, r.payment.amount); } }
-    else if (["PENDING_PAYMENT", "MANUAL_REVIEW"].includes(r.status)) { b.pendingCount++; addMoney(b.pending, r.selectedCurrency, r.finalAmount); }
+    if (r.payment && verified && legacySettlementProven(r, r.payment)) received(b, r.payment.currency, r.payment.provider, legacyMinor(r.payment.amount, r.payment.currency), r.payment.paidAt);
+    else if (r.payment && verified) { const at = r.payment.paidAt ?? r.payment.createdAt; if (inRevenuePeriod(at, period)) { b.review.push({ id: r.payment.id, reference: r.paymentReference ?? r.id, amountMinor: legacyMinor(r.payment.amount, r.payment.currency), currency: r.payment.currency, method: r.payment.provider, receivedAt: at }); addMoney(b.ambiguous, r.payment.currency, legacyMinor(r.payment.amount, r.payment.currency)); } }
+    else if (["PENDING_PAYMENT", "MANUAL_REVIEW"].includes(r.status)) { b.pendingCount++; addMoney(b.pending, r.selectedCurrency, legacyMinor(r.finalAmount, r.selectedCurrency)); }
   }
   for (const order of orders) {
     const b = bucket(order.course, "sirah");
