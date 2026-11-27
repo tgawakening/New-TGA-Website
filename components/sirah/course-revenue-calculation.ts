@@ -1,7 +1,7 @@
 import { currencyScale } from "@/lib/sirah/catalog";
 import type { MoneyGroup } from "@/lib/sirah/course-revenue";
 
-export type CalculatorRow = { id: string; title: string; received: MoneyGroup[]; net: MoneyGroup[]; outstanding: MoneyGroup[] };
+export type CalculatorRow = { id: string; title: string; received: MoneyGroup[]; outstanding: MoneyGroup[] };
 export type Rates = Record<string, string>;
 
 export function validRate(value: string | undefined) {

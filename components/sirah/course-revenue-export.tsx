@@ -3,7 +3,7 @@
 import { useState } from "react";
 import styles from "./course-revenue.module.css";
 
-export type ExportRow = { title: string; received: string[]; net: string[]; outstanding: string[]; upcoming: string[] };
+export type ExportRow = { title: string; received: string[]; outstanding: string[]; upcoming: string[] };
 
 export function CourseRevenueExport({ rows, periodKey, periodLabel, undatedRefunds }: { rows: ExportRow[]; periodKey: string; periodLabel: string; undatedRefunds: number }) {
   const [busy, setBusy] = useState(false);

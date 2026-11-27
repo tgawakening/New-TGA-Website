@@ -4,6 +4,7 @@ import { Workbook } from "exceljs";
 import { formattedAmounts, formattedNetAmounts, netReceived, outstandingNow } from "../components/sirah/course-revenue-display";
 import { courseRevenueWorkbook } from "../components/sirah/course-revenue-workbook";
 import { estimateMoney, validRate } from "../components/sirah/course-revenue-calculation";
+import { planningBalances, splitShare } from "../components/sirah/payout-planning-calculations";
 
 test("outstanding combines existing groups by currency and hides zero amounts", () => {
   const combined = outstandingNow([{ currency: "PKR", amountMinor: 15000 }, { currency: "GBP", amountMinor: 0 }], [{ currency: "PKR", amountMinor: 5000 }, { currency: "USD", amountMinor: 100 }]);
@@ -16,8 +17,8 @@ test("outstanding combines existing groups by currency and hides zero amounts", 
 
 test("Excel export is a real one-sheet workbook with course and totals values", async () => {
   const workbook = courseRevenueWorkbook([
-    { title: "Course", received: ["PKR 150", "GBP 4"], net: ["PKR 140"], outstanding: ["PKR 20"], upcoming: [] },
-    { title: "Total across programs", received: ["PKR 150", "GBP 4"], net: ["PKR 140"], outstanding: ["PKR 20"], upcoming: [] },
+    { title: "Course", received: ["PKR 140", "GBP 4"], outstanding: ["PKR 20"], upcoming: [] },
+    { title: "Total across programs", received: ["PKR 140", "GBP 4"], outstanding: ["PKR 20"], upcoming: [] },
   ], "November 2026", 1);
   const bytes = await workbook.xlsx.writeBuffer();
   const reopened = new Workbook();
@@ -25,12 +26,11 @@ test("Excel export is a real one-sheet workbook with course and totals values", 
   assert.equal(reopened.worksheets.length, 1);
   const sheet = reopened.worksheets[0];
   assert.match(String(sheet.getCell("A1").value), /November 2026/);
-  assert.equal(sheet.getCell("B3").value, "PKR 150\nGBP 4");
-  assert.equal(sheet.getCell("C3").value, "PKR 140");
-  assert.equal(sheet.getCell("D3").value, "PKR 20");
-  assert.equal(sheet.getCell("E3").value, "—");
+  assert.equal(sheet.getCell("B3").value, "PKR 140\nGBP 4");
+  assert.equal(sheet.getCell("C3").value, "PKR 20");
+  assert.equal(sheet.getCell("D3").value, "\u2014");
   assert.equal(sheet.getCell("A4").value, "Total across programs");
-  assert.match(String(sheet.getCell("A7").value), /no reliable verification date/);
+  assert.match(String(sheet.getCell("A7").value), /no reliable date/);
 });
 
 test("net can be negative when refunds exceed receipts in a month", () => {
@@ -50,4 +50,9 @@ test("manual rates reject blank, invalid, negative, zero and infinite values", (
   for (const value of ["", " ", "0", "-1", "NaN", "Infinity", "1e999", "1,5"]) assert.equal(validRate(value), null);
   assert.equal(validRate(" .25 "), .25);
   assert.equal(validRate("12.5"), 12.5);
+});
+
+test("planning splits shares and subtracts payouts separately by currency", () => {
+  assert.deepEqual(splitShare(62385, 70), { share: 43670, remaining: 18715 });
+  assert.deepEqual(planningBalances([{ currency: "GBP", amountMinor: 62385 }, { currency: "PKR", amountMinor: 200000 }], [{ currency: "GBP", amountMinor: 20000 }, { currency: "USD", amountMinor: 500 }]), [{ currency: "GBP", amountMinor: 42385 }, { currency: "PKR", amountMinor: 200000 }, { currency: "USD", amountMinor: -500 }]);
 });
