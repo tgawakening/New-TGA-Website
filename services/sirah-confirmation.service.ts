@@ -338,14 +338,19 @@ export async function confirmSirahPaymentInTransaction(tx: Prisma.TransactionCli
 }
 export async function confirmSirahPayment(input: VerifiedSirahPayment) {
   const result = await serializable((tx) => confirmSirahPaymentInTransaction(tx, input));
-  await dispatchSirahNotifications(input.orderId).catch(() => {});
+  return afterSirahPaymentConfirmed(input.orderId, result);
+}
+/** Delivery that follows a committed confirmation (shared by every caller of
+ * confirmSirahPaymentInTransaction that owns its own transaction). */
+export async function afterSirahPaymentConfirmed<T extends { duplicate: boolean }>(orderId: string, result: T) {
+  await dispatchSirahNotifications(orderId).catch(() => {});
   // The classroom welcome follows a first confirmation. Outside the payment
   // transaction and best effort: the sweep queues any welcome missed here.
   // (Loaded lazily: the classroom email service imports canAccessSirah from here.)
   if (!result.duplicate)
     await import("./sirah-classroom-email.service")
       .then(async ({ queueWelcomeForOrder, dispatchClassroomEmails }) => {
-        if (await queueWelcomeForOrder(input.orderId)) await dispatchClassroomEmails({ limit: 5 });
+        if (await queueWelcomeForOrder(orderId)) await dispatchClassroomEmails({ limit: 5 });
       })
       .catch(() => {});
   return result;

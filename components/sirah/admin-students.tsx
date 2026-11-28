@@ -7,7 +7,7 @@ import AdminNotificationBell from "@/components/admin/admin-notification-bell";
 import type { AdminNotificationItem } from "@/services/admin.service";
 import type { listSirahAdmin } from "@/services/sirah-admin.service";
 import { formatSirahMoney, minorToDecimal } from "@/lib/sirah/catalog";
-import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
+import { canCompleteSirahGatewayManually, canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import {
   sirahDisplayPaymentState,
   sirahNetReceivedMinor,
@@ -37,6 +37,7 @@ const paymentStates = [
 const enrolmentStates = ["PENDING", "ACTIVE", "CANCELLED", "COMPLETED"];
 const actionLabels = {
   APPROVE: "Approve / complete payment",
+  COMPLETE_MANUALLY: "Complete payment manually",
   PENDING: "Set pending",
   REJECT: "Reject",
   CANCEL: "Cancel",
@@ -77,6 +78,8 @@ function purgeLabel(purgeAt: Date | string) {
 
 const actionResults: Record<Action, string> = {
   APPROVE: "Payment completed. Course enrolment is active.",
+  COMPLETE_MANUALLY:
+    "Manual payment recorded and the online checkout closed. Course enrolment is active.",
   PENDING:
     "Returned to pending review. No payment or course access was granted.",
   REJECT: "Payment evidence rejected.",
@@ -99,6 +102,13 @@ function availableActions(student: Student): Action[] {
     (manual && student.enrolmentState === "CANCELLED" && !student.paidCount)
   )
     actions.push("APPROVE");
+  // Chose Stripe / PayPal, never paid online, paid by bank / JazzCash instead.
+  // The server re-checks with the provider before anything is recorded.
+  if (
+    canCompleteSirahGatewayManually(student) &&
+    !student.events.some((entry) => ["FIRST", "RENEWAL"].includes(entry.kind))
+  )
+    actions.push("COMPLETE_MANUALLY");
   if (review) actions.push("REJECT");
   if (
     manual &&
@@ -142,7 +152,7 @@ function availableActions(student: Student): Action[] {
 }
 
 function actionClass(action: Action) {
-  if (action === "APPROVE" || action === "COMPLETE")
+  if (action === "APPROVE" || action === "COMPLETE" || action === "COMPLETE_MANUALLY")
     return "ga-admin-primary-btn";
   if (action === "REJECT" || action === "CANCEL" || action === "REFUND")
     return "ga-admin-outline-btn is-danger";
@@ -507,6 +517,7 @@ export function SirahAdminStudents({
           refundReference: field("refundReference"),
           paymentEventId: field("paymentEventId"),
           providerReference: field("providerReference"),
+          receivedDate: field("receivedDate"),
           verifiedTransfer: form.get("verifiedTransfer") === "on",
         }),
       });
@@ -578,7 +589,7 @@ export function SirahAdminStudents({
       // "Complete course" is not offered on the row (too easy to hit by
       // mistake); it stays in View Details, which lists every action.
       .filter((option) =>
-        ["APPROVE", "REJECT", "PENDING", "CANCEL"].includes(option),
+        ["APPROVE", "COMPLETE_MANUALLY", "REJECT", "PENDING", "CANCEL"].includes(option),
       )
       .forEach((option) => {
         const tone = actionClass(option);
@@ -1619,6 +1630,72 @@ export function SirahAdminStudents({
                         </details>
                       </>
                     )}
+                    {action === "COMPLETE_MANUALLY" && (
+                      <>
+                        <p>
+                          This student chose{" "}
+                          <strong>{label(selected.method || "ONLINE")}</strong> but the
+                          online payment never completed. Record the bank transfer
+                          or JazzCash payment you verified. This activates the
+                          student’s paid course access.
+                        </p>
+                        <p>
+                          Before anything is recorded, the payment provider is
+                          checked. If the online payment did succeed, nothing
+                          manual is recorded and you will be asked to check or
+                          refund it in the provider first. Any open checkout is
+                          closed so it can no longer be paid. Existing receipts,
+                          ledger payments and the agreement are kept as they are.
+                        </p>
+                        <label>Verified payment method
+                          <select name="manualMethod" required defaultValue="">
+                            <option value="" disabled>Select the account that received the funds</option>
+                            <option value="BANK_TRANSFER">Meezan Bank transfer</option>
+                            <option value="JAZZCASH">JazzCash</option>
+                          </select>
+                        </label>
+                        <div className={styles.amountFields}>
+                          <label>
+                            Received amount ({selected.currency})
+                            <input
+                              name="verifiedAmount"
+                              inputMode="decimal"
+                              required
+                              defaultValue={minorToDecimal(
+                                selected.amountMinor,
+                                selected.currency,
+                              )}
+                            />
+                          </label>
+                          <label>
+                            Payment date
+                            <input
+                              name="receivedDate"
+                              type="date"
+                              required
+                              max={new Date().toISOString().slice(0, 10)}
+                            />
+                          </label>
+                        </div>
+                        <label>
+                          Transfer transaction reference
+                          <input
+                            name="transactionReference"
+                            required
+                            maxLength={150}
+                          />
+                        </label>
+                        <label className={styles.check}>
+                          <input
+                            name="verifiedTransfer"
+                            type="checkbox"
+                            required
+                          />
+                          I confirm these funds were received in the merchant
+                          account.
+                        </label>
+                      </>
+                    )}
                     {action === "REFUND" && (
                       <div className={styles.amountFields}>
                         <label>
@@ -1669,6 +1746,7 @@ export function SirahAdminStudents({
                     {action !== "RETRY_NOTIFICATIONS" && (
                       <label>
                         {action === "REFUND" ||
+                        action === "COMPLETE_MANUALLY" ||
                         (action === "APPROVE" &&
                           (selected.enrolmentState === "CANCELLED" || canRecoverSirahManualPayment(selected)))
                           ? "Reason / review note"
@@ -1678,6 +1756,7 @@ export function SirahAdminStudents({
                           maxLength={1500}
                           required={
                             action === "REFUND" ||
+                            action === "COMPLETE_MANUALLY" ||
                             (action === "APPROVE" &&
                               (selected.enrolmentState === "CANCELLED" || canRecoverSirahManualPayment(selected)))
                           }
