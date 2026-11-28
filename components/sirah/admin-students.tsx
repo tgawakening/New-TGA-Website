@@ -48,23 +48,26 @@ const actionLabels = {
 };
 type Action = keyof typeof actionLabels;
 
-type RecordAction = "EXCLUDE" | "INCLUDE" | "ARCHIVE" | "RESTORE";
+type RecordAction = "EXCLUDE" | "INCLUDE" | "ARCHIVE" | "ARCHIVE_KEEP" | "RESTORE";
 const recordActionTitles: Record<RecordAction, string> = {
   EXCLUDE: "Exclude this record from analytics?",
   INCLUDE: "Count this record in analytics again?",
   ARCHIVE: "Delete this record?",
+  ARCHIVE_KEEP: "Archive this record?",
   RESTORE: "Restore this record?",
 };
 const recordActionButtons: Record<RecordAction, string> = {
   EXCLUDE: "Exclude from analytics",
   INCLUDE: "Un-exclude",
   ARCHIVE: "Delete (move to archive)",
+  ARCHIVE_KEEP: "Archive",
   RESTORE: "Restore",
 };
 const recordActionDone: Record<RecordAction, string> = {
   EXCLUDE: "excluded from analytics",
   INCLUDE: "included in analytics again",
   ARCHIVE: "moved to the archive. It can be restored for 7 days",
+  ARCHIVE_KEEP: "archived. It is kept (never deleted) and can be restored from the Archived view",
   RESTORE: "restored from the archive",
 };
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -243,8 +246,9 @@ export function SirahAdminStudents({
   readOnly?: boolean;
   canManageEnrolments?: boolean;
   canMarkGroupAdded?: boolean;
-  /** Super admin only: delete (archive) and restore junk rows, and the
-   * Archive view. One record at a time, behind a confirm; never bulk. */
+  /** Super admin only: archive (kept, any record; per row, in the details or
+   * via the checkbox selection), delete payment-free junk (one record at a
+   * time), restore, and the Archived view. Always behind a confirm. */
   canManageRecords?: boolean;
   /** Super admin or manager: exclude / un-exclude (mark as test), per row or
    * via the checkbox selection, and the Excluded view. */
@@ -283,9 +287,9 @@ export function SirahAdminStudents({
   const [action, setAction] = useState<Action | "">("");
   const dialog = useRef<HTMLDialogElement>(null);
   // Record housekeeping. Per-row actions sit behind a confirm dialog: exclude /
-  // un-exclude (super admin or manager), delete (archive) / restore (super
-  // admin only). The checkbox selection drives ONLY exclude / un-exclude
-  // through its own endpoint, which cannot archive or delete.
+  // un-exclude (super admin or manager), archive (kept) / delete / restore
+  // (super admin only). The checkbox selection drives exclude / un-exclude
+  // and, for the super admin, archive (kept); it can never delete.
   const [recordsView, setRecordsView] = useState<"" | "EXCLUDED" | "ARCHIVED">(
     canManageRecords && initialArchived
       ? "ARCHIVED"
@@ -349,6 +353,15 @@ export function SirahAdminStudents({
           (result.reason ? ` ${result.reason}` : ""),
       );
       recordDialog.current?.close();
+      // Archive / restore moves the record to another view: close its details.
+      if (selectedId === student.id && (kind === "ARCHIVE" || kind === "ARCHIVE_KEEP" || kind === "RESTORE"))
+        dialog.current?.close();
+      setCheckedIds((previous) => {
+        if (!previous.has(student.id)) return previous;
+        const next = new Set(previous);
+        next.delete(student.id);
+        return next;
+      });
       setReload((key) => key + 1);
     } catch (cause) {
       setRecordError(cause instanceof Error ? cause.message : "Could not update this record.");
@@ -365,8 +378,48 @@ export function SirahAdminStudents({
       return next;
     });
   }
-  /** Bulk exclude / un-exclude for the ticked rows. The only thing the
-   * selection can do: there is deliberately no archive or delete here. */
+  /** Archive (kept, never deleted) the ticked rows. Super admin only; its
+   * endpoint can only set the kept archive, never delete. */
+  async function runBulkArchive() {
+    const orderIds = [...checkedIds];
+    if (!orderIds.length) return;
+    if (
+      !(await confirmDialog({
+        title: `Archive ${orderIds.length} ${orderIds.length === 1 ? "record" : "records"}?`,
+        message:
+          "They are hidden from the Students and Payments lists, the CSV export, the Overview counts and the student's dashboard and classroom. Nothing is deleted: payments, receipts and history are kept, and you can restore them from the Archived view. Archiving does not cancel provider billing or refund anything.",
+        confirmLabel: "Archive selected",
+        cancelLabel: "Go back",
+      }))
+    )
+      return;
+    setBulkBusy(true);
+    setBulkError("");
+    try {
+      const response = await fetch("/api/admin/sirah/records/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderIds }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || "Could not archive these records.");
+      const results = (result.results ?? []) as { ok: boolean; reason?: string }[];
+      const done = results.filter((entry) => entry.ok).length;
+      const failed = results.length - done;
+      setRecordMessage(
+        `${done} ${done === 1 ? "record" : "records"} archived (kept, restorable from the Archived view).` +
+          (failed ? ` ${failed} could not be archived; reload and try again.` : ""),
+      );
+      setCheckedIds(new Set());
+      setReload((key) => key + 1);
+    } catch (cause) {
+      setBulkError(cause instanceof Error ? cause.message : "Could not archive these records.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+  /** Bulk exclude / un-exclude for the ticked rows. Archive (kept) has its own
+   * bulk above; the selection can never delete. */
   async function runBulkExclusion(action: "EXCLUDE" | "INCLUDE") {
     const orderIds = [...checkedIds];
     if (!orderIds.length) return;
@@ -586,10 +639,11 @@ export function SirahAdminStudents({
     // Managers and the super admin may approve / complete; refunds are not
     // in this row list and stay super-admin only at the endpoint.
     (!canManageEnrolments || student.archivedAt ? [] : availableActions(student))
-      // "Complete course" is not offered on the row (too easy to hit by
-      // mistake); it stays in View Details, which lists every action.
+      // "Complete course" and "Complete payment manually" are not offered on
+      // the row (too easy to hit by mistake, and the latter needs its form);
+      // they stay in View Details, which lists every action.
       .filter((option) =>
-        ["APPROVE", "COMPLETE_MANUALLY", "REJECT", "PENDING", "CANCEL"].includes(option),
+        ["APPROVE", "REJECT", "PENDING", "CANCEL"].includes(option),
       )
       .forEach((option) => {
         const tone = actionClass(option);
@@ -619,6 +673,14 @@ export function SirahAdminStudents({
         onSelect: () =>
           openRecordAction(student.excludedAt ? "INCLUDE" : "EXCLUDE", student),
       });
+      // Archive (kept, never deleted): any record, super admin only, behind
+      // the confirm dialog.
+      if (canManageRecords)
+        items.push({
+          key: "ARCHIVE_KEEP",
+          label: "Archive",
+          onSelect: () => openRecordAction("ARCHIVE_KEEP", student),
+        });
       // Delete: per row, super admin only, behind the confirm dialog. Never
       // part of the selection.
       if (canManageRecords && !student.deleteRefusal)
@@ -960,7 +1022,7 @@ export function SirahAdminStudents({
                   <option value="">Counted in analytics</option>
                   <option value="EXCLUDED">Excluded (test / junk)</option>
                   {canManageRecords && (
-                    <option value="ARCHIVED">Archive (deleted, restorable for 7 days)</option>
+                    <option value="ARCHIVED">Archived (hidden, restorable)</option>
                   )}
                 </select>
               </label>
@@ -1010,8 +1072,8 @@ export function SirahAdminStudents({
               </p>
             )}
             {canExcludeRecords && !archivedView && (() => {
-              // Select-all and the bulk bar drive ONLY exclude / un-exclude.
-              // No delete or archive is reachable from the selection.
+              // Select-all and the bulk bar drive exclude / un-exclude and, for
+              // the super admin, archive (kept). Delete is never reachable here.
               const selectable = data.rows.filter((row) => !row.archivedAt);
               const allChecked =
                 selectable.length > 0 &&
@@ -1021,7 +1083,7 @@ export function SirahAdminStudents({
                 <div
                   className={styles.bulkBar}
                   role="toolbar"
-                  aria-label="Selected records: analytics exclusion"
+                  aria-label="Selected records"
                 >
                   <label className={styles.bulkSelectAll}>
                     <input
@@ -1060,6 +1122,16 @@ export function SirahAdminStudents({
                   >
                     Un-exclude
                   </button>
+                  {canManageRecords && (
+                    <button
+                      type="button"
+                      className="ga-admin-outline-btn"
+                      disabled={!checkedIds.size || bulkBusy}
+                      onClick={() => void runBulkArchive()}
+                    >
+                      Archive selected
+                    </button>
+                  )}
                   {bulkError && (
                     <p className="ga-admin-error-banner" role="alert">
                       {bulkError}
@@ -1106,7 +1178,7 @@ export function SirahAdminStudents({
                         <label className={styles.rowSelect}>
                           <input
                             type="checkbox"
-                            aria-label={`Select ${student.reference} for analytics exclusion`}
+                            aria-label={`Select ${student.reference}`}
                             checked={checked}
                             disabled={bulkBusy}
                             onChange={(event) =>
@@ -1143,6 +1215,9 @@ export function SirahAdminStudents({
                       )}
                       {student.purgeAt && (
                         <p className={styles.purgeNote}>{purgeLabel(student.purgeAt)}</p>
+                      )}
+                      {student.archiveKept && (
+                        <p className={styles.keptNote}>Kept: never deleted</p>
                       )}
                     </div>
                     <div className={`${styles.cCustomer} ${styles.customerCell}`}>
@@ -1292,7 +1367,7 @@ export function SirahAdminStudents({
         </div>
       </section>
 
-      {canExcludeRecords && (
+      {(canExcludeRecords || canManageRecords) && (
         <dialog
           ref={recordDialog}
           className="ga-admin-donation-dialog"
@@ -1343,6 +1418,27 @@ export function SirahAdminStudents({
                     The student&apos;s account is kept.
                   </p>
                 )}
+                {recordAction.kind === "ARCHIVE_KEEP" && (
+                  <>
+                    <p>
+                      This record moves to the Archived view and is hidden from
+                      the Students and Payments lists, the CSV export, the
+                      Overview counts and the student&apos;s dashboard and
+                      classroom. <strong>Nothing is deleted</strong>: payments,
+                      receipts, ledger entries and history are kept, and you can
+                      restore it at any time.
+                    </p>
+                    {(recordAction.student.paidCount > 0 ||
+                      recordAction.student.enrolmentState === "ACTIVE" ||
+                      recordAction.student.nextBillingAt) && (
+                      <p className="ga-admin-error-banner" role="note">
+                        This record has a payment or active course access.
+                        Archiving does not cancel provider billing or refund
+                        anything; do that first if it is needed.
+                      </p>
+                    )}
+                  </>
+                )}
                 {recordAction.kind === "RESTORE" && (
                   <p>
                     This record returns to the Students list (and to the
@@ -1366,7 +1462,7 @@ export function SirahAdminStudents({
                   <button
                     type="button"
                     className={
-                      recordAction.kind === "ARCHIVE"
+                      recordAction.kind === "ARCHIVE" || recordAction.kind === "ARCHIVE_KEEP"
                         ? "ga-admin-outline-btn is-danger"
                         : "ga-admin-primary-btn"
                     }
@@ -1633,28 +1729,37 @@ export function SirahAdminStudents({
                     {action === "COMPLETE_MANUALLY" && (
                       <>
                         <p>
-                          This student chose{" "}
-                          <strong>{label(selected.method || "ONLINE")}</strong> but the
-                          online payment never completed. Record the bank transfer
-                          or JazzCash payment you verified. This activates the
-                          student’s paid course access.
+                          The student chose{" "}
+                          <strong>{label(selected.method || "ONLINE")}</strong>,
+                          but that payment never completed. Record the bank
+                          transfer or JazzCash payment you verified to activate
+                          their paid course access.
                         </p>
-                        <p>
-                          Before anything is recorded, the payment provider is
-                          checked. If the online payment did succeed, nothing
-                          manual is recorded and you will be asked to check or
-                          refund it in the provider first. Any open checkout is
+                        <p className={styles.formNote}>
+                          The payment provider is checked first. If the online
+                          payment did succeed, nothing is recorded and you will be
+                          asked to check or refund it there. An open checkout is
                           closed so it can no longer be paid. Existing receipts,
-                          ledger payments and the agreement are kept as they are.
+                          ledger payments and the agreement are kept.
                         </p>
-                        <label>Verified payment method
-                          <select name="manualMethod" required defaultValue="">
-                            <option value="" disabled>Select the account that received the funds</option>
-                            <option value="BANK_TRANSFER">Meezan Bank transfer</option>
-                            <option value="JAZZCASH">JazzCash</option>
-                          </select>
-                        </label>
-                        <div className={styles.amountFields}>
+                        <div className={styles.pairFields}>
+                          <label>
+                            Verified payment method
+                            <select name="manualMethod" required defaultValue="">
+                              <option value="" disabled>Select the receiving account</option>
+                              <option value="BANK_TRANSFER">Meezan Bank transfer</option>
+                              <option value="JAZZCASH">JazzCash</option>
+                            </select>
+                          </label>
+                          <label>
+                            Payment date
+                            <input
+                              name="receivedDate"
+                              type="date"
+                              required
+                              max={new Date().toISOString().slice(0, 10)}
+                            />
+                          </label>
                           <label>
                             Received amount ({selected.currency})
                             <input
@@ -1668,23 +1773,14 @@ export function SirahAdminStudents({
                             />
                           </label>
                           <label>
-                            Payment date
+                            Transfer transaction reference
                             <input
-                              name="receivedDate"
-                              type="date"
+                              name="transactionReference"
                               required
-                              max={new Date().toISOString().slice(0, 10)}
+                              maxLength={150}
                             />
                           </label>
                         </div>
-                        <label>
-                          Transfer transaction reference
-                          <input
-                            name="transactionReference"
-                            required
-                            maxLength={150}
-                          />
-                        </label>
                         <label className={styles.check}>
                           <input
                             name="verifiedTransfer"
@@ -1745,8 +1841,9 @@ export function SirahAdminStudents({
                       )}
                     {action !== "RETRY_NOTIFICATIONS" && (
                       <label>
-                        {action === "REFUND" ||
-                        action === "COMPLETE_MANUALLY" ||
+                        {action === "COMPLETE_MANUALLY"
+                          ? "How staff verified the funds"
+                          : action === "REFUND" ||
                         (action === "APPROVE" &&
                           (selected.enrolmentState === "CANCELLED" || canRecoverSirahManualPayment(selected)))
                           ? "Reason / review note"
@@ -1782,6 +1879,38 @@ export function SirahAdminStudents({
                 )}
               </form>
             </section>
+
+            {canManageRecords && (
+              <section className="ga-admin-modal-section">
+                <h4>Record</h4>
+                <p>
+                  {selected.archivedAt
+                    ? `Archived ${date(selected.archivedAt)}${selected.archiveKept ? " · kept, never deleted" : ""}.`
+                    : "Archive hides a test or junk registration from every list and count without deleting anything."}
+                </p>
+                <div className="ga-admin-actions ga-admin-actions-inline">
+                  {selected.archivedAt ? (
+                    <button
+                      type="button"
+                      className="ga-admin-primary-btn"
+                      disabled={busy || recordBusy}
+                      onClick={() => openRecordAction("RESTORE", selected)}
+                    >
+                      Restore
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="ga-admin-outline-btn is-danger"
+                      disabled={busy || recordBusy}
+                      onClick={() => openRecordAction("ARCHIVE_KEEP", selected)}
+                    >
+                      Archive
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
 
             <div className={`ga-admin-modal-section ${styles.records}`}>
               <AdminLedger key={selected.id} id={selected.id} canEdit={canManageEnrolments} canRemovePayment={canManageRecords} onPaymentRemoved={() => {

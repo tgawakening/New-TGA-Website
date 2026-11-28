@@ -4,7 +4,8 @@
  * anything that loads lib/prisma (it reuses globalThis.prisma).
  *
  * Supports the subset of the Prisma API the Sīrah services use: equality,
- * in/not/lt/lte/gt/gte/contains filters, relation filters (course/user/order),
+ * in/not/lt/lte/gt/gte/contains filters, relation filters (course/user/order;
+ * some/none/every on audits),
  * compound unique keys, include/select of relations, increment, DbNull,
  * upsert, interactive $transaction, findMany `distinct` and groupBy with
  * _count._all. `select` returns whole rows.
@@ -24,6 +25,11 @@ const relationTable: Record<string, string> = {
   order: "sirahOrder",
   registration: "registration",
   zoomHost: "zoomHost",
+};
+/** One-to-many relations a filter may use with some / none / every:
+ * field -> [child table, foreign key on the child]. */
+const toManyRelation: Record<string, [string, string]> = {
+  audits: ["sirahAudit", "orderId"],
 };
 const OPS = ["in", "not", "lt", "lte", "gt", "gte", "contains", "equals"];
 function matchValue(actual: unknown, expected: unknown): boolean {
@@ -50,6 +56,15 @@ export function matches(row: Row, where: Row = {}): boolean {
     if (key === "OR") return (expected as Row[]).some((w) => matches(row, w));
     if (key === "AND") return (expected as Row[]).every((w) => matches(row, w));
     if (key === "NOT") return !matches(row, expected as Row);
+    if (toManyRelation[key] && !(key in row) && expected && typeof expected === "object") {
+      const [child, foreignKey] = toManyRelation[key];
+      const related = table(child).filter((r) => r[foreignKey] === row.id);
+      const f = expected as { some?: Row; none?: Row; every?: Row };
+      if (f.some && !related.some((r) => matches(r, f.some))) return false;
+      if (f.none && related.some((r) => matches(r, f.none))) return false;
+      if (f.every && !related.every((r) => matches(r, f.every))) return false;
+      return true;
+    }
     if (relationTable[key] && !(key in row) && `${key}Id` in row) {
       const related = table(relationTable[key]).find((r) => r.id === row[`${key}Id`]);
       return !!related && matches(related, expected as Row);
