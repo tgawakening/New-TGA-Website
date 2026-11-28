@@ -64,6 +64,15 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    // Completing a Stripe / PayPal registration with a manual payment is for
+    // the super admin and managers only (stated explicitly, not just implied
+    // by canManageEnrolments).
+    if (
+      parsed.data.action === "COMPLETE_MANUALLY" &&
+      access.role !== "SUPER_ADMIN" &&
+      access.role !== "MANAGER"
+    )
+      throw new SirahError("Only the Super Admin or a Manager can complete a payment manually.", 403);
     const isSuperAdmin = requireAdminAccess(request) === null;
     // Refunds remain restricted to the main administrator.
     if (REFUND_ACTIONS.has(parsed.data.action) && !isSuperAdmin)

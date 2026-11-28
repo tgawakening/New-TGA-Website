@@ -5,7 +5,7 @@ import {
   sirahArchivePurgeAt,
   sirahDeletionRefusal,
 } from "@/lib/sirah/admin-records";
-import { canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
+import { canCompleteSirahGatewayManually, canRecoverSirahManualPayment } from "@/lib/sirah/manual-review";
 import { ADMIN_RECEIPT_UPLOADED } from "@/lib/sirah/direct-upload-policy";
 import "server-only";
 import { calculateSirahAnnualUnusedMonths } from "@/lib/sirah/annual-refund";
@@ -22,6 +22,8 @@ import {
   SIRAH_TITLE,
   decimalToMinor,
   formatSirahMoney,
+  priceFor,
+  type SirahPlan,
 } from "@/lib/sirah/catalog";
 import { getGroupInvitation, type SirahTerms } from "@/lib/sirah/config";
 import { sirahAdminActionSchema } from "@/lib/sirah/validation";
@@ -29,10 +31,13 @@ import { sirahDisplayPaymentState, sirahNetReceivedMinor, sirahPendingRefundMino
 import {
   ADMIN_CUSTOM_PRICING_VERSION,
   adminCustomSnapshot,
+  isAdminCustomOrder,
 } from "@/lib/sirah/admin-custom";
 import { auditSirah, SirahError } from "./sirah-registration.service";
 import {
   confirmSirahPayment,
+  confirmSirahPaymentInTransaction,
+  afterSirahPaymentConfirmed,
   addMonthsClamped,
   serializable,
 } from "./sirah-confirmation.service";
@@ -47,7 +52,10 @@ import {
   paypalDecimal,
   verifySirahStripeSession,
   verifySirahPaypal,
+  confirmSirahGatewayUnsettled,
 } from "./sirah-online.service";
+import { pakistanCalendarDate } from "@/lib/sirah/cohort-dates";
+import { SCHOLARSHIP_ORDER_VERSION } from "@/lib/sirah/scholarship-application";
 /** Payment-ledger kinds that move money: a verified payment received (first or
  * renewal) and a recorded refund. FAILED events carry no money. */
 export const SIRAH_RECEIVED_KINDS = ["FIRST", "RENEWAL"];
@@ -534,6 +542,171 @@ export async function recordSirahRefund(
     }
   }
 }
+/** The ledger event id of a manual (bank / JazzCash) payment: one transfer
+ * reference may credit one registration, once. */
+function manualPaymentEventId(method: string, reference: string) {
+  return `manual:${method}:${createHash("sha256").update(reference).digest("hex")}`;
+}
+/** Explain a reused transfer reference in staff terms before the transactional
+ * guard (which still enforces it in confirmSirahPaymentInTransaction) rejects it. */
+async function assertManualReferenceUnused(
+  eventId: string,
+  reference: string,
+  orderId: string,
+  amount: number,
+  currency: string,
+  adminEntered: boolean,
+) {
+  const seen = await prisma.sirahPaymentEvent.findUnique({
+    where: { id: eventId },
+    select: { orderId: true, amountMinor: true, currency: true, order: { select: { reference: true } } },
+  });
+  if (seen && (seen.orderId !== orderId || seen.amountMinor !== amount || seen.currency !== currency))
+    throw new SirahError(
+      `${adminEntered ? "The transaction reference you entered" : "The student's submitted transaction reference"} ("${reference}") has already been used to verify ${formatSirahMoney(seen.amountMinor, seen.currency)} on ${seen.orderId === orderId ? "this registration" : `registration ${seen.order.reference}`}, so it cannot verify this payment as well. Check the bank statement: if this is a separate transfer, enter its own reference under "Transfer transaction reference" and approve again; if it is the same transfer, do not approve. Reconcile it with that registration instead.`,
+      422,
+    );
+}
+/** Staff complete a Stripe / PayPal registration whose online payment never
+ * completed, because the student paid by bank transfer / JazzCash instead.
+ * 1. The provider itself must confirm the online attempt did not and can no
+ *    longer collect money (an open checkout is closed). If it did succeed, that
+ *    payment is recorded and manual completion is refused.
+ * 2. In one serializable transaction the order switches to the verified manual
+ *    method (clearing the dead provider references) and the payment is
+ *    confirmed through the same path as approving a manual registration, with
+ *    the same one-reference-one-payment guard. Receipts, ledger payments and
+ *    the agreement are left untouched. */
+async function completeSirahGatewayOrderManually(
+  order: Prisma.SirahOrderGetPayload<{ include: { events: true } }>,
+  input: z.infer<typeof sirahAdminActionSchema>,
+  actor: string,
+) {
+  if (order.revision !== input.revision)
+    throw new SirahError("Another admin or student changed this record. Reload first.", 409);
+  if (order.events.length || !canCompleteSirahGatewayManually(order))
+    throw new SirahError(
+      "Only an unpaid, still-pending Stripe or PayPal registration can be completed manually.",
+      409,
+    );
+  const method = input.manualMethod;
+  const reference = input.transactionReference?.trim();
+  const note = input.note?.trim();
+  if (!method || !reference || !note || !input.receivedDate || input.verifiedTransfer !== true)
+    throw new SirahError(
+      "Select the verified method, enter the transfer reference, payment date and how the funds were verified, and confirm they were received.",
+    );
+  const receivedAt = new Date(`${input.receivedDate}T12:00:00.000Z`);
+  if (
+    !Number.isFinite(receivedAt.getTime()) ||
+    receivedAt.toISOString().slice(0, 10) !== input.receivedDate ||
+    input.receivedDate > pakistanCalendarDate(new Date())
+  )
+    throw new SirahError("Choose a valid payment date that is not in the future.");
+  const currency = input.currency?.toUpperCase() || order.currency;
+  if (currency !== order.currency)
+    throw new SirahError(
+      `This registration is priced in ${order.currency}; record the payment in ${order.currency}.`,
+    );
+  let amount: number;
+  try {
+    amount = input.verifiedAmount ? decimalToMinor(input.verifiedAmount, currency) : order.amountMinor;
+  } catch {
+    throw new SirahError("Enter a valid received amount.");
+  }
+  // The online quote can differ from the manual rate (e.g. Pakistan's bank /
+  // JazzCash fee). A self-registered order without a discount may take the
+  // catalog manual quote; any other amount must equal the locked fee.
+  const manualQuote = priceFor(order.countryCode, order.plan as SirahPlan, method);
+  const mayReprice =
+    !isAdminCustomOrder(order) &&
+    order.pricingVersion !== SCHOLARSHIP_ORDER_VERSION &&
+    !order.discount &&
+    manualQuote.currency === order.currency &&
+    manualQuote.amountMinor !== order.amountMinor;
+  const reprice = mayReprice && amount !== order.amountMinor && amount === manualQuote.amountMinor;
+  if (amount !== order.amountMinor && !reprice)
+    throw new SirahError(
+      `The received amount must equal this registration's fee of ${formatSirahMoney(order.amountMinor, order.currency)}${
+        mayReprice
+          ? ` (or the ${method === "JAZZCASH" ? "JazzCash" : "bank transfer"} fee of ${formatSirahMoney(manualQuote.amountMinor, manualQuote.currency)})`
+          : ""
+      }. Nothing was recorded.`,
+    );
+  const eventId = manualPaymentEventId(method, reference);
+  // Reject a reused reference before anything is sent to the provider.
+  await assertManualReferenceUnused(eventId, reference, order.id, amount, currency, true);
+  await prisma.$transaction((tx) =>
+    auditSirah(tx, order.id, actor, "GATEWAY_MANUAL_COMPLETION_REQUESTED", {
+      provider: order.method,
+      reference: order.providerOrderId || order.providerSubscriptionId || null,
+    }),
+  );
+  const gatewayReference = await confirmSirahGatewayUnsettled(order);
+  const result = await serializable(async (tx) => {
+    const changed = await tx.sirahOrder.updateMany({
+      where: {
+        id: order.id,
+        revision: order.revision,
+        method: order.method,
+        paidCount: 0,
+        paidMinor: 0,
+        enrolmentState: "PENDING",
+        cancelledAt: null,
+        archivedAt: null,
+        paymentState: { in: ["UNPAID", "PROCESSING", "FAILED"] },
+        providerOrderId: order.providerOrderId,
+        providerSubscriptionId: order.providerSubscriptionId,
+      },
+      data: {
+        method,
+        paymentState: "UNPAID",
+        providerOrderId: null,
+        providerSubscriptionId: null,
+        providerPlanId: null,
+        checkoutToken: null,
+        ...(reprice
+          ? {
+              amountMinor: manualQuote.amountMinor,
+              totalMinor: manualQuote.totalMinor,
+              pricingVersion: manualQuote.pricingVersion,
+            }
+          : {}),
+        revision: { increment: 1 },
+      },
+    });
+    if (!changed.count)
+      throw new SirahError(
+        "This registration changed while the payment provider was checked. Nothing was recorded; reload and retry.",
+        409,
+      );
+    await auditSirah(tx, order.id, actor, "GATEWAY_ORDER_COMPLETED_MANUALLY", {
+      previousMethod: order.method,
+      previousPaymentState: order.paymentState,
+      providerReferenceConfirmedUnsettled: gatewayReference,
+      method,
+      amountMinor: amount,
+      currency,
+      ...(reprice ? { previousAmountMinor: order.amountMinor, repricedToManualQuote: true } : {}),
+      receivedDate: input.receivedDate,
+      transactionReference: reference,
+      note,
+    });
+    return confirmSirahPaymentInTransaction(tx, {
+      orderId: order.id,
+      eventId,
+      provider: method,
+      amountMinor: amount,
+      currency,
+      actor,
+      note: `${note} Completed manually after an unfinished ${order.method === "STRIPE" ? "Stripe" : "PayPal"} checkout. Reference source: admin-entered transfer reference. Reference: ${reference}`,
+      expectedRevision: order.revision + 1,
+      allowUnsubmittedManual: true,
+      receivedAt,
+    });
+  });
+  return afterSirahPaymentConfirmed(order.id, result);
+}
 export async function actOnSirahOrder(
   input: z.infer<typeof sirahAdminActionSchema>,
   actor: string,
@@ -581,6 +754,8 @@ export async function actOnSirahOrder(
       return verifySirahPaypal(order.id, providerReference, false);
     throw new SirahError("This record is not an online checkout.");
   }
+  if (input.action === "COMPLETE_MANUALLY")
+    return completeSirahGatewayOrderManually(order, input, actor);
   if (input.action === "APPROVE") {
     const method = order.method || input.manualMethod;
     const recovery = canRecoverSirahManualPayment(order);
@@ -622,7 +797,8 @@ export async function actOnSirahOrder(
     const amount = input.verifiedAmount
       ? decimalToMinor(input.verifiedAmount, currency)
       : order.amountMinor;
-    const eventId = `manual:${method}:${createHash("sha256").update(reference).digest("hex")}`;
+    const eventId = manualPaymentEventId(method, reference);
+    await assertManualReferenceUnused(eventId, reference, order.id, amount, currency, source === "admin-entered transfer reference");
     return confirmSirahPayment({
       orderId: order.id,
       eventId,

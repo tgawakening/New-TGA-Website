@@ -929,6 +929,60 @@ async function resetUnsettledSirahPaypal(order: SirahOrder): Promise<string> {
   return ref;
 }
 
+export const GATEWAY_SUCCEEDED_MESSAGE =
+  "The online payment for this registration has succeeded with the payment provider, so it cannot also be completed manually. Nothing manual was recorded. Check the provider dashboard: if the student also paid by bank transfer or JazzCash, refund one of the two payments instead.";
+const GATEWAY_MAY_SETTLE_MESSAGE =
+  "The online payment for this registration may still complete with the payment provider, so it cannot be completed manually yet. Nothing was recorded. Check the provider dashboard (cancel or refund it there if needed), then retry.";
+
+/** Before staff record a manual payment against an order whose student chose
+ * Stripe or PayPal: prove with the provider itself (never the browser or our
+ * own status) that the online attempt did not and cannot now collect money,
+ * closing it where the provider allows. Reuses the abandoned-checkout reset
+ * checks. A provider payment that did succeed is verified into the order (so
+ * the real money is recorded) and manual completion is refused. Returns the
+ * provider reference that was confirmed unsettled, or null when the student
+ * never opened a checkout. Writes nothing to the order itself. */
+export async function confirmSirahGatewayUnsettled(
+  order: SirahOrder,
+  stripe?: Stripe,
+): Promise<string | null> {
+  if (order.method !== "STRIPE" && order.method !== "PAYPAL")
+    throw new SirahError("This registration is not an online checkout.");
+  if (!order.providerOrderId && !order.providerSubscriptionId) {
+    // No checkout was ever opened, so the provider has nothing to collect.
+    if (order.paymentState === "PROCESSING")
+      throw new SirahError(GATEWAY_MAY_SETTLE_MESSAGE, 409);
+    return null;
+  }
+  const settledOrMaySettle = (error: unknown): never => {
+    if (error instanceof SirahError && error.message === RESET_SETTLED_MESSAGE)
+      throw new SirahError(GATEWAY_SUCCEEDED_MESSAGE, 409);
+    if (
+      error instanceof SirahError &&
+      [RESET_MAY_SETTLE_MESSAGE, RESET_UNSAFE_MESSAGE].includes(error.message)
+    )
+      throw new SirahError(GATEWAY_MAY_SETTLE_MESSAGE, 409);
+    throw error;
+  };
+  if (order.method === "STRIPE")
+    // Staff are completing this order, so an open session (even an admin
+    // custom link) is expired now and can never be paid afterwards.
+    return resetUnsettledSirahStripe(order, stripe || stripeClient(), true).catch(
+      settledOrMaySettle,
+    );
+  const ref = await resetUnsettledSirahPaypal(order).catch(settledOrMaySettle);
+  if (order.plan !== "ANNUAL") {
+    // A PayPal subscription still awaiting approval could activate and charge
+    // later. Only a provider-terminal subscription is safe to complete manually.
+    const sub = await paypalRequest(`/v1/billing/subscriptions/${ref}`);
+    if (sub.custom_id !== order.id)
+      throw new SirahError("Checkout ownership mismatch.");
+    if (!["CANCELLED", "EXPIRED"].includes(sub.status))
+      throw new SirahError(GATEWAY_MAY_SETTLE_MESSAGE, 409);
+  }
+  return ref;
+}
+
 /** Expire only an unsettled hosted checkout before allowing a new quote.
  * Completed or asynchronous payments stay locked until verified/reconciled.
  * Supports both Stripe and PayPal; nothing from the browser is trusted. */

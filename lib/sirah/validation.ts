@@ -88,6 +88,7 @@ export const sirahAdminActionSchema = z
       "RETRY_NOTIFICATIONS",
       "RECONCILE_PROVIDER",
       "QUOTE_ANNUAL_REFUND",
+      "COMPLETE_MANUALLY",
     ]),
     unusedEligibleMonths: z.number().int().min(0).max(12).optional(),
     note: z.string().trim().max(1500).optional(),
@@ -106,6 +107,8 @@ export const sirahAdminActionSchema = z
       .max(200)
       .optional(),
     refundReference: z.string().trim().max(150).optional(),
+    /** COMPLETE_MANUALLY: the day the manual payment was received (YYYY-MM-DD). */
+    receivedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   })
   .strict()
   .superRefine((v, ctx) => {
@@ -124,7 +127,17 @@ export const sirahAdminActionSchema = z
         path: ["note"],
         message: "A reason is required.",
       });
-    if (v.action === "APPROVE" && v.verifiedTransfer !== true)
+    if (v.action === "COMPLETE_MANUALLY") {
+      if (!v.manualMethod)
+        ctx.addIssue({ code: "custom", path: ["manualMethod"], message: "Select the account that received the funds." });
+      if (!v.transactionReference)
+        ctx.addIssue({ code: "custom", path: ["transactionReference"], message: "Enter the transfer's transaction reference." });
+      if (!v.receivedDate)
+        ctx.addIssue({ code: "custom", path: ["receivedDate"], message: "Enter the date the payment was received." });
+      if (!v.note)
+        ctx.addIssue({ code: "custom", path: ["note"], message: "Record how staff verified the received funds." });
+    }
+    if (["APPROVE", "COMPLETE_MANUALLY"].includes(v.action) && v.verifiedTransfer !== true)
       ctx.addIssue({
         code: "custom",
         path: ["verifiedTransfer"],
