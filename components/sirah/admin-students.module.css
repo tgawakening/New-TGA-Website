@@ -235,6 +235,25 @@
   color: var(--ai-fg-7a4b00, #7a4b00);
   font-weight: 600;
 }
+.keptNote {
+  color: var(--ai-fg-17664b, #17664b);
+  font-weight: 600;
+}
+.formNote {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ai-fg-4a6178, #4a6178);
+}
+.pairFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (max-width: 640px) {
+  .pairFields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .recordMessage {
   margin: 0.5rem 0 0;
   color: var(--ai-fg-17664b, #17664b);

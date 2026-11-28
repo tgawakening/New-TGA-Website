@@ -1,5 +1,6 @@
 import {
   ARCHIVED_ORDERS,
+  ARCHIVED_RETAINED,
   EXCLUDED_ORDERS,
   INCLUDED_ORDERS,
   sirahArchivePurgeAt,
@@ -268,12 +269,15 @@ export async function listSirahAdmin(search: URLSearchParams) {
     }),
   ]);
   const ids = rows.map(row => row.id);
-  const [ledgerOrders, planOrders, receiptUploads] = ids.length ? await Promise.all([
+  const [ledgerOrders, planOrders, receiptUploads, keptArchives] = ids.length ? await Promise.all([
     prisma.sirahLedgerPayment.findMany({ where: { orderId: { in: ids } }, select: { orderId: true }, distinct: ["orderId"] }),
     prisma.sirahPaymentPlan.findMany({ where: { orderId: { in: ids } }, select: { orderId: true } }),
     // Receipts staff attached on the student's behalf (audit trail, not a column).
     prisma.sirahAudit.findMany({ where: { orderId: { in: ids }, action: ADMIN_RECEIPT_UPLOADED }, select: { actor: true, detail: true, createdAt: true } }),
-  ]) : [[], [], []];
+    // Kept archives (never purged).
+    prisma.sirahAudit.findMany({ where: { orderId: { in: ids }, action: ARCHIVED_RETAINED }, select: { orderId: true }, distinct: ["orderId"] }),
+  ]) : [[], [], [], []];
+  const keptIds = new Set(keptArchives.map(entry => entry.orderId));
   const ledgerIds = new Set(ledgerOrders.map(entry => entry.orderId));
   const planIds = new Set(planOrders.map(entry => entry.orderId));
   const adminUploads = new Map<string, { actor: string; at: Date }>();
@@ -300,8 +304,10 @@ export async function listSirahAdmin(search: URLSearchParams) {
         receipts: row.receipts.map(receipt => ({ ...receipt, adminUpload: adminUploads.get(receipt.id) ?? null })),
         hasMonthlyPlan: planIds.has(row.id),
         deleteRefusal,
+        // Archived and kept: never purged.
+        archiveKept: !!row.archivedAt && keptIds.has(row.id),
         // Archive view: when the maintenance job will delete it for good.
-        purgeAt: row.archivedAt ? sirahArchivePurgeAt(row.archivedAt) : null,
+        purgeAt: row.archivedAt && !keptIds.has(row.id) ? sirahArchivePurgeAt(row.archivedAt) : null,
         // Admin custom payment link: catalog vs agreed price, sponsor, creator.
         customLink: custom
           ? {

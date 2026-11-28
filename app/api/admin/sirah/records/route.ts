@@ -13,9 +13,9 @@ import { applySirahRecordsAction } from "@/services/sirah-records.service";
 import { SirahError } from "@/services/sirah-registration.service";
 
 // ONE record per request. Exclude / include (mark as test): super admin or
-// manager. Archive ("delete") / restore: env super admin only. Community leads,
-// viewers and everyone else cannot reach this, whatever the UI shows. Nothing
-// here hard-deletes a row, and there is no bulk archive or delete anywhere.
+// manager. Archive (kept), delete (archive then purge) and restore: env super
+// admin only. Community leads, viewers and everyone else cannot reach this,
+// whatever the UI shows. Nothing here hard-deletes a row.
 export async function POST(request: Request) {
   try {
     checkSirahOrigin(request);
@@ -33,9 +33,9 @@ export async function POST(request: Request) {
       );
     const { action } = parsed.data;
     let actor: string;
-    if (action === "ARCHIVE" || action === "RESTORE") {
+    if (action === "ARCHIVE" || action === "ARCHIVE_KEEP" || action === "RESTORE") {
       if (requireAdminAccess(request) !== null)
-        throw new SirahError("Only the super admin can delete or restore records.", 403);
+        throw new SirahError("Only the super admin can archive, delete or restore records.", 403);
       actor = await sirahAdmin(request);
     } else {
       actor = await sirahExclusionActor(request);

@@ -13,7 +13,17 @@ import { z } from "zod";
  *   view, where it can be restored. The sirah-maintenance job hard-deletes it
  *   once SIRAH_ARCHIVE_RETENTION_DAYS have passed; that purge is the only code
  *   path that deletes an order.
+ * - Archive (soft, reversible, never purged; Super Admin only, one row or a
+ *   checkbox selection): for ANY registration, whatever its method or status,
+ *   typically one already excluded as a test. It sets the same archivedAt (so
+ *   the record is hidden exactly like a deleted one and shown in the Archive
+ *   view, where it can be restored) and writes an ARCHIVED_RETAINED audit row.
+ *   The purge never deletes an order that has ever had that audit row, so an
+ *   archived record is kept until someone restores it.
  */
+
+/** Audit action that marks an archived order as kept: never purged. */
+export const ARCHIVED_RETAINED = "ARCHIVED_RETAINED";
 
 /** Prisma filter for orders that count in admin lists and analytics. */
 export const INCLUDED_ORDERS = { excludedAt: null, archivedAt: null };
@@ -72,11 +82,13 @@ export function sirahDeletionRefusal(
   return null;
 }
 
-/** One record per request. The only multi-record operation is the
- * exclude / un-exclude bulk below; there is no bulk archive or delete. */
+/** One record per request. ARCHIVE is the payment-free "Delete" (purged after
+ * the retention period); ARCHIVE_KEEP is the kept archive for any record. The
+ * multi-record operations are the exclude / un-exclude bulk and the kept-archive
+ * bulk below; there is no bulk delete. */
 export const sirahRecordsActionSchema = z
   .object({
-    action: z.enum(["EXCLUDE", "INCLUDE", "ARCHIVE", "RESTORE"]),
+    action: z.enum(["EXCLUDE", "INCLUDE", "ARCHIVE", "ARCHIVE_KEEP", "RESTORE"]),
     orderId: z.string().trim().min(1).max(191),
     note: z.string().trim().max(500).optional(),
   })
@@ -107,3 +119,19 @@ export const sirahBulkExclusionSchema = z
   })
   .strict();
 export type SirahBulkExclusion = z.infer<typeof sirahBulkExclusionSchema>;
+
+/**
+ * Checkbox selection: archive (kept, never purged) many records. Super Admin
+ * only, enforced at its endpoint. It can only set the kept archive: it never
+ * deletes, and the purge skips every record it archives.
+ */
+export const sirahBulkArchiveSchema = z
+  .object({
+    orderIds: z
+      .array(z.string().trim().min(1).max(191))
+      .min(1)
+      .max(SIRAH_BULK_EXCLUSION_MAX)
+      .transform((ids) => [...new Set(ids)]),
+  })
+  .strict();
+export type SirahBulkArchive = z.infer<typeof sirahBulkArchiveSchema>;

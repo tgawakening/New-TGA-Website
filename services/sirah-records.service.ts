@@ -3,9 +3,11 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { SIRAH_SLUG } from "@/lib/sirah/catalog";
 import {
+  ARCHIVED_RETAINED,
   DELETABLE_PAYMENT_STATES,
   sirahArchivePurgeCutoff,
   sirahDeletionRefusal,
+  type SirahBulkArchive,
   type SirahBulkExclusion,
   type SirahRecordsAction,
 } from "@/lib/sirah/admin-records";
@@ -25,6 +27,8 @@ const SERIALIZABLE = {
  * - EXCLUDE / INCLUDE set or clear the analytics flag.
  * - ARCHIVE is the admin "Delete" (never bulk): a soft delete that sets archivedAt after
  *   re-checking the payment-free rule. Nothing is removed.
+ * - ARCHIVE_KEEP archives ANY record (any method / status) and marks it kept
+ *   with an ARCHIVED_RETAINED audit row, so the purge never deletes it.
  * - RESTORE clears archivedAt.
  * Each writes an audit row. The order state machine, checkout and enrolment
  * are never touched. No admin action deletes a row: only the maintenance purge
@@ -38,7 +42,9 @@ export async function applySirahRecordsAction(
   const result =
     input.action === "ARCHIVE"
       ? await archiveOne(id, actor, input.note)
-      : input.action === "RESTORE"
+      : input.action === "ARCHIVE_KEEP"
+        ? await archiveKeepOne(id, actor, input.note)
+        : input.action === "RESTORE"
         ? await restoreOne(id, actor, input.note)
         : await setExcluded(id, input.action === "EXCLUDE", actor, input.note);
   return { action: input.action, ...result };
@@ -68,6 +74,81 @@ export async function applySirahBulkExclusion(
     }
   }
   return { action: input.action, results };
+}
+
+/**
+ * Archive (kept) a checkbox selection. Structurally limited to the kept
+ * archive: it calls archiveKeepOne and nothing else, so a selection can never
+ * delete a record. Each record is its own transaction; one failure does not
+ * stop the rest.
+ */
+export async function applySirahBulkArchive(
+  input: SirahBulkArchive,
+  actor: string,
+): Promise<{ results: Result[] }> {
+  const results: Result[] = [];
+  for (const id of input.orderIds) {
+    try {
+      results.push(await archiveKeepOne(id, actor));
+    } catch (error) {
+      results.push({
+        id,
+        ok: false,
+        reason: error instanceof SirahError ? error.message : "Could not archive this record.",
+      });
+    }
+  }
+  return { results };
+}
+
+/**
+ * Kept archive for ANY registration (Stripe, PayPal, manual, paid or not):
+ * hides it like a deleted record (archivedAt) and writes ARCHIVED_RETAINED, so
+ * the purge never deletes it. Payments, receipts, ledger rows, refunds and the
+ * provider are not touched. Archiving a record already "deleted" (awaiting
+ * purge) converts it to kept. Never removes a row.
+ */
+async function archiveKeepOne(id: string, actor: string, note?: string): Promise<Result> {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.sirahOrder.findFirst({
+      where: { id, course: { slug: SIRAH_SLUG } },
+      select: {
+        id: true, reference: true, revision: true, archivedAt: true, excludedAt: true,
+        method: true, paymentState: true, enrolmentState: true, paidCount: true, paidMinor: true,
+      },
+    });
+    if (!order) throw new SirahError("Registration not found.", 404);
+    const detail = {
+      note: note || null,
+      method: order.method,
+      paymentState: order.paymentState,
+      enrolmentState: order.enrolmentState,
+      paidCount: order.paidCount,
+      paidMinor: order.paidMinor,
+      excluded: !!order.excludedAt,
+    };
+    if (order.archivedAt) {
+      const kept = await tx.sirahAudit.count({ where: { orderId: id, action: ARCHIVED_RETAINED } });
+      if (kept) return { id, reference: order.reference, ok: true, reason: "Already archived." };
+      // A "deleted" record awaiting purge: keep it instead.
+      await auditSirah(tx, id, actor, ARCHIVED_RETAINED, {
+        ...detail,
+        convertedFromDelete: true,
+        archivedAt: order.archivedAt.toISOString(),
+      });
+      return { id, reference: order.reference, ok: true, reason: "It will no longer be deleted." };
+    }
+    // The revision bump makes any in-flight admin or student action on this
+    // order fail its optimistic check.
+    const changed = await tx.sirahOrder.updateMany({
+      where: { id, revision: order.revision, archivedAt: null },
+      data: { archivedAt: new Date(), revision: { increment: 1 } },
+    });
+    if (changed.count !== 1)
+      throw new SirahError("This record changed. Reload and try again.", 409);
+    await auditSirah(tx, id, actor, ARCHIVED_RETAINED, detail);
+    return { id, reference: order.reference, ok: true };
+  }, SERIALIZABLE);
 }
 
 async function setExcluded(id: string, exclude: boolean, actor: string, note?: string) {
@@ -172,7 +253,8 @@ const PURGE_ACTOR = "system:archive-purge";
 /**
  * THE ONLY code path that hard-deletes a SirahOrder. Called by the
  * sirah-maintenance job. Scope: orders whose archivedAt is more than
- * SIRAH_ARCHIVE_RETENTION_DAYS before `now`, nothing else.
+ * SIRAH_ARCHIVE_RETENTION_DAYS before `now` and that were never marked as a
+ * kept archive (ARCHIVED_RETAINED), nothing else.
  *
  * Each order is purged in its own serializable transaction that re-checks the
  * archive cutoff and the payment-free rule, writes a SirahRecordDeletion log
@@ -184,7 +266,8 @@ const PURGE_ACTOR = "system:archive-purge";
 export async function purgeExpiredArchivedSirahOrders(now = new Date()) {
   const cutoff = sirahArchivePurgeCutoff(now);
   const candidates = await prisma.sirahOrder.findMany({
-    where: { archivedAt: { not: null, lt: cutoff } },
+    // A kept archive (ever marked ARCHIVED_RETAINED) is never purged.
+    where: { archivedAt: { not: null, lt: cutoff }, audits: { none: { action: ARCHIVED_RETAINED } } },
     select: { id: true },
     orderBy: { archivedAt: "asc" },
     take: 100,
@@ -195,7 +278,7 @@ export async function purgeExpiredArchivedSirahOrders(now = new Date()) {
     try {
       const outcome = await prisma.$transaction(async (tx) => {
         const order = await tx.sirahOrder.findFirst({
-          where: { id, archivedAt: { not: null, lt: cutoff } },
+          where: { id, archivedAt: { not: null, lt: cutoff }, audits: { none: { action: ARCHIVED_RETAINED } } },
           include: { user: { select: { email: true, fullName: true } } },
         });
         if (!order) return "No longer archived past retention.";

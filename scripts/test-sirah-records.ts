@@ -27,6 +27,7 @@ installFakePrisma();
 type Handler = (request: Request) => Promise<Response>;
 let recordsPost: Handler;
 let bulkExclusionPost: Handler;
+let bulkArchivePost: Handler;
 let enrolmentsGet: Handler;
 let createSession: typeof import("../lib/auth/session").createSession;
 let listSirahAdmin: typeof import("../services/sirah-admin.service").listSirahAdmin;
@@ -39,6 +40,7 @@ let SIRAH_SLUG = "";
 before(async () => {
   ({ POST: recordsPost } = await import("../app/api/admin/sirah/records/route"));
   ({ POST: bulkExclusionPost } = await import("../app/api/admin/sirah/records/exclusion/route"));
+  ({ POST: bulkArchivePost } = await import("../app/api/admin/sirah/records/archive/route"));
   ({ GET: enrolmentsGet } = await import("../app/api/admin/sirah/route"));
   ({ createSession } = await import("../lib/auth/session"));
   ({ listSirahAdmin, sirahCsv } = await import("../services/sirah-admin.service"));
@@ -439,4 +441,79 @@ test("a record restored before the purge runs is not deleted", async () => {
   const result = await purgeExpiredArchivedSirahOrders(now);
   assert.deepEqual(result.deleted, []);
   assert.ok(row(o.id));
+});
+
+const bulkArchive = (as: As, body: unknown) => bulkArchivePost(req("/api/admin/sirah/records/archive", as, body));
+
+test("archive (kept) works on any record, including paid Stripe and excluded ones, and touches nothing else", async () => {
+  const paid = paidOrder({ excludedAt: new Date(), excludedBy: "x" });
+  const processing = order({ method: "STRIPE", paymentState: "PROCESSING", providerOrderId: "cs_test_1", checkoutToken: "t" });
+  for (const o of [paid, processing]) {
+    const response = await act({ superAdmin: true }, { action: "ARCHIVE_KEEP", orderId: o.id });
+    assert.equal(response.status, 200);
+    assert.ok(row(o.id)!.archivedAt);
+    assert.ok(table("sirahAudit").some((a) => a.orderId === o.id && a.action === "ARCHIVED_RETAINED"));
+  }
+  // Payment, enrolment, provider references and the payment event are untouched.
+  assert.equal(row(paid.id)!.paymentState, "PAID");
+  assert.equal(row(paid.id)!.paidCount, 1);
+  assert.equal(row(processing.id)!.providerOrderId, "cs_test_1");
+  assert.equal(table("sirahPaymentEvent").filter((e) => e.orderId === paid.id).length, 1);
+  // Hidden from the normal and excluded lists; shown in the archive view as kept.
+  assert.deepEqual(await listIds(), []);
+  assert.deepEqual(await listIds("excluded=only"), []);
+  const archived = (await listSirahAdmin(new URLSearchParams("archived=only"))).rows;
+  assert.deepEqual(archived.map((r) => r.id).sort(), [paid.id, processing.id].sort());
+  for (const r of archived) {
+    assert.equal(r.archiveKept, true);
+    assert.equal(r.purgeAt, null);
+  }
+  // Restore puts it back, with history.
+  assert.equal((await act({ superAdmin: true }, { action: "RESTORE", orderId: paid.id })).status, 200);
+  assert.equal(row(paid.id)!.archivedAt, null);
+  assert.ok(table("sirahAudit").some((a) => a.orderId === paid.id && a.action === "RESTORED_FROM_ARCHIVE"));
+});
+
+test("only the super admin can archive (kept), singly or in bulk", async () => {
+  const o = order();
+  const manager = user("SIRAH_REVIEWER");
+  const lead = user("SIRAH_VIEWER");
+  for (const as of [{ session: await createSession(manager.id, 12) }, { session: await createSession(lead.id, 12) }, {}] as As[]) {
+    assert.equal((await act(as, { action: "ARCHIVE_KEEP", orderId: o.id })).status, 403);
+    assert.equal((await bulkArchive(as, { orderIds: [o.id] })).status, 403);
+  }
+  assert.equal((await bulkArchive({ superAdmin: true, origin: "https://evil.example" }, { orderIds: [o.id] })).status, 403);
+  assert.equal(row(o.id)!.archivedAt, null);
+});
+
+test("bulk archive (kept) archives each selected record and can never delete", async () => {
+  const a = order();
+  const b = paidOrder();
+  for (const body of [{ orderIds: [] }, { action: "DELETE", orderIds: [a.id] }, { orderId: a.id }])
+    assert.equal((await bulkArchive({ superAdmin: true }, body)).status, 400, JSON.stringify(body));
+  const response = await bulkArchive({ superAdmin: true }, { orderIds: [a.id, b.id, "missing"] });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).results.map((r: Row) => r.ok), [true, true, false]);
+  for (const o of [a, b]) assert.ok(row(o.id)!.archivedAt);
+  assert.equal(table("sirahOrder").length, 2);
+  assert.equal(table("sirahAudit").filter((x) => x.action === "ARCHIVED_RETAINED").length, 2);
+});
+
+test("the purge never deletes a kept archive, including a deleted record later archived (kept)", async () => {
+  const now = new Date();
+  const kept = order();
+  await act({ superAdmin: true }, { action: "ARCHIVE_KEEP", orderId: kept.id });
+  row(kept.id)!.archivedAt = new Date(now.getTime() - 30 * DAY);
+  // "Deleted" (awaiting purge), then archived (kept): converted, never purged.
+  const converted = order();
+  await act({ superAdmin: true }, { action: "ARCHIVE", orderId: converted.id });
+  const response = await act({ superAdmin: true }, { action: "ARCHIVE_KEEP", orderId: converted.id });
+  assert.equal((await response.json()).reason, "It will no longer be deleted.");
+  row(converted.id)!.archivedAt = new Date(now.getTime() - 30 * DAY);
+  // An ordinary delete past retention is still purged.
+  const junk = order({ archivedAt: new Date(now.getTime() - 8 * DAY) });
+  const result = await purgeExpiredArchivedSirahOrders(now);
+  assert.deepEqual(result.deleted, [junk.id]);
+  assert.ok(row(kept.id));
+  assert.ok(row(converted.id));
 });
